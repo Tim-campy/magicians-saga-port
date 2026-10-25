@@ -14,7 +14,7 @@ O [índice de relatórios](README.md) organiza a evidência por assunto. A numer
 
 ## Sequência imediata de gameplay
 
-1. Integrar o executor e a continuação por contagem implementados (`82`) aos registros e efeitos dos opcodes, preservando identidade e guardas externas. Manter espera por hora e associação a formulário como investigações paralelas ainda não resolvidas (`81`).
+1. Completar os efeitos8/12/31 e ligar executor/continuação (`82`) e progressão (`83`) aos registros reais, preservando identidade e guardas externas. Resolver o estado inicial de SYSSAVEI_YUGAMI; manter espera por hora e associação a formulário como investigações ainda abertas (`81`).
 2. Integrar somente contratos comprovados de combate, coleta, recompensas e progressão a uma simulação determinística.
 3. Resolver RNG, ordem de atualização, entidades e entrada necessários ao primeiro ciclo jogável.
 4. Comparar com o APK quando houver ambiente dinâmico disponível. Enquanto existir investigação estática útil, prosseguir sem exigir esse ambiente.

@@ -4,6 +4,8 @@ Atualização: 2026-10-25. **Prioridade: gameplay. M0/M1 parciais; ainda não h�
 
 ## Concluído e verificável
 
+- Efeitos dos opcodes1/2/4/15 e substituição de argumentos portados; sequência integrada com executor/espera testada. Condição original de subtração de cristais preservada com valor de sistema explícito. Windows/CTest12/12 passou (`83`).
+
 - Executor de matriz e continuação por contagem implementado em `event_flow`, com host explícito para efeitos/resolução; Windows/CTest11/11 passou (`82`). Ainda sem ligação às telas, dispatcher completo ou loader do jogo.
 
 - APK identificado e preservado; arquitetura Unity/IL2CPP e inventários documentados.
@@ -14,7 +16,7 @@ Atualização: 2026-10-25. **Prioridade: gameplay. M0/M1 parciais; ainda não h�
 
 ## Ativo
 
-- Integrar o host do executor aos registros e efeitos comprovados dos opcodes (`82`). GetDelayId compara referências, não conteúdo; as37 esperas da tabela extraída não especificam hora (`81`). Produtor de SubForm+0x1d0 e outras rotas permanecem pendentes.
+- Completar efeitos8/12/31, ligar host aos registros reais e resolver origem do parâmetro SYSSAVEI_YUGAMI (`83`). GetDelayId compara referências, não conteúdo; as37 esperas da tabela extraída não especificam hora (`81`). Produtor de SubForm+0x1d0 e outras rotas permanecem pendentes.
 - Integrar contratos comprovados de combate, coleta e recompensas numa primeira simulação determinística.
 - Resolver dependências de RNG, ordem de atualização e ciclo de entidades necessárias ao loop jogável, sem substituir lacunas por aproximações.
 

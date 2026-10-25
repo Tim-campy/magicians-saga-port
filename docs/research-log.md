@@ -1,5 +1,9 @@
 # Registro de pesquisa
 
+## 2026-10-25 — Efeitos de progressão integrados ao executor
+
+Ciclo anterior foi progresso com event_flow/CTest11/11. Conferidas vtables AreaData/QuestData e getter state==1; exports de Add/SubMoney/Crystal revelam piso somente na subtração e condição adicional SYSSAVEI_YUGAMI para cristais. Implementados efeitos1/2/4/15 e substituição de sentinelas, sem assumir valor inicial do parâmetro. Teste integra crédito→espera→missão→débito com cópia de argumentos; Windows/CTest12/12 passou. Evidência, aritmética e limites em83. Próximo: efeitos8/12/31, registros e origem do parâmetro de sistema. Nenhum save real ou APK executado.
+
 ## 2026-10-25 — Executor e fila de eventos nativos
 
 O ciclo anterior foi progresso ao fechar identidade e delimitar esperas efetivamente presentes. Implementado event_flow para executor de matriz e passagem de contadores, preservando ordem de remoção/restauração/resolução, limite inicial, identidade e cópia de argi. Host explícito para efeitos não implementados; sem política arbitrária de frames ou associação ao SubForm. Testes de sequência, falhas, wrap32 e mutações de callbacks passaram; Windows/CTest11/11. Evidência, precondições e limites em82. Próximo: integrar identificação/resolução e efeitos unitários antes de ligar à progressão.

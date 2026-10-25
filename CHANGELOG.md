@@ -2,6 +2,13 @@
 
 Este índice descreve mudanças do projeto. Achados detalhados ficam no [índice de relatórios](docs/README.md) e no [diário de pesquisa](docs/research-log.md). Nenhuma entrada abaixo representa uma versão jogável.
 
+## 2026-10-25 — Efeitos de progressão e argumentos
+
+- Novo módulo `event_progression` com efeitos de dinheiro, cristais, áreas e missões e resolução de sentinelas sem alterar a linha original.
+- Preservadas diferenças entre overrides de descoberta, wrap32/64 e condição de subtração de cristais selecionada pelo estado de sistema; nenhum valor inicial presumido.
+- Integração de teste com executor/espera e argumentos capturados; Windows/CTest12/12 aprovado. Log local: `build/research/event-progression-build.log`.
+- [Relatório83](docs/83-event-progression-effects.md) registra evidência e limites; falas, eventos visuais e stamina seguem pendentes.
+
 ## 2026-10-25 — Executor nativo e fila de eventos
 
 - Novo módulo `event_flow`: matriz interrompida por opcode10, contexto capturado e retomada por passagem de contadores.
