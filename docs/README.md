@@ -103,6 +103,7 @@ Prioridade atual. Regras de combate, animação, ECS, recompensas e eventos; mó
 - [95 — Limpeza externa do parser e parâmetros numéricos nativos](95-native-text-parameters.md)
 - [96 — Formação das linhas e dependência de métricas da fonte](96-text-lines-and-font-metrics.md)
 - [97 — Delegate de métricas por textura e propagação da seleção](97-font-texture-delegate.md)
+- [98 — Medição Java de texto e ligação com o leitor nativo](98-android-font-measurement.md)
 
 ## 5. Persistência e progressão — M4
 

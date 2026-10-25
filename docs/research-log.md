@@ -473,3 +473,7 @@ Resultado: setter enabled muda byte antes do hook somente em transição; manage
 Produtores: Emitter adiciona Animation(1,-1) à partícula criada, sob filtros do emissor e hasBullet; Projectile.Fire adiciona ao argumento projectile somente se anim ligado, independente de rotate. Sete callers diretos conhecidos agora examinados; sem defaults globais ou prova de ausência de stores/indireções. Relatório34.
 
 Validação:14 novos FDEs integralmente cobertos; assinaturas/slots/argumentos documentados; nenhum C++ alterado nem novo teste de runtime alegado. Próximo: pausa concreta, preparação de World.Deserialize e contrato de componente duplicado. Goal ativo, caminhos estáticos continuam disponíveis.
+
+## 2026-10-25 — Medição Android das falas
+
+Pergunta: qual classe e cálculo atendem GetFontTextureSize? REA localizou Utility; exportação DEX e KairoPlugin.Init confirmaram a ligação por campo estático+0x10. Paint usa SANS_SERIF, measureText e retorno de getFontMetrics(null); dois writeFloat retornam as medidas em ordem. ReadFloat/ByteAryToFloat/ConvertEndian conferidos no ELF. Confiança confirmed para cadeia estática, unknown para uso efetivo nas falas. Evidências e limites em [98](98-android-font-measurement.md). Próximo: fonte de boot e escritores de useFontTexture_. Sem execução Android nem alteração C++; testes de produto não repetidos.

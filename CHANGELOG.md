@@ -2,6 +2,12 @@
 
 Este índice descreve mudanças do projeto. Achados detalhados ficam no [índice de relatórios](docs/README.md) e no [diário de pesquisa](docs/research-log.md). Nenhuma entrada abaixo representa uma versão jogável.
 
+## 2026-10-25 — Medição de texto no Android
+
+- Classe Java ligada ao delegate confirmada por KairoPlugin.Init; cálculo de largura e altura conferido no DEX.
+- Leitura dos dois floats e inversão de bytes rastreadas no IL2CPP. [Relatório98](docs/98-android-font-measurement.md).
+- Seleção efetiva da rota nas falas permanece aberta; sem mudança C++ ou execução do APK.
+
 ## 2026-10-25 — Fronteira de FontTexture
 
 - Resolvido delegate de medição, caminho de reflexão do editor e chamada Java tipada byte[].
