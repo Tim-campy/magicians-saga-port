@@ -2,6 +2,12 @@
 
 Este índice descreve mudanças do projeto. Achados detalhados ficam no [índice de relatórios](docs/README.md) e no [diário de pesquisa](docs/research-log.md). Nenhuma entrada abaixo representa uma versão jogável.
 
+## 2026-10-25 — Estado numérico nativo da fonte
+
+- Novo módulo text_font separa pedido, tamanho efetivo, escala e tamanho ajustado; preserva presets, wrap32 e mutações anteriores a falhas. [Relatório106](docs/106-native-font-numeric-state.md).
+- Operações float estritas; testes incluem zero, infinito, NaN e limites inteiros. Windows/MSVC:20/20 CTests passaram.
+- Integração do parser, tabela efetiva e equivalência dinâmica continuam pendentes.
+
 ## 2026-10-25 — Ajuste e fronteiras de exceção da fonte
 
 - Sequência binary32 de AdjustFontSize conferida no wrapper, corpo e delegate.

@@ -178,3 +178,7 @@ Relatório104 fecha guardas/pilha/fatores de localização e restauração no he
 ## 2026-10-25 — Ajuste e preparação da fonte
 
 Relatório105: sequência de AdjustFontSize e nove chamadas da preparação cruzadas com LSDA0x935e34. Caminhos anteriores ao contexto pulam o helper interno; chamadas posteriores passam por ele. Sem implementação aproximada ou novo teste de runtime.
+
+## 2026-10-25 — text_font
+
+Portados recortes síncronos de _setSize17770, UpdateFontScale17806 e aritmética posterior à atualização em _adjustFontSize17796. Windows/MSVC14.51, tools/build-desktop.cmd:20/20 CTests, log build/research/text-font-state-build.log. Sem MATCH com APK ou validação Linux; dispatcher e parser não integrados. Relatório106.

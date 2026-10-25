@@ -505,3 +505,7 @@ IsNeedLocalizeScale, GetLocalizeScale e Push/Pop conferidos; parser clona fonte,
 ## 2026-10-25 — Ajuste de fonte e exceções da preparação
 
 AdjustFontSize conferido no wrapper, corpo e delegate; multiplicação/divisão binary32 preservam arredondamentos e casos especiais. Nove chamadas cruzadas com LSDA e landing pads distinguem preparação que pula o cleanup interno e corpo protegido. Evidência e limites no [relatório105](105-font-adjustment-and-preparation-exceptions.md). Confiança confirmed para os trechos estáticos, unknown para resultado visual. Próximo: estados numéricos de fonte e integração do parser respeitando os escopos. Sem alteração C++ ou execução Android; último build19/19 permanece o registrado em103.
+
+## 2026-10-25 — Estado numérico da fonte
+
+Releitura de _setSize confirma consulta obrigatória à tabela antes da guarda de preset e stores anteriores a falhas. Portados corpos numéricos em text_font, com precisão binary32 e conversões sem UB. Literal e hash ELF reconferidos. [Relatório106](106-native-font-numeric-state.md). tools/build-desktop.cmd:20/20, sem warnings encontrados. Confiança confirmed para recortes/testes, sem oracle Android. Próximo: tabela efetiva e localização/integração do parser.

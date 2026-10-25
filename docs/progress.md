@@ -4,6 +4,8 @@ Atualização: 2026-10-25. **Prioridade: gameplay. M0/M1 parciais; ainda não h�
 
 ## Concluído e verificável
 
+- Estado numérico da fonte portado em text_font (106), com presets explícitos, wrap32, precisão binary32 e efeitos parciais nas falhas. Windows/CTest20/20; ainda sem parser ou backend gráfico integrado.
+
 - Correção inicial da fonte portada no mesmo text_fit (103), com divisões sucessivas e flag após setter; Windows/CTest19/19. Fator fornecido explicitamente, sem pressupor valor de runtime.
 
 - Controle de ajuste dos blocos portado em text_fit (102): redução iterativa, tolerância e ordem de consultas preservadas. Windows/CTest19/19. Medições reais e parser completo permanecem pendentes.
@@ -32,7 +34,7 @@ Atualização: 2026-10-25. **Prioridade: gameplay. M0/M1 parciais; ainda não h�
 
 ## Ativo
 
-- Localização temporária mapeada (104); AdjustFontSize e fronteiras locais de exceção fechados em105. Implementar estados de fonte e divisão preparação/corpo protegido para integrar ao parser, sem restauração genérica em falhas anteriores ao contexto.
+- Localização temporária mapeada (104); AdjustFontSize e fronteiras locais de exceção fechados em105. Estado numérico implementado em106; resolver tabela de presets e integrar localização/preparação ao parser, sem restauração genérica em falhas anteriores ao contexto.
 
 - Language.Init ligado a IApplication.Start; fábrica de falas cria Font padrão via TextLayout, com autoScale=!Japanese e localização habilitada (101). Seleção de recursos e código de idioma em99/100; faltam ajustes posteriores, escala efetiva e fallback interno Unity.
 

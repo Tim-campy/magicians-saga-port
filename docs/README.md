@@ -112,6 +112,8 @@ Prioridade atual. Regras de combate, animação, ECS, recompensas e eventos; mó
 - [104 — Localização temporária da fonte na formação dos blocos](104-font-localization-scope.md)
 - [105 — Ajuste numérico de fonte e exceções da preparação](105-font-adjustment-and-preparation-exceptions.md)
 
+- [106 — Estado numérico nativo da fonte](106-native-font-numeric-state.md)
+
 ## 5. Persistência e progressão — M4
 
 Preparação de dados, serialização e codecs; save completo e integração ainda pendentes. Recompensas e eventos também estão no capítulo4.
