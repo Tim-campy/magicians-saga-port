@@ -1,5 +1,9 @@
 # Registro de pesquisa
 
+## 2026-10-25 — Stamina e apresentação no dispatcher
+
+Ciclo anterior foi progresso com efeitos de progressão e integração testada. GetStaminaMax ligado a MyBilling.ITEM_STAMINA_UP/GetState e decisão zero→10/não zero→20, sem alterar ou presumir estado do item. Opcode31 preserva wrap32, divisão truncada, duas leituras de limite e clamps após wrap64. Dispatcher dos opcodes presentes integrado a progressão e callbacks explícitos para8/12; factories exportadas mostram dependências de TalkData/EventMsgData ainda pendentes. Windows/CTest13/13 passou, incluindo sequência integrada com espera. Relatório84. Próximo: preparação de formulários e catálogo/estado inicial. Sem APK executado.
+
 ## 2026-10-25 — Efeitos de progressão integrados ao executor
 
 Ciclo anterior foi progresso com event_flow/CTest11/11. Conferidas vtables AreaData/QuestData e getter state==1; exports de Add/SubMoney/Crystal revelam piso somente na subtração e condição adicional SYSSAVEI_YUGAMI para cristais. Implementados efeitos1/2/4/15 e substituição de sentinelas, sem assumir valor inicial do parâmetro. Teste integra crédito→espera→missão→débito com cópia de argumentos; Windows/CTest12/12 passou. Evidência, aritmética e limites em83. Próximo: efeitos8/12/31, registros e origem do parâmetro de sistema. Nenhum save real ou APK executado.

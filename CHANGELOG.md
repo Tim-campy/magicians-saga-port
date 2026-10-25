@@ -2,6 +2,13 @@
 
 Este índice descreve mudanças do projeto. Achados detalhados ficam no [índice de relatórios](docs/README.md) e no [diário de pesquisa](docs/research-log.md). Nenhuma entrada abaixo representa uma versão jogável.
 
+## 2026-10-25 — Stamina e dispatcher dos eventos conhecidos
+
+- Mapeada decisão do limite10/20 a partir do estado de ITEM_STAMINA_UP; sem obtenção, alteração ou valor presumido desse estado.
+- Implementada aritmética de stamina e dispatcher dos oito opcodes encontrados na tabela. Falas/formulários usam callbacks explícitos, ainda sem UI reconstruída.
+- Preservadas duas leituras do limite, ordem criar/push/retornar e diferença entre opcode10 no executor e no dispatcher unitário.
+- Windows/CTest13/13 aprovado; teste integra dinheiro, apresentação, espera e stamina. Evidência e limites no [relatório84](docs/84-stamina-and-event-dispatch.md).
+
 ## 2026-10-25 — Efeitos de progressão e argumentos
 
 - Novo módulo `event_progression` com efeitos de dinheiro, cristais, áreas e missões e resolução de sentinelas sem alterar a linha original.

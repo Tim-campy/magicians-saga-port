@@ -4,6 +4,8 @@ Atualização: 2026-10-25. **Prioridade: gameplay. M0/M1 parciais; ainda não h�
 
 ## Concluído e verificável
 
+- Dispatcher dos oito opcodes presentes na tabela ligado a progressão, stamina e callbacks de apresentação; teste integrado passou. Windows/CTest13/13 (`84`). UI e obtenção de estado de billing continuam pendentes.
+
 - Efeitos dos opcodes1/2/4/15 e substituição de argumentos portados; sequência integrada com executor/espera testada. Condição original de subtração de cristais preservada com valor de sistema explícito. Windows/CTest12/12 passou (`83`).
 
 - Executor de matriz e continuação por contagem implementado em `event_flow`, com host explícito para efeitos/resolução; Windows/CTest11/11 passou (`82`). Ainda sem ligação às telas, dispatcher completo ou loader do jogo.
@@ -16,7 +18,7 @@ Atualização: 2026-10-25. **Prioridade: gameplay. M0/M1 parciais; ainda não h�
 
 ## Ativo
 
-- Completar efeitos8/12/31, ligar host aos registros reais e resolver origem do parâmetro SYSSAVEI_YUGAMI (`83`). GetDelayId compara referências, não conteúdo; as37 esperas da tabela extraída não especificam hora (`81`). Produtor de SubForm+0x1d0 e outras rotas permanecem pendentes.
+- Reconstruir preparação dos formulários8/12 e ligar host aos registros reais (`84`); resolver origem de SYSSAVEI_YUGAMI e estado inicial do item de stamina. GetDelayId compara referências; as37 esperas extraídas não especificam hora (`81`). Produtor de SubForm+0x1d0 e outras rotas permanecem pendentes.
 - Integrar contratos comprovados de combate, coleta e recompensas numa primeira simulação determinística.
 - Resolver dependências de RNG, ordem de atualização e ciclo de entidades necessárias ao loop jogável, sem substituir lacunas por aproximações.
 

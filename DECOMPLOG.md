@@ -1,5 +1,7 @@
 # Índice de engenharia reversa
 
+- `docs/84-stamina-and-event-dispatch.md`: limite de stamina, aritmética e routing8/12; dispatcher dos opcodes conhecidos integrado/testado, UI pendente, Windows/CTest13/13.
+
 - `docs/83-event-progression-effects.md`: efeitos1/2/4/15, argumentos e condição de cristais; integração com executor testada, Windows/CTest12/12.
 
 - `docs/82-native-event-flow.md`: executor e fila de contadores em C++17, com host explícito e Windows/CTest11/11; integração de efeitos/guardas pendente.

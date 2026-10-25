@@ -89,6 +89,7 @@ Prioridade atual. Regras de combate, animação, ECS, recompensas e eventos; mó
 - [81 — Origem das continuações e identidade dos scripts](81-delay-origin-and-script-identity.md)
 - [82 — Executor nativo de scripts e continuações por contagem](82-native-event-flow.md)
 - [83 — Efeitos de progressão: dinheiro, cristais, áreas e missões](83-event-progression-effects.md)
+- [84 — Stamina e encaminhamento dos eventos de apresentação](84-stamina-and-event-dispatch.md)
 
 ## 5. Persistência e progressão — M4
 
