@@ -1,0 +1,32 @@
+# User-supplied proprietary content and local research outputs
+*.apk
+*.apks
+*.xapk
+*.obb
+/data/
+/research/local/
+/.tools/
+/build/
+__pycache__/
+*.pyc
+*.log
+
+# Local credentials, saves and compiled artifacts
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.jks
+*.keystore
+*.sav
+*.save
+*.exe
+*.dll
+*.so
+*.obj
+*.pdb
+*.class
+/out/
+/CMakeUserPresets.json
+/.vs/
