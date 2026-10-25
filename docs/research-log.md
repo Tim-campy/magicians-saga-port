@@ -497,3 +497,7 @@ SetText: decremento/reconstrução iterativos, tolerância vertical de1 e consul
 ## 2026-10-25 — Correção inicial da fonte
 
 SetText0x1bbd298..300 portado em prepare_text_font_size: duas divisões assinadas, wrap32, guarda multiline/adjusted e marcação após setter. SetScale/UpdateFontScale conferidos; busca B/BL não encontrou caller direto e não exclui escrita inline/indireta. [Relatório103](103-initial-text-font-correction.md). Windows/MSVC, tools/build-desktop.cmd:19/19. Fator efetivo/localização continuam pendentes; sem execução Android.
+
+## 2026-10-25 — Escopo da fonte localizada
+
+IsNeedLocalizeScale, GetLocalizeScale e Push/Pop conferidos; parser clona fonte, aplica tamanho localizado com preset e empilha false. Cleanup restaura fonte e desempilha conforme flags. Constantes binary32 lidas do ELF, sem métrica de runtime. [Relatório104](104-font-localization-scope.md). Próximo: AdjustFontSize e limites de exceção na preparação. Sem alteração C++; último19/19 preservado.

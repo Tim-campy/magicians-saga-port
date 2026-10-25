@@ -170,3 +170,7 @@ Portado recorte0x1bbd32c..0x1bbd420 de SetText19198: ajuste de blocos com métri
 ## 2026-10-25 — Preparação de tamanho de texto
 
 text_fit ampliado com correção inicial recuperada de SetText19198. tools/build-desktop.cmd, Windows/MSVC14.51:19/19 CTests, build/research/text-font-preparation-build.log. Sem MATCH de runtime; requestFontScale explícito. Relatório103.
+
+## 2026-10-25 — Localização da fonte
+
+Relatório104 fecha guardas/pilha/fatores de localização e restauração no helper0xf875bc. Integração ainda depende de AdjustFontSize e cobertura de exceções anterior ao contexto. Sem novo código ou teste de runtime.

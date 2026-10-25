@@ -32,6 +32,8 @@ Atualização: 2026-10-25. **Prioridade: gameplay. M0/M1 parciais; ainda não h�
 
 ## Ativo
 
+- Localização temporária da fonte mapeada (104): guardas, fatores0,83/0,98 e restauração no cleanup. Fechar AdjustFontSize e exceções de preparação antes de integrar ao parser.
+
 - Language.Init ligado a IApplication.Start; fábrica de falas cria Font padrão via TextLayout, com autoScale=!Japanese e localização habilitada (101). Seleção de recursos e código de idioma em99/100; faltam ajustes posteriores, escala efetiva e fallback interno Unity.
 
 - Classe Java de FontTexture confirmada (98): Utility mede via Paint/SANS_SERIF e retorna duas medidas; leitor nativo rastreado. Falta origem efetiva de useFontTexture_ e fonte/escala das falas antes de escolher backend.

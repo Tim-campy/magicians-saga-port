@@ -2,6 +2,12 @@
 
 Este índice descreve mudanças do projeto. Achados detalhados ficam no [índice de relatórios](docs/README.md) e no [diário de pesquisa](docs/research-log.md). Nenhuma entrada abaixo representa uma versão jogável.
 
+## 2026-10-25 — Escopo de localização da fonte
+
+- Predicado, fatores binários e pilha de localização rastreados até a troca/restauração de font_ no parser.
+- Separados tamanho localizado e AdjustFontSize; limites de exceção ainda abertos. [Relatório104](docs/104-font-localization-scope.md).
+- Pesquisa estática; sem alteração C++ ou repetição de testes de produto.
+
 ## 2026-10-25 — Correção inicial da fonte
 
 - text_fit inclui preparação antes da construção dos blocos, preservando duas divisões inteiras, wrap32 e marcação após o setter.
