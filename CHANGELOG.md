@@ -2,6 +2,12 @@
 
 Este índice descreve mudanças do projeto. Achados detalhados ficam no [índice de relatórios](docs/README.md) e no [diário de pesquisa](docs/research-log.md). Nenhuma entrada abaixo representa uma versão jogável.
 
+## 2026-10-25 — Parâmetros numéricos nativos
+
+- Novo módulo text_parameters preserva recuperação local decimal/hex e propagação dos erros RGB.
+- Confirmada limpeza externa com relançamento, sem fallback global. [Relatório95](docs/95-native-text-parameters.md).
+- Windows/CTest18/18 aprovado; parser numérico real e layout continuam dependências explícitas.
+
 ## 2026-10-25 — Exceções dos parâmetros de texto
 
 - Criado auditor limitado de callsites LSDA com hash, limites e encodings explícitos.

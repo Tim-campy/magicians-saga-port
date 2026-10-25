@@ -10,6 +10,8 @@ namespace saga::core {
 std::vector<std::u16string> split_form_text(const std::u16string* text);
 // The inner MakeEvent split uses '&', without trim or escape processing.
 std::vector<std::u16string> split_event_text_fields(const std::u16string* text);
+// StringUtil.Split14533 with comma, used by the color parameter fallback.
+std::vector<std::u16string> split_text_color_fields(const std::u16string* text);
 
 using NullablePresentationText = std::optional<std::u16string>;
 class PresentationTextHost {

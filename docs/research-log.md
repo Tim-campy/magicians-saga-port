@@ -1,5 +1,9 @@
 # Registro de pesquisa
 
+## 2026-10-25 — Limpeza externa e parâmetros nativos
+
+Ciclo anterior foi progresso com LSDA e handlers locais. Inspeção da rotina0xf875bc e import __cxa_throw confirma que a limpeza externa relança o erro; restaura flags de fonte/tradução e não fornece fallback0. Portada sequência decimal→hex→RGB com host de conversão explícito; erros dos componentes propagam. Windows/CTest18/18 passou. Relatório95; próximo: reconhecimento/aplicação das tags e blocos reais.
+
 ## 2026-10-25 — ParseInt e exceções locais
 
 Ciclo anterior foi progresso com inventário de tags. Wrappers ParseInt não capturam erros: encaminham para Int32.Parse. Decodificada LSDA0x935e34 de _makeTextBlocks:255 intervalos ligam as tentativas decimal/hex aos handlers locais que zeram os respectivos registradores. Resolvido descritor System.Exception. Novo auditor de callsites com dois testes passou; relatório94. Conversões RGB seguem rota externa ainda pendente, sem generalizar fallback0.

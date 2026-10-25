@@ -73,6 +73,9 @@ std::vector<std::u16string> split_form_text(const std::u16string* text) {
 std::vector<std::u16string> split_event_text_fields(const std::u16string* text) {
     return split(text, u'&', false);
 }
+std::vector<std::u16string> split_text_color_fields(const std::u16string* text) {
+    return split(text, u',', true);
+}
 NullablePresentationText substitute_form_arguments(NullablePresentationText text,
                                                    NullablePresentationText args,
                                                    PresentationTextHost& host) {

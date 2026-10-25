@@ -4,6 +4,8 @@ Atualização: 2026-10-25. **Prioridade: gameplay. M0/M1 parciais; ainda não h�
 
 ## Concluído e verificável
 
+- Sequência decimal/hex/RGB portada em text_parameters (95), Windows/CTest18/18. Conversão real por cultura e layout permanecem pendentes.
+
 - Contagem dos blocos e estado temporal de texto portados em text_reveal (92), Windows/CTest17/17. Parser de marcações, layout e desenho permanecem pendentes.
 
 - Dados iniciais de falas/eventos implementados em presentation_forms (89); integração com executor testada, Windows/CTest16/16. UI e catálogos reais permanecem pendentes.
@@ -26,7 +28,7 @@ Atualização: 2026-10-25. **Prioridade: gameplay. M0/M1 parciais; ainda não h�
 
 ## Ativo
 
-- Exceções decimal/hex resolvidas por LSDA (94); fallback0 pertence ao parser, não a ParseInt. Recuperação externa e conversão/cultura continuam pendentes.
+- Exceções decimal/hex resolvidas por LSDA (94); fallback0 pertence ao parser, não a ParseInt. Limpeza externa com relançamento fechada em95; conversão/cultura e integração continuam pendentes.
 
 - Tags das quatro tabelas auditadas (93); texto inteiro passa por tradução antes do parser. Fechar parâmetros br/co/po e métricas para gerar blocos reais; sete testes Python aprovados.
 
