@@ -4,6 +4,8 @@ Atualização: 2026-10-25. **Prioridade: gameplay. M0/M1 parciais; ainda não h�
 
 ## Concluído e verificável
 
+- Contagem dos blocos e estado temporal de texto portados em text_reveal (92), Windows/CTest17/17. Parser de marcações, layout e desenho permanecem pendentes.
+
 - Dados iniciais de falas/eventos implementados em presentation_forms (89); integração com executor testada, Windows/CTest16/16. UI e catálogos reais permanecem pendentes.
 
 - Substituição de argumentos UTF-16 implementada e composta com split/trim (`88`); condição de SanSanRemove corrigida na documentação e testada. Windows/CTest15/15 passou. Tradutor real e telas completas ainda não implementados.
@@ -24,7 +26,7 @@ Atualização: 2026-10-25. **Prioridade: gameplay. M0/M1 parciais; ainda não h�
 
 ## Ativo
 
-- Temporização investigada (91): velocidade depende de IsShortWords; Frame combina relógio e TotalFrames. Resolver length dos blocos e configuração efetiva antes de integrar.
+- Temporização investigada (91): velocidade depende de IsShortWords; Frame combina relógio e TotalFrames. Contagem dos blocos portada em92; resolver parser e configuração efetiva antes de integrar.
 
 - Avanço da fala mapeado (90): Frame→entrada→Flush ou próxima página; encerramento por contador e continuação pelo catálogo. Resolver produtores de nextIndex, temporização e fluxo separado do tipo4 antes de implementar.
 

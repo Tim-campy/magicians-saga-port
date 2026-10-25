@@ -23,7 +23,7 @@ O [índice de relatórios](README.md) organiza a evidência por assunto. A numer
 
 | Diretório | Responsabilidade atual | Limite |
 | --- | --- | --- |
-| `src/core/gameplay/` | Dano, afinidade, fatores, recompensas, estoque, fluxo de eventos e dados de apresentação | Efeitos dos opcodes dependem do host; não é combate completo nem campanha integrada. |
+| `src/core/gameplay/` | Dano, afinidade, fatores, recompensas, estoque, fluxo de eventos, dados de apresentação e temporização de texto | Efeitos dos opcodes dependem do host; não é combate completo nem campanha integrada. |
 | `src/core/animation/` | Transições e payloads de animação | Sem renderização de cena. |
 | `src/core/ecs/` | Slots de componentes e filtros | Sem World/scheduler integrado. |
 | `src/core/persistence/` | Codec de payload de scripts | Não é leitor de save completo. |

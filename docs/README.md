@@ -97,6 +97,7 @@ Prioridade atual. Regras de combate, animação, ECS, recompensas e eventos; mó
 - [89 — Preparação nativa dos dados de fala e evento](89-native-presentation-forms.md)
 - [90 — Avanço de páginas e encerramento da fala](90-talk-page-advance.md)
 - [91 — Temporização do texto e velocidade por idioma](91-text-layout-timing.md)
+- [92 — Contagem dos blocos e estado temporal nativo do texto](92-native-text-reveal.md)
 
 ## 5. Persistência e progressão — M4
 

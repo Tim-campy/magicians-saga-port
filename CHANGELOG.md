@@ -2,6 +2,12 @@
 
 Este índice descreve mudanças do projeto. Achados detalhados ficam no [índice de relatórios](docs/README.md) e no [diário de pesquisa](docs/research-log.md). Nenhuma entrada abaixo representa uma versão jogável.
 
+## 2026-10-25 — Estado temporal nativo do texto
+
+- Novo módulo text_reveal: comprimento dos blocos, velocidade por idioma, resets, avanço temporal, Flush e IsEnd.
+- Preservados overflow, ordem de consultas e arredondamento; relógio e frames fornecidos pelo host.
+- Windows/CTest17/17 aprovado. [Relatório92](docs/92-native-text-reveal.md). Parser e renderer continuam pendentes.
+
 ## 2026-10-25 — Temporização das falas
 
 - Confirmada transformação de velocidade por idioma e compensação de chamadas no mesmo frame lógico.

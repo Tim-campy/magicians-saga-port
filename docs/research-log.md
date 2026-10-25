@@ -1,5 +1,9 @@
 # Registro de pesquisa
 
+## 2026-10-25 — Blocos e temporização nativa
+
+Ciclo anterior foi progresso com campos e fórmula temporal. Agora resolvidos isButton/isPictograph e StringEx.Length UTF-16. Implementado text_reveal com contagem de blocos já interpretados, velocidade, resets distintos, Frame temporal, Flush e IsEnd; relógio/frame explícitos e larguras preservadas. Windows/CTest17/17 passou; inclui arredondamento de Flush que permite próxima posição abaixo do limite. Relatório92. Próximo: parser de blocos/configuração e composição com páginas.
+
 ## 2026-10-25 — Relógio e velocidade de TextLayout
 
 Ciclo anterior foi progresso com fluxo de fala. Resolvidos campos temporais e SetSpeed→IsShortWords:1500 pode virar2250. Frame usa relógio e compensação por TotalFrames repetido; Reset e SetText não escrevem o mesmo conjunto de campos. length depende dos blocos, não do tamanho bruto da string. Relatório91 com endereços e limites; próximo: contagem dos blocos/configuração. Sem C++ alterado.
