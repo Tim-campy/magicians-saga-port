@@ -1,5 +1,7 @@
 # Índice de engenharia reversa
 
+- `docs/87-native-presentation-split.md`: trim UTF-16<=0x20 e splits de formulário portados; casos de vazio e fronteiras testados, Windows/CTest14/14.
+
 - `docs/86-talk-catalog-producer.md`: BootForm constrói talks_ por Join(TAB), delegate/genéricos e desvio conferidos; tradução/trim continuam pendentes.
 
 - `docs/85-presentation-text-preparation.md`: preparação de falas/eventos e parser de tabelas;46/24 registros por idioma, cinco testes Python. Produtor de talks_/tradução/trim pendentes.

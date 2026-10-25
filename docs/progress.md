@@ -4,6 +4,8 @@ Atualização: 2026-10-25. **Prioridade: gameplay. M0/M1 parciais; ainda não h�
 
 ## Concluído e verificável
 
+- Divisão de textos de formulário em UTF-16 implementada com trim exato U+0000..U+0020 e campos vazios preservados (`87`). Windows/CTest14/14 passou; tradução e apresentação completas continuam pendentes.
+
 - Dispatcher dos oito opcodes presentes na tabela ligado a progressão, stamina e callbacks de apresentação; teste integrado passou. Windows/CTest13/13 (`84`). UI e obtenção de estado de billing continuam pendentes.
 
 - Efeitos dos opcodes1/2/4/15 e substituição de argumentos portados; sequência integrada com executor/espera testada. Condição original de subtração de cristais preservada com valor de sistema explícito. Windows/CTest12/12 passou (`83`).
@@ -18,7 +20,7 @@ Atualização: 2026-10-25. **Prioridade: gameplay. M0/M1 parciais; ainda não h�
 
 ## Ativo
 
-- Produtor de talks_ confirmado (`86`): BootForm usa Select/Join(TAB)/ToArray sobre TalkData, preservando os119 fragmentos em46 registros por idioma. Preparação textual e auditoria em85; faltam tradução configurada, flag de limpeza e trim antes do modelo nativo.
+- Produtor de talks_ confirmado (`86`): BootForm usa Select/Join(TAB)/ToArray sobre TalkData. Split/trim nativos fechados em87; faltam tradução configurada, substituição de argumentos e flag de limpeza antes do modelo completo de apresentação.
 
 - Reconstruir preparação dos formulários8/12 e ligar host aos registros reais (`84`); resolver origem de SYSSAVEI_YUGAMI e estado inicial do item de stamina. GetDelayId compara referências; as37 esperas extraídas não especificam hora (`81`). Produtor de SubForm+0x1d0 e outras rotas permanecem pendentes.
 - Integrar contratos comprovados de combate, coleta e recompensas numa primeira simulação determinística.

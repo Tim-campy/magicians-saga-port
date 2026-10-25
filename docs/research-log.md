@@ -1,5 +1,9 @@
 # Registro de pesquisa
 
+## 2026-10-25 — Trim confirmado e split nativo
+
+Ciclo anterior foi progresso com produtor de talks_. Inspeção do trecho14535 confirma comparação UTF-16<=0x20, sem chamada a String.Trim. Implementados splits TAB com trim e & sem trim, preservando null/vazio/campos finais conforme o fluxo original. Testes incluem fronteiras UTF-16 exaustivas e sequência de separação de evento; Windows/CTest14/14 passou. Busca direta do setter SanSanRemove sem callers não fecha possíveis escritas indiretas. Relatório87; próximo: tradução e substituição de argumentos para integração da apresentação.
+
 ## 2026-10-25 — Produtor de talks_ fechado
 
 Ciclo anterior foi progresso com layouts textuais e auditoria. Localizada escrita estática em BootForm.Load; descritores resolvem Select<TalkData,string>, delegate35739 com Join(TAB) e ToArray<string>. Desvio fora do FDE foi conferido nos bytes e exportado, evitando inferir instrução ausente. Dados auditados têm119 fragmentos/46 registros por idioma,40 registros com múltiplos fragmentos. TranslateText/cache/fallback exportados, mas políticas completas permanecem abertas. Relatório86. Sem C++ alterado ou testes repetidos. Próximo: configuração de tradução no boot e trim antes da preparação nativa.

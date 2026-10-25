@@ -2,6 +2,12 @@
 
 Este índice descreve mudanças do projeto. Achados detalhados ficam no [índice de relatórios](docs/README.md) e no [diário de pesquisa](docs/research-log.md). Nenhuma entrada abaixo representa uma versão jogável.
 
+## 2026-10-25 — Split nativo da apresentação
+
+- Regra de trim fechada: remove somente U+0000..U+0020, preservando espaços Unicode fora desse intervalo.
+- Novo módulo `presentation_text` com splits TAB/& específicos dos formulários e distinção entre entrada vazia e campos vazios.
+- Windows/CTest14/14 aprovado, incluindo varredura das fronteiras UTF-16. [Relatório87](docs/87-native-presentation-split.md); tradução completa continua pendente.
+
 ## 2026-10-25 — Catálogo de falas ligado ao boot
 
 - Resolvida cadeia BootForm→Select/Join(TAB)/ToArray→AppData.talks_, incluindo delegate e desvio fora do intervalo principal.
