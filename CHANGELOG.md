@@ -2,6 +2,12 @@
 
 Este índice descreve mudanças do projeto. Achados detalhados ficam no [índice de relatórios](docs/README.md) e no [diário de pesquisa](docs/research-log.md). Nenhuma entrada abaixo representa uma versão jogável.
 
+## 2026-10-25 — Linhas e métricas de texto
+
+- Mapeadas quebra e medição por trechos, alinhamento e construção dos blocos.
+- Confirmadas rotas GUIStyle.CalcSize/FontTexture, sem escolher backend por suposição. [Relatório96](docs/96-text-lines-and-font-metrics.md).
+- Pesquisa estática; sem mudança C++ ou repetição de testes.
+
 ## 2026-10-25 — Parâmetros numéricos nativos
 
 - Novo módulo text_parameters preserva recuperação local decimal/hex e propagação dos erros RGB.

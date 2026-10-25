@@ -1,5 +1,9 @@
 # Registro de pesquisa
 
+## 2026-10-25 — Linhas e métricas da fonte
+
+Ciclo anterior foi progresso com parâmetros nativos testados. Mapeadas quebra LF, guardas de largura, medição incremental por trecho concatenado e alinhamento dos blocos. Font.StringWidthF chega a GUIStyle.CalcSize ou KairoPlugin.GetFontTextureSize conforme useFontTexture_; wrapper alternativo usa delegate ainda não resolvido. Relatório96. Sem C++ alterado/testes repetidos; próximo: seleção do backend e fonte/escala do boot.
+
 ## 2026-10-25 — Limpeza externa e parâmetros nativos
 
 Ciclo anterior foi progresso com LSDA e handlers locais. Inspeção da rotina0xf875bc e import __cxa_throw confirma que a limpeza externa relança o erro; restaura flags de fonte/tradução e não fornece fallback0. Portada sequência decimal→hex→RGB com host de conversão explícito; erros dos componentes propagam. Windows/CTest18/18 passou. Relatório95; próximo: reconhecimento/aplicação das tags e blocos reais.

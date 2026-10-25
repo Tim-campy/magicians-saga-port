@@ -1,5 +1,7 @@
 # Índice de engenharia reversa
 
+- `docs/96-text-lines-and-font-metrics.md`: formação de linhas e Font.StringWidthF ligados às rotas GUIStyle/FontTexture; seleção efetiva/backend alternativo pendentes.
+
 - `docs/95-native-text-parameters.md`: limpeza externa relança erro; parâmetros decimal/hex/RGB portados com host explícito e Windows/CTest18/18. Parser/fonte pendentes.
 
 - `docs/94-text-parameter-exceptions.md`: wrappers ParseInt e handlers locais decimal/hex ligados via LSDA; auditor de255 callsites e dois testes Python; recuperação externa pendente.

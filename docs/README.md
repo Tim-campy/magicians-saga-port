@@ -101,6 +101,7 @@ Prioridade atual. Regras de combate, animação, ECS, recompensas e eventos; mó
 - [93 — Marcações das tabelas e entrada do parser de texto](93-presentation-markup-inventory.md)
 - [94 — Parâmetros numéricos e exceções locais do parser](94-text-parameter-exceptions.md)
 - [95 — Limpeza externa do parser e parâmetros numéricos nativos](95-native-text-parameters.md)
+- [96 — Formação das linhas e dependência de métricas da fonte](96-text-lines-and-font-metrics.md)
 
 ## 5. Persistência e progressão — M4
 
