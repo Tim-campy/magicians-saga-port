@@ -158,3 +158,7 @@ Relatório99: _getDefaultGUIFont17808 resolve caminhos por idioma e invalida cac
 ## 2026-10-25 — Código dos pacotes de idioma
 
 Relatório100: stores de Language.langPackCode_, sanitização de @language e normalização conferidos. Cruzamento com três CSVs e leitura de preferência em Init. Cinco métodos/37052 bytes de disassembly sintaticamente cobertos; compreensão restrita aos trechos documentados, nenhuma execução.
+
+## 2026-10-25 — Construção da fonte das falas
+
+Relatório101: Start18197 chama Language.Init; CreateTalkForm36177 cria TextLayout com fonte padrão. Construtores e campos conferidos, incluindo autoScale/localizeFontEnable e objetos fontBuf_/font_ distintos. Investigação estática, backend após ajustes ainda aberto.

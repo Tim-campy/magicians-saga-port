@@ -485,3 +485,7 @@ Pergunta: como a fonte Unity é escolhida? Dez métodos exportados em font-selec
 ## 2026-10-25 — Produtores do código de idioma
 
 SetLanguagePack/LoadLanguagePack escrevem langPackCode_; identificados STP inicial, diretiva @language filtrada por Regex e normalização de dois componentes. Três CSVs locais conferidos: ko, zh-CN, ZH. Init lê PREF_LANG_PACK via PlayerPrefs; valor efetivo não observado. Evidência, endereços e limites no [relatório100](100-language-pack-font-code.md). Confiança confirmed para trechos, unknown para boot completo/fonte efetiva. Próximo: caller do boot e argumentos da fonte de fala. Sem execução Android ou alteração C++.
+
+## 2026-10-25 — Boot e fonte das falas
+
+Pergunta: idioma/fonte estão ligados ao formulário concreto? B/BL imediato para Language.Init localizado em IApplication.Start e conferido; fábrica36177 cria TextLayout sem parâmetros, que cria fontBuf_ e font_ separados. Flags autoScale=!Japanese/localizeFontEnable=true confirmados por stores e offsets. [Relatório101](101-talk-font-construction-and-startup.md). Confiança confirmed para cadeia, unknown para ajustes/métricas posteriores. Próximo: SetText e autoScale. Sem alteração C++ ou execução Android.

@@ -2,6 +2,12 @@
 
 Este índice descreve mudanças do projeto. Achados detalhados ficam no [índice de relatórios](docs/README.md) e no [diário de pesquisa](docs/research-log.md). Nenhuma entrada abaixo representa uma versão jogável.
 
+## 2026-10-25 — Fonte concreta da fábrica de falas
+
+- Ligado Language.Init ao callback IApplication.Start e TextLayout à criação de fontes padrão.
+- Confirmados autoScale=!Japanese e localizeFontEnable=true no construtor usado pelas falas. [Relatório101](docs/101-talk-font-construction-and-startup.md).
+- Ajustes posteriores e métricas continuam abertos; sem execução ou alteração C++.
+
 ## 2026-10-25 — Código de idioma dos pacotes
 
 - Produtores de langPackCode_, diretiva @language e ligação com preferências persistidas rastreados.
