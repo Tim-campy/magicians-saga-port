@@ -1,5 +1,7 @@
 # Índice de engenharia reversa
 
+- `docs/88-native-presentation-arguments.md`: substituição de argumentos portadas; corrigida condição SanSanRemove do relatório85, Windows/CTest15/15.
+
 - `docs/87-native-presentation-split.md`: trim UTF-16<=0x20 e splits de formulário portados; casos de vazio e fronteiras testados, Windows/CTest14/14.
 
 - `docs/86-talk-catalog-producer.md`: BootForm constrói talks_ por Join(TAB), delegate/genéricos e desvio conferidos; tradução/trim continuam pendentes.

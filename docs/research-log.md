@@ -1,5 +1,9 @@
 # Registro de pesquisa
 
+## 2026-10-25 — Substituição nativa e correção SanSanRemove
+
+Ciclo anterior foi progresso com split/trim. Releitura do branch0x1c18f60 mostrou inversão na redação de85: false pula limpeza, true permite checagens. Corrigido antes de implementar. Novo helper UTF-16 substitui argumentos sequencialmente, mantém null/vazio e limpeza condicional não recursiva; tradução/configuração exigem host. Testes incluem flag mutável, curto-circuito, marcadores encadeados, honoríficos e sequência substituir→split; Windows/CTest15/15 passou. Relatório88. Próximo: modelos/dados dos formulários e tradução real.
+
 ## 2026-10-25 — Trim confirmado e split nativo
 
 Ciclo anterior foi progresso com produtor de talks_. Inspeção do trecho14535 confirma comparação UTF-16<=0x20, sem chamada a String.Trim. Implementados splits TAB com trim e & sem trim, preservando null/vazio/campos finais conforme o fluxo original. Testes incluem fronteiras UTF-16 exaustivas e sequência de separação de evento; Windows/CTest14/14 passou. Busca direta do setter SanSanRemove sem callers não fecha possíveis escritas indiretas. Relatório87; próximo: tradução e substituição de argumentos para integração da apresentação.

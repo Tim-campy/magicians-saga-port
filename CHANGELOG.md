@@ -2,6 +2,12 @@
 
 Este índice descreve mudanças do projeto. Achados detalhados ficam no [índice de relatórios](docs/README.md) e no [diário de pesquisa](docs/research-log.md). Nenhuma entrada abaixo representa uma versão jogável.
 
+## 2026-10-25 — Substituição nativa de argumentos
+
+- Implementada substituição UTF-16 dos marcadores, com tradução/configuração explícitas e limpeza condicional do padrão de honorífico.
+- Corrigida inversão documental de SanSanRemove em85 após releitura do branch; true habilita o caminho, false o pula. Não havia implementação nativa anterior dessa condição.
+- Windows/CTest15/15 aprovado, incluindo integração substituir→split. [Relatório88](docs/88-native-presentation-arguments.md); tradução real e telas permanecem pendentes.
+
 ## 2026-10-25 — Split nativo da apresentação
 
 - Regra de trim fechada: remove somente U+0000..U+0020, preservando espaços Unicode fora desse intervalo.
