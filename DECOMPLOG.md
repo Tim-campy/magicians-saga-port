@@ -154,3 +154,7 @@ Relatório98: Init14724 liga Utility ao delegate15013; DEX confirma Paint/SANS_S
 ## 2026-10-25 — Seleção de fonte Unity
 
 Relatório99: _getDefaultGUIFont17808 resolve caminhos por idioma e invalida cache; GetLanguageCode14019 usa langPackCode_ ou ja-JP/en-US. Cruzadas quatro chaves de ResourceManager. Fallback Unity e fonte efetiva ainda desconhecidos; nenhuma aproximação implementada.
+
+## 2026-10-25 — Código dos pacotes de idioma
+
+Relatório100: stores de Language.langPackCode_, sanitização de @language e normalização conferidos. Cruzamento com três CSVs e leitura de preferência em Init. Cinco métodos/37052 bytes de disassembly sintaticamente cobertos; compreensão restrita aos trechos documentados, nenhuma execução.

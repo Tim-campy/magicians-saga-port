@@ -2,6 +2,12 @@
 
 Este índice descreve mudanças do projeto. Achados detalhados ficam no [índice de relatórios](docs/README.md) e no [diário de pesquisa](docs/research-log.md). Nenhuma entrada abaixo representa uma versão jogável.
 
+## 2026-10-25 — Código de idioma dos pacotes
+
+- Produtores de langPackCode_, diretiva @language e ligação com preferências persistidas rastreados.
+- Três CSVs locais conferidos por diretiva e SHA-256. [Relatório100](docs/100-language-pack-font-code.md).
+- Idioma efetivo e fonte das falas continuam abertos; sem execução do APK ou alteração C++.
+
 ## 2026-10-25 — Seleção de fontes por idioma
 
 - Ordem de busca e invalidação da fonte padrão Unity rastreadas e cruzadas com as quatro chaves do ResourceManager.

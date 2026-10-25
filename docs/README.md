@@ -105,6 +105,7 @@ Prioridade atual. Regras de combate, animação, ECS, recompensas e eventos; mó
 - [97 — Delegate de métricas por textura e propagação da seleção](97-font-texture-delegate.md)
 - [98 — Medição Java de texto e ligação com o leitor nativo](98-android-font-measurement.md)
 - [99 — Seleção da fonte Unity por idioma](99-default-font-resource-selection.md)
+- [100 — Origem do código de idioma nos pacotes de tradução](100-language-pack-font-code.md)
 
 ## 5. Persistência e progressão — M4
 

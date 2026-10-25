@@ -481,3 +481,7 @@ Pergunta: qual classe e cálculo atendem GetFontTextureSize? REA localizou Utili
 ## 2026-10-25 — Fonte padrão por idioma
 
 Pergunta: como a fonte Unity é escolhida? Dez métodos exportados em font-selection-default/font-language-selection; literais e campos conferidos no ELF/metadados. Ordem de Resources.Load, cache por código de idioma e fontes disponíveis registrados no [relatório99](99-default-font-resource-selection.md). Confirmado para cadeia estática; fonte/backend efetivos continuam unknown. Não escolher default-en-switch por mera presença no APK. Próximo: produtores de langPackCode_ e fonte da fábrica de falas. Sem execução Android, alteração C++ ou repetição de testes.
+
+## 2026-10-25 — Produtores do código de idioma
+
+SetLanguagePack/LoadLanguagePack escrevem langPackCode_; identificados STP inicial, diretiva @language filtrada por Regex e normalização de dois componentes. Três CSVs locais conferidos: ko, zh-CN, ZH. Init lê PREF_LANG_PACK via PlayerPrefs; valor efetivo não observado. Evidência, endereços e limites no [relatório100](100-language-pack-font-code.md). Confiança confirmed para trechos, unknown para boot completo/fonte efetiva. Próximo: caller do boot e argumentos da fonte de fala. Sem execução Android ou alteração C++.
