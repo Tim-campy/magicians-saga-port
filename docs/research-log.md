@@ -1,5 +1,9 @@
 # Registro de pesquisa
 
+## 2026-10-25 — Produtor de talks_ fechado
+
+Ciclo anterior foi progresso com layouts textuais e auditoria. Localizada escrita estática em BootForm.Load; descritores resolvem Select<TalkData,string>, delegate35739 com Join(TAB) e ToArray<string>. Desvio fora do FDE foi conferido nos bytes e exportado, evitando inferir instrução ausente. Dados auditados têm119 fragmentos/46 registros por idioma,40 registros com múltiplos fragmentos. TranslateText/cache/fallback exportados, mas políticas completas permanecem abertas. Relatório86. Sem C++ alterado ou testes repetidos. Próximo: configuração de tradução no boot e trim antes da preparação nativa.
+
 ## 2026-10-25 — Preparação textual e tabelas de apresentação
 
 Ciclo anterior foi progresso com dispatcher/stamina testados. Examinados overloads de MakeTalkForm/MakeEvent, helpers Replace/Split e loaders de TalkData/EventMsgData. Args confirmado string, distinção de trim e limpeza condicional de honorífico documentadas; não presumida formatação padrão. Novo auditor leu46 falas/24 mensagens por idioma; referências8/12 dos scripts presentes, cinco testes Python passaram. Relatório85. Sem C++ alterado/testes de build repetidos. Próximo: produtor AppData.talks_, TranslateText e opções de texto antes da implementação fiel.

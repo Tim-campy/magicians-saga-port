@@ -18,7 +18,7 @@ Atualização: 2026-10-25. **Prioridade: gameplay. M0/M1 parciais; ainda não h�
 
 ## Ativo
 
-- Preparação textual mapeada (`85`): args é string TAB, TalkData.text é array contado e EventMsg compõe tipo&texto. Auditoria leu46 falas/24 mensagens por idioma, sem referências ausentes nos scripts. Cinco testes Python passaram; faltam produtor de talks_, tradução, flag de limpeza e trim antes do modelo nativo.
+- Produtor de talks_ confirmado (`86`): BootForm usa Select/Join(TAB)/ToArray sobre TalkData, preservando os119 fragmentos em46 registros por idioma. Preparação textual e auditoria em85; faltam tradução configurada, flag de limpeza e trim antes do modelo nativo.
 
 - Reconstruir preparação dos formulários8/12 e ligar host aos registros reais (`84`); resolver origem de SYSSAVEI_YUGAMI e estado inicial do item de stamina. GetDelayId compara referências; as37 esperas extraídas não especificam hora (`81`). Produtor de SubForm+0x1d0 e outras rotas permanecem pendentes.
 - Integrar contratos comprovados de combate, coleta e recompensas numa primeira simulação determinística.

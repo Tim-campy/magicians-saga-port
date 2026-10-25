@@ -1,5 +1,7 @@
 # Índice de engenharia reversa
 
+- `docs/86-talk-catalog-producer.md`: BootForm constrói talks_ por Join(TAB), delegate/genéricos e desvio conferidos; tradução/trim continuam pendentes.
+
 - `docs/85-presentation-text-preparation.md`: preparação de falas/eventos e parser de tabelas;46/24 registros por idioma, cinco testes Python. Produtor de talks_/tradução/trim pendentes.
 
 - `docs/84-stamina-and-event-dispatch.md`: limite de stamina, aritmética e routing8/12; dispatcher dos opcodes conhecidos integrado/testado, UI pendente, Windows/CTest13/13.

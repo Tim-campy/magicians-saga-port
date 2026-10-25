@@ -2,6 +2,12 @@
 
 Este índice descreve mudanças do projeto. Achados detalhados ficam no [índice de relatórios](docs/README.md) e no [diário de pesquisa](docs/research-log.md). Nenhuma entrada abaixo representa uma versão jogável.
 
+## 2026-10-25 — Catálogo de falas ligado ao boot
+
+- Resolvida cadeia BootForm→Select/Join(TAB)/ToArray→AppData.talks_, incluindo delegate e desvio fora do intervalo principal.
+- Confirmados119 fragmentos em46 registros por idioma; tradução de argumentos permanece uma etapa distinta ainda parcialmente investigada.
+- [Relatório86](docs/86-talk-catalog-producer.md); sem alteração nativa ou repetição de testes.
+
 ## 2026-10-25 — Preparação de textos e auditoria de apresentação
 
 - Recuperados argumentos string/TAB, marcadores, preparação de fala e mensagens tipo&texto; diferenças de trim e limpeza condicional explicitadas.
