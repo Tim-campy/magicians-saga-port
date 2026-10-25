@@ -2,6 +2,12 @@
 
 Este índice descreve mudanças do projeto. Achados detalhados ficam no [índice de relatórios](docs/README.md) e no [diário de pesquisa](docs/research-log.md). Nenhuma entrada abaixo representa uma versão jogável.
 
+## 2026-10-25 — Inventário de marcações e parser original
+
+- Auditor de tabelas registra candidatos de marcação e suas localizações sem interpretar ou remover tags desconhecidas.
+- Confirmados array de19 tags e tradução do texto inteiro antes do parser. [Relatório93](docs/93-presentation-markup-inventory.md).
+- Sete testes Python aprovados; sem mudança C++.
+
 ## 2026-10-25 — Estado temporal nativo do texto
 
 - Novo módulo text_reveal: comprimento dos blocos, velocidade por idioma, resets, avanço temporal, Flush e IsEnd.

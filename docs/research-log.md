@@ -1,5 +1,9 @@
 # Registro de pesquisa
 
+## 2026-10-25 — Tags reais e preparação do parser
+
+Ciclo anterior foi progresso com text_reveal testado. Inventário lexical reproduzível das quatro tabelas delimita br/co/po e argumentos; sete testes Python passaram. Resolvido array TAG de19 entradas e fluxo TranslateText(true)→UnicodeToChanakya→br/LF antes do scanner. /co restaura cor base; po aplica bits em ordem. Relatório93; parâmetros, métricas e geração de blocos continuam pendentes.
+
 ## 2026-10-25 — Blocos e temporização nativa
 
 Ciclo anterior foi progresso com campos e fórmula temporal. Agora resolvidos isButton/isPictograph e StringEx.Length UTF-16. Implementado text_reveal com contagem de blocos já interpretados, velocidade, resets distintos, Frame temporal, Flush e IsEnd; relógio/frame explícitos e larguras preservadas. Windows/CTest17/17 passou; inclui arredondamento de Flush que permite próxima posição abaixo do limite. Relatório92. Próximo: parser de blocos/configuração e composição com páginas.

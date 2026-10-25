@@ -3,10 +3,26 @@ from pathlib import Path
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
-from inspect_presentation_table import parse_row
+from inspect_presentation_table import parse_row, markup_inventory
 
 
 class PresentationTableTests(unittest.TestCase):
+    def test_markup_preserves_candidates_and_duplicate_ids(self):
+        report = markup_inventory([
+            {'id': 1, 'texts': ['<br><0><br>', '<unknown=x><incomplete']},
+            {'id': 1, 'texts': ['<br>']}, {'id': 2, 'texts': None}], 'talk')
+        self.assertEqual(report['text_count'], 3)
+        self.assertEqual(report['tokens']['<br>']['count'], 3)
+        self.assertEqual([x['record_ordinal'] for x in report['tokens']['<br>']['locations']], [0,0,1])
+        self.assertTrue(report['tokens']['<0>']['numeric_argument_candidate'])
+        self.assertFalse(report['tokens']['<unknown=x>']['numeric_argument_candidate'])
+        self.assertNotIn('<incomplete', report['tokens'])
+
+    def test_event_markup_does_not_treat_text_as_talk_array(self):
+        report = markup_inventory([{'id': 3, 'text': '<po=cm><0>&<br>'}], 'event')
+        self.assertEqual(report['text_count'], 1)
+        self.assertEqual(set(report['tokens']), {'<po=cm>', '<0>', '<br>'})
+
     def test_talk_counts_empty_and_cr(self):
         record, rest = parse_row('7\t-1\t3\tfirst\t\tlast\r\textra', 'talk')
         self.assertEqual(record, {'id': 7, 'character_index': -1, 'texts': ['first', '', 'last\r']})

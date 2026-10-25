@@ -1,5 +1,7 @@
 # Índice de engenharia reversa
 
+- `docs/93-presentation-markup-inventory.md`: inventário lexical das quatro tabelas,19 tags originais e tradução anterior ao parser; sete testes Python. Parser visual pendente.
+
 - `docs/92-native-text-reveal.md`: contagem UTF-16/gráficos e estado temporal portados; Windows/CTest17/17; parser, desenho e integração completa pendentes.
 
 - `docs/91-text-layout-timing.md`: velocidade por idioma, relógio/TotalFrames, campos temporais e distinção Reset/SetText; length dos blocos ainda pendente.

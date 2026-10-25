@@ -41,6 +41,31 @@ def parse_row(line, kind):
     return record, tokens[consumed:]
 
 
+def markup_inventory(records, kind):
+    """Lexical candidates only: no translation, tag semantics or block parsing.
+
+    Locations are record ordinals and fragment indices, so duplicate IDs do not
+    collapse evidence. Unknown tokens are retained instead of being stripped.
+    """
+    occurrences, text_count = {}, 0
+    for ordinal, record in enumerate(records):
+        texts = (record['texts'] or []) if kind == 'talk' else [record['text']]
+        for fragment, text in enumerate(texts):
+            text_count += 1
+            for match in re.finditer(r'<[^<>]*>', text):
+                token = match.group()
+                item = occurrences.setdefault(token, {
+                    'count': 0,
+                    'numeric_argument_candidate': bool(re.fullmatch(r'<[0-9]+>', token)),
+                    'locations': []})
+                item['count'] += 1
+                item['locations'].append({'record_ordinal': ordinal, 'id': record['id'],
+                                          'fragment': fragment})
+    return {'scope': 'lexical_before_translation_and_substitution',
+            'text_count': text_count,
+            'tokens': dict(sorted(occurrences.items()))}
+
+
 def inspect(path, kind):
     raw = path.read_bytes()
     records, trailing = [], []
@@ -60,7 +85,8 @@ def inspect(path, kind):
                         'duplicate_ids': sorted(k for k, v in ids.items() if v > 1),
                         'trailing_record_count': len(trailing),
                         'null_text_arrays': sum(r.get('texts', []) is None for r in records)},
-            'records': records, 'trailing': trailing}
+            'records': records, 'trailing': trailing,
+            'markup': markup_inventory(records, kind)}
 
 
 def main():

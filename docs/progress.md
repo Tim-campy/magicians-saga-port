@@ -26,6 +26,8 @@ Atualização: 2026-10-25. **Prioridade: gameplay. M0/M1 parciais; ainda não h�
 
 ## Ativo
 
+- Tags das quatro tabelas auditadas (93); texto inteiro passa por tradução antes do parser. Fechar parâmetros br/co/po e métricas para gerar blocos reais; sete testes Python aprovados.
+
 - Temporização investigada (91): velocidade depende de IsShortWords; Frame combina relógio e TotalFrames. Contagem dos blocos portada em92; resolver parser e configuração efetiva antes de integrar.
 
 - Avanço da fala mapeado (90): Frame→entrada→Flush ou próxima página; encerramento por contador e continuação pelo catálogo. Resolver produtores de nextIndex, temporização e fluxo separado do tipo4 antes de implementar.
