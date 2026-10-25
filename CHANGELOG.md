@@ -2,6 +2,12 @@
 
 Este índice descreve mudanças do projeto. Achados detalhados ficam no [índice de relatórios](docs/README.md) e no [diário de pesquisa](docs/research-log.md). Nenhuma entrada abaixo representa uma versão jogável.
 
+## 2026-10-25 — Preparação de textos e auditoria de apresentação
+
+- Recuperados argumentos string/TAB, marcadores, preparação de fala e mensagens tipo&texto; diferenças de trim e limpeza condicional explicitadas.
+- Nova ferramenta `inspect_presentation_table.py`:46 falas e24 mensagens por idioma, sem referências ausentes nas chamadas8/12 extraídas.
+- Cinco testes Python aprovados; sem alteração C++ ou novo build. Evidência e lacunas no [relatório85](docs/85-presentation-text-preparation.md).
+
 ## 2026-10-25 — Stamina e dispatcher dos eventos conhecidos
 
 - Mapeada decisão do limite10/20 a partir do estado de ITEM_STAMINA_UP; sem obtenção, alteração ou valor presumido desse estado.

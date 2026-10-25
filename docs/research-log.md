@@ -1,5 +1,9 @@
 # Registro de pesquisa
 
+## 2026-10-25 — Preparação textual e tabelas de apresentação
+
+Ciclo anterior foi progresso com dispatcher/stamina testados. Examinados overloads de MakeTalkForm/MakeEvent, helpers Replace/Split e loaders de TalkData/EventMsgData. Args confirmado string, distinção de trim e limpeza condicional de honorífico documentadas; não presumida formatação padrão. Novo auditor leu46 falas/24 mensagens por idioma; referências8/12 dos scripts presentes, cinco testes Python passaram. Relatório85. Sem C++ alterado/testes de build repetidos. Próximo: produtor AppData.talks_, TranslateText e opções de texto antes da implementação fiel.
+
 ## 2026-10-25 — Stamina e apresentação no dispatcher
 
 Ciclo anterior foi progresso com efeitos de progressão e integração testada. GetStaminaMax ligado a MyBilling.ITEM_STAMINA_UP/GetState e decisão zero→10/não zero→20, sem alterar ou presumir estado do item. Opcode31 preserva wrap32, divisão truncada, duas leituras de limite e clamps após wrap64. Dispatcher dos opcodes presentes integrado a progressão e callbacks explícitos para8/12; factories exportadas mostram dependências de TalkData/EventMsgData ainda pendentes. Windows/CTest13/13 passou, incluindo sequência integrada com espera. Relatório84. Próximo: preparação de formulários e catálogo/estado inicial. Sem APK executado.
