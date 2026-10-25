@@ -1,4 +1,4 @@
-#include "core/animation_transitions.hpp"
+#include "core/animation/animation_transitions.hpp"
 
 #include <cstdlib>
 #include <iostream>

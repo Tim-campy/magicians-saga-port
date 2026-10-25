@@ -1,4 +1,4 @@
-#include "core/stage_rewards.hpp"
+#include "core/gameplay/stage_rewards.hpp"
 #include <cstdlib>
 #include <iostream>
 #include <limits>

@@ -1,4 +1,4 @@
-#include "core/script_payload.hpp"
+#include "core/persistence/script_payload.hpp"
 #include <cstdlib>
 #include <iostream>
 #include <limits>

@@ -1,0 +1,1 @@
+saga_library(component_slots component_slots.cpp component_filter.cpp)

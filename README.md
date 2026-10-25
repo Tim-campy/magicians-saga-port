@@ -4,13 +4,24 @@ Objetivo: port fiel para Windows/Linux, com núcleo independente de plataforma e
 
 Estado: **M0 em andamento; M1 parcial**. A arquitetura observada envolve Unity/IL2CPP e integração Android. Extração de assets, leitores C++17/CMake e visualizador técnico SDL3 foram validados em Windows. Ainda não existe jogo reconstruído; Linux, comportamento runtime e viabilidade 3DS continuam pendentes.
 
+## Navegação
+
+- [Índice dos relatórios por capítulos](docs/README.md)
+- [Plano M0–M6 e mapa do código](docs/plan.md)
+- [Mudanças realizadas](CHANGELOG.md)
+- [Progresso atual](docs/progress.md) e [fluxo Git](CONTRIBUTING.md)
+
 ## Estrutura
 
 ```text
 docs/                  Evidências, arquitetura, perguntas e progresso
 tools/                 Inventário e preparação local das ferramentas
-tests/                 Testes de formatos; comportamento ainda pendente
-src/core/              Futuro núcleo portátil
+tests/                 Testes de formatos e contratos; comparação runtime pendente
+src/core/gameplay/     Regras isoladas de combate, recompensas e estoque
+src/core/animation/    Transições e codecs de animação
+src/core/ecs/          Componentes e filtros
+src/core/persistence/  Codec de payload de scripts
+cmake/                 Configuração comum dos módulos C++17
 src/assets/            Leitores portáteis de contêineres, OPT e SEB
 src/platform/desktop/  Ferramentas nativas de inventário e visualização
 src/platform/n3ds/     Reservado para estudo de viabilidade
@@ -68,7 +79,7 @@ Cinco texturas vazias são registradas no manifesto. Fontes são preservadas, in
 
 ## Visualizador técnico opcional
 
-O núcleo também contém módulos isolados de [transições de animação](docs/30-animation-transitions.md), [armazenamento de componentes](docs/35-component-slots.md), [predicados de filtros](docs/39-generic-collections.md) e [codecs de payloads](docs/43-animation-payload-codec.md), recuperados por análise estática. O build padrão executa sete testes de contrato; esses módulos ainda não constituem um ECS integrado ou gameplay.
+O núcleo também contém módulos isolados de [transições de animação](docs/30-animation-transitions.md), [armazenamento de componentes](docs/35-component-slots.md), [predicados de filtros](docs/39-generic-collections.md) e [codecs de payloads](docs/43-animation-payload-codec.md), recuperados por análise estática. O build padrão executa dez testes de contrato; esses módulos ainda não constituem um ECS integrado ou gameplay.
 
 ```powershell
 tools\build-viewer.cmd

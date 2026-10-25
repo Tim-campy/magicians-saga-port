@@ -1,4 +1,4 @@
-#include "core/component_filter.hpp"
+#include "core/ecs/component_filter.hpp"
 #include <cstdlib>
 #include <iostream>
 #include <stdexcept>

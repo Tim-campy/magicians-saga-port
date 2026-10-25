@@ -1,4 +1,4 @@
-#include "core/component_slots.hpp"
+#include "core/ecs/component_slots.hpp"
 #include <cstdlib>
 #include <iostream>
 #include <stdexcept>

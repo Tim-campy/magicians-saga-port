@@ -1,4 +1,4 @@
-#include "core/combat_rules.hpp"
+#include "core/gameplay/combat_rules.hpp"
 #include <cstdlib>
 #include <iostream>
 #include <limits>

@@ -1,4 +1,4 @@
-#include "core/component_slots.hpp"
+#include "core/ecs/component_slots.hpp"
 #include <stdexcept>
 
 namespace saga::core {

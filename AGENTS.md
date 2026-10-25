@@ -82,5 +82,12 @@ Each milestone requires: documented evidence, a reproducible build/run command, 
 - Ask for user input only when a missing APK, required tool, or material design decision blocks progress.
 - Never fabricate measurements, extracted files, reverse-engineering results, or successful tests.
 
-## Initial instruction to Codex
+## Repository maintenance (established after initial reconnaissance)
+
+- Follow `CONTRIBUTING.md` for local Git commits and review staged files before committing. Never commit proprietary inputs, extracted data, local research dumps or credentials.
+- Use `docs/README.md` as the report index, grouped by M0–M6 chapters. Preserve existing report paths; add new reports to the relevant chapter.
+- Record implementation and organization changes in `CHANGELOG.md`; keep `docs/progress.md` concise and preserve detailed findings in `docs/research-log.md`.
+- Place portable code in the corresponding `src/core/` module and maintain its CMake target. Current user priority is gameplay.
+
+## Initial instruction to Codex (historical starting point)
 Start at **M0**. Discover and read available REA skills and inspect the workspace. Locate the supplied Magician's Saga APK, perform non-destructive reconnaissance, create the three mandatory reports and `docs/progress.md`, and recommend the next narrowly scoped task. **Do not begin a wholesale rewrite or port until the architecture is evidenced.**

@@ -1,5 +1,9 @@
 # Registro de pesquisa
 
+## 2026-10-25 — Reestruturação e Git
+
+A pedido do usuário, registrado baseline Git787a81e e reorganizados módulos C++/CMake sem alterar algoritmos. Criado índice de80 relatórios por sete capítulos M0–M6, plano, changelog e fluxo de contribuição; progresso condensado. Builds padrão e viewer Windows passaram com10/10 testes cada. Artefatos proprietários continuam locais e ignorados; nenhum remoto ou publicação. Relatório80 descreve mudanças e limites. Próximo trabalho funcional mantém foco em gameplay e continuações de eventos.
+
 ## 2026-10-25 — Prioridade de gameplay e guardas dos eventos
 
 Usuário priorizou gameplay. Investigadas guardas anteriores à fila de DelayEvent por assembly e mapa IL2CPP: +0xc0 e retorno verdadeiro de TapjoyForm.AcquireBalance permitem retorno antecipado; +0xd0>2 não pula a fila. AppData.Push encaminha ao FormManager, sem atribuição direta à continuação do SubForm. Exportados AcquireBalance, SetEvent e MakeEvent; evidência e limites em79. Confiança confirmada para instruções e alvos mapeados, sem validação de execução. Nenhum C++ alterado; último CTest10/10 preservado. Próximo: escritor de +0x1d0 e espera por hora, visando integração fiel dos eventos com combate/recompensas.
