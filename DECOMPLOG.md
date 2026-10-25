@@ -150,3 +150,7 @@ Auditoria est?tica de22 tipos/10 implementa??es e4 callees (1.556 bytes, cobertu
 ## 2026-10-25 — Fronteira Java de métricas
 
 Relatório98: Init14724 liga Utility ao delegate15013; DEX confirma Paint/SANS_SERIF e payload de duas medidas. Leitor14446 e conversão13770/13777 rastreados; backend efetivo nas falas desconhecido. Pesquisa estática, sem código decompilado versionado ou nova dependência.
+
+## 2026-10-25 — Seleção de fonte Unity
+
+Relatório99: _getDefaultGUIFont17808 resolve caminhos por idioma e invalida cache; GetLanguageCode14019 usa langPackCode_ ou ja-JP/en-US. Cruzadas quatro chaves de ResourceManager. Fallback Unity e fonte efetiva ainda desconhecidos; nenhuma aproximação implementada.

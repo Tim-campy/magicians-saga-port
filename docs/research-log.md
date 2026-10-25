@@ -477,3 +477,7 @@ Validação:14 novos FDEs integralmente cobertos; assinaturas/slots/argumentos d
 ## 2026-10-25 — Medição Android das falas
 
 Pergunta: qual classe e cálculo atendem GetFontTextureSize? REA localizou Utility; exportação DEX e KairoPlugin.Init confirmaram a ligação por campo estático+0x10. Paint usa SANS_SERIF, measureText e retorno de getFontMetrics(null); dois writeFloat retornam as medidas em ordem. ReadFloat/ByteAryToFloat/ConvertEndian conferidos no ELF. Confiança confirmed para cadeia estática, unknown para uso efetivo nas falas. Evidências e limites em [98](98-android-font-measurement.md). Próximo: fonte de boot e escritores de useFontTexture_. Sem execução Android nem alteração C++; testes de produto não repetidos.
+
+## 2026-10-25 — Fonte padrão por idioma
+
+Pergunta: como a fonte Unity é escolhida? Dez métodos exportados em font-selection-default/font-language-selection; literais e campos conferidos no ELF/metadados. Ordem de Resources.Load, cache por código de idioma e fontes disponíveis registrados no [relatório99](99-default-font-resource-selection.md). Confirmado para cadeia estática; fonte/backend efetivos continuam unknown. Não escolher default-en-switch por mera presença no APK. Próximo: produtores de langPackCode_ e fonte da fábrica de falas. Sem execução Android, alteração C++ ou repetição de testes.

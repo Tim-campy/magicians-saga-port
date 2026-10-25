@@ -28,6 +28,8 @@ Atualização: 2026-10-25. **Prioridade: gameplay. M0/M1 parciais; ainda não h�
 
 ## Ativo
 
+- Seleção da fonte Unity por idioma e quatro chaves do ResourceManager cruzadas (99). Faltam produtores de langPackCode_, fonte efetiva das falas e fallback interno quando Resources.Load não encontra a fonte.
+
 - Classe Java de FontTexture confirmada (98): Utility mede via Paint/SANS_SERIF e retorna duas medidas; leitor nativo rastreado. Falta origem efetiva de useFontTexture_ e fonte/escala das falas antes de escolher backend.
 
 - Linhas dependem de medidas de trechos e duas rotas de fonte (96). Delegate resolvido em97/98; resolver useFontTexture_ e fonte/escala do boot antes de integrar layout real.

@@ -2,6 +2,12 @@
 
 Este índice descreve mudanças do projeto. Achados detalhados ficam no [índice de relatórios](docs/README.md) e no [diário de pesquisa](docs/research-log.md). Nenhuma entrada abaixo representa uma versão jogável.
 
+## 2026-10-25 — Seleção de fontes por idioma
+
+- Ordem de busca e invalidação da fonte padrão Unity rastreadas e cruzadas com as quatro chaves do ResourceManager.
+- Código de idioma pode vir de langPackCode_ ou de ja-JP/en-US; fonte efetiva ainda não declarada. [Relatório99](docs/99-default-font-resource-selection.md).
+- Sem implementação aproximada, execução Android ou alteração C++.
+
 ## 2026-10-25 — Medição de texto no Android
 
 - Classe Java ligada ao delegate confirmada por KairoPlugin.Init; cálculo de largura e altura conferido no DEX.
