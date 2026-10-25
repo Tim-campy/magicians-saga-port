@@ -2,6 +2,13 @@
 
 Este índice descreve mudanças do projeto. Achados detalhados ficam no [índice de relatórios](docs/README.md) e no [diário de pesquisa](docs/research-log.md). Nenhuma entrada abaixo representa uma versão jogável.
 
+## 2026-10-25 — Identidade e origem das continuações de gameplay
+
+- GetDelayId mapeado: associação por identidade de matriz, primeiro índice correspondente, fallback-1.
+- Confirmado campo SubForm.delayEvent_; buscas limitadas não localizaram produtor e não demonstram ausência.
+- Auditadas37 esperas da tabela extraída, todas sem hora explícita. Próxima implementação prioriza continuação por contagem, conservando guardas externas.
+- Evidência e limites no [relatório81](docs/81-delay-origin-and-script-identity.md). Sem C++ alterado ou testes repetidos nesta rodada.
+
 ## 2026-10-25 — Reestruturação e versionamento
 
 **Capítulos afetados:** infraestrutura de todos os marcos; prioridade funcional mantida em gameplay/M3.

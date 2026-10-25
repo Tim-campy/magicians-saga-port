@@ -14,7 +14,7 @@ O [índice de relatórios](README.md) organiza a evidência por assunto. A numer
 
 ## Sequência imediata de gameplay
 
-1. Fechar os produtores e consumidores das continuações de eventos, inclusive espera por hora e fechamento de formulário.
+1. Portar o contrato demonstrado de execução da matriz e continuação por contagem, preservando identidade dos scripts e guardas externas. Manter espera por hora e associação a formulário como investigações paralelas ainda não resolvidas (`81`).
 2. Integrar somente contratos comprovados de combate, coleta, recompensas e progressão a uma simulação determinística.
 3. Resolver RNG, ordem de atualização, entidades e entrada necessários ao primeiro ciclo jogável.
 4. Comparar com o APK quando houver ambiente dinâmico disponível. Enquanto existir investigação estática útil, prosseguir sem exigir esse ambiente.

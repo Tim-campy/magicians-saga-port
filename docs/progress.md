@@ -12,7 +12,7 @@ Atualização: 2026-10-25. **Prioridade: gameplay. M0/M1 parciais; ainda não h�
 
 ## Ativo
 
-- Fechar execução e retomada de eventos: produtor da continuação SubForm+0x1d0, consumidores de hour_ e guardas de atualização (relatórios 77–79).
+- Identidade dos scripts recuperada: GetDelayId compara referências, não conteúdo. As37 esperas presentes na tabela extraída não especificam hora (`81`). Priorizar executor e continuação por contagem; produtor de SubForm+0x1d0 e outras rotas permanecem pendentes, sem impedir esse recorte comprovado.
 - Integrar contratos comprovados de combate, coleta e recompensas numa primeira simulação determinística.
 - Resolver dependências de RNG, ordem de atualização e ciclo de entidades necessárias ao loop jogável, sem substituir lacunas por aproximações.
 

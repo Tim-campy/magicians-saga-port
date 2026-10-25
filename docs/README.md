@@ -86,6 +86,8 @@ Prioridade atual. Regras de combate, animação, ECS, recompensas e eventos; mó
 - [78 — Retomada dos eventos adiados](78-delay-event-resumption.md)
 - [79 — Guardas da atualização de eventos de gameplay](79-gameplay-event-update-guards.md)
 
+- [81 — Origem das continuações e identidade dos scripts](81-delay-origin-and-script-identity.md)
+
 ## 5. Persistência e progressão — M4
 
 Preparação de dados, serialização e codecs; save completo e integração ainda pendentes. Recompensas e eventos também estão no capítulo4.

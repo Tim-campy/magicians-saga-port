@@ -1,5 +1,9 @@
 # Registro de pesquisa
 
+## 2026-10-25 — Identidade do script e origem de DelayEvent
+
+Confirmado delayEvent_ em SubForm+0x1d0 por metadata/offsets. Varreduras limitadas de escrita/endereço e construtores não localizaram seu produtor; ausência não declarada. Caller direto do construtor DelayEvent localizado em ExecuteScript. GetDelayId percorre eventData, pula null e compara identidade da matriz; falha retorna-1 após caminho adicional. Auditoria:37 instruções de espera, valores1/3/5/30/50, nenhuma hora explícita. Evidência estática e limites em81. Próximo: executor e continuação por contagem preservando identidade, sem aguardar esclarecimento de rotas não demonstradas nos dados extraídos. Sem alteração nativa ou repetição de testes.
+
 ## 2026-10-25 — Reestruturação e Git
 
 A pedido do usuário, registrado baseline Git787a81e e reorganizados módulos C++/CMake sem alterar algoritmos. Criado índice de80 relatórios por sete capítulos M0–M6, plano, changelog e fluxo de contribuição; progresso condensado. Builds padrão e viewer Windows passaram com10/10 testes cada. Artefatos proprietários continuam locais e ignorados; nenhum remoto ou publicação. Relatório80 descreve mudanças e limites. Próximo trabalho funcional mantém foco em gameplay e continuações de eventos.
