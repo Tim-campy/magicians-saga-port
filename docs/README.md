@@ -110,6 +110,7 @@ Prioridade atual. Regras de combate, animação, ECS, recompensas e eventos; mó
 - [102 — Controle nativo de ajuste dos blocos de texto](102-native-text-autoscale.md)
 - [103 — Correção inicial do tamanho da fonte](103-initial-text-font-correction.md)
 - [104 — Localização temporária da fonte na formação dos blocos](104-font-localization-scope.md)
+- [105 — Ajuste numérico de fonte e exceções da preparação](105-font-adjustment-and-preparation-exceptions.md)
 
 ## 5. Persistência e progressão — M4
 

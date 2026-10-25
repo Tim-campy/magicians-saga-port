@@ -501,3 +501,7 @@ SetText0x1bbd298..300 portado em prepare_text_font_size: duas divisões assinada
 ## 2026-10-25 — Escopo da fonte localizada
 
 IsNeedLocalizeScale, GetLocalizeScale e Push/Pop conferidos; parser clona fonte, aplica tamanho localizado com preset e empilha false. Cleanup restaura fonte e desempilha conforme flags. Constantes binary32 lidas do ELF, sem métrica de runtime. [Relatório104](104-font-localization-scope.md). Próximo: AdjustFontSize e limites de exceção na preparação. Sem alteração C++; último19/19 preservado.
+
+## 2026-10-25 — Ajuste de fonte e exceções da preparação
+
+AdjustFontSize conferido no wrapper, corpo e delegate; multiplicação/divisão binary32 preservam arredondamentos e casos especiais. Nove chamadas cruzadas com LSDA e landing pads distinguem preparação que pula o cleanup interno e corpo protegido. Evidência e limites no [relatório105](105-font-adjustment-and-preparation-exceptions.md). Confiança confirmed para os trechos estáticos, unknown para resultado visual. Próximo: estados numéricos de fonte e integração do parser respeitando os escopos. Sem alteração C++ ou execução Android; último build19/19 permanece o registrado em103.

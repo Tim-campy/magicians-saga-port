@@ -174,3 +174,7 @@ text_fit ampliado com correção inicial recuperada de SetText19198. tools/build
 ## 2026-10-25 — Localização da fonte
 
 Relatório104 fecha guardas/pilha/fatores de localização e restauração no helper0xf875bc. Integração ainda depende de AdjustFontSize e cobertura de exceções anterior ao contexto. Sem novo código ou teste de runtime.
+
+## 2026-10-25 — Ajuste e preparação da fonte
+
+Relatório105: sequência de AdjustFontSize e nove chamadas da preparação cruzadas com LSDA0x935e34. Caminhos anteriores ao contexto pulam o helper interno; chamadas posteriores passam por ele. Sem implementação aproximada ou novo teste de runtime.

@@ -2,6 +2,12 @@
 
 Este índice descreve mudanças do projeto. Achados detalhados ficam no [índice de relatórios](docs/README.md) e no [diário de pesquisa](docs/research-log.md). Nenhuma entrada abaixo representa uma versão jogável.
 
+## 2026-10-25 — Ajuste e fronteiras de exceção da fonte
+
+- Sequência binary32 de AdjustFontSize conferida no wrapper, corpo e delegate.
+- Nove chamadas cruzadas com LSDA distinguem preparação sem cleanup interno e corpo protegido. [Relatório105](docs/105-font-adjustment-and-preparation-exceptions.md).
+- Pesquisa estática; sem alteração C++ ou execução do APK.
+
 ## 2026-10-25 — Escopo de localização da fonte
 
 - Predicado, fatores binários e pilha de localização rastreados até a troca/restauração de font_ no parser.
