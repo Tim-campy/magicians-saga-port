@@ -16,10 +16,12 @@ struct Host : TextFitHost {
     std::vector<std::string> calls;
     bool fail_rebuild = false;
     bool replace_effective_size = false;
+    bool fail_set = false;
     std::int32_t font_size() override { calls.push_back("size"); return size; }
     void set_font_size(std::int32_t n) override {
         calls.push_back("set:" + std::to_string(n));
         size = replace_effective_size ? 9 : n;
+        if (fail_set) throw std::runtime_error("fixture setter failure");
     }
     void rebuild_blocks(TextFitState& s) override {
         calls.push_back("rebuild");
@@ -64,4 +66,28 @@ int main() {
     h.fail_rebuild = true;
     try { fit_text_blocks(s,h); } catch (const std::runtime_error&) {}
     check(h.size == std::numeric_limits<std::int32_t>::max(), "32-bit decrement wraps");
+    s = {50,60,100,false,true}; h = Host{}; h.size = 10;
+    prepare_text_font_size(s,150,h);
+    check(h.size == 4 && s.font_size_adjusted && h.calls ==
+          std::vector<std::string>({"size","set:4"}),
+          "initial correction runs without auto scale and uses two integer divisions");
+    prepare_text_font_size(s,50,h);
+    check(h.calls.size() == 2, "adjusted flag prevents repeating initial correction");
+    s = {50,60,100,true,false}; h = Host{};
+    prepare_text_font_size(s,100,h);
+    check(h.calls.empty() && !s.font_size_adjusted, "single-line initial correction is skipped");
+    s.multiline = true; h.size = -10;
+    prepare_text_font_size(s,150,h);
+    check(h.size == -4, "negative division truncates toward zero at each step");
+    s.font_size_adjusted = false;
+    prepare_text_font_size(s,0,h);
+    check(h.size == 0 && s.font_size_adjusted, "unguarded ARM SDIV by zero returns zero");
+    s.font_size_adjusted = false; h = Host{}; h.size = 21474837;
+    prepare_text_font_size(s,100,h);
+    check(h.size == -21474835, "initial multiplication wraps before division");
+    s.font_size_adjusted = false; h = Host{}; h.fail_set = true;
+    threw = false;
+    try { prepare_text_font_size(s,100,h); }
+    catch (const std::runtime_error&) { threw = true; }
+    check(threw && !s.font_size_adjusted, "failed setter leaves adjusted flag unset");
 }

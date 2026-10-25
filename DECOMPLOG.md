@@ -166,3 +166,7 @@ Relatório101: Start18197 chama Language.Init; CreateTalkForm36177 cria TextLayo
 ## 2026-10-25 — text_fit
 
 Portado recorte0x1bbd32c..0x1bbd420 de SetText19198: ajuste de blocos com métricas via host. tools/build-desktop.cmd, Windows/MSVC14.51:19/19 CTests (build/research/text-fit-build.log). Sem MATCH contra original: Android indisponível, métricas reais/parser não integrados. Relatório102.
+
+## 2026-10-25 — Preparação de tamanho de texto
+
+text_fit ampliado com correção inicial recuperada de SetText19198. tools/build-desktop.cmd, Windows/MSVC14.51:19/19 CTests, build/research/text-font-preparation-build.log. Sem MATCH de runtime; requestFontScale explícito. Relatório103.

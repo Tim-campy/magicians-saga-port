@@ -108,6 +108,7 @@ Prioridade atual. Regras de combate, animação, ECS, recompensas e eventos; mó
 - [100 — Origem do código de idioma nos pacotes de tradução](100-language-pack-font-code.md)
 - [101 — Inicialização de idioma e construção da fonte das falas](101-talk-font-construction-and-startup.md)
 - [102 — Controle nativo de ajuste dos blocos de texto](102-native-text-autoscale.md)
+- [103 — Correção inicial do tamanho da fonte](103-initial-text-font-correction.md)
 
 ## 5. Persistência e progressão — M4
 

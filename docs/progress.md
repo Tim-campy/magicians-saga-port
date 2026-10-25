@@ -4,6 +4,8 @@ Atualização: 2026-10-25. **Prioridade: gameplay. M0/M1 parciais; ainda não h�
 
 ## Concluído e verificável
 
+- Correção inicial da fonte portada no mesmo text_fit (103), com divisões sucessivas e flag após setter; Windows/CTest19/19. Fator fornecido explicitamente, sem pressupor valor de runtime.
+
 - Controle de ajuste dos blocos portado em text_fit (102): redução iterativa, tolerância e ordem de consultas preservadas. Windows/CTest19/19. Medições reais e parser completo permanecem pendentes.
 
 - Sequência decimal/hex/RGB portada em text_parameters (95), Windows/CTest18/18. Conversão real por cultura e layout permanecem pendentes.

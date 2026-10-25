@@ -493,3 +493,7 @@ Pergunta: idioma/fonte estão ligados ao formulário concreto? B/BL imediato par
 ## 2026-10-25 — Ajuste nativo de texto
 
 SetText: decremento/reconstrução iterativos, tolerância vertical de1 e consultas repetidas de GetHeight portados em text_fit. Host de métricas explícito, sem fonte aproximada. Evidência e limites no [relatório102](102-native-text-autoscale.md). Windows/MSVC, tools/build-desktop.cmd:19/19; parser real, correção inicial de tamanho e integração ainda pendentes. Nenhuma execução Android.
+
+## 2026-10-25 — Correção inicial da fonte
+
+SetText0x1bbd298..300 portado em prepare_text_font_size: duas divisões assinadas, wrap32, guarda multiline/adjusted e marcação após setter. SetScale/UpdateFontScale conferidos; busca B/BL não encontrou caller direto e não exclui escrita inline/indireta. [Relatório103](103-initial-text-font-correction.md). Windows/MSVC, tools/build-desktop.cmd:19/19. Fator efetivo/localização continuam pendentes; sem execução Android.

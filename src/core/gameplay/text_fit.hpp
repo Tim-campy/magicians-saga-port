@@ -8,6 +8,7 @@ struct TextFitState {
     float text_width;        // +0x68, updated by block construction
     bool auto_scale;         // +0x78
     bool multiline;          // +0x84
+    bool font_size_adjusted = false; // +0x86
 };
 class TextFitHost {
 public:
@@ -22,4 +23,8 @@ public:
 // Does not provide font metrics, parse blocks, count reveal length, build ruby
 // annotations or restore the saved font; those belong to the surrounding flow.
 void fit_text_blocks(TextFitState& state, TextFitHost& host);
+// Before initial block construction. requested_scale is Font's static +0x44.
+// Independent of auto_scale; marks adjusted only after the setter returns.
+void prepare_text_font_size(TextFitState& state, std::int32_t requested_scale,
+                            TextFitHost& host);
 }

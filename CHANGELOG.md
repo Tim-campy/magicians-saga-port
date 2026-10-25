@@ -2,6 +2,12 @@
 
 Este índice descreve mudanças do projeto. Achados detalhados ficam no [índice de relatórios](docs/README.md) e no [diário de pesquisa](docs/research-log.md). Nenhuma entrada abaixo representa uma versão jogável.
 
+## 2026-10-25 — Correção inicial da fonte
+
+- text_fit inclui preparação antes da construção dos blocos, preservando duas divisões inteiras, wrap32 e marcação após o setter.
+- Origem do fator e diferença entre pedido/tamanho efetivo documentadas no [relatório103](docs/103-initial-text-font-correction.md).
+- Windows/MSVC:19/19 testes passaram; fator efetivo e localização completa continuam pendentes.
+
 ## 2026-10-25 — Ajuste nativo dos blocos de texto
 
 - Novo módulo text_fit preserva redução da fonte, reconstruções e expansão final da altura em SetText.
