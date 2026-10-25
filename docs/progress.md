@@ -36,7 +36,7 @@ Atualização: 2026-10-25. **Prioridade: gameplay. M0/M1 parciais; ainda não h�
 
 ## Ativo
 
-- Prioridade de integração: resolver avaliação de terms/seleção dos eventos e o caller, para avançar do cenário injetado109 a disparo por estado.
+- Seleção automática mapeada (110): terms vazio=false, execNum>0 bloqueia e retorno null permite continuar a busca. Recuperar predicados15/16 e os demais usados na tabela para ligar o cenário109 ao estado.
 
 - Draw reconstrói blocos/rubies quando muda a escala (108); integrar essa invalidação sem confundir cópias de Graphics/GetFont com a fonte padrão de TextLayout. Backend efetivo ainda aberto.
 

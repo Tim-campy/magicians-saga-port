@@ -194,3 +194,7 @@ Relatório108 distingue cópia via GetFont/SetFont, configuração de Graphics e
 ## 2026-10-25 — Cenário de tabela no nativo
 
 event_trace compõe módulos existentes com scripts locais e fixtures explícitas. tools/build-desktop.cmd:20/20; execução EN/JA registro10 com checks49/50 e callbacks passou. Logs em build/research/event-trace-build.log e event-scenario-{en,ja}.json. Sem MATCH Android, termos não avaliados e UI não executada. Relatório109.
+
+## 2026-10-25 — Gate de eventos
+
+Relatório110 registra busca automática, isExecuted>0, terms vazio=false e seis comparadores int64. Helpers genéricos e caller conferidos no assembly, tabela de saltos lida do ELF. Exportação do avaliador unitário não significa todos os opcodes compreendidos. Sem execução Android ou novo teste de produto.

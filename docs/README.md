@@ -120,6 +120,8 @@ Prioridade atual. Regras de combate, animação, ECS, recompensas e eventos; mó
 
 - [109 — Cenário nativo de eventos com tabela extraída](109-native-event-table-scenario.md)
 
+- [110 — Seleção automática de eventos e agregação de condições](110-automatic-event-selection.md)
+
 ## 5. Persistência e progressão — M4
 
 Preparação de dados, serialização e codecs; save completo e integração ainda pendentes. Recompensas e eventos também estão no capítulo4.

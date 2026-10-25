@@ -2,6 +2,11 @@
 
 Este índice descreve mudanças do projeto. Achados detalhados ficam no [índice de relatórios](docs/README.md) e no [diário de pesquisa](docs/research-log.md). Nenhuma entrada abaixo representa uma versão jogável.
 
+## 2026-10-25 — Seleção automática de eventos
+
+- Mapeadas guardas, AND de condições e busca que continua após efeitos com retorno null. [Relatório110](docs/110-automatic-event-selection.md).
+- Confirmado que terms vazio não dispara nessa busca; cenário109 continua explicitamente injetado. Predicados individuais ainda em análise, sem mudança C++.
+
 ## 2026-10-25 — Cenário integrado com Event.txt
 
 - Adicionado event_trace e adaptador Python para executar scripts da cópia local com estado inicial explícito. [Relatório109](docs/109-native-event-table-scenario.md).

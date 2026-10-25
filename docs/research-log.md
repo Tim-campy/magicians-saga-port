@@ -521,3 +521,7 @@ SetFont limpa ajuste antes de copiar/substituir; GetFont copia a fonte de Graphi
 ## 2026-10-25 — Eventos reais no executor nativo
 
 Construído event_trace com catálogo por identidade e estado inicial explícito. Adaptador usa parser76 e arquivos locais; registro10 mantém saldos até49 e aplica continuação na50. Trace esperado conferido; EN/JA têm hash igual, não são oracles independentes. [Relatório109](109-native-event-table-scenario.md). Windows/MSVC20/20, sem warnings encontrados. Próximo: predicados terms e seleção do evento, UI ainda observada apenas por pedidos.
+
+## 2026-10-25 — Seleção automática de eventos
+
+ExecEvent34373 percorre catálogo e só para com retorno não nulo; CheckTerm rejeita execNum>0 e terms null/vazio, depois aplica AND com curto-circuito. Compare34367 e tabela de saltos conferidos; catálogo tem115 registros com condições e14 opcodes de predicado. Caller direto SelectForm.Update localizado, guardas completas pendentes. [Relatório110](110-automatic-event-selection.md). Cenário109 permanece injeção manual; registro10 não passa por seleção automática. Próximo: predicados15/16. Sem C++/novos testes.
