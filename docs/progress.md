@@ -26,6 +26,8 @@ Atualização: 2026-10-25. **Prioridade: gameplay. M0/M1 parciais; ainda não h�
 
 ## Ativo
 
+- Exceções decimal/hex resolvidas por LSDA (94); fallback0 pertence ao parser, não a ParseInt. Recuperação externa e conversão/cultura continuam pendentes.
+
 - Tags das quatro tabelas auditadas (93); texto inteiro passa por tradução antes do parser. Fechar parâmetros br/co/po e métricas para gerar blocos reais; sete testes Python aprovados.
 
 - Temporização investigada (91): velocidade depende de IsShortWords; Frame combina relógio e TotalFrames. Contagem dos blocos portada em92; resolver parser e configuração efetiva antes de integrar.

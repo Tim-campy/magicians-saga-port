@@ -99,6 +99,7 @@ Prioridade atual. Regras de combate, animação, ECS, recompensas e eventos; mó
 - [91 — Temporização do texto e velocidade por idioma](91-text-layout-timing.md)
 - [92 — Contagem dos blocos e estado temporal nativo do texto](92-native-text-reveal.md)
 - [93 — Marcações das tabelas e entrada do parser de texto](93-presentation-markup-inventory.md)
+- [94 — Parâmetros numéricos e exceções locais do parser](94-text-parameter-exceptions.md)
 
 ## 5. Persistência e progressão — M4
 

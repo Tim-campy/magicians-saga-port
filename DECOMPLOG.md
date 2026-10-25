@@ -1,5 +1,7 @@
 # Índice de engenharia reversa
 
+- `docs/94-text-parameter-exceptions.md`: wrappers ParseInt e handlers locais decimal/hex ligados via LSDA; auditor de255 callsites e dois testes Python; recuperação externa pendente.
+
 - `docs/93-presentation-markup-inventory.md`: inventário lexical das quatro tabelas,19 tags originais e tradução anterior ao parser; sete testes Python. Parser visual pendente.
 
 - `docs/92-native-text-reveal.md`: contagem UTF-16/gráficos e estado temporal portados; Windows/CTest17/17; parser, desenho e integração completa pendentes.

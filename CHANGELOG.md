@@ -2,6 +2,12 @@
 
 Este índice descreve mudanças do projeto. Achados detalhados ficam no [índice de relatórios](docs/README.md) e no [diário de pesquisa](docs/research-log.md). Nenhuma entrada abaixo representa uma versão jogável.
 
+## 2026-10-25 — Exceções dos parâmetros de texto
+
+- Criado auditor limitado de callsites LSDA com hash, limites e encodings explícitos.
+- Ligadas falhas decimal/hex aos handlers locais; ParseInt não recebe fallback global. [Relatório94](docs/94-text-parameter-exceptions.md).
+- Dois testes Python aprovados e255 intervalos reais exportados; sem mudança C++.
+
 ## 2026-10-25 — Inventário de marcações e parser original
 
 - Auditor de tabelas registra candidatos de marcação e suas localizações sem interpretar ou remover tags desconhecidas.

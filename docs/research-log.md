@@ -1,5 +1,9 @@
 # Registro de pesquisa
 
+## 2026-10-25 — ParseInt e exceções locais
+
+Ciclo anterior foi progresso com inventário de tags. Wrappers ParseInt não capturam erros: encaminham para Int32.Parse. Decodificada LSDA0x935e34 de _makeTextBlocks:255 intervalos ligam as tentativas decimal/hex aos handlers locais que zeram os respectivos registradores. Resolvido descritor System.Exception. Novo auditor de callsites com dois testes passou; relatório94. Conversões RGB seguem rota externa ainda pendente, sem generalizar fallback0.
+
 ## 2026-10-25 — Tags reais e preparação do parser
 
 Ciclo anterior foi progresso com text_reveal testado. Inventário lexical reproduzível das quatro tabelas delimita br/co/po e argumentos; sete testes Python passaram. Resolvido array TAG de19 entradas e fluxo TranslateText(true)→UnicodeToChanakya→br/LF antes do scanner. /co restaura cor base; po aplica bits em ordem. Relatório93; parâmetros, métricas e geração de blocos continuam pendentes.
