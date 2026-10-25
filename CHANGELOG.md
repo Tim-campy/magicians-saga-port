@@ -2,6 +2,12 @@
 
 Este índice descreve mudanças do projeto. Achados detalhados ficam no [índice de relatórios](docs/README.md) e no [diário de pesquisa](docs/research-log.md). Nenhuma entrada abaixo representa uma versão jogável.
 
+## 2026-10-25 — Temporização das falas
+
+- Confirmada transformação de velocidade por idioma e compensação de chamadas no mesmo frame lógico.
+- Documentados campos temporais e diferença Reset/SetText; comprimento depende dos blocos. [Relatório91](docs/91-text-layout-timing.md).
+- Pesquisa estática, sem mudança C++ ou novos testes de produto.
+
 ## 2026-10-25 — Fluxo de páginas de fala
 
 - Confirmados despacho do tipo0, distinção entre completar texto/avançar página e encerramento por contador.

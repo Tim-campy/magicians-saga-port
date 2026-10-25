@@ -1,5 +1,7 @@
 # Índice de engenharia reversa
 
+- `docs/91-text-layout-timing.md`: velocidade por idioma, relógio/TotalFrames, campos temporais e distinção Reset/SetText; length dos blocos ainda pendente.
+
 - `docs/90-talk-page-advance.md`: switch do tipo0, Flush versus avanço, continuação e contador de encerramento confirmados estaticamente; temporização e produtores pendentes.
 
 - `docs/89-native-presentation-forms.md`: dados iniciais de fala/evento portados e integrados ao executor em teste; Windows/CTest16/16. UI e catálogo real pendentes.

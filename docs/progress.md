@@ -24,6 +24,8 @@ Atualização: 2026-10-25. **Prioridade: gameplay. M0/M1 parciais; ainda não h�
 
 ## Ativo
 
+- Temporização investigada (91): velocidade depende de IsShortWords; Frame combina relógio e TotalFrames. Resolver length dos blocos e configuração efetiva antes de integrar.
+
 - Avanço da fala mapeado (90): Frame→entrada→Flush ou próxima página; encerramento por contador e continuação pelo catálogo. Resolver produtores de nextIndex, temporização e fluxo separado do tipo4 antes de implementar.
 
 - Produtor de talks_ confirmado (`86`): BootForm usa Select/Join(TAB)/ToArray sobre TalkData. Split/trim/substituição nativos em87/88; faltam tradução configurada, origem do flag e modelo completo de apresentação.

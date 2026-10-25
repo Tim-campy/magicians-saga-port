@@ -1,5 +1,9 @@
 # Registro de pesquisa
 
+## 2026-10-25 — Relógio e velocidade de TextLayout
+
+Ciclo anterior foi progresso com fluxo de fala. Resolvidos campos temporais e SetSpeed→IsShortWords:1500 pode virar2250. Frame usa relógio e compensação por TotalFrames repetido; Reset e SetText não escrevem o mesmo conjunto de campos. length depende dos blocos, não do tamanho bruto da string. Relatório91 com endereços e limites; próximo: contagem dos blocos/configuração. Sem C++ alterado.
+
 ## 2026-10-25 — Avanço da fala e continuação
 
 Ciclo anterior foi progresso: preparação dos formulários registrada/testada. Agora tabela de saltos confirmou tipo0→bloco de fala. Update executa Frame antes da entrada, distingue Flush de avanço e encerra via contador8, não Pop imediato. Continuação interpreta dois campos iniciais como personagem/próximo índice, diferentemente da fábrica inicial. Relatório90 registra VAs, método, confiança e limites. Sem mudança C++; próximo: produtores de nextIndex e temporização de TextLayout.
