@@ -1,5 +1,9 @@
 # Registro de pesquisa
 
+## 2026-10-25 — Dados iniciais dos formulários
+
+Compostos os contratos de MakeTalkForm36177 e MakeEvent36179 com substituição/split já verificados. Novo módulo presentation_forms preserva campos iniciais e ordem parse→texto; parser numérico permanece dependência explícita. Teste integrado cobre fala→espera→evento com fixtures. Windows/CTest16/16 passou. Confiança confirmada para os campos estáticos, sem equivalência visual/dinâmica. Relatório89; próximo: catálogos reais, tradução configurada e TextLayout.
+
 ## 2026-10-25 — Substituição nativa e correção SanSanRemove
 
 Ciclo anterior foi progresso com split/trim. Releitura do branch0x1c18f60 mostrou inversão na redação de85: false pula limpeza, true permite checagens. Corrigido antes de implementar. Novo helper UTF-16 substitui argumentos sequencialmente, mantém null/vazio e limpeza condicional não recursiva; tradução/configuração exigem host. Testes incluem flag mutável, curto-circuito, marcadores encadeados, honoríficos e sequência substituir→split; Windows/CTest15/15 passou. Relatório88. Próximo: modelos/dados dos formulários e tradução real.

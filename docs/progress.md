@@ -4,7 +4,9 @@ Atualização: 2026-10-25. **Prioridade: gameplay. M0/M1 parciais; ainda não h�
 
 ## Concluído e verificável
 
-- Substituição de argumentos UTF-16 implementada e composta com split/trim (`88`); condição de SanSanRemove corrigida na documentação e testada. Windows/CTest15/15 passou. Tradutor real e modelos das telas ainda não implementados.
+- Dados iniciais de falas/eventos implementados em presentation_forms (89); integração com executor testada, Windows/CTest16/16. UI e catálogos reais permanecem pendentes.
+
+- Substituição de argumentos UTF-16 implementada e composta com split/trim (`88`); condição de SanSanRemove corrigida na documentação e testada. Windows/CTest15/15 passou. Tradutor real e telas completas ainda não implementados.
 
 - Divisão de textos de formulário em UTF-16 implementada com trim exato U+0000..U+0020 e campos vazios preservados (`87`). Windows/CTest14/14 passou; tradução e apresentação completas continuam pendentes.
 
@@ -24,7 +26,7 @@ Atualização: 2026-10-25. **Prioridade: gameplay. M0/M1 parciais; ainda não h�
 
 - Produtor de talks_ confirmado (`86`): BootForm usa Select/Join(TAB)/ToArray sobre TalkData. Split/trim/substituição nativos em87/88; faltam tradução configurada, origem do flag e modelo completo de apresentação.
 
-- Reconstruir preparação dos formulários8/12 e ligar host aos registros reais (`84`); resolver origem de SYSSAVEI_YUGAMI e estado inicial do item de stamina. GetDelayId compara referências; as37 esperas extraídas não especificam hora (`81`). Produtor de SubForm+0x1d0 e outras rotas permanecem pendentes.
+- Completar apresentação dos formulários8/12 e ligar host aos registros reais (`84`); resolver origem de SYSSAVEI_YUGAMI e estado inicial do item de stamina. GetDelayId compara referências; as37 esperas extraídas não especificam hora (`81`). Produtor de SubForm+0x1d0 e outras rotas permanecem pendentes.
 - Integrar contratos comprovados de combate, coleta e recompensas numa primeira simulação determinística.
 - Resolver dependências de RNG, ordem de atualização e ciclo de entidades necessárias ao loop jogável, sem substituir lacunas por aproximações.
 

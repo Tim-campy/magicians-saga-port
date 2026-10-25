@@ -94,6 +94,7 @@ Prioridade atual. Regras de combate, animação, ECS, recompensas e eventos; mó
 - [86 — Produtor do catálogo de falas e fronteira de tradução](86-talk-catalog-producer.md)
 - [87 — Divisão nativa dos textos e regra exata de trim](87-native-presentation-split.md)
 - [88 — Substituição nativa dos argumentos de apresentação](88-native-presentation-arguments.md)
+- [89 — Preparação nativa dos dados de fala e evento](89-native-presentation-forms.md)
 
 ## 5. Persistência e progressão — M4
 

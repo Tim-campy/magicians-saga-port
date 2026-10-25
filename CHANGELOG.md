@@ -2,6 +2,12 @@
 
 Este índice descreve mudanças do projeto. Achados detalhados ficam no [índice de relatórios](docs/README.md) e no [diário de pesquisa](docs/research-log.md). Nenhuma entrada abaixo representa uma versão jogável.
 
+## 2026-10-25 — Dados de apresentação de gameplay
+
+- Novo módulo presentation_forms prepara falas e mensagens usando os helpers UTF-16 existentes.
+- Campos iniciais e ordem de parsing preservados; tradução, conversão numérica e catálogos exigem integração explícita.
+- Windows/CTest16/16 aprovado, incluindo executor→fala→espera→evento. [Relatório89](docs/89-native-presentation-forms.md); interface visual ainda pendente.
+
 ## 2026-10-25 — Substituição nativa de argumentos
 
 - Implementada substituição UTF-16 dos marcadores, com tradução/configuração explícitas e limpeza condicional do padrão de honorífico.

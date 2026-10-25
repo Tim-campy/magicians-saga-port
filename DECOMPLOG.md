@@ -1,5 +1,7 @@
 # Índice de engenharia reversa
 
+- `docs/89-native-presentation-forms.md`: dados iniciais de fala/evento portados e integrados ao executor em teste; Windows/CTest16/16. UI e catálogo real pendentes.
+
 - `docs/88-native-presentation-arguments.md`: substituição de argumentos portadas; corrigida condição SanSanRemove do relatório85, Windows/CTest15/15.
 
 - `docs/87-native-presentation-split.md`: trim UTF-16<=0x20 e splits de formulário portados; casos de vazio e fronteiras testados, Windows/CTest14/14.
