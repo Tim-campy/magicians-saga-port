@@ -1,5 +1,9 @@
 # Registro de pesquisa
 
+## 2026-10-25 — Avanço da fala e continuação
+
+Ciclo anterior foi progresso: preparação dos formulários registrada/testada. Agora tabela de saltos confirmou tipo0→bloco de fala. Update executa Frame antes da entrada, distingue Flush de avanço e encerra via contador8, não Pop imediato. Continuação interpreta dois campos iniciais como personagem/próximo índice, diferentemente da fábrica inicial. Relatório90 registra VAs, método, confiança e limites. Sem mudança C++; próximo: produtores de nextIndex e temporização de TextLayout.
+
 ## 2026-10-25 — Dados iniciais dos formulários
 
 Compostos os contratos de MakeTalkForm36177 e MakeEvent36179 com substituição/split já verificados. Novo módulo presentation_forms preserva campos iniciais e ordem parse→texto; parser numérico permanece dependência explícita. Teste integrado cobre fala→espera→evento com fixtures. Windows/CTest16/16 passou. Confiança confirmada para os campos estáticos, sem equivalência visual/dinâmica. Relatório89; próximo: catálogos reais, tradução configurada e TextLayout.

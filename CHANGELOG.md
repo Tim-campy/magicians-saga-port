@@ -2,6 +2,12 @@
 
 Este índice descreve mudanças do projeto. Achados detalhados ficam no [índice de relatórios](docs/README.md) e no [diário de pesquisa](docs/research-log.md). Nenhuma entrada abaixo representa uma versão jogável.
 
+## 2026-10-25 — Fluxo de páginas de fala
+
+- Confirmados despacho do tipo0, distinção entre completar texto/avançar página e encerramento por contador.
+- Documentado formato da continuação, sem aplicá-lo à fábrica inicial. [Relatório90](docs/90-talk-page-advance.md).
+- Pesquisa estática; sem mudança de código ou nova execução de testes.
+
 ## 2026-10-25 — Dados de apresentação de gameplay
 
 - Novo módulo presentation_forms prepara falas e mensagens usando os helpers UTF-16 existentes.

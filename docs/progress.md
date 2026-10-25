@@ -24,6 +24,8 @@ Atualização: 2026-10-25. **Prioridade: gameplay. M0/M1 parciais; ainda não h�
 
 ## Ativo
 
+- Avanço da fala mapeado (90): Frame→entrada→Flush ou próxima página; encerramento por contador e continuação pelo catálogo. Resolver produtores de nextIndex, temporização e fluxo separado do tipo4 antes de implementar.
+
 - Produtor de talks_ confirmado (`86`): BootForm usa Select/Join(TAB)/ToArray sobre TalkData. Split/trim/substituição nativos em87/88; faltam tradução configurada, origem do flag e modelo completo de apresentação.
 
 - Completar apresentação dos formulários8/12 e ligar host aos registros reais (`84`); resolver origem de SYSSAVEI_YUGAMI e estado inicial do item de stamina. GetDelayId compara referências; as37 esperas extraídas não especificam hora (`81`). Produtor de SubForm+0x1d0 e outras rotas permanecem pendentes.

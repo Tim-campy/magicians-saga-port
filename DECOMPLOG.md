@@ -1,5 +1,7 @@
 # Índice de engenharia reversa
 
+- `docs/90-talk-page-advance.md`: switch do tipo0, Flush versus avanço, continuação e contador de encerramento confirmados estaticamente; temporização e produtores pendentes.
+
 - `docs/89-native-presentation-forms.md`: dados iniciais de fala/evento portados e integrados ao executor em teste; Windows/CTest16/16. UI e catálogo real pendentes.
 
 - `docs/88-native-presentation-arguments.md`: substituição de argumentos portadas; corrigida condição SanSanRemove do relatório85, Windows/CTest15/15.
