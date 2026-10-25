@@ -2,6 +2,12 @@
 
 Este índice descreve mudanças do projeto. Achados detalhados ficam no [índice de relatórios](docs/README.md) e no [diário de pesquisa](docs/research-log.md). Nenhuma entrada abaixo representa uma versão jogável.
 
+## 2026-10-25 — Fronteira de FontTexture
+
+- Resolvido delegate de medição, caminho de reflexão do editor e chamada Java tipada byte[].
+- Confirmada cópia de useFontTexture_ sem presumir sua ativação nas falas. [Relatório97](docs/97-font-texture-delegate.md).
+- Pesquisa estática; nenhuma nova dependência instalada ou alteração C++.
+
 ## 2026-10-25 — Linhas e métricas de texto
 
 - Mapeadas quebra e medição por trechos, alinhamento e construção dos blocos.

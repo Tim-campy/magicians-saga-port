@@ -1,5 +1,9 @@
 # Registro de pesquisa
 
+## 2026-10-25 — Delegate de FontTexture
+
+Ciclo anterior foi progresso com métricas/linhas. Resolvido delegate15013: editor usa reflexão WinLib; ramo APPLI_TYPE2 usa AndroidJavaObject.CallStatic<byte[]> para getFontTextureSize. Resultado passa por duas leituras float e SizeF. _set/_copy propagam useFontTexture_, mas ativação efetiva ainda não localizada; scan STRB só candidatos. Relatório97; próximo: classe Java e seleção real da fonte no boot. Sem C++ alterado.
+
 ## 2026-10-25 — Linhas e métricas da fonte
 
 Ciclo anterior foi progresso com parâmetros nativos testados. Mapeadas quebra LF, guardas de largura, medição incremental por trecho concatenado e alinhamento dos blocos. Font.StringWidthF chega a GUIStyle.CalcSize ou KairoPlugin.GetFontTextureSize conforme useFontTexture_; wrapper alternativo usa delegate ainda não resolvido. Relatório96. Sem C++ alterado/testes repetidos; próximo: seleção do backend e fonte/escala do boot.

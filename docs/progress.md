@@ -28,6 +28,8 @@ Atualização: 2026-10-25. **Prioridade: gameplay. M0/M1 parciais; ainda não h�
 
 ## Ativo
 
+- Delegate de FontTexture resolvido (97): reflexão de editor ou chamada Java byte[]. Ainda faltam classe Java e origem efetiva de useFontTexture_ nas fontes de gameplay.
+
 - Linhas dependem de medidas de trechos e duas rotas de fonte (96). Resolver useFontTexture_, delegate e fonte/escala do boot antes de integrar layout real.
 
 - Exceções decimal/hex resolvidas por LSDA (94); fallback0 pertence ao parser, não a ParseInt. Limpeza externa com relançamento fechada em95; conversão/cultura e integração continuam pendentes.
