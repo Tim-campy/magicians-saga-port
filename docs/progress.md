@@ -4,6 +4,8 @@ Atualização: 2026-10-25. **Prioridade: gameplay. M0/M1 parciais; ainda não h�
 
 ## Concluído e verificável
 
+- Cenário nativo alimentado por Event.txt implementado (109): executor/fila/dispatcher/progressão ligados ao catálogo local; limites49/50 e callbacks conferidos. Windows20/20 mais cenário local; condições e UI ainda não executadas.
+
 - Estado numérico da fonte portado em text_font (106), com presets explícitos, wrap32, precisão binary32 e efeitos parciais nas falhas. Windows/CTest20/20; ainda sem parser ou backend gráfico integrado.
 
 - Correção inicial da fonte portada no mesmo text_fit (103), com divisões sucessivas e flag após setter; Windows/CTest19/19. Fator fornecido explicitamente, sem pressupor valor de runtime.
@@ -33,6 +35,8 @@ Atualização: 2026-10-25. **Prioridade: gameplay. M0/M1 parciais; ainda não h�
 - Reestruturação validada em Windows: build padrão e viewer, ambos com 10/10 testes CTest aprovados. Isso não valida fidelidade dinâmica nem integração do gameplay.
 
 ## Ativo
+
+- Prioridade de integração: resolver avaliação de terms/seleção dos eventos e o caller, para avançar do cenário injetado109 a disparo por estado.
 
 - Draw reconstrói blocos/rubies quando muda a escala (108); integrar essa invalidação sem confundir cópias de Graphics/GetFont com a fonte padrão de TextLayout. Backend efetivo ainda aberto.
 

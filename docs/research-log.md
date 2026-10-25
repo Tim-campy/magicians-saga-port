@@ -517,3 +517,7 @@ Font..cctor ligado a dois campos RVA: hashes dos 12 bytes coincidem com nomes, a
 ## 2026-10-25 — Cópia de fonte e escala durante Draw
 
 SetFont limpa ajuste antes de copiar/substituir; GetFont copia a fonte de Graphics. Nenhuma ligação direta estabelecida. Draw19206 compara escala, grava e reconstrói blocos/rubies nessa ordem; backend efetivo permanece aberto. Setters e sete FDEs conferidos; candidato de store em KairoBase descartado por ser campo de outra instância. [Relatório108](108-font-backend-access-and-draw-scale.md). Sem C++/execução Android. Próximo: controle nativo da invalidação e TextBlock.Draw.
+
+## 2026-10-25 — Eventos reais no executor nativo
+
+Construído event_trace com catálogo por identidade e estado inicial explícito. Adaptador usa parser76 e arquivos locais; registro10 mantém saldos até49 e aplica continuação na50. Trace esperado conferido; EN/JA têm hash igual, não são oracles independentes. [Relatório109](109-native-event-table-scenario.md). Windows/MSVC20/20, sem warnings encontrados. Próximo: predicados terms e seleção do evento, UI ainda observada apenas por pedidos.

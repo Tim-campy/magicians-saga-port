@@ -87,3 +87,7 @@ build\viewer\asset_viewer.exe data\full\members\31_title\0006_title.png
 ```
 
 Abre o PNG em uma janela redimensionável; Escape fecha. O build opcional baixa fontes SDL3/stb fixadas por versão/hash para `build/`. O leitor padrão continua sem SDL. Capturas headless foram comparadas pixel a pixel; não há cena/menu do jogo implementado. Veja [comandos de captura e limites](docs/19-asset-viewer.md).
+
+## Cenário técnico de gameplay
+
+O executável `event_trace` executa scripts da tabela extraída com estado inicial explícito, ligando eventos, espera e progressão. Comando, resultados e limites no [relatório109](docs/109-native-event-table-scenario.md). Não avalia condições de disparo nem abre formulários; ainda não é um jogo executável.

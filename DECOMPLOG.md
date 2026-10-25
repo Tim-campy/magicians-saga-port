@@ -190,3 +190,7 @@ Relatório107 resolve arrays iniciais por FieldRef/default_data e hashes. Graphi
 ## 2026-10-25 — Fonte e invalidação de layout em Draw
 
 Relatório108 distingue cópia via GetFont/SetFont, configuração de Graphics e escala de TextLayout.Draw. Sete exports/6256 bytes sintaticamente cobertos; nenhum MATCH de runtime alegado. Último build20/20 preservado, sem alterações C++.
+
+## 2026-10-25 — Cenário de tabela no nativo
+
+event_trace compõe módulos existentes com scripts locais e fixtures explícitas. tools/build-desktop.cmd:20/20; execução EN/JA registro10 com checks49/50 e callbacks passou. Logs em build/research/event-trace-build.log e event-scenario-{en,ja}.json. Sem MATCH Android, termos não avaliados e UI não executada. Relatório109.

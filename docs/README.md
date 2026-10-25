@@ -118,6 +118,8 @@ Prioridade atual. Regras de combate, animação, ECS, recompensas e eventos; mó
 
 - [108 — Acesso à fonte e atualização de escala no desenho](108-font-backend-access-and-draw-scale.md)
 
+- [109 — Cenário nativo de eventos com tabela extraída](109-native-event-table-scenario.md)
+
 ## 5. Persistência e progressão — M4
 
 Preparação de dados, serialização e codecs; save completo e integração ainda pendentes. Recompensas e eventos também estão no capítulo4.

@@ -2,6 +2,11 @@
 
 Este índice descreve mudanças do projeto. Achados detalhados ficam no [índice de relatórios](docs/README.md) e no [diário de pesquisa](docs/research-log.md). Nenhuma entrada abaixo representa uma versão jogável.
 
+## 2026-10-25 — Cenário integrado com Event.txt
+
+- Adicionado event_trace e adaptador Python para executar scripts da cópia local com estado inicial explícito. [Relatório109](docs/109-native-event-table-scenario.md).
+- Registro10 validado nos limites49/50 e na ordem de pedidos de formulário; 20/20 CTests passaram. Tabelas EN/JA idênticas, sem oracle Android.
+
 ## 2026-10-25 — Fonte e escala no desenho
 
 - Conferidos acessores de backend, cópias GetFont/SetFont e ordem de invalidação por escala em Draw. [Relatório108](docs/108-font-backend-access-and-draw-scale.md).
