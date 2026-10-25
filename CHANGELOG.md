@@ -2,6 +2,11 @@
 
 Este índice descreve mudanças do projeto. Achados detalhados ficam no [índice de relatórios](docs/README.md) e no [diário de pesquisa](docs/research-log.md). Nenhuma entrada abaixo representa uma versão jogável.
 
+## 2026-10-25 — Fonte e escala no desenho
+
+- Conferidos acessores de backend, cópias GetFont/SetFont e ordem de invalidação por escala em Draw. [Relatório108](docs/108-font-backend-access-and-draw-scale.md).
+- Separado candidato de store pertencente a KairoBase; ausência de chamada direta não tratada como ausência global de produtores. Sem alteração C++.
+
 ## 2026-10-25 — Presets e produtor do backend de fonte
 
 - Recuperados HEIGHT=[12,24,30] e WIDTH=[6,12,15] do inicializador/metadados, com hashes conferidos.

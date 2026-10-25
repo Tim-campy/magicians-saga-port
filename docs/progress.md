@@ -34,6 +34,8 @@ Atualização: 2026-10-25. **Prioridade: gameplay. M0/M1 parciais; ainda não h�
 
 ## Ativo
 
+- Draw reconstrói blocos/rubies quando muda a escala (108); integrar essa invalidação sem confundir cópias de Graphics/GetFont com a fonte padrão de TextLayout. Backend efetivo ainda aberto.
+
 - Presets iniciais e produtor de useFontTexture_ em Graphics.Init confirmados (107). Resolver origem de DefaultUseFontTexture e propagação à fonte de TextLayout; alterações posteriores das tabelas ainda não excluídas.
 
 - Localização temporária mapeada (104); AdjustFontSize e fronteiras locais de exceção fechados em105. Estado numérico implementado em106; resolver tabela de presets e integrar localização/preparação ao parser, sem restauração genérica em falhas anteriores ao contexto.

@@ -186,3 +186,7 @@ Portados recortes síncronos de _setSize17770, UpdateFontScale17806 e aritmétic
 ## 2026-10-25 — Presets e origem de configuração da fonte
 
 Relatório107 resolve arrays iniciais por FieldRef/default_data e hashes. Graphics.Init fornece writer concreto de useFontTexture_; Language contém writes inline de escala. Novos exports Canvas.Init/Graphics.Init com cobertura sintática integral, sem execução Android. Último build20/20 preservado; não significa MATCH de runtime.
+
+## 2026-10-25 — Fonte e invalidação de layout em Draw
+
+Relatório108 distingue cópia via GetFont/SetFont, configuração de Graphics e escala de TextLayout.Draw. Sete exports/6256 bytes sintaticamente cobertos; nenhum MATCH de runtime alegado. Último build20/20 preservado, sem alterações C++.

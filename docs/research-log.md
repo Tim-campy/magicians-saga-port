@@ -513,3 +513,7 @@ Releitura de _setSize confirma consulta obrigatória à tabela antes da guarda d
 ## 2026-10-25 — Presets e Graphics.Init
 
 Font..cctor ligado a dois campos RVA: hashes dos 12 bytes coincidem com nomes, arrays HEIGHT12/24/30 e WIDTH6/12/15. Offsets corrigem nomenclatura size_/usedSize_. Dois FDEs exportados (7816 bytes); Graphics.Init grava DefaultUseFontTexture na fonte principal. Stores inline de escala em Language encontrados. [Relatório107](107-font-presets-and-graphics-initialization.md). Confiança confirmed nos trechos, unknown no backend das falas. Próximo: default e propagação. Sem C++ ou novos testes.
+
+## 2026-10-25 — Cópia de fonte e escala durante Draw
+
+SetFont limpa ajuste antes de copiar/substituir; GetFont copia a fonte de Graphics. Nenhuma ligação direta estabelecida. Draw19206 compara escala, grava e reconstrói blocos/rubies nessa ordem; backend efetivo permanece aberto. Setters e sete FDEs conferidos; candidato de store em KairoBase descartado por ser campo de outra instância. [Relatório108](108-font-backend-access-and-draw-scale.md). Sem C++/execução Android. Próximo: controle nativo da invalidação e TextBlock.Draw.

@@ -116,6 +116,8 @@ Prioridade atual. Regras de combate, animação, ECS, recompensas e eventos; mó
 
 - [107 — Presets de fonte e inicialização de Graphics](107-font-presets-and-graphics-initialization.md)
 
+- [108 — Acesso à fonte e atualização de escala no desenho](108-font-backend-access-and-draw-scale.md)
+
 ## 5. Persistência e progressão — M4
 
 Preparação de dados, serialização e codecs; save completo e integração ainda pendentes. Recompensas e eventos também estão no capítulo4.
