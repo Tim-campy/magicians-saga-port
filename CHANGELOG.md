@@ -2,6 +2,12 @@
 
 Este índice descreve mudanças do projeto. Achados detalhados ficam no [índice de relatórios](docs/README.md) e no [diário de pesquisa](docs/research-log.md). Nenhuma entrada abaixo representa uma versão jogável.
 
+## 2026-10-25 — Presets e produtor do backend de fonte
+
+- Recuperados HEIGHT=[12,24,30] e WIDTH=[6,12,15] do inicializador/metadados, com hashes conferidos.
+- Graphics.Init copia DefaultUseFontTexture para sua fonte; escala também recebe stores inline em Language. [Relatório107](docs/107-font-presets-and-graphics-initialization.md).
+- Corrigida identificação dos campos size_/usedSize_; sem mudança C++ ou alegação de backend efetivo.
+
 ## 2026-10-25 — Estado numérico nativo da fonte
 
 - Novo módulo text_font separa pedido, tamanho efetivo, escala e tamanho ajustado; preserva presets, wrap32 e mutações anteriores a falhas. [Relatório106](docs/106-native-font-numeric-state.md).

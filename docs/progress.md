@@ -34,6 +34,8 @@ Atualização: 2026-10-25. **Prioridade: gameplay. M0/M1 parciais; ainda não h�
 
 ## Ativo
 
+- Presets iniciais e produtor de useFontTexture_ em Graphics.Init confirmados (107). Resolver origem de DefaultUseFontTexture e propagação à fonte de TextLayout; alterações posteriores das tabelas ainda não excluídas.
+
 - Localização temporária mapeada (104); AdjustFontSize e fronteiras locais de exceção fechados em105. Estado numérico implementado em106; resolver tabela de presets e integrar localização/preparação ao parser, sem restauração genérica em falhas anteriores ao contexto.
 
 - Language.Init ligado a IApplication.Start; fábrica de falas cria Font padrão via TextLayout, com autoScale=!Japanese e localização habilitada (101). Seleção de recursos e código de idioma em99/100; faltam ajustes posteriores, escala efetiva e fallback interno Unity.

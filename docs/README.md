@@ -114,6 +114,8 @@ Prioridade atual. Regras de combate, animação, ECS, recompensas e eventos; mó
 
 - [106 — Estado numérico nativo da fonte](106-native-font-numeric-state.md)
 
+- [107 — Presets de fonte e inicialização de Graphics](107-font-presets-and-graphics-initialization.md)
+
 ## 5. Persistência e progressão — M4
 
 Preparação de dados, serialização e codecs; save completo e integração ainda pendentes. Recompensas e eventos também estão no capítulo4.

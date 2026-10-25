@@ -182,3 +182,7 @@ Relatório105: sequência de AdjustFontSize e nove chamadas da preparação cruz
 ## 2026-10-25 — text_font
 
 Portados recortes síncronos de _setSize17770, UpdateFontScale17806 e aritmética posterior à atualização em _adjustFontSize17796. Windows/MSVC14.51, tools/build-desktop.cmd:20/20 CTests, log build/research/text-font-state-build.log. Sem MATCH com APK ou validação Linux; dispatcher e parser não integrados. Relatório106.
+
+## 2026-10-25 — Presets e origem de configuração da fonte
+
+Relatório107 resolve arrays iniciais por FieldRef/default_data e hashes. Graphics.Init fornece writer concreto de useFontTexture_; Language contém writes inline de escala. Novos exports Canvas.Init/Graphics.Init com cobertura sintática integral, sem execução Android. Último build20/20 preservado; não significa MATCH de runtime.
