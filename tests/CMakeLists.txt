@@ -1,4 +1,8 @@
 add_executable(test_stage_rewards test_stage_rewards.cpp)
+add_executable(test_event_flow test_event_flow.cpp)
+target_link_libraries(test_event_flow PRIVATE event_flow)
+project_warnings(test_event_flow)
+add_test(NAME event_flow_contract COMMAND test_event_flow)
 target_link_libraries(test_stage_rewards PRIVATE stage_rewards)
 project_warnings(test_stage_rewards)
 add_test(NAME stage_rewards_contract COMMAND test_stage_rewards)

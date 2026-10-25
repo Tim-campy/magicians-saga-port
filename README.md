@@ -17,7 +17,7 @@ Estado: **M0 em andamento; M1 parcial**. A arquitetura observada envolve Unity/I
 docs/                  Evidências, arquitetura, perguntas e progresso
 tools/                 Inventário e preparação local das ferramentas
 tests/                 Testes de formatos e contratos; comparação runtime pendente
-src/core/gameplay/     Regras isoladas de combate, recompensas e estoque
+src/core/gameplay/     Regras de combate, recompensas e fluxo de eventos
 src/core/animation/    Transições e codecs de animação
 src/core/ecs/          Componentes e filtros
 src/core/persistence/  Codec de payload de scripts
@@ -79,7 +79,7 @@ Cinco texturas vazias são registradas no manifesto. Fontes são preservadas, in
 
 ## Visualizador técnico opcional
 
-O núcleo também contém módulos isolados de [transições de animação](docs/30-animation-transitions.md), [armazenamento de componentes](docs/35-component-slots.md), [predicados de filtros](docs/39-generic-collections.md) e [codecs de payloads](docs/43-animation-payload-codec.md), recuperados por análise estática. O build padrão executa dez testes de contrato; esses módulos ainda não constituem um ECS integrado ou gameplay.
+O núcleo também contém módulos isolados de [transições de animação](docs/30-animation-transitions.md), [armazenamento de componentes](docs/35-component-slots.md), [predicados de filtros](docs/39-generic-collections.md), [codecs de payloads](docs/43-animation-payload-codec.md) e [fluxo de eventos](docs/82-native-event-flow.md), recuperados por análise estática. O build padrão executa onze testes de contrato; esses módulos ainda não constituem um ECS integrado ou gameplay completo.
 
 ```powershell
 tools\build-viewer.cmd

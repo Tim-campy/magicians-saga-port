@@ -87,6 +87,7 @@ Prioridade atual. Regras de combate, animação, ECS, recompensas e eventos; mó
 - [79 — Guardas da atualização de eventos de gameplay](79-gameplay-event-update-guards.md)
 
 - [81 — Origem das continuações e identidade dos scripts](81-delay-origin-and-script-identity.md)
+- [82 — Executor nativo de scripts e continuações por contagem](82-native-event-flow.md)
 
 ## 5. Persistência e progressão — M4
 

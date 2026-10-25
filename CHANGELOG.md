@@ -2,6 +2,13 @@
 
 Este índice descreve mudanças do projeto. Achados detalhados ficam no [índice de relatórios](docs/README.md) e no [diário de pesquisa](docs/research-log.md). Nenhuma entrada abaixo representa uma versão jogável.
 
+## 2026-10-25 — Executor nativo e fila de eventos
+
+- Novo módulo `event_flow`: matriz interrompida por opcode10, contexto capturado e retomada por passagem de contadores.
+- Preservados identidade dos scripts, resultado do último despacho, cópia de argi, remoção antes de executar e limite inicial da fila. Efeitos e guardas externas exigem host explícito.
+- Novo teste de contrato com sequências, mutações e falhas; build Windows padrão passou nos11 testes CTest (`build/research/event-flow-build.log`).
+- [Relatório82](docs/82-native-event-flow.md) documenta evidência e limites; integração completa do gameplay continua pendente.
+
 ## 2026-10-25 — Identidade e origem das continuações de gameplay
 
 - GetDelayId mapeado: associação por identidade de matriz, primeiro índice correspondente, fallback-1.

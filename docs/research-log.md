@@ -1,5 +1,9 @@
 # Registro de pesquisa
 
+## 2026-10-25 — Executor e fila de eventos nativos
+
+O ciclo anterior foi progresso ao fechar identidade e delimitar esperas efetivamente presentes. Implementado event_flow para executor de matriz e passagem de contadores, preservando ordem de remoção/restauração/resolução, limite inicial, identidade e cópia de argi. Host explícito para efeitos não implementados; sem política arbitrária de frames ou associação ao SubForm. Testes de sequência, falhas, wrap32 e mutações de callbacks passaram; Windows/CTest11/11. Evidência, precondições e limites em82. Próximo: integrar identificação/resolução e efeitos unitários antes de ligar à progressão.
+
 ## 2026-10-25 — Identidade do script e origem de DelayEvent
 
 Confirmado delayEvent_ em SubForm+0x1d0 por metadata/offsets. Varreduras limitadas de escrita/endereço e construtores não localizaram seu produtor; ausência não declarada. Caller direto do construtor DelayEvent localizado em ExecuteScript. GetDelayId percorre eventData, pula null e compara identidade da matriz; falha retorna-1 após caminho adicional. Auditoria:37 instruções de espera, valores1/3/5/30/50, nenhuma hora explícita. Evidência estática e limites em81. Próximo: executor e continuação por contagem preservando identidade, sem aguardar esclarecimento de rotas não demonstradas nos dados extraídos. Sem alteração nativa ou repetição de testes.

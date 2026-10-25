@@ -1,5 +1,10 @@
 # Índice de engenharia reversa
 
+- `docs/82-native-event-flow.md`: executor e fila de contadores em C++17, com host explícito e Windows/CTest11/11; integração de efeitos/guardas pendente.
+- `docs/81-delay-origin-and-script-identity.md`: identidade por referência e auditoria das37 esperas; produtor de SubForm.delayEvent_ ainda não localizado.
+- `docs/80-project-restructure.md`: módulos, Git e índice temático; não altera regras do jogo.
+- `docs/79-gameplay-event-update-guards.md`: retornos antecipados antes da fila e limites da associação ao formulário.
+
 - `docs/78-delay-event-resumption.md`: retomada na seleção/fechamento de formulário, ordem da fila e slots distintos.
 
 - `docs/77-event-opcodes-and-delay.md`: opcodes usados, dispatcher e agendamento especial de DelayEvent.

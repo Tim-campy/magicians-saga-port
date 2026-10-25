@@ -4,6 +4,8 @@ Atualização: 2026-10-25. **Prioridade: gameplay. M0/M1 parciais; ainda não h�
 
 ## Concluído e verificável
 
+- Executor de matriz e continuação por contagem implementado em `event_flow`, com host explícito para efeitos/resolução; Windows/CTest11/11 passou (`82`). Ainda sem ligação às telas, dispatcher completo ou loader do jogo.
+
 - APK identificado e preservado; arquitetura Unity/IL2CPP e inventários documentados.
 - Extração local de 30 contêineres/1.963 membros, incluindo 973 PNGs; leitores C++17 Jar/OPT/SEB e visualizador técnico implementados.
 - Núcleo com contratos isolados de animação, componentes/filtros, payloads, dano, recompensas e estoque.
@@ -12,7 +14,7 @@ Atualização: 2026-10-25. **Prioridade: gameplay. M0/M1 parciais; ainda não h�
 
 ## Ativo
 
-- Identidade dos scripts recuperada: GetDelayId compara referências, não conteúdo. As37 esperas presentes na tabela extraída não especificam hora (`81`). Priorizar executor e continuação por contagem; produtor de SubForm+0x1d0 e outras rotas permanecem pendentes, sem impedir esse recorte comprovado.
+- Integrar o host do executor aos registros e efeitos comprovados dos opcodes (`82`). GetDelayId compara referências, não conteúdo; as37 esperas da tabela extraída não especificam hora (`81`). Produtor de SubForm+0x1d0 e outras rotas permanecem pendentes.
 - Integrar contratos comprovados de combate, coleta e recompensas numa primeira simulação determinística.
 - Resolver dependências de RNG, ordem de atualização e ciclo de entidades necessárias ao loop jogável, sem substituir lacunas por aproximações.
 
