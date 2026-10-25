@@ -489,3 +489,7 @@ SetLanguagePack/LoadLanguagePack escrevem langPackCode_; identificados STP inici
 ## 2026-10-25 — Boot e fonte das falas
 
 Pergunta: idioma/fonte estão ligados ao formulário concreto? B/BL imediato para Language.Init localizado em IApplication.Start e conferido; fábrica36177 cria TextLayout sem parâmetros, que cria fontBuf_ e font_ separados. Flags autoScale=!Japanese/localizeFontEnable=true confirmados por stores e offsets. [Relatório101](101-talk-font-construction-and-startup.md). Confiança confirmed para cadeia, unknown para ajustes/métricas posteriores. Próximo: SetText e autoScale. Sem alteração C++ ou execução Android.
+
+## 2026-10-25 — Ajuste nativo de texto
+
+SetText: decremento/reconstrução iterativos, tolerância vertical de1 e consultas repetidas de GetHeight portados em text_fit. Host de métricas explícito, sem fonte aproximada. Evidência e limites no [relatório102](102-native-text-autoscale.md). Windows/MSVC, tools/build-desktop.cmd:19/19; parser real, correção inicial de tamanho e integração ainda pendentes. Nenhuma execução Android.

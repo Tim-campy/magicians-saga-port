@@ -2,6 +2,12 @@
 
 Este índice descreve mudanças do projeto. Achados detalhados ficam no [índice de relatórios](docs/README.md) e no [diário de pesquisa](docs/research-log.md). Nenhuma entrada abaixo representa uma versão jogável.
 
+## 2026-10-25 — Ajuste nativo dos blocos de texto
+
+- Novo módulo text_fit preserva redução da fonte, reconstruções e expansão final da altura em SetText.
+- Contrato de medições explícito, sem backend aproximado. [Relatório102](docs/102-native-text-autoscale.md).
+- Windows/MSVC: 19/19 CTests aprovados; parser/fontes reais ainda não integrados.
+
 ## 2026-10-25 — Fonte concreta da fábrica de falas
 
 - Ligado Language.Init ao callback IApplication.Start e TextLayout à criação de fontes padrão.

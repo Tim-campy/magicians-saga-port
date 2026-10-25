@@ -79,7 +79,7 @@ Cinco texturas vazias são registradas no manifesto. Fontes são preservadas, in
 
 ## Visualizador técnico opcional
 
-O núcleo também contém módulos de [transições de animação](docs/30-animation-transitions.md), [armazenamento de componentes](docs/35-component-slots.md), [predicados de filtros](docs/39-generic-collections.md), [codecs de payloads](docs/43-animation-payload-codec.md), [fluxo de eventos](docs/82-native-event-flow.md) e [efeitos de progressão](docs/83-event-progression-effects.md), recuperados por análise estática. O build padrão executa dezoito testes de contrato, incluindo integração de eventos e progressão; esses módulos ainda não constituem um ECS integrado ou gameplay completo.
+O núcleo também contém módulos de [transições de animação](docs/30-animation-transitions.md), [armazenamento de componentes](docs/35-component-slots.md), [predicados de filtros](docs/39-generic-collections.md), [codecs de payloads](docs/43-animation-payload-codec.md), [fluxo de eventos](docs/82-native-event-flow.md) e [efeitos de progressão](docs/83-event-progression-effects.md), recuperados por análise estática. O build padrão executa dezenove testes de contrato, incluindo integração de eventos e progressão; esses módulos ainda não constituem um ECS integrado ou gameplay completo.
 
 ```powershell
 tools\build-viewer.cmd

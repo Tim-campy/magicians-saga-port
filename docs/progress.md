@@ -4,6 +4,8 @@ Atualização: 2026-10-25. **Prioridade: gameplay. M0/M1 parciais; ainda não h�
 
 ## Concluído e verificável
 
+- Controle de ajuste dos blocos portado em text_fit (102): redução iterativa, tolerância e ordem de consultas preservadas. Windows/CTest19/19. Medições reais e parser completo permanecem pendentes.
+
 - Sequência decimal/hex/RGB portada em text_parameters (95), Windows/CTest18/18. Conversão real por cultura e layout permanecem pendentes.
 
 - Contagem dos blocos e estado temporal de texto portados em text_reveal (92), Windows/CTest17/17. Parser de marcações, layout e desenho permanecem pendentes.

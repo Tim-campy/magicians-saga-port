@@ -162,3 +162,7 @@ Relatório100: stores de Language.langPackCode_, sanitização de @language e no
 ## 2026-10-25 — Construção da fonte das falas
 
 Relatório101: Start18197 chama Language.Init; CreateTalkForm36177 cria TextLayout com fonte padrão. Construtores e campos conferidos, incluindo autoScale/localizeFontEnable e objetos fontBuf_/font_ distintos. Investigação estática, backend após ajustes ainda aberto.
+
+## 2026-10-25 — text_fit
+
+Portado recorte0x1bbd32c..0x1bbd420 de SetText19198: ajuste de blocos com métricas via host. tools/build-desktop.cmd, Windows/MSVC14.51:19/19 CTests (build/research/text-fit-build.log). Sem MATCH contra original: Android indisponível, métricas reais/parser não integrados. Relatório102.
