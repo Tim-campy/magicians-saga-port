@@ -16,6 +16,8 @@ struct AsyncLocalNotifications {
     std::uint32_t version=0;
 };
 struct AsyncExecutionState {
+    AsyncValue synchronization,synchronization_no_flow,logical_call,illogical_call;
+    std::uint32_t flags=0;
     std::shared_ptr<AsyncLocalValues> values;
     std::shared_ptr<AsyncLocalNotifications> notifications;
 };
