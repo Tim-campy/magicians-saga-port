@@ -18,4 +18,8 @@ public:
 // Per-member EXP/level mutation in ShowQuestResult; parameter slot 0 is supplied by the ECS host.
 void grant_quest_experience(MemberExperience&,std::int32_t parameter_zero_value,
                             std::int32_t total_exp,ExperienceProgressionHost&);
+// ShowQuestResult snapshots the loop's starting level before querying parameter 0.
+void grant_quest_experience_from_level(MemberExperience&,std::int32_t parameter_zero_value,
+                                      std::int32_t total_exp,ExperienceProgressionHost&,
+                                      std::int32_t entry_level);
 }

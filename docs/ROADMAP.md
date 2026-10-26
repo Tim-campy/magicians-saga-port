@@ -31,7 +31,7 @@ Current maintainer priority: game-specific decompilation and gameplay integratio
 ## Next tasks
 
 ### Current gameplay focus
-- [ ] Compose the quest-result EXP grant for the ordered member list, preserving per-member snapshots, eligibility and failure ordering; decoded CharaData rates and TableData costs are bound to the tested per-member kernel.
+- [ ] Compose the complete quest-result reward pipeline: decode TreasureData rewards, preserve treasure/item grant order, and connect currency/prisoner/quest-record updates before the implemented ordered member EXP/result cluster.
 
 ### 1. Events and scripts
 - [ ] Bind decoded billing-item/catalog providers and complete notification manager adapters, preserving task execution gates.

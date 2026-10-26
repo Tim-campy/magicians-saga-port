@@ -23,8 +23,13 @@ std::int32_t next_character_experience(std::int32_t level,std::int32_t rate,
 // ecs.StageSystem.ShowQuestResult 0x1164548, mutation block 0x1164d30..0x1164dd0.
 void grant_quest_experience(MemberExperience& member,std::int32_t parameter_zero,
                             std::int32_t total,ExperienceProgressionHost& host){
+    grant_quest_experience_from_level(member,parameter_zero,total,host,member.level);
+}
+void grant_quest_experience_from_level(MemberExperience& member,std::int32_t parameter_zero,
+                                      std::int32_t total,ExperienceProgressionHost& host,
+                                      std::int32_t entry_level){
     if(parameter_zero<1)return;
-    auto index=member.level;
+    auto index=entry_level;
     member.experience=add(member.experience,total);
     while(index<host.table_count()){
         const auto cost=host.next_experience(index);

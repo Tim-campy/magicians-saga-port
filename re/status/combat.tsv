@@ -39,7 +39,7 @@ game:0x06000fa5	documented	docs/subsystems/rewards.md	31-tick interpolation then
 game:0x06000fb9	documented	docs/subsystems/rewards.md	accumulator switch ported in src/core/gameplay/stage_rewards.cpp; effects/SE not ported
 game:0x06000d36	documented	docs/subsystems/rewards.md	frame >= 0
 game:0x06000f9d	traced	docs/subsystems/rewards.md	stage state machine 0..6; several states partial
-game:0x06000fa0	documented	docs/subsystems/rewards.md	treasure totals, item unlocks, money/crystal/prisoners, EXP and level-up; per-member EXP/level mutation ported with signed comparison correction; full method remains documented
+game:0x06000fa0	documented	docs/subsystems/rewards.md	Treasure and total grant order documented; ordered member EXP/result cluster ported with decoded tables; full stage/UI composition pending
 game:0x06000fb1	documented	docs/subsystems/rewards.md	UpdateQuestRecord(code) if code!=0, CleanUp, OnFinish, transition
 game:0x06000fda	documented	docs/subsystems/rewards.md	form switch, World.Send<QuestResult>(31)
 game:0x06000fb7	traced	docs/subsystems/rewards.md	retry flag and code -> state 5/6 or dialog; retry path unread
@@ -65,3 +65,4 @@ game:0x0600020e	documented	docs/subsystems/rewards.md	overwrites the same elemen
 game:0x0600082d	documented	docs/subsystems/rewards.md	static byte SelectForm+0x32 = true
 game:0x06001079	reimplemented	src/core/gameplay/experience_progression.cpp	GetExp reads witchExp_[0], not saved exp_; bounds tested
 game:0x0600120b	reimplemented	src/core/gameplay/experience_progression.cpp	GetExp wraps int32 product then divides by 100 toward zero; tested
+game:0x060007de	reimplemented	src/core/gameplay/quest_experience.cpp	Result fields and wrapping display arithmetic; second human lookup preserved by tested member composition

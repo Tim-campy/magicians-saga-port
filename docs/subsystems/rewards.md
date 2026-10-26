@@ -1,6 +1,6 @@
 # Rewards, quest result and town return
 
-Enemy defeat spawns drop entities (EXP orb, treasure); collecting a drop credits a per-stage accumulator (`StageSystem.drop_`); only the boss-cleared path through `StageSystem.ShowQuestResult` turns that accumulator into money, crystals, prisoners, character EXP/levels and item unlocks. Every exit goes through `StageSystem.ReturnTown`, which records the quest, writes member levels/EXP back to `CharaData`, and sends event 31 (`game.QuestResult`) to `TownSystem.OnReturnFromQuest`. The port implements accumulator mutation, item-stock rules, experience cost accessors and the per-member quest-result experience/level mutation. Full reward presentation and stage integration remain open.
+Enemy defeat spawns drop entities (EXP orb, treasure); collecting a drop credits a per-stage accumulator (`StageSystem.drop_`); only the boss-cleared path through `StageSystem.ShowQuestResult` turns that accumulator into money, crystals, prisoners, character EXP/levels and item unlocks. Every exit goes through `StageSystem.ReturnTown`, which records the quest, writes member levels/EXP back to `CharaData`, and sends event 31 (`game.QuestResult`) to `TownSystem.OnReturnFromQuest`. The port implements accumulator mutation, item-stock rules, experience cost accessors, decoded progression records and the ordered quest-member experience/result cluster. Full reward presentation and stage integration remain open.
 
 ## Overview
 
@@ -27,6 +27,7 @@ ReturnTown(code) ── [code!=0] UpdateQuestRecord(code,0,0) ── CleanUp ─
 | ecs.DropComponent.get_isCollecting | game:0x06000d36 | `frame >= 0` | high |
 | ecs.StageSystem.Update | game:0x06000f9d | Stage state machine 0..6 | medium |
 | ecs.StageSystem.ShowQuestResult | game:0x06000fa0 | Grant totals, EXP/levels, treasures | high |
+| resultCharacter_t..ctor | game:0x060007de | Result display state from entity and entry snapshots | high |
 | ecs.StageSystem.ReturnTown | game:0x06000fb1 | Record, CleanUp, OnFinish, transition | high |
 | <>c__DisplayClass75_0.<ReturnTown>b__0 | game:0x06000fda | Form switch, send event 31 | medium |
 | ecs.StageSystem.OnGameOver | game:0x06000fb7 | Retry flag / code -> state 5/6 or dialog | medium |
@@ -90,7 +91,7 @@ Jump table 0x645c36 relative to 0x1162718 (×4): 0 wait for external condition -
 1. Start from drop_ totals; for each treasure id in order (duplicates processed again): TreasureData exp_ +0x34, money_ +0x38, crystal_ +0x3c added (32-bit) to local totals; then weaponId +0x40, charaId +0x44, clothId +0x48, hatId +0x4c in that order, -1 skipped, others bounds-checked indices. For each object: if `get_isUnfound` -> virtual slot 8 (class+0x1b8 = `BaseData.Find`, no override in the four types) with true; equipment/cloth/hat -> `AddStock(1)`; character -> `Recruit()`; then a pair `[id, 1]` is appended to result-display lists (display only).
 2. `AppData.AddMoney(totalMoney)` 0x1164c04; `AddCrystal(totalCrystal)` 0x1164c20; `QuestData.AddRescuedPrisoner(drop.prisonersNum)` 0x1164c3c; `UpdateQuestRecord(0, totalExp, totalMoney)` 0x1164c50.
 3. EXP: enumerates `MemberSystem.members_` (+0x28; `World.GetSystem<MemberSystem>` resolved). For each member with `ParameterComponent[0].value >= 1`: HumanComponent exp (+0x20) += totalExp (wrap32, full total per member, no split). Level-up loop from the previous level_ (+0x1c): cost = `GetNextExp(idx)`; stop if signed exp < cost (ARM64 SUBS/B.LT uses overflow-aware signed comparison); else exp -= cost, level_ = Clamp(level_+1, 1, 1200), idx++; also bounded by the entry count of `Data.tableData`.
-4. `GetNextExp` (0x116d9e4): idx clamped to [1,1200]; `trunc(wrap32(tableData[idx]+0x24 * CharaData+0x9c) / 100)`. Metadata identifies these fields as TableData.exp_ and CharaData.needExpRate_; loaded values remain to be bound.
+4. `GetNextExp` (0x116d9e4): idx clamped to [1,1200]; `trunc(wrap32(tableData[idx]+0x24 * CharaData+0x9c) / 100)`. Metadata identifies these fields as TableData.exp_ and CharaData.needExpRate_; loaded values are bound by TableExperienceHost (see [data.md](data.md#progression-record-readers)).
 - `AddMoney`/`AddCrystal`: distinct slots of the array at AppData+0x198 -> +0x28; read via helper, sign-extended int32 added with a 64-bit ADD, written back via helper. No clamp in the body; helper limits unknown.
 
 ### Return to town
@@ -119,14 +120,29 @@ The per-member mutation inside ShowQuestResult (`0x1164d30..0x1164dd0`) runs onl
 
 Correction to the earlier description: testing the wrapped difference for negativity is not equivalent to ARM64 SUBS/B.LT. For example, INT_MAX experience and cost -1 accept the level-up and store INT_MIN; INT_MIN experience and cost 1 reject it. Tests preserve both edge cases. No claim is made that these extreme values occur during ordinary play.
 
-Evidence: local `research/exports/game-experience/`, bounded ARM64 exports for the three data methods and complete ShowQuestResult. Relocation-aware field offsets resolve the game metadata backing fields; their stored names are not inferred from the arithmetic. Confidence high for these contracts. Limits: live character/table loading, member enumeration, reward UI and Android comparison remain open.
+Evidence: local `research/exports/game-experience/`, bounded ARM64 exports for the three data methods and complete ShowQuestResult. Relocation-aware field offsets resolve the game metadata backing fields; their stored names are not inferred from the arithmetic. Confidence high for these contracts. Limits: ECS member cursor binding, reward UI and Android comparison remain open; decoded level/character records are now available.
+
+### Ordered member grants and result display records
+
+The block at `0x1164c7c..0x1164e84` captures `MemberSystem.members_`, obtains its enumerator and processes entries in that order. It does not sort, deduplicate or filter the member list before reading components. Each entry performs these steps:
+
+1. Fetch HumanComponent through `Entity.get_human` (`0x112f19c`); snapshot level (`+0x1c`) and experience (`+0x20`). Missing entity/component faults.
+2. Fetch ParameterComponent and slot 0's value. A value below 1 skips the mutation, but does **not** skip the result record. A failure here occurs before granting EXP to this member.
+3. Run the experience kernel with the previously captured starting level as its loop cursor, using the captured human object and its live experience. Character data is resolved from that same human on each cost lookup. The eligibility query is between the snapshot and mutation; the port retains this order even if a supplied host changes state during the query.
+4. Compute wrap32(current captured human level - snapshot level). Construct `resultCharacter_t` (`0x11e4a90`, 84 bytes), passing entity, level difference, snapshot EXP and the full total EXP. The constructor fetches `Entity.get_human` **again**, then stores display level as wrap32(newly fetched human level - level difference), display EXP as the snapshot, and levelUpFrame=-1. The second lookup can fail after the grant.
+5. Append the record and advance the iterator. An exception stops later members; it does not restore previous grants. Presentation is invoked only after enumeration succeeds.
+
+Unboxed result layout: entity `+0x00` (64-bit reference), upLevel `+0x08`, addExp `+0x0c`, dispLevel `+0x10`, dispExp `+0x14`, levelUpFrame `+0x18` (int32 fields; 32-byte padded value). For an ineligible member, addExp still carries the full total, while upLevel is normally zero. It is display input, not proof that EXP was granted. No member reward splitting occurs.
+
+Evidence: bounded ShowQuestResult instructions in local `research/exports/game-experience/`; constructor in `research/exports/quest-member-results/`; IL2CPP metadata names the six result fields. Confidence high. Enumeration lifetime/version checking remains the supplied ECS cursor's responsibility; no .NET collection implementation was reconstructed.
 
 ## Port
 
 - `src/core/gameplay/stage_rewards.hpp/.cpp`: `StageRewards{experience, money, prisoners, treasure_ids}` + `record_collected_drop(rewards, type, value)` (only the OnCollectedDrop accumulator switch, no effects/cleanup); `ItemStock{discovery_state, is_new, stock}` + `add_item_stock(item, amount)` (AddStock with its Find hook).
 - Test `tests/test_stage_rewards.cpp` (CTest `stage_rewards_contract`): mixed sequence, separate totals, prisoner payload ignored, duplicate/negative ids, unknown types, overflow of the three sums; first grant, duplicate cap, state != 1, negative amount, overflow both ways.
 - [experience_progression.cpp](../../src/core/gameplay/experience_progression.cpp) implements the three data accessors and the per-member level-up loop with a live table/cost host. [Tests](../../tests/test_experience_progression.cpp) cover eligibility, full rewards, multiple levels, cap/cursor separation, zero/negative costs, overflow, table gaps and partial mutation on failure.
-- Missing: Defeat, CreateDrop, collection cadence, full ShowQuestResult composition, AddMoney/AddCrystal helpers, loaded experience table/rates, QuestRecord update, ReturnTown/OnFinish, event 31, high score.
+- [quest_experience.cpp](../../src/core/gameplay/quest_experience.cpp) composes ordered member grants and result records through an explicit ECS cursor/component host. [Tests](../../tests/test_quest_experience.cpp) exercise the decoded-table adapter, full rewards, duplicate order, ineligible display records, snapshot-before-eligibility order, repeated component lookup, wrapping display arithmetic and failure boundaries. The caller must bind the cursor and invoke this cluster after money/crystal/prisoner/quest-record grants.
+- Missing: Defeat, CreateDrop, collection cadence, full ShowQuestResult composition, AddMoney/AddCrystal helpers, QuestRecord update, ReturnTown/OnFinish, event 31, high score.
 
 ## Evidence
 
@@ -144,7 +160,7 @@ Evidence: local `research/exports/game-experience/`, bounded ARM64 exports for t
 
 ## Open questions
 
-1. (blocking) Loaded data for EnemyData exp_/treasureDrop_ and TreasureData. CharaData.needExpRate_ and TableData.exp_ are now decoded and bound through TableExperienceHost; ordered quest-member integration remains.
+1. (blocking) Loaded data for EnemyData exp_/treasureDrop_ and TreasureData. CharaData.needExpRate_ and TableData.exp_ are now decoded and bound through TableExperienceHost; the ordered member EXP/result cluster is ported with an explicit ECS host; complete stage binding remains.
 2. (blocking) RNG backend for `Hits1000` drop rolls (see [rng.md](rng.md)).
 3. Contracts of the AddMoney/AddCrystal value helpers (SecureLong-like? limits) and save persistence of money, records and high score.
 4. `TreasureData.get_isBossReward` semantics; `CreateDrop` types 1/2 and its other jump targets; who creates money/prisoner drops.

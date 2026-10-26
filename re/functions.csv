@@ -1968,7 +1968,7 @@ game:0x060007da,game:0x060007da,ui,,292,0x11e22d4
 game:0x060007db,game:0x060007db,ui,,3060,0x11e34bc
 game:0x060007dc,game:0x060007dc,ui,,252,0x11e1e00
 game:0x060007dd,game:0x060007dd,ui,,1912,0x11e40b0
-game:0x060007de,game:0x060007de,unassigned,,84,0x11e4a90
+game:0x060007de,resultCharacter_t..ctor,unassigned,reimplemented,84,0x11e4a90
 game:0x060007df,game:0x060007df,unassigned,,92,0x11e4ae4
 game:0x060007e0,game:0x060007e0,unassigned,,8,0x11e4b40
 game:0x060007e1,game:0x060007e1,unassigned,,108,0x11e4b48
