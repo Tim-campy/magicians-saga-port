@@ -434,10 +434,10 @@ game:0x060001c4,main.AppData.SumAllQuestsChallengeCount,boot,documented,172,0x11
 game:0x060001c5,main.AppData.SumAllQuestsClearCount,boot,documented,172,0x110c330
 game:0x060001c6,main.AppData.SumAllQuestsLoseCount,boot,documented,176,0x110c3dc
 game:0x060001c7,game:0x060001c7,boot,,188,0x110c4c4
-game:0x060001c8,main.AppData.ExecEvent,boot,documented,220,0x110c580
+game:0x060001c8,main.AppData.ExecEvent,boot,reimplemented,220,0x110c580
 game:0x060001c9,main.AppData.ExecEvent,boot,traced,12,0x110c65c
 game:0x060001ca,game:0x060001ca,boot,,8,0x110c8e4
-game:0x060001cb,main.AppData.ExecEvent,boot,documented,636,0x110c668
+game:0x060001cb,main.AppData.ExecEvent,boot,reimplemented,636,0x110c668
 game:0x060001cc,main.AppData.ExecuteScript,boot,reimplemented,436,0x110c8ec
 game:0x060001cd,main.AppData.ExecuteScript,boot,traced,8,0x110d3b0
 game:0x060001ce,main.AppData.ExecuteScript,boot,documented,1892,0x110cc4c

@@ -1,7 +1,7 @@
 id	status	evidence	note
-game:0x060001c8	documented	docs/subsystems/events.md	ExecEvent selection scan; caller SelectForm.Update 0x11ec7c8; not ported
+game:0x060001c8	reimplemented	src/core/gameplay/event_execution.cpp	selection with fresh catalog reads; tests/test_event_execution.cpp
 game:0x060001c9	traced	docs/subsystems/events.md	ExecEvent forwarder to 0x110c668 with null args
-game:0x060001cb	documented	docs/subsystems/events.md	indexed ExecEvent; bounds guard, execNum_ increment; not ported
+game:0x060001cb	reimplemented	src/core/gameplay/event_execution.cpp	indexed execution, default-args/diagnostic host boundary, counter wrap; tests/test_event_execution.cpp
 game:0x060001cc	reimplemented	src/core/gameplay/event_flow.cpp	matrix executor + opcode 10; tests/test_event_flow.cpp
 game:0x060001cd	traced	docs/subsystems/events.md	8-byte forwarder to unit dispatcher
 game:0x060001ce	documented	docs/subsystems/events.md	unit dispatcher; opcodes 1/2/4/8/10/12/15/31 ported in event_dispatch.cpp, others unknown
