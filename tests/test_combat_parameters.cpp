@@ -52,6 +52,13 @@ struct Draws final:RandomSource {
     std::array<std::int32_t,4> values{{0,5,99,2}};std::size_t cursor=0;
     std::int32_t next() override{return values.at(cursor++);}
 };
+struct Growth final:CharacterParameterHost {
+    std::int32_t maximum=100;
+    std::vector<int> calls;
+    ShopParameterUpgrade upgrade{7,3};
+    std::int32_t maximum_level(std::int32_t index) override{calls.push_back(index);return maximum;}
+    const ShopParameterUpgrade& shop_upgrade(std::int32_t id) override{calls.push_back(100+id);return upgrade;}
+};
 int main(){
     EquipmentParameters g{50,rows(0,198)};
     check(equipment_parameter(g,0)==98,"level 50 uses progress 49 of 99");
@@ -84,4 +91,27 @@ int main(){
     check(damage_parameter_rate({536870912,-1,0,0})==0,"SDIV INT_MIN divided by minus one");
     Integration h;Draws r;check(!apply_combat_damage(100,0,r,h),"equipment-bound damage survives");
     check(h.result.amount==58&&h.hp.value==142&&r.cursor==4,"defence 36 bonus 30 rate 25 compose to damage 58");
+    Growth growth;CharacterParameters character{rows(10,1000),100,2};
+    check(member_base_parameter(character,0,growth)==1021,"main character gets shop contribution after growth");
+    check(growth.calls==std::vector<int>{0,100},"growth precedes shop lookup");
+    check(member_base_parameter_at_level(character,0,1,growth)==31,"explicit level overrides stored level before shop bonus");
+    character.level=1200;character.flags=0;growth.calls.clear();
+    check(member_base_parameter(character,0,growth)==1086,"parameter zero extends by 86 at level 1200");
+    check(growth.calls==std::vector<int>{0},"nonmain does not read shop");
+    check(character_parameter(character,1,650,growth)==1043,"parameter one extension halfway");
+    check(character_parameter(character,2,1200,growth)==1000,"other parameters have no extension");
+    check(character_parameter(character,0,1,growth)==10&&character_parameter(character,0,100,growth)==1000,"growth endpoints");
+    character.flags=2;growth.calls.clear();
+    check(member_base_parameter(character,7,growth)==1000&&growth.calls==std::vector<int>{7},"unmapped parameter skips shop");
+    for(int key=0;key<13;++key)check(shop_id_for_parameter(key)==(key<=4?key:key>=10?key-5:-1),"shop key mapping");
+    check(shop_id_for_parameter(-1)==-1&&shop_id_for_parameter(13)==-1,"shop mapping rejects other indices");
+    check(shop_parameter_addition({std::numeric_limits<std::int32_t>::max(),2})==-2,"shop product wraps");
+    check(shop_parameter_addition({7,-3})==-21,"negative purchases preserved");
+    character.values->at(0)=std::make_shared<EventIntegers>(EventIntegers{100,999});
+    check(character_parameter(character,0,1200,growth)==1084,"extension truncates binary64 85.914 before easing");
+    character.values->at(0)=std::make_shared<EventIntegers>(EventIntegers{100,-1000});
+    check(character_parameter(character,0,1200,growth)==-1086,"descending negative extension");
+    character.values->at(0)=nullptr;growth.calls.clear();failed=false;
+    try{member_base_parameter(character,0,growth);}catch(const std::invalid_argument&){failed=true;}
+    check(failed&&growth.calls.empty(),"invalid character row faults before maximum and shop providers");
 }

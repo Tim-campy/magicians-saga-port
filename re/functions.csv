@@ -3690,8 +3690,8 @@ game:0x06000f3b,game:0x06000f3b,ecs,,160,0x115dbcc
 game:0x06000f3c,ecs.MemberSystem.GetTotalParamValue,ecs,reimplemented,248,0x1156424
 game:0x06000f3d,game:0x06000f3d,ecs,,180,0x115dcb4
 game:0x06000f3e,game:0x06000f3e,ecs,,72,0x115dc6c
-game:0x06000f3f,game:0x06000f3f,ecs,,24,0x115dd68
-game:0x06000f40,ecs.MemberSystem.GetParamValue,ecs,traced,260,0x115dd80
+game:0x06000f3f,ecs.MemberSystem.GetParamValue,ecs,reimplemented,24,0x115dd68
+game:0x06000f40,ecs.MemberSystem.GetParamValue,ecs,reimplemented,260,0x115dd80
 game:0x06000f41,ecs.MemberSystem.GetAttributeValue,ecs,reimplemented,24,0x1157410
 game:0x06000f42,game:0x06000f42,ecs,,24,0x1158ed4
 game:0x06000f43,game:0x06000f43,ecs,,104,0x115de84
@@ -4000,7 +4000,7 @@ game:0x06001071,game:0x06001071,data,,8,0x116d770
 game:0x06001072,game:0x06001072,data,,8,0x116d778
 game:0x06001073,game:0x06001073,data,,136,0x116d780
 game:0x06001074,game:0x06001074,data,,8,0x116d808
-game:0x06001075,data.CharaData.GetParamValue,data,traced,328,0x116d810
+game:0x06001075,data.CharaData.GetParamValue,data,reimplemented,328,0x116d810
 game:0x06001076,game:0x06001076,data,,12,0x116d958
 game:0x06001077,game:0x06001077,data,,128,0x116d964
 game:0x06001078,data.CharaData.GetNextExp,data,reimplemented,232,0x116d9e4
@@ -4294,10 +4294,10 @@ game:0x0600119c,game:0x0600119c,data,,232,0x1171f2c
 game:0x0600119d,data.MagicShopData.NewGame,data,traced,128,0x1172014
 game:0x0600119e,game:0x0600119e,data,,544,0x1172094
 game:0x0600119f,game:0x0600119f,data,,44,0x1172538
-game:0x060011a0,game:0x060011a0,data,,80,0x1172564
+game:0x060011a0,data.MagicShopData.GetDataIdForParamKey,data,reimplemented,80,0x1172564
 game:0x060011a1,game:0x060011a1,data,,16,0x11725b4
 game:0x060011a2,game:0x060011a2,data,,644,0x11722b4
-game:0x060011a3,game:0x060011a3,data,,16,0x11725c4
+game:0x060011a3,data.MagicShopData.GetAddValue,data,reimplemented,16,0x11725c4
 game:0x060011a4,game:0x060011a4,data,,120,0x11725d4
 game:0x060011a5,game:0x060011a5,data,,120,0x117264c
 game:0x060011a6,game:0x060011a6,data,,108,0x11726c4

@@ -73,5 +73,8 @@ game:0x060010f0	reimplemented	src/core/gameplay/combat_parameters.cpp	Equipment 
 game:0x060010ac	reimplemented	src/core/gameplay/combat_parameters.cpp	Cloth row endpoints; level minus one; duration 99; shared tested kernel
 game:0x06001179	reimplemented	src/core/gameplay/combat_parameters.cpp	Hat row endpoints; level minus one; duration 99; shared tested kernel
 game:0x060010c8	documented	docs/subsystems/combat.md	Enemy endpoints and parameter maximum; easing amplitude -50; not linear
-game:0x06001075	traced	docs/subsystems/combat.md	Character growth plus extra term for parameters 0/1 beyond maximum; constant unresolved
-game:0x06000f40	traced	docs/subsystems/combat.md	Character growth then main-character MagicShopData upgrade contribution
+game:0x06001075	reimplemented	src/core/gameplay/combat_parameters.cpp	Character growth; extra 0.086 endpoint for indices 0/1 above maximum; explicit maximum provider
+game:0x06000f40	reimplemented	src/core/gameplay/combat_parameters.cpp	Explicit-level character growth then gated main-character shop bonus; provider order tested
+game:0x06000f3f	reimplemented	src/core/gameplay/combat_parameters.cpp	Stored-level character growth and shop bonus; explicit-level override tested
+game:0x060011a0	reimplemented	src/core/gameplay/combat_parameters.cpp	Parameter keys 0..4 and 10..12 map to shop ids 0..7; other keys -1
+game:0x060011a3	reimplemented	src/core/gameplay/combat_parameters.cpp	Wrapping upValue times buyCount; negative counts preserved

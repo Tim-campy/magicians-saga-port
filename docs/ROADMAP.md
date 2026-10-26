@@ -31,7 +31,7 @@ Current maintainer priority: game-specific decompilation and gameplay integratio
 ## Next tasks
 
 ### Current gameplay focus
-- [ ] Bind base character growth/shop upgrades and enemy parameter curves to the damage host, then event-15 consumers. Equipment interpolation, total ordering, elemental bonuses and parameter rate now compose with damage in tests; concrete ECS/data integration remains open.
+- [ ] Recover per-parameter maximum levels and bind decoded character/shop records; close the enemy growth curve (-50 amplitude), then event-15 consumers. Character growth/shop arithmetic and equipment totals are ported; live ECS/data integration remains open.
 
 ### 1. Events and scripts
 - [ ] Bind decoded billing-item/catalog providers and complete notification manager adapters, preserving task execution gates.
