@@ -1,17 +1,45 @@
-# User-supplied proprietary content and local research outputs
+# Game data supplied by the maintainer: never commit
 *.apk
 *.apks
 *.xapk
 *.obb
-/data/
-/research/local/
-/.tools/
+/game/
+/extracted/
+global-metadata.dat
+libil2cpp.so
+*.sav
+*.save
+
+# Local research evidence (exports, decompiler output, assembly, JSON dumps)
+/research/
+
+# Ghidra projects (large, binary, contain game code). Anchored so tools/ghidra/ stays tracked.
+/ghidra/
+*.gpr
+*.rep/
+*.lock
+*.lock~
+
+# Third-party tools installed locally (apktool, JADX, ADB, Python libraries)
+/external/
+
+# Generated output
 /build/
+/out/
 __pycache__/
 *.pyc
 *.log
+*.exe
+*.dll
+*.so
+*.obj
+*.pdb
+*.class
+/CMakeUserPresets.json
+/.vs/
+.venv/
 
-# Local credentials, saves and compiled artifacts
+# Credentials
 .env
 .env.*
 !.env.example
@@ -19,14 +47,6 @@ __pycache__/
 *.key
 *.jks
 *.keystore
-*.sav
-*.save
-*.exe
-*.dll
-*.so
-*.obj
-*.pdb
-*.class
-/out/
-/CMakeUserPresets.json
-/.vs/
+
+# Agent worktrees
+.claude/worktrees/

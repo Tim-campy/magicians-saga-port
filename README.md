@@ -1,93 +1,67 @@
-# Magician's Saga — pesquisa para port nativo
+# About
 
-Objetivo: port fiel para Windows/Linux, com núcleo independente de plataforma e avaliação posterior de Nintendo 3DS. As regras estão em [AGENTS.md](AGENTS.md).
+Reverse engineering of *Magician's Saga* (Kairosoft, Android, version 1.4.0) towards a **native, behaviourally faithful port for Windows and Linux** in C++17, with a portable core meant for a later Nintendo 3DS version.
 
-Estado: **M0 em andamento; M1 parcial**. A arquitetura observada envolve Unity/IL2CPP e integração Android. Extração de assets, leitores C++17/CMake e visualizador técnico SDL3 foram validados em Windows. Ainda não existe jogo reconstruído; Linux, comportamento runtime e viabilidade 3DS continuam pendentes.
+The game is a Unity 6 / IL2CPP build: its logic is ARM64 code in `libil2cpp.so`, from the assemblies `Assembly-CSharp.dll` and Kairosoft's in-house engine `KairoLibrary.dll`. Subsystems are documented precisely from that code and then reimplemented as tested C++ modules.
 
-## Navegação
+[Roadmap](docs/ROADMAP.md), [subsystems](docs/subsystems), [file formats](docs/formats), [progress rules](docs/PROGRESS.md), [setup](docs/SETUP.md), [working method](AGENTS.md)
 
-- [Índice dos relatórios por capítulos](docs/README.md)
-- [Plano M0–M6 e mapa do código](docs/plan.md)
-- [Mudanças realizadas](CHANGELOG.md)
-- [Progresso atual](docs/progress.md) e [fluxo Git](CONTRIBUTING.md)
+## Status
 
-## Estrutura
+[![functions](https://tim-campy.github.io/magicians-saga-port/badge-functions.svg)](https://tim-campy.github.io/magicians-saga-port/progress.html) [![formats](https://tim-campy.github.io/magicians-saga-port/badge-formats.svg)](https://tim-campy.github.io/magicians-saga-port/progress.html)
 
-```text
-docs/                  Evidências, arquitetura, perguntas e progresso
-tools/                 Inventário e preparação local das ferramentas
-tests/                 Testes de formatos e contratos; comparação runtime pendente
-src/core/gameplay/     Regras de combate, recompensas e fluxo de eventos
-src/core/animation/    Transições e codecs de animação
-src/core/ecs/          Componentes e filtros
-src/core/persistence/  Codec de payload de scripts
-cmake/                 Configuração comum dos módulos C++17
-src/assets/            Leitores portáteis de contêineres, OPT e SEB
-src/platform/desktop/  Ferramentas nativas de inventário e visualização
-src/platform/n3ds/     Reservado para estudo de viabilidade
-research/local/        Evidências locais, ignoradas pelo Git
-data/                  Assets extraídos da cópia local, ignorados pelo Git
-.tools/                Ferramentas locais, ignoradas pelo Git
-```
+[![progress map](https://tim-campy.github.io/magicians-saga-port/progress.svg)](https://tim-campy.github.io/magicians-saga-port/progress.html)
 
-## Reproduzir o inventário
+<sub>Percentages count the 10,959 methods with native code in the two game assemblies (`re/functions.csv`) and the formats in `re/formats.csv`, at the `documented` stage. Unity, mscorlib and other third-party assemblies are not counted.</sub>
 
-Python 3.12 foi usado; não há dependências Python externas.
+Milestone **M3** (first playable loop) is current. No playable build exists yet: the C++ modules reproduce documented contracts in isolation and are tested on Windows and, in CI, on Linux.
 
-```powershell
-python tools/inspect_apk.py "Magician's+Saga_1.4.0_APKPure.apk" --output research/local/apk-inventory.json
-```
+| Work package | State |
+| --- | --- |
+| 1. Events and scripts | [Event pipeline](docs/subsystems/events.md) from Event.txt to effects: executor, delayed-event queue, dispatcher of the 8 effect opcodes in use and the progression effects (money, crystals, areas, missions, stamina) are ported; condition predicates and the id-indexed loader are open. |
+| 2. Game data and saves | [Data tables](docs/subsystems/data.md) (UTF-8, id-indexed with gaps) and the [save](docs/subsystems/save.md) structure are mapped; the [script payload](docs/formats/script-payload.md) codec is ported. The save envelope (`SecureProperty`, CRC64) is not decoded yet. |
+| 3. Combat, RNG and rewards | [Combat](docs/subsystems/combat.md) entry, hit test, damage pipeline and affinity, [rewards](docs/subsystems/rewards.md) from defeat to the quest result and town return; parameter subtraction, affinity and stock grants are ported. The [RNG](docs/subsystems/rng.md) generator is open. |
+| 4. ECS world and animation | [ECS](docs/subsystems/ecs.md) entities, component slots, filters, enumeration and lifecycle; [animation](docs/subsystems/animation.md) transitions and payload codecs are ported. |
+| 5. Text and fonts | [Text](docs/subsystems/text.md) preparation, split/trim, argument substitution, markup parameters, reveal timing and fitting are ported; [fonts](docs/subsystems/fonts.md) state is ported, the rendering backend is open. |
+| 6. Boot, forms and frame loop | [Boot](docs/subsystems/boot.md) path, frame and pause gates, [form](docs/subsystems/ui.md) events are mapped statically. |
+| 7. Assets | [Asset pipeline](docs/subsystems/assets.md): the [Jar containers](docs/formats/jar-container.md), [SEB](docs/formats/seb.md) and [OPT](docs/formats/opt.md) are rebuilt byte-exactly; Unity textures, audio and fonts are extracted; C++ readers and a technical viewer exist. |
+| 8. Platform | [Java/native boundary](docs/subsystems/platform.md) and Android services the PC host must replace. |
 
-O script lê o APK sem executá-lo ou extrair seus assets. O relatório não valida a assinatura, não resolve referências Android de recursos e não demonstra funcionamento offline.
+## Tools
 
-Veja [inventário](docs/01-apk-inventory.md), [arquitetura](docs/02-architecture.md), [pendências](docs/03-open-questions.md), [ferramentas](docs/tooling.md) e [progresso](docs/progress.md).
+Python 3 (standard library unless noted) and C++17 with CMake. Each tool has tests on synthetic data.
 
-Investigações detalhadas: [boot Android](docs/04-android-startup.md), [catálogo IL2CPP](docs/05-il2cpp-metadata.md) e [bootstrap nativo ARM64](docs/06-native-bootstrap.md).
+| Tool | Purpose |
+| --- | --- |
+| [`tools/inspect_apk.py`](tools/inspect_apk.py) | Read-only APK inventory. |
+| [`tools/inspect_il2cpp_metadata.py`](tools/inspect_il2cpp_metadata.py) | Read the IL2CPP v31 metadata catalogue. |
+| [`tools/map_il2cpp_methods.py`](tools/map_il2cpp_methods.py) | Map metadata method tokens to ARM64 code addresses. |
+| [`tools/extract_assets.py`](tools/extract_assets.py) | Extract and verify the TextAsset containers and, with `--unity-media`, textures, audio and fonts. |
+| [`tools/inspect_seb.py`](tools/inspect_seb.py), [`tools/inspect_opt.py`](tools/inspect_opt.py) | Read and rebuild SEB sprites/animations and OPT texture grids. |
+| [`tools/inspect_unity_assets.py`](tools/inspect_unity_assets.py) | Catalogue the Unity serialized resources. |
+| [`tools/inspect_event_table.py`](tools/inspect_event_table.py), [`tools/run_event_scenario.py`](tools/run_event_scenario.py) | Read Event.txt; run the native event kernels on it. |
+| [`tools/inspect_presentation_table.py`](tools/inspect_presentation_table.py) | Read the talk and event-message tables. |
+| [`tools/inspect_arm64_calls.py`](tools/inspect_arm64_calls.py), [`tools/inspect_unwind_ranges.py`](tools/inspect_unwind_ranges.py), [`tools/inspect_exception_callsites.py`](tools/inspect_exception_callsites.py) | ARM64 call inventory, FDE ranges and LSDA call sites of `libil2cpp.so`. |
+| [`tools/registry.py`](tools/registry.py) | Build, update, check and search the method registry. |
+| [`tools/progress.py`](tools/progress.py) | Progress numbers, treemap, badges and history from the registries. |
+| [`tools/ghidra/`](tools/ghidra) | Ghidra headless scripts (bounded instruction export, JNI table, bootstrap). |
+| `src/platform/desktop/` | `asset_inspect`, `event_trace` and the optional SDL3 `asset_viewer`. |
 
-Não incluir APK, assets, saves pessoais nem código proprietário decompilado no controle de versão. Ainda não há build do jogo; há um leitor nativo de assets para validar a futura camada portátil.
-
-Também há um módulo C++17 de transições de animação por entidade, reconstruído do assembly e testado no Windows. Ele preserva troca, interrupção e restauração de animação, mas ainda não está integrado a um loop ou cena. Evidência, contrato e limites em [30-animation-transitions.md](docs/30-animation-transitions.md); o build abaixo executa também seus testes.
-
-## Leitor nativo de assets
-
-```powershell
-tools\build-desktop.cmd
-build\desktop\asset_inspect.exe data\extracted\textassets\00_hat.bin
-```
-
-O build usa a toolchain Visual Studio instalada, configura CMake e executa CTest. O executável emite o índice JSON de um contêiner já decodificado. Veja [contrato, teste diferencial e comandos Linux ainda não executados](docs/15-native-assets.md).
-
-## Extrair os recursos da sua cópia
-
-Para o APK 1.4.0 de hash registrado no inventário:
+## Building
 
 ```powershell
-uv run tools/extract_assets.py "Magician's+Saga_1.4.0_APKPure.apk" --out data/extracted
-uv run tools/extract_assets.py --check --out data/extracted
+tools\build-desktop.cmd            # Windows (Visual Studio C++ tools): build and run CTest
+python -I tools/run_tests.py       # Python tests
 ```
 
-Extrai 38 TextAssets e 1.963 arquivos internos, incluindo 973 PNGs. O script obtém a chave do próprio APK e valida reconstrução exata dos 30 contêineres. Nomes originais e hashes ficam em `data/extracted/manifest.json`; saídas não devem ser distribuídas. Imagens, tabelas e animações extraídas ainda não constituem um jogo executável. Objetos Unity de áudio/fontes/texturas não estão incluídos nesta etapa. Veja [formato e validação](docs/12-asset-extraction.md).
+Linux: `cmake -S . -B build/linux -DBUILD_TESTING=ON && cmake --build build/linux && ctest --test-dir build/linux`. Extraction and the local layout are described in [SETUP](docs/SETUP.md).
 
-Para incluir também os objetos Unity (68 texturas em PNG com dados codificados originais, 23 pares FSB/WAV e cinco fontes), use um destino separado:
+## Disclaimer
 
-```powershell
-uv run tools/extract_assets.py "Magician's+Saga_1.4.0_APKPure.apk" --out data/full --unity-media
-uv run tools/extract_assets.py --check --out data/full
-```
+This project is intended for research, preservation and interoperability. It does not include, distribute or require copyrighted game data: no APK, native libraries, metadata, extracted assets, text dumps, saves or decompiled code. Findings are recorded as knowledge (layouts, offsets, algorithms, names and small illustrative values). Users must obtain their own copy of the game and use it in accordance with applicable laws.
 
-Cinco texturas vazias são registradas no manifesto. Fontes são preservadas, inclusive inconsistências do original. Esta conversão foi validada em Windows; não equivale à reprodução fiel de áudio/fontes no port. Veja [mídia Unity](docs/14-unity-media.md).
+This is an independent project and is not affiliated with, authorized or endorsed by Kairosoft Co., Ltd. "Magician's Saga" and "Kairosoft" are trademarks of their respective owners.
 
-## Visualizador técnico opcional
+## License
 
-O núcleo também contém módulos de [transições de animação](docs/30-animation-transitions.md), [armazenamento de componentes](docs/35-component-slots.md), [predicados de filtros](docs/39-generic-collections.md), [codecs de payloads](docs/43-animation-payload-codec.md), [fluxo de eventos](docs/82-native-event-flow.md) e [efeitos de progressão](docs/83-event-progression-effects.md), recuperados por análise estática. O build padrão executa vinte testes de contrato, incluindo integração de eventos e progressão; esses módulos ainda não constituem um ECS integrado ou gameplay completo.
-
-```powershell
-tools\build-viewer.cmd
-build\viewer\asset_viewer.exe data\full\members\31_title\0006_title.png
-```
-
-Abre o PNG em uma janela redimensionável; Escape fecha. O build opcional baixa fontes SDL3/stb fixadas por versão/hash para `build/`. O leitor padrão continua sem SDL. Capturas headless foram comparadas pixel a pixel; não há cena/menu do jogo implementado. Veja [comandos de captura e limites](docs/19-asset-viewer.md).
-
-## Cenário técnico de gameplay
-
-O executável `event_trace` executa scripts da tabela extraída com estado inicial explícito, ligando eventos, espera e progressão. Comando, resultados e limites no [relatório109](docs/109-native-event-table-scenario.md). Não avalia condições de disparo nem abre formulários; ainda não é um jogo executável.
+GNU General Public License version 2 only. `tools/progress.py` adapts parts of [AnyPS5](https://github.com/boykopovar/AnyPS5)'s progress tool, which is GPL-2.0.

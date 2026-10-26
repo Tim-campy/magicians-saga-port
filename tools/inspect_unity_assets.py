@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Catalogue Unity serialized resources inside a user APK; no media export.
 
-Uses UnityPy 1.25.4, installed only under .tools/unitypy-libs, for object tables
+Uses UnityPy 1.25.4, installed only under external/unitypy-libs, for object tables
 and selected metadata fields. Reads split files in numeric order in memory.
 No asset writes, decoder calls, runtime execution, or network fetching.
 """
@@ -18,7 +18,7 @@ from urllib.parse import urlsplit
 import zipfile
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / '.tools/unitypy-libs'))
+sys.path.insert(0, str(ROOT / 'external/unitypy-libs'))
 import UnityPy
 from UnityPy.files import SerializedFile
 from UnityPy.helpers import TypeTreeHelper

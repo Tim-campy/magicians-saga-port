@@ -13,7 +13,7 @@ length-prefixed names, offset array, size array and byte flags. Data contains
 length-prefixed members. All 1963 observed flags are zero (uncompressed).
 Eight other TextAssets are preserved byte-for-byte. No proprietary key is
 embedded in this script: it is read from the hash-verified user's metadata.
-Outputs and manifest stay local under data/; --check verifies all payloads and
+Outputs and manifest stay local under extracted/; --check verifies all payloads and
 members. Names are retained in the manifest, output names have numeric prefixes
 to avoid Windows case collisions. No game content is embedded in the script.
 """
@@ -179,7 +179,7 @@ def extract(apk, root, include_unity=False):
     if digest(apk.read_bytes()) != APK_SHA:
         raise ValueError('Expected original Magician\'s Saga 1.4.0 APK, SHA-256 ' + APK_SHA)
     # Optional existing isolated installation; uv provides the same pinned dependency.
-    local = Path(__file__).resolve().parents[1] / '.tools/unitypy-libs'
+    local = Path(__file__).resolve().parents[1] / 'external/unitypy-libs'
     if local.is_dir():
         sys.path.insert(0, str(local))
     import UnityPy
@@ -293,7 +293,7 @@ def extract(apk, root, include_unity=False):
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('apk', type=Path, nargs='?')
-    p.add_argument('--out', type=Path, default=Path('data'))
+    p.add_argument('--out', type=Path, default=Path('extracted'))
     p.add_argument('--check', action='store_true')
     p.add_argument('--unity-media', action='store_true', help='Also export Unity textures, fonts and FSB/WAV audio')
     args = p.parse_args()

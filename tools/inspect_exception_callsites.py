@@ -74,7 +74,7 @@ def main():
     args = parser.parse_args()
     if args.elf.resolve() == args.output.resolve():
         parser.error('Output cannot overwrite ELF')
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / '.tools/python-libs'))
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'external/python-libs'))
     from elftools.elf.elffile import ELFFile
     from elftools.dwarf.callframe import FDE
     with args.elf.open('rb') as stream:

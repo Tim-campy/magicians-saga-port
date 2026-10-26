@@ -1,0 +1,24 @@
+id	status	evidence	note
+game:0x060001c8	documented	docs/subsystems/events.md	ExecEvent selection scan; caller SelectForm.Update 0x11ec7c8; not ported
+game:0x060001c9	traced	docs/subsystems/events.md	ExecEvent forwarder to 0x110c668 with null args
+game:0x060001cb	documented	docs/subsystems/events.md	indexed ExecEvent; bounds guard, execNum_ increment; not ported
+game:0x060001cc	reimplemented	src/core/gameplay/event_flow.cpp	matrix executor + opcode 10; tests/test_event_flow.cpp
+game:0x060001cd	traced	docs/subsystems/events.md	8-byte forwarder to unit dispatcher
+game:0x060001ce	documented	docs/subsystems/events.md	unit dispatcher; opcodes 1/2/4/8/10/12/15/31 ported in event_dispatch.cpp, others unknown
+game:0x060001d1	documented	docs/subsystems/events.md	AppData.Push -> FormManager current form Push
+game:0x060001d2	documented	docs/subsystems/events.md	GetDelayScript; >999 null, id%1000; host-side only
+game:0x060001d3	documented	docs/subsystems/events.md	GetDelayId by reference identity; -1 fallback
+game:0x060001c0	documented	docs/subsystems/events.md	CheckTerm per-record guard
+game:0x060001c1	documented	docs/subsystems/events.md	CheckTerm matrix AND; empty -> false
+game:0x060001c3	traced	docs/subsystems/events.md	unit condition evaluator; jump table located, predicates unknown
+game:0x060001c2	documented	docs/subsystems/events.md	Compare signed64, codes 0-5
+game:0x060001a1	reimplemented	src/core/gameplay/event_progression.cpp	decoded-value arithmetic only (no SecureLong)
+game:0x060001a3	reimplemented	src/core/gameplay/event_progression.cpp	decoded-value arithmetic, floor 0
+game:0x060001a7	reimplemented	src/core/gameplay/event_progression.cpp	decoded-value arithmetic only
+game:0x060001a8	reimplemented	src/core/gameplay/event_progression.cpp	SYSSAVEI_YUGAMI mode supplied by caller
+game:0x06000224	documented	docs/subsystems/events.md	10/20 decision ported as stamina_limit_from_item_state; billing lookup not ported
+game:0x060011f0	reimplemented	src/core/gameplay/event_progression.cpp	quest discovery only state 0 -> 1
+game:0x0600112d	documented	docs/formats/event-table.md	record layout; research reader tools/inspect_event_table.py, no C++ loader
+game:0x06001123	documented	docs/subsystems/events.md	execNum_ > 0
+game:0x0600062e	reimplemented	src/core/gameplay/event_flow.cpp	DelayEvent capture inside execute_event_script; argi cloned
+game:0x0600053a	traced	docs/subsystems/events.md	early-return guard in SelectForm.Update; +0x5c source unknown

@@ -8,3 +8,7 @@
 CMakeLists.txt text eol=lf
 *.cmd text eol=crlf
 *.ps1 text eol=crlf
+*.csv text eol=lf
+*.tsv text eol=lf
+*.yml text eol=lf
+LICENSE text eol=lf

@@ -1,0 +1,65 @@
+id	status	evidence	note
+game:0x06000a99	traced	docs/subsystems/rng.md	cctor: 256-element array, JRandom seeded with CurrentTimeMillis
+game:0x06000a9a	documented	docs/subsystems/rng.md	Rand(): forwards to JRandom.NextInt
+game:0x06000a9b	documented	docs/subsystems/rng.md	Rand(bound): 32-bit negate if negative, signed remainder
+game:0x06000a9c	documented	docs/subsystems/rng.md	Rand(min,max): min + NextInt % wrap32(max-min+1), no negate
+game:0x06000a9d	documented	docs/subsystems/rng.md	Hits: Rand(100) < p, always draws
+game:0x06000a9e	documented	docs/subsystems/rng.md	Hits1000: Rand(1000) < p, always draws
+game:0x06000a9f	traced	docs/subsystems/rng.md	Choose: calls Hits; body not read
+game:0x06000aa1	traced	docs/subsystems/rng.md	Lot: calls Rand; body not read
+kairo:0x060000b8	traced	docs/subsystems/rng.md	unseeded ctor: CurrentTimeMillis then seeded ctor
+kairo:0x060000b9	documented	docs/subsystems/rng.md	seeded ctor builds System.Random/Random2018/Xorshift128 at +0x10/+0x18/+0x20; fix_ zero-seed flag
+kairo:0x060000bd	documented	docs/subsystems/rng.md	SetSeed rebuilds all three backends
+kairo:0x060000b6	documented	docs/subsystems/rng.md	get_Logic: static int +4
+kairo:0x060000b7	documented	docs/subsystems/rng.md	set_Logic: static int +4; no direct callers found
+kairo:0x060000ba	documented	docs/subsystems/rng.md	NextInt: Logic 2/1/other selects backend, vtable slot 5
+kairo:0x060000bb	documented	docs/subsystems/rng.md	NextInt(bound): one draw, signed remainder
+kairo:0x060000bc	documented	docs/subsystems/rng.md	NextLong: one draw sign-extended
+kairo:0x060000c2	traced	docs/subsystems/rng.md	slot-5 override used when Logic==2; algorithm not read
+kairo:0x060000c5	traced	docs/subsystems/rng.md	reflection-based init of inherited System.Random state
+game:0x06000dc7	traced	docs/subsystems/combat.md	enumerator drain only, no combat work
+game:0x06000ec5	traced	docs/subsystems/combat.md	target search, ChangeState(2); filters unnamed
+game:0x06000eea	documented	docs/subsystems/combat.md	trunc((GetTotalParamValue(6)+100)/2)
+game:0x06000ee8	documented	docs/subsystems/combat.md	ClampMin(FPS*100/speed, 2)
+game:0x06000f3c	documented	docs/subsystems/combat.md	base + weapon + shield + hat + cloth, 32-bit
+game:0x06000e72	documented	docs/subsystems/combat.md	enemy+0x1c % ClampMin(FPS/V,1) == 0
+game:0x060000e8	documented	docs/subsystems/combat.md	value_ + extraValue_ (32-bit)
+game:0x060000fd	reimplemented	src/core/gameplay/combat_rules.cpp	subtract_parameter; tests/test_combat_rules.cpp
+game:0x0600025d	reimplemented	src/core/gameplay/combat_rules.cpp	attribute_affinity with initial tables; tests/test_combat_rules.cpp
+game:0x06000e82	documented	docs/subsystems/combat.md	hit test, damage arithmetic, Sub, event 15, death flag; effect tables partial
+game:0x06000e7e	traced	docs/subsystems/combat.md	projectile hit -> Damage -> Defeat; guards partial
+game:0x06000e7d	traced	docs/subsystems/combat.md	two Damage sites; guards partial
+game:0x06000e83	documented	docs/subsystems/rewards.md	defeat sequence, EXP drop, treasure Hits1000 rolls
+game:0x06000d47	traced	docs/subsystems/rewards.md	flag +0x14 via BitUtil.Check; bit meaning unknown
+game:0x060010ca	documented	docs/subsystems/rewards.md	wrap32 add then Clamp(0,INT_MAX)
+game:0x060010c7	documented	docs/subsystems/rewards.md	Easing(exp_[0],exp_[1],999,level-1,0)
+game:0x06000bf9	traced	docs/subsystems/rewards.md	drop entity; jump table; type 3 overrides scale to 100
+game:0x06000fa4	documented	docs/subsystems/rewards.md	start collection / boss reward pickup
+game:0x06000fa5	documented	docs/subsystems/rewards.md	31-tick interpolation then OnCollectedDrop
+game:0x06000fb9	documented	docs/subsystems/rewards.md	accumulator switch ported in src/core/gameplay/stage_rewards.cpp; effects/SE not ported
+game:0x06000d36	documented	docs/subsystems/rewards.md	frame >= 0
+game:0x06000f9d	traced	docs/subsystems/rewards.md	stage state machine 0..6; several states partial
+game:0x06000fa0	documented	docs/subsystems/rewards.md	treasure totals, item unlocks, money/crystal/prisoners, EXP and level-up
+game:0x06000fb1	documented	docs/subsystems/rewards.md	UpdateQuestRecord(code) if code!=0, CleanUp, OnFinish, transition
+game:0x06000fda	documented	docs/subsystems/rewards.md	form switch, World.Send<QuestResult>(31)
+game:0x06000fb7	traced	docs/subsystems/rewards.md	retry flag and code -> state 5/6 or dialog; retry path unread
+game:0x06000fb6	documented	docs/subsystems/rewards.md	isMain -> OnGameOver(1)
+game:0x06000f9b	traced	docs/subsystems/rewards.md	subscribes OnDamage to event 15; rest of Init not read
+game:0x06000f9e	traced	docs/subsystems/rewards.md	zeroes totalGaveDamage_; rest of Start not read
+game:0x06000fbb	documented	docs/subsystems/rewards.md	totalGaveDamage_ += D for enemy receivers
+game:0x06000fb2	documented	docs/subsystems/rewards.md	QuestRecord counters and bests
+game:0x06000fc9	documented	docs/subsystems/rewards.md	signed max of bestTotalGaveDamage over questData
+game:0x060011f1	documented	docs/subsystems/rewards.md	QuestData+0xa0 += n (32-bit)
+game:0x06001078	documented	docs/subsystems/rewards.md	trunc(tableData[clamp(idx,1,1200)]+0x24 * CharaData+0x9c / 100)
+game:0x0600106c	documented	docs/subsystems/rewards.md	Clamp(1,1200) -> level_ +0x40
+game:0x0600107b	documented	docs/subsystems/rewards.md	recruit_=1, Find(true)
+game:0x06001021	documented	docs/subsystems/rewards.md	state_ == 0
+game:0x060010ee	reimplemented	src/core/gameplay/stage_rewards.cpp	add_item_stock; tests/test_stage_rewards.cpp
+game:0x060010aa	reimplemented	src/core/gameplay/stage_rewards.cpp	add_item_stock; tests/test_stage_rewards.cpp
+game:0x06001177	reimplemented	src/core/gameplay/stage_rewards.cpp	add_item_stock; tests/test_stage_rewards.cpp
+game:0x06000f34	documented	docs/subsystems/rewards.md	copy level/exp to CharaData, destroy sub-members, clear lists
+game:0x06000feb	traced	docs/subsystems/rewards.md	subscribes OnReturnFromQuest to event 31; rest of Init not read
+game:0x06000fec	documented	docs/subsystems/rewards.md	ExecEvent(1133) on code 1, high score update, return flag
+game:0x0600020d	documented	docs/subsystems/rewards.md	SecureLong element 8 of AppData+0x190->+0x28
+game:0x0600020e	documented	docs/subsystems/rewards.md	overwrites the same element
+game:0x0600082d	documented	docs/subsystems/rewards.md	static byte SelectForm+0x32 = true

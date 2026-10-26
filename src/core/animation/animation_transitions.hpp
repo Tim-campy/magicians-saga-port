@@ -6,7 +6,7 @@
 
 namespace saga::core {
 
-// Field meanings recovered in docs/30-animation-transitions.md.
+// Field meanings recovered in docs/archive/reports/30-animation-transitions.md.
 // Aggregates intentionally have no game-default initializers: spawn/load decides.
 struct SpriteAnimation {
     std::int32_t resource;  // SebComponent +0x10

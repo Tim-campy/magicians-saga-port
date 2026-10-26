@@ -1,0 +1,78 @@
+id	status	evidence	note
+game:0x0600018d	traced	docs/subsystems/save.md	PackSave: selector 2 DelayEvent block, 13 World.Serialize
+game:0x06000197	traced	docs/subsystems/save.md	LoadGame order: LoadSystem, RecordStore, SecureProperty, DeserializeData, World, DelayEvent
+game:0x06000192	traced	docs/subsystems/save.md	LoadSystem reads record 0 into AppData+0x190
+game:0x06000158	traced	docs/subsystems/save.md	InitSystemSaveData builds system SecureProperty
+game:0x0600015a	traced	docs/subsystems/save.md	NewGame: SaveSystem, new SecureProperty, InitSystemSaveData, NewData, check consumer
+game:0x06000159	traced	docs/subsystems/save.md	InitWorld called after LoadGame on Continue
+game:0x06000916	traced	docs/subsystems/save.md	ContinueGame: NewGame, LoadGame(0), InitWorld, SelectForm
+kairo:0x06001728	traced	docs/subsystems/save.md	SaveSystem delegates via ThreadStart/RunOnUiThread
+kairo:0x06000f96	traced	docs/subsystems/save.md	RecordStore ctor calls Storage.Open/Read
+kairo:0x06000fa6	traced	docs/subsystems/save.md	OpenRecordStore(0) from LoadGame/LoadSystem
+kairo:0x06000fa9	traced	docs/subsystems/save.md	ReadRecord(int): open + impl overload
+kairo:0x06000fa1	traced	docs/subsystems/save.md	ReadRecord impl: preference, decode, CRC64, IllegalFileException
+kairo:0x06000fb1	traced	docs/subsystems/save.md	called by ReadRecord impl
+kairo:0x06000fd0	traced	docs/subsystems/save.md	Storage.Open from RecordStore ctor
+kairo:0x06000fdb	traced	docs/subsystems/save.md	Storage.Read from RecordStore ctor
+kairo:0x06000fd4	traced	docs/subsystems/save.md	Storage.Read from ReadRecord impl
+kairo:0x0600051b	traced	docs/subsystems/save.md	SecureProperty ctor (blocks at +0x10)
+kairo:0x06000526	traced	docs/subsystems/save.md	SecureProperty.Load with record bytes
+kairo:0x060001f6	documented	docs/subsystems/save.md	allocates MemoryStream over block, stores at +0x18
+kairo:0x0600022d	documented	docs/subsystems/save.md	vtable slot 11; managed Read result <1 -> -1
+game:0x0600062d	documented	docs/subsystems/save.md	empty ctor: ints [-1,0,0,-1,-1], args_ empty
+game:0x0600062f	documented	docs/formats/save.md	DelayEvent record writer; caller PackSave 0x1107500
+game:0x06000630	documented	docs/formats/save.md	DelayEvent record reader; caller LoadGame 0x11087d4
+game:0x060001ed	reimplemented	src/core/persistence/script_payload.cpp	encode_script_payload; no direct callers
+game:0x060001ee	reimplemented	src/core/persistence/script_payload.cpp	decode_script_payload; no direct callers
+kairo:0x060005c0	documented	docs/subsystems/save.md	Write(bytes,1): int32 BE length, -1 for null
+kairo:0x0600059b	documented	docs/subsystems/save.md	Read(1): ReadInt length then bytes; -1 -> null
+kairo:0x060005db	traced	docs/subsystems/save.md	WriteString: optional WriteTranslate, UTF-8, Write
+kairo:0x060005ba	traced	docs/subsystems/save.md	ReadString: Read, GetString, optional ReadTranslate
+kairo:0x060005e7	traced	docs/subsystems/save.md	filters and key normalisation; table init unresolved
+kairo:0x060005e8	traced	docs/subsystems/save.md	returns void; body not recovered
+kairo:0x06000615	traced	docs/subsystems/save.md	GetString via GetCode / JString.New
+kairo:0x06000616	traced	docs/subsystems/save.md	tries UTF-8 then Shift_JIS, rejects U+FFFD; rest open
+kairo:0x060001ba	traced	docs/subsystems/save.md	JString.New with encoding name; Shift_JIS path
+game:0x06001153	traced	docs/subsystems/data.md	Data.Load(arg) builds JarInflater
+game:0x06001154	traced	docs/subsystems/data.md	21 names -> LoadStringArray
+game:0x06001155	traced	docs/subsystems/data.md	per-table LoadData<T> into Data fields
+game:0x0600113f	documented	docs/subsystems/data.md	get_buildingData: Data field +0x20
+game:0x0600114d	documented	docs/subsystems/data.md	get_charaData: Data field +0x90
+game:0x06001146	documented	docs/subsystems/data.md	get_areaData: Data field +0x58
+game:0x0600114f	documented	docs/subsystems/data.md	get_magicShopData: Data field +0xa0
+game:0x0600113d	documented	docs/subsystems/data.md	get_questData: Data field +0x10
+game:0x06001141	documented	docs/subsystems/data.md	get_equipmentData: Data field +0x30
+game:0x06001142	documented	docs/subsystems/data.md	get_eventData: Data field +0x38
+game:0x0600114c	documented	docs/subsystems/data.md	get_hatData: Data field +0x88
+game:0x06001140	documented	docs/subsystems/data.md	get_clothData: Data field +0x28
+game:0x0600114a	documented	docs/subsystems/data.md	get_kingRewardData: Data field +0x78
+game:0x06000194	documented	docs/subsystems/data.md	10 descriptors (array, selector)
+game:0x0600015b	documented	docs/subsystems/data.md	NewGame slot 18 over list; tail InitCheckScriptData
+game:0x06000190	traced	docs/subsystems/data.md	BaseData section reader; stream slots 13/6 unconfirmed
+game:0x0600015c	documented	docs/subsystems/data.md	builds AppData+0x248 groups by GetTiming
+game:0x06000281	documented	docs/subsystems/data.md	fills int32 array; called with 10000
+kairo:0x060000cf	traced	docs/subsystems/data.md	recursive jagged array allocation
+kairo:0x06000175	documented	docs/subsystems/data.md	stores int at +0x10
+game:0x06001038	documented	docs/subsystems/data.md	slot 18 base RET
+game:0x06001027	documented	docs/subsystems/data.md	slot 8: +0x10=1, byte+0x14=arg&1
+game:0x0600102d	documented	docs/subsystems/data.md	slot 14 returns 0
+game:0x0600102e	documented	docs/subsystems/data.md	slot 15 returns 0
+game:0x0600102f	documented	docs/subsystems/data.md	slot 16 returns 0
+game:0x06001029	traced	docs/subsystems/data.md	slot 10 from DeserializeData
+game:0x0600102a	traced	docs/subsystems/data.md	slot 11 from DeserializeData
+game:0x0600102c	traced	docs/subsystems/data.md	slot 13 from DeserializeData (share flag)
+game:0x06001012	traced	docs/subsystems/data.md	conditional Find(true); oldNewGame
+game:0x0600103a	traced	docs/subsystems/data.md	Find(true) under mask; +0x48->+0x20
+game:0x0600106d	traced	docs/subsystems/data.md	recreates arrays; [0,300,0]
+game:0x060010a9	traced	docs/subsystems/data.md	conditional Find(false); field copies
+game:0x060010ed	traced	docs/subsystems/data.md	conditional Find(false); field copies
+game:0x06001176	traced	docs/subsystems/data.md	conditional Find(false); field copies
+game:0x0600118d	traced	docs/subsystems/data.md	zeroes byte +0x48
+game:0x0600119d	traced	docs/subsystems/data.md	Find(true) under mask; zero +0x40
+game:0x060011ee	traced	docs/subsystems/data.md	conditional Find; new QuestRecord at +0xa8
+game:0x06001014	traced	docs/subsystems/data.md	zeroed arrays at +0x20/+0x28/+0x38; writes +0x10
+game:0x06000661	documented	docs/subsystems/data.md	forwards to Object ctor
+kairo:0x06000610	traced	docs/formats/game-tables.md	GetInputStream then stream overload
+kairo:0x06000612	traced	docs/formats/game-tables.md	Read, JString.New, Split(LF)
+kairo:0x0600067b	traced	docs/formats/game-tables.md	Unity version >= threshold, cached
+kairo:0x060001b7	traced	docs/formats/game-tables.md	UTF-8 decode, BOM strip, empty -> shared empty string

@@ -1,0 +1,38 @@
+id	status	evidence	note
+game:0x0600026c	traced	docs/subsystems/boot.md	OnCreate hook; called by IApplication.Awake slot 5; direct callees listed
+game:0x0600026d	traced	docs/subsystems/boot.md	OnUpdate hook; called by IApplication.Update slot 11; FPS policy stores
+game:0x0600026e	documented	docs/subsystems/boot.md	OnDraw: GetInstance then vtable slot 4 = FormManagerBase.OnDraw; caller OnGUI slot 12
+game:0x06000272	traced	docs/subsystems/boot.md	SetJingle: SoundPlayer.SetVolume with 0 or SecureInt*51
+game:0x06000214	documented	docs/subsystems/boot.md	ResourceReDownload: 4-byte RET stub
+game:0x06000215	documented	docs/subsystems/boot.md	ResourceReDownload overload: 4-byte RET stub
+game:0x0600125a	traced	docs/subsystems/boot.md	MyConfig cctor: default FPS 30 at static +0x50
+kairo:0x06000271	traced	docs/subsystems/boot.md	Config cctor: +0x30=1,+0x63=0,+0xc2=0,+0xc4/+0xc5=1, +0..0xf=(2,0,100,30)
+kairo:0x0600144e	traced	docs/subsystems/boot.md	Awake: paths/Screen/Canvas, calls OnCreate slot 5
+kairo:0x06001450	traced	docs/subsystems/boot.md	Start: fixedDeltaTime=1.0f
+kairo:0x06001451	documented	docs/subsystems/boot.md	FixedUpdate: single RET
+kairo:0x06001452	traced	docs/subsystems/boot.md	Update: gates, TotalFrames++, calls OnUpdate slot 11
+kairo:0x06001453	traced	docs/subsystems/boot.md	LateUpdate: TerminateCheck, UpdateResolution, ExecuteUIMethods
+kairo:0x06001455	traced	docs/subsystems/boot.md	OnGUI: gates, splash, calls OnDraw slot 12, optional frame wait
+kairo:0x06001446	documented	docs/subsystems/boot.md	get_TotalFrames returns this+0x58, incremented in Update
+kairo:0x06001458	traced	docs/subsystems/boot.md	OnApplicationPause: this+0x35=arg&1, form codes 4/3
+kairo:0x0600145b	traced	docs/subsystems/boot.md	OnApplicationFocus: this+0x34, SoundPlayer.Suspend on loss
+kairo:0x0600145d	traced	docs/subsystems/boot.md	TerminateCheck: arms +0x140=3 or Application.Quit
+kairo:0x06001493	documented	docs/subsystems/boot.md	SetViewport stores w1/w2 at +0x5c/+0x60; caller Main.OnCreate (240,280)
+kairo:0x06001a50	documented	docs/subsystems/ui.md	GetTargetFps: 120 if changing, top form +0x4c, else +0xb0; 7 direct callers
+kairo:0x06001a4f	documented	docs/subsystems/ui.md	SetTargetFps: str w1,[x0,#0xb0]
+kairo:0x06001a4c	traced	docs/subsystems/ui.md	GetFps returns +0xb4
+kairo:0x06001a54	documented	docs/subsystems/ui.md	IsFormChanging: +0xd8 != null or byte+0xd1; caller GetTargetFps
+kairo:0x06001a16	traced	docs/subsystems/ui.md	_execute: pass count formula and DoMethod(1) loop
+kairo:0x06001a56	documented	docs/subsystems/ui.md	DoMethod: codes 0..5 -> form slots 17/19/18/20/25/26
+kairo:0x06001a18	traced	docs/subsystems/ui.md	FormManagerBase.OnDraw: target of Main.OnDraw slot 4
+kairo:0x060019d5	traced	docs/subsystems/ui.md	FormBase ctor: +0x4c/+0x50 = -1
+kairo:0x060019f0	traced	docs/subsystems/ui.md	SetFrameRate(int,int,bool): +0x4c,+0x50,+0x54
+kairo:0x060019f1	traced	docs/subsystems/ui.md	SetFrameRate(bool): byte+0x54
+kairo:0x060019d6	traced	docs/subsystems/ui.md	FormBase.Init: DoMethod code 0 base target (slot 17)
+kairo:0x060019d8	traced	docs/subsystems/ui.md	FormBase.Update: DoMethod code 1 base target (slot 19)
+kairo:0x060019d7	traced	docs/subsystems/ui.md	FormBase.Draw: DoMethod code 2 base target (slot 18)
+kairo:0x060019d9	traced	docs/subsystems/ui.md	FormBase.Resume: DoMethod code 3 base target (slot 20)
+kairo:0x060019de	traced	docs/subsystems/ui.md	FormBase.Suspend: DoMethod code 4 base target (slot 25)
+kairo:0x060019df	traced	docs/subsystems/ui.md	FormBase.Finish: DoMethod code 5 base target (slot 26)
+game:0x0600072e	traced	docs/subsystems/ui.md	FormManager ctor: +0xb0 = MyConfig.static+0x50
+game:0x06000731	traced	docs/subsystems/ui.md	FormManager.Updated: 120 on key masks 0x10/0x20, writes +0xb0 if changed

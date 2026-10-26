@@ -1,7 +1,7 @@
 #include "component_filter.hpp"
 
 namespace saga::core {
-// Filter.Matches37161, ELF 0x113a4dc; docs/39-generic-collections.md.
+// Filter.Matches37161, ELF 0x113a4dc; docs/archive/reports/39-generic-collections.md.
 bool matches_component_filter(
     const ComponentSlots* entity,
     const std::vector<std::int32_t>* all,

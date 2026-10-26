@@ -1,0 +1,41 @@
+id,name,group,status
+il2cpp-global-metadata,global-metadata.dat (IL2CPP metadata v31),il2cpp,reimplemented
+il2cpp-code-map,libil2cpp.so CodeRegistration/CodeGenModule method pointer map,il2cpp,reimplemented
+il2cpp-eh-frame,libil2cpp.so .eh_frame FDE ranges (method extents),il2cpp,reimplemented
+jar-container,JarInflater TextAsset container (XOR layer + index),assets,verified
+seb,SEB sprite/animation modes 0/1,assets,verified
+opt,OPT optimized-texture grid (regular variant),assets,verified
+optinfo,OPTINFO texture sidecar,assets,documented
+inf-catalog,img.inf/seb.inf resource catalog,assets,reimplemented
+optimize-inf,optimize_*.inf production config,assets,documented
+unity-serialized,Unity serialized file v22 (incl. split files),assets,reimplemented
+fsb5-audio,FSB5 Vorbis AudioClip stream,assets,reimplemented
+unity-font,Unity Font m_FontData (TrueType),assets,reimplemented
+unity-texture2d,Unity Texture2D,assets,reimplemented
+entity-manager-stream,EntityManager entity/component save block,ecs,documented
+animation-component-payload,AnimationComponent payload (rate8 + backup16 BE),ecs,reimplemented
+direction-component-payload,DirectionComponent payload (dir8 + bool),ecs,reimplemented
+seb-component-payload,SebComponent payload with layers array,ecs,reimplemented
+save-envelope,RecordStore/SecureProperty record envelope,save,traced
+save-system,System save (record 0),save,traced
+save-basedata-section,BaseData save section,save,documented
+save-delay-event,DelayEvent save block (selector 2),save,documented
+save-string,StreamUtil save string,save,documented
+script-payload,AppData script-row payload,save,reimplemented
+game-table-text,LoadData text tables (UTF-8/LF/id index),data,documented
+event-table,Event.txt (EventData records + terms/execs script matrices),events,documented
+event-script-opcodes,Event effect/condition opcode encoding,events,documented
+delay-event,DelayEvent continuation record (runtime fields),events,documented
+parameter,parameter.Parameter (value_/maxValue_/extraValue_/extraMaxValue_),combat,reimplemented
+attribute-affinity,AppData attribute affinity pairs (+0x440) and ATTRIBUTE_AFFINITY_RATE (+0x448),combat,reimplemented
+drop-component,ecs.DropComponent,rewards,documented
+stage-drop-accumulator,StageSystem.drop_ (exp/money/prisonersNum/treasureIds),rewards,reimplemented
+quest-record,game.QuestRecord,rewards,documented
+quest-result,game.QuestResult (event 31 payload),rewards,documented
+treasure-data,data.TreasureData reward fields,rewards,traced
+item-stock,Equipment/Cloth/HatData state_/new_/stock_,rewards,reimplemented
+talk-table,Talk.txt record layout,text,reimplemented
+eventmsg-table,EventMsg.txt record layout,text,reimplemented
+text-markup,TextLayout inline markup tags and parameters,text,documented
+font-texture-size,getFontTextureSize payload (two big-endian float32),fonts,documented
+language-pack-directive,@language directive in language-pack CSV,fonts,traced

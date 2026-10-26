@@ -3,7 +3,7 @@
 
 Copies RGBA samples without compositing and verifies each piece against the
 packed source. Overlap, unsupported selectors and invalid crops are rejected.
-Requires Pillow from the already installed local .tools/unitypy-libs directory.
+Requires Pillow from the already installed local external/unitypy-libs directory.
 """
 import argparse
 import hashlib
@@ -12,7 +12,7 @@ from pathlib import Path
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0,str(ROOT/'.tools/unitypy-libs'))
+sys.path.insert(0,str(ROOT/'external/unitypy-libs'))
 from PIL import Image, __version__ as PILLOW_VERSION
 from inspect_opt import parse
 
@@ -74,9 +74,9 @@ def render_reference(opt, source, strict_grid=False):
 def run(manifest_path,output,select=(),strict_grid=False):
     root=manifest_path.parent.resolve()
     output=output.resolve()
-    allowed=(ROOT/'build/research').resolve()
+    allowed=(ROOT/'research/exports').resolve()
     if not output.is_relative_to(allowed) or output==allowed:
-        raise ValueError('output must be a subdirectory of build/research')
+        raise ValueError('output must be a subdirectory of research/exports')
     if output.is_relative_to(root) or root.is_relative_to(output):
         raise ValueError('output and extracted source trees must be separate')
     manifest=json.loads(manifest_path.read_text(encoding='utf-8'))

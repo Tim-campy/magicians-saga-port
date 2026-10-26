@@ -1,6 +1,6 @@
 """Record ELF unwind FDE ranges using local pyelftools; no code execution.
 
-Install: python -m pip install --target .tools/python-libs pyelftools==0.32
+Install: python -m pip install --target external/python-libs pyelftools==0.32
 FDE ranges describe unwind coverage, not proof of every logical function boundary.
 """
 import argparse
@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 import sys
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / '.tools/python-libs'))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'external/python-libs'))
 from elftools.elf.elffile import ELFFile
 from elftools.dwarf.callframe import FDE
 

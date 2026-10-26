@@ -1,0 +1,19 @@
+# Group overrides for game types in the global namespace (namespace rules live in tools/registry.py).
+# type_prefix is a full type name, or a dotted prefix of method names; the longest match wins.
+# Compiler-generated closures (<>c, <>c__DisplayClassN_M) share names across owners: do not list them here.
+type_prefix,group
+QuestResultForm,ui
+TextBlock,ui
+AttackButton,ecs
+ComponentAddedEvent,ecs
+ComponentRemovedEvent,ecs
+ComponentChangedEvent,ecs
+EntityAddedEvent,ecs
+EntityRemovedEvent,ecs
+EntityComponentChangedEvent,ecs
+SystemEventHandler,ecs
+Xorshift128,platform
+Random2018,platform
+PreSaveMethod,io
+PostSaveMethod,io
+TranslateCache,util

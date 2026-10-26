@@ -18,7 +18,7 @@ struct ComponentObserver {
     virtual void changed(ComponentSlots&, std::int32_t, Component*, Component*) {}
 };
 
-// BaseEntity's fixed slot storage and notifications (docs/35-component-slots.md).
+// BaseEntity's fixed slot storage and notifications (docs/archive/reports/35-component-slots.md).
 // Borrowed components/observer must remain alive through each operation/callback.
 // One allocation on construction; operations don't allocate, clone or delete.
 class ComponentSlots {

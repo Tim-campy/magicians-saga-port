@@ -1,0 +1,78 @@
+id	status	evidence	note
+kairo:0x06000f39	traced	docs/subsystems/assets.md	GetData reaches Encrypter.Decode at 0x1c8fcf8; name tests/flags unresolved
+kairo:0x06000f34	traced	docs/subsystems/assets.md	_getInputStream: UIMethod + RunOnUiThread; delegate unresolved
+kairo:0x06000f37	traced	docs/subsystems/assets.md	_getData: UIMethod + RunOnUiThread; delegate unresolved
+kairo:0x06000f38	traced	docs/subsystems/assets.md	_getTextAsset: UIMethod + RunOnUiThread; delegate unresolved
+kairo:0x06000f35	traced	docs/subsystems/assets.md	GetAccessFilesList: candidate list with language folder; precedence open
+kairo:0x0600030e	traced	docs/formats/jar-container.md	SetEncryptionKey: stores key array; called from AppData.Init 0x11006e4
+kairo:0x0600031b	traced	docs/formats/jar-container.md	Encrypter cctor: initial 1-byte key array
+kairo:0x06000317	traced	docs/formats/jar-container.md	Decode: loads static key, forwards to 0x06000318
+kairo:0x06000318	traced	docs/formats/jar-container.md	Decode overload: forwards to Encode 0x06000316
+kairo:0x06000316	documented	docs/formats/jar-container.md	Encode: in-place periodic XOR; caller Decode 0x06000318; Python port in tools/extract_assets.py
+kairo:0x060003c6	reimplemented	src/assets/jar_archive.cpp	index/data parsing; flags!=0 unsupported; name dictionary not built
+kairo:0x060003d0	documented	docs/subsystems/assets.md	ConvertExtension: Config rule then .inf/.ini->.txt with prefix; callers Exist, _search
+kairo:0x060003cd	documented	docs/subsystems/assets.md	_search: candidate lookup in dictionary +0x10; callers Exist, GetInputStream
+kairo:0x060003ca	traced	docs/subsystems/assets.md	Exist: prefixed CheckResourceAsStream or _search
+kairo:0x060003cb	traced	docs/subsystems/assets.md	GetData: Storage.Read, then GetSize/GetInputStream; -1 -> null
+kairo:0x060003c8	traced	docs/subsystems/assets.md	GetInputStream: prefixed stream, else _search; GetCustomResource branch
+kairo:0x060003ce	traced	docs/subsystems/assets.md	GetResourceAsStream: name then name+.bytes
+kairo:0x060003cf	traced	docs/subsystems/assets.md	CheckResourceAsStream: name then name+.bytes
+kairo:0x06000269	documented	docs/subsystems/assets.md	Config.ConvertExtension: selector 2/3/4 replaces all .gif->.png then .mld->.ogg; callers JarInflater.ConvertExtension, GetAccessFilesList
+kairo:0x060016ea	traced	docs/subsystems/assets.md	LoadReady: TAB split + Int32.Parse of catalog lines
+kairo:0x060016ec	traced	docs/subsystems/assets.md	LoadStart: ID parse, reorder by ID, images at +0x10, OPT via LoadOptimize
+kairo:0x0600171d	traced	docs/subsystems/assets.md	LoadStart closure: bin/WxH options, palette, Image ctor 0x06001502
+kairo:0x060016ee	documented	docs/subsystems/assets.md	GetFileName: strips ../ or ..\ prefix then Trim; caller LoadStart
+kairo:0x0600170c	documented	docs/subsystems/assets.md	GetImage: image array +0x10[id] unless +0x60 override; caller Seb.GetImage
+kairo:0x0600155c	documented	docs/subsystems/assets.md	GetOptionFile: first comma field, drop extension, append .opt; caller LoadStart
+kairo:0x0600152e	documented	docs/subsystems/assets.md	GetAreaSize: GIF/PNG/JPEG header dimensions; caller Image ctor 0x06001502
+kairo:0x060014ff	traced	docs/subsystems/assets.md	Image ctor: width/height 0
+kairo:0x06001500	traced	docs/subsystems/assets.md	Image ctor: width/height via Texture.get_width/get_height slots
+kairo:0x06001501	traced	docs/subsystems/assets.md	Image ctor: width/height from preserved registers; signature open
+kairo:0x06001502	traced	docs/subsystems/assets.md	Image ctor: width/height from GetAreaSize
+kairo:0x06001503	traced	docs/subsystems/assets.md	Image ctor: provisional 240x240
+kairo:0x06001504	traced	docs/subsystems/assets.md	Image ctor: provisional 240x240
+kairo:0x06001505	traced	docs/subsystems/assets.md	Image ctor: provisional 240x240
+kairo:0x0600152f	traced	docs/subsystems/assets.md	DecodeByteArray: Texture2D + UnityUtil.LoadImage
+kairo:0x06001566	traced	docs/subsystems/assets.md	<Use>b__125_0: decode, optional LoadOptimize, refresh dims from Texture
+kairo:0x0600152b	traced	docs/subsystems/assets.md	OverwritePaletteData: returns input when no palette
+kairo:0x06001517	traced	docs/subsystems/assets.md	GetWidth returns +0x28
+kairo:0x06001516	traced	docs/subsystems/assets.md	GetHeight returns +0x2c
+kairo:0x06001558	traced	docs/subsystems/assets.md	SetStandardResolution stores +0x70/+0x74
+kairo:0x06000679	traced	docs/subsystems/assets.md	UnityUtil.LoadImage: version switch, reflective LoadImage
+kairo:0x0600150b	documented	docs/formats/opt.md	LoadOptimize(stream): regular layout; structural C++ parser in src/assets/opt_grid.cpp; ff variant and runtime map not ported
+kairo:0x0600150c	traced	docs/formats/opt.md	LoadOptimize(byte[]): ByteArrayInputStream wrapper
+kairo:0x0600150e	traced	docs/formats/opt.md	GetOptimize: row-major index formula, null on sentinel
+kairo:0x06001511	traced	docs/formats/opt.md	GetOptimize: expands piece to seven ints
+kairo:0x06001761	traced	docs/formats/seb.md	_load(byte[]): ByteArrayInputStream wrapper to 0x06001762
+kairo:0x06001762	documented	docs/formats/seb.md	_load(stream): disk modes 0/1 parsed by src/assets/seb.cpp; runtime compaction not ported
+kairo:0x06001779	documented	docs/formats/seb.md	ConvBufferToSprite: compact/extended decode and mirroring; caller GetSpriteLocal
+kairo:0x06001778	traced	docs/formats/seb.md	GetSpriteLocal: arg%10000 FrameNo match; neighbour combination open
+kairo:0x06001771	traced	docs/formats/seb.md	GetSpritesLocal: GetSpriteLocal per group
+kairo:0x06001757	traced	docs/formats/seb.md	GetImage: forwards +0x88 to ResourceManager.GetImage
+kairo:0x0600176a	traced	docs/formats/seb.md	GetCurFrame returns +0x18
+kairo:0x0600176b	traced	docs/formats/seb.md	SetCurFrame stores +0x18 unnormalised
+kairo:0x0600176c	traced	docs/formats/seb.md	GetMaxFrame returns +0x1c
+kairo:0x0600176d	documented	docs/formats/seb.md	Frame: (frame+1) mod maxFrame unless AutoAnimation; callers AnimationSystem.Update, RoomForm/SubForm.Update
+kairo:0x06001754	traced	docs/formats/seb.md	get_AutoAnimation: static +0x14
+kairo:0x06001755	traced	docs/formats/seb.md	set_AutoAnimation: stores arg&1; no direct callers found
+kairo:0x060017bc	documented	docs/formats/seb.md	PushThisFrameRender: register in active list; callers Draw overloads
+kairo:0x060017be	documented	docs/formats/seb.md	ThisFrameRenderAnimation: advance active list; caller IApplication.OnGUI 0x1b84090
+kairo:0x060017bd	documented	docs/formats/seb.md	ResetThisFrameRender: clear flags/count; caller IApplication.OnGUI 0x1b840b0
+kairo:0x060017c2	traced	docs/formats/seb.md	Seb cctor: creates render collection
+kairo:0x0600178b	traced	docs/formats/seb.md	Draw: Push then draw current frame
+kairo:0x0600178c	traced	docs/formats/seb.md	Draw: Push then draw current frame
+kairo:0x0600178d	traced	docs/formats/seb.md	Draw: Push then draw current frame
+kairo:0x0600169a	traced	docs/formats/seb.md	Sprite.get_FrameNo slot 0
+kairo:0x0600169b	traced	docs/formats/seb.md	Sprite.get_TexId slot 1
+kairo:0x0600169c	traced	docs/formats/seb.md	Sprite.get_U slot 2
+kairo:0x0600169d	traced	docs/formats/seb.md	Sprite.get_V slot 3
+kairo:0x0600169e	traced	docs/formats/seb.md	Sprite.get_W slot 4
+kairo:0x0600169f	traced	docs/formats/seb.md	Sprite.get_H slot 5
+kairo:0x060016a0	traced	docs/formats/seb.md	Sprite.get_X slot 6
+kairo:0x060016a2	traced	docs/formats/seb.md	Sprite.get_TransX slot 6
+kairo:0x060016a1	traced	docs/formats/seb.md	Sprite.get_Y slot 7
+kairo:0x060016a3	traced	docs/formats/seb.md	Sprite.get_TransY slot 7
+kairo:0x060016a4	traced	docs/formats/seb.md	Sprite.get_ReverseU slot 8
+kairo:0x060016a5	traced	docs/formats/seb.md	Sprite.get_ReverseV slot 9
+kairo:0x060016a6	traced	docs/formats/seb.md	Sprite.get_Blend slot 10
+kairo:0x060016a7	traced	docs/formats/seb.md	Sprite.get_Color slot 11

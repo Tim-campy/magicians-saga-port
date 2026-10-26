@@ -1,0 +1,131 @@
+id	status	evidence	note
+game:0x06000c48	reimplemented	src/core/ecs/component_slots.cpp	ComponentSlots; tests/test_component_slots.cpp
+game:0x06000c49	reimplemented	src/core/ecs/component_slots.cpp	ComponentSlots; tests/test_component_slots.cpp
+game:0x06000c4a	reimplemented	src/core/ecs/component_slots.cpp	ComponentSlots; tests/test_component_slots.cpp
+game:0x06000c4b	reimplemented	src/core/ecs/component_slots.cpp	ComponentSlots; tests/test_component_slots.cpp
+game:0x06000c4c	reimplemented	src/core/ecs/component_slots.cpp	ComponentSlots; tests/test_component_slots.cpp
+game:0x06000c4d	reimplemented	src/core/ecs/component_slots.cpp	ComponentSlots; tests/test_component_slots.cpp
+game:0x06000c4e	reimplemented	src/core/ecs/component_slots.cpp	ComponentSlots; tests/test_component_slots.cpp
+game:0x06000c4f	reimplemented	src/core/ecs/component_slots.cpp	ComponentSlots; tests/test_component_slots.cpp
+game:0x06000cac	reimplemented	src/core/ecs/component_filter.cpp	matches_component_filter predicate only; tests/test_component_filter.cpp
+game:0x06000dbf	reimplemented	src/core/animation/animation_transitions.cpp	tests/test_animation_transitions.cpp
+game:0x06000dc0	reimplemented	src/core/animation/animation_transitions.cpp	tests/test_animation_transitions.cpp
+game:0x06000dc1	reimplemented	src/core/animation/animation_transitions.cpp	tests/test_animation_transitions.cpp
+game:0x06000d10	reimplemented	src/core/animation/animation_payload.cpp	whole-payload codec, not stream I/O; tests/test_animation_payload.cpp
+game:0x06000d11	reimplemented	src/core/animation/animation_payload.cpp	whole-payload codec, not stream I/O; tests/test_animation_payload.cpp
+game:0x06000d33	reimplemented	src/core/animation/animation_payload.cpp	whole-payload codec, not stream I/O; tests/test_animation_payload.cpp
+game:0x06000d34	reimplemented	src/core/animation/animation_payload.cpp	whole-payload codec, not stream I/O; tests/test_animation_payload.cpp
+game:0x06000dab	reimplemented	src/core/animation/animation_payload.cpp	whole-payload codec, not stream I/O; tests/test_animation_payload.cpp
+game:0x06000dac	reimplemented	src/core/animation/animation_payload.cpp	whole-payload codec, not stream I/O; tests/test_animation_payload.cpp
+game:0x06000be1	documented	docs/subsystems/ecs.md	
+game:0x06000c03	documented	docs/subsystems/ecs.md	
+game:0x06000c06	documented	docs/subsystems/ecs.md	
+game:0x06000c0a	documented	docs/subsystems/ecs.md	
+game:0x06000c19	documented	docs/subsystems/ecs.md	
+game:0x06000db5	documented	docs/subsystems/ecs.md	
+game:0x06000db6	documented	docs/subsystems/ecs.md	
+game:0x06000c59	documented	docs/subsystems/ecs.md	
+game:0x06000c5d	documented	docs/subsystems/ecs.md	
+game:0x06000c5e	documented	docs/subsystems/ecs.md	
+game:0x06000c62	documented	docs/subsystems/ecs.md	
+game:0x06000c63	documented	docs/subsystems/ecs.md	
+game:0x06000c64	documented	docs/subsystems/ecs.md	
+game:0x06000c65	documented	docs/subsystems/ecs.md	
+game:0x06000c5f	documented	docs/subsystems/ecs.md	
+game:0x06000c60	documented	docs/subsystems/ecs.md	
+game:0x06000c61	documented	docs/subsystems/ecs.md	
+game:0x06000c69	documented	docs/subsystems/ecs.md	
+game:0x06000c6a	documented	docs/subsystems/ecs.md	
+game:0x06000c6b	documented	docs/subsystems/ecs.md	
+game:0x06000c6c	documented	docs/subsystems/ecs.md	
+game:0x06000c45	documented	docs/subsystems/ecs.md	
+game:0x06000c51	documented	docs/subsystems/ecs.md	
+game:0x06000c52	documented	docs/subsystems/ecs.md	
+game:0x06000bc2	documented	docs/subsystems/ecs.md	
+game:0x06000bc3	documented	docs/subsystems/ecs.md	
+game:0x06000bc4	documented	docs/subsystems/ecs.md	
+game:0x06000bb2	documented	docs/subsystems/ecs.md	
+game:0x06000bbe	documented	docs/subsystems/ecs.md	
+game:0x06000bbf	documented	docs/subsystems/ecs.md	
+game:0x06000c40	documented	docs/subsystems/ecs.md	
+game:0x06000c41	documented	docs/subsystems/ecs.md	
+game:0x06000c42	documented	docs/subsystems/ecs.md	
+game:0x06000c43	documented	docs/subsystems/ecs.md	
+game:0x06000c75	documented	docs/subsystems/ecs.md	
+game:0x06000c76	documented	docs/subsystems/ecs.md	
+game:0x06000c77	documented	docs/subsystems/ecs.md	
+game:0x06000c79	documented	docs/subsystems/ecs.md	
+game:0x06000c7a	documented	docs/subsystems/ecs.md	
+game:0x06000c7b	documented	docs/subsystems/ecs.md	
+game:0x06000c7c	documented	docs/subsystems/ecs.md	
+game:0x06000ca5	documented	docs/subsystems/ecs.md	
+game:0x06000ca6	documented	docs/subsystems/ecs.md	
+game:0x06000ca7	documented	docs/subsystems/ecs.md	
+game:0x06000ca8	documented	docs/subsystems/ecs.md	
+game:0x06000ca9	documented	docs/subsystems/ecs.md	
+game:0x06000caa	documented	docs/subsystems/ecs.md	
+game:0x06000cab	documented	docs/subsystems/ecs.md	
+game:0x06000bd2	documented	docs/subsystems/ecs.md	
+game:0x06000bd3	documented	docs/subsystems/ecs.md	
+game:0x06000bd4	documented	docs/subsystems/ecs.md	
+game:0x06000bd5	documented	docs/subsystems/ecs.md	
+game:0x06000ce4	documented	docs/subsystems/ecs.md	
+game:0x06000ce5	documented	docs/subsystems/ecs.md	
+game:0x06000ce7	documented	docs/subsystems/ecs.md	
+game:0x06000ce8	documented	docs/subsystems/ecs.md	
+game:0x06000cee	documented	docs/subsystems/ecs.md	
+game:0x06000cf0	documented	docs/subsystems/ecs.md	
+game:0x06000ce2	documented	docs/subsystems/ecs.md	
+game:0x06000ce3	documented	docs/subsystems/ecs.md	
+game:0x06000cf3	documented	docs/subsystems/ecs.md	
+game:0x06000ce6	documented	docs/subsystems/ecs.md	
+game:0x06000cf6	documented	docs/subsystems/ecs.md	
+game:0x06000cf7	documented	docs/subsystems/ecs.md	
+game:0x06000cc6	documented	docs/subsystems/ecs.md	
+game:0x06000cc8	documented	docs/subsystems/ecs.md	
+game:0x06000cc9	documented	docs/subsystems/ecs.md	
+game:0x06000cc0	documented	docs/subsystems/ecs.md	
+game:0x06000cc1	documented	docs/subsystems/ecs.md	
+game:0x06000bfb	traced	docs/subsystems/ecs.md	
+game:0x06000c02	traced	docs/subsystems/ecs.md	
+game:0x06000c46	traced	docs/subsystems/ecs.md	
+game:0x06000c47	traced	docs/subsystems/ecs.md	
+game:0x06000bb1	traced	docs/subsystems/ecs.md	
+game:0x06000db8	traced	docs/subsystems/ecs.md	
+game:0x06000c78	traced	docs/subsystems/ecs.md	
+game:0x06000fea	traced	docs/subsystems/ecs.md	
+game:0x06000cdc	traced	docs/subsystems/ecs.md	
+game:0x06000cde	traced	docs/subsystems/ecs.md	
+game:0x06000cc2	traced	docs/subsystems/ecs.md	
+game:0x06000cca	traced	docs/subsystems/ecs.md	
+game:0x06000dba	documented	docs/subsystems/animation.md	
+game:0x06000dbb	documented	docs/subsystems/animation.md	
+game:0x06000dbe	documented	docs/subsystems/animation.md	
+game:0x06000dc2	documented	docs/subsystems/animation.md	
+game:0x06000dc3	documented	docs/subsystems/animation.md	
+game:0x06000b20	documented	docs/subsystems/animation.md	
+game:0x06000b45	documented	docs/subsystems/animation.md	
+game:0x06000b9c	documented	docs/subsystems/animation.md	
+game:0x06000b9b	documented	docs/subsystems/animation.md	
+game:0x06000d0f	documented	docs/subsystems/animation.md	
+game:0x06000dbc	traced	docs/subsystems/animation.md	
+game:0x06000dc4	traced	docs/subsystems/animation.md	
+game:0x06000b1e	traced	docs/subsystems/animation.md	
+game:0x06000b1f	traced	docs/subsystems/animation.md	
+game:0x06000b43	traced	docs/subsystems/animation.md	
+game:0x06000b44	traced	docs/subsystems/animation.md	
+game:0x06000b99	traced	docs/subsystems/animation.md	
+game:0x06000b68	traced	docs/subsystems/animation.md	
+game:0x06000b86	traced	docs/subsystems/animation.md	
+game:0x06000b54	traced	docs/subsystems/animation.md	
+game:0x06000d12	traced	docs/subsystems/animation.md	
+game:0x06000d35	traced	docs/subsystems/animation.md	
+game:0x06000dad	traced	docs/subsystems/animation.md	
+game:0x06000bef	traced	docs/subsystems/animation.md	
+game:0x06000beb	traced	docs/subsystems/animation.md	
+game:0x06000bec	traced	docs/subsystems/animation.md	
+game:0x06000bf0	traced	docs/subsystems/animation.md	
+game:0x06000bf5	traced	docs/subsystems/animation.md	
+game:0x06000bf7	traced	docs/subsystems/animation.md	
+game:0x06000e5f	traced	docs/subsystems/animation.md	
+game:0x06000f81	traced	docs/subsystems/animation.md	

@@ -1,0 +1,76 @@
+id	status	evidence	note
+game:0x06001213	documented	docs/subsystems/text.md	TalkData.Load: id, charaIndex, counted string array
+game:0x06001135	documented	docs/subsystems/text.md	EventMsgData.Load: id, type, one token
+game:0x0600071e	documented	docs/subsystems/text.md	talk catalogue delegate: String.Join(TAB, text)
+game:0x060008d2	traced	docs/subsystems/text.md	outer MakeTalkForm: charaIndex + talks_[id]
+game:0x060008d4	documented	docs/subsystems/text.md	type-0 factory; data part in presentation_forms, TextLayout setup not ported
+game:0x060008d5	documented	docs/subsystems/text.md	outer MakeEvent: type&text
+game:0x060008d6	reimplemented	src/core/gameplay/presentation_forms.cpp	prepare_event_form; presentation_forms_contract
+kairo:0x060005fe	reimplemented	src/core/gameplay/presentation_text.cpp	substitute_form_arguments; translator/SanSanRemove via host
+kairo:0x060005ff	reimplemented	src/core/gameplay/presentation_text.cpp	literal replace inside substitute_form_arguments
+kairo:0x06000600	reimplemented	src/core/gameplay/presentation_text.cpp	split_form_text, flags (1,0,0)
+kairo:0x06000602	documented	docs/subsystems/text.md	Split impl; only trim/(0,0,0) paths ported
+kairo:0x060005fc	traced	docs/subsystems/text.md	SanSanRemove setter; no immediate callers
+kairo:0x060003f2	traced	docs/subsystems/text.md	TranslateText: null/empty/cache/fallback chain
+kairo:0x060003f3	traced	docs/subsystems/text.md	CallTranslateText core, flags open
+kairo:0x0600040e	traced	docs/subsystems/text.md	GetTranslateCache, called first by TranslateText
+kairo:0x0600040f	traced	docs/subsystems/text.md	SetTranslateCache, called last by TranslateText
+kairo:0x060003f4	traced	docs/subsystems/text.md	_translateText, called by CallTranslateText
+kairo:0x0600041b	traced	docs/subsystems/text.md	applied to layout text before tag scan
+kairo:0x06000428	documented	docs/subsystems/text.md	IsShortWords: Japanese or langPackScale_>=100
+kairo:0x060003e7	traced	docs/subsystems/text.md	space handling at line break
+kairo:0x06001832	documented	docs/subsystems/text.md	19-entry TAG table
+kairo:0x06001835	documented	docs/subsystems/text.md	forwards (!Japanese, true)
+kairo:0x06001836	documented	docs/subsystems/text.md	fontBuf_, Init, autoScale_, localizeFontEnable_
+kairo:0x06001837	documented	docs/subsystems/text.md	font_, scaleRatio_, pos=0 speed=1000
+kairo:0x06001839	documented	docs/subsystems/text.md	SetText order; slices ported in text_fit/text_reveal
+kairo:0x0600183b	traced	docs/subsystems/text.md	markup parser / line formation; not ported
+kairo:0x0600183c	traced	docs/subsystems/text.md	ruby pass after blocks
+kairo:0x0600183e	traced	docs/subsystems/text.md	layout height used by auto-fit
+kairo:0x06001841	traced	docs/subsystems/text.md	draw-time scale refresh, TextBlock.Draw per block
+kairo:0x06001843	documented	docs/subsystems/text.md	timing part ported in text_reveal; blink/draw counters not
+kairo:0x06001844	reimplemented	src/core/gameplay/text_reveal.cpp	reset_text_reveal; text_reveal_contract
+kairo:0x06001845	reimplemented	src/core/gameplay/text_reveal.cpp	configured_reveal_speed (short_words from host)
+kairo:0x0600184e	reimplemented	src/core/gameplay/text_reveal.cpp	flush_text_reveal
+kairo:0x0600184f	reimplemented	src/core/gameplay/text_reveal.cpp	text_reveal_ended
+kairo:0x06001882	documented	docs/subsystems/text.md	TextBlock ctor: font copy, start/length/border -1
+kairo:0x060013bc	traced	docs/subsystems/text.md	called by parser cleanup helper
+kairo:0x0600184a	documented	docs/subsystems/fonts.md	clear +0x86, copy font, replace font_
+kairo:0x06001834	traced	docs/subsystems/fonts.md	called by _getDefaultGUIFont on language change
+kairo:0x0600129a	traced	docs/subsystems/fonts.md	Font ctor -> Init -> _init
+kairo:0x0600129d	traced	docs/subsystems/fonts.md	copy constructor (GetFont, SetFont)
+kairo:0x0600129b	traced	docs/subsystems/fonts.md	Init with UI dispatch
+kairo:0x0600129c	documented	docs/subsystems/fonts.md	_init: default font, GUIStyle id, face 2, size 0, style 0
+kairo:0x0600129f	traced	docs/subsystems/fonts.md	_set copies useFontTexture_
+kairo:0x060012a5	reimplemented	src/core/gameplay/text_font.cpp	set_text_font_size; text_font_contract
+kairo:0x060012b1	traced	docs/subsystems/fonts.md	forwards with null
+kairo:0x060012b2	traced	docs/subsystems/fonts.md	UI-thread check/dispatch
+kairo:0x060012b3	documented	docs/subsystems/fonts.md	GUIStyle.CalcSize or font-texture route
+kairo:0x060012bb	traced	docs/subsystems/fonts.md	copy into destination
+kairo:0x060012bc	traced	docs/subsystems/fonts.md	copies attributes incl. +0x48
+kairo:0x060012be	documented	docs/subsystems/fonts.md	UpdateFontScale + arithmetic, UI dispatch
+kairo:0x060012bf	reimplemented	src/core/gameplay/text_font.cpp	adjust_text_font_size (after update_text_font_scale)
+kairo:0x060012e0	traced	docs/subsystems/fonts.md	AdjustFontSize delegate reading +0xa8
+kairo:0x060012c0	documented	docs/subsystems/fonts.md	localization predicate
+kairo:0x060012c1	documented	docs/subsystems/fonts.md	localized integer size
+kairo:0x060012c4	documented	docs/subsystems/fonts.md	push bool
+kairo:0x060012c5	documented	docs/subsystems/fonts.md	pop without removal
+kairo:0x060012c7	documented	docs/subsystems/fonts.md	stores requestFontScale_
+kairo:0x060012c9	reimplemented	src/core/gameplay/text_font.cpp	update_text_font_scale
+kairo:0x060012ca	traced	docs/subsystems/fonts.md	dispatch to _getDefaultGUIFont
+kairo:0x060012cb	documented	docs/subsystems/fonts.md	per-language font search and cache
+kairo:0x060012cd	traced	docs/subsystems/fonts.md	may swap GUIStyle; no flag write
+kairo:0x060012d3	traced	docs/subsystems/fonts.md	find/create GUIStyle for font
+kairo:0x060012d6	traced	docs/subsystems/fonts.md	GUIStyle used for measurement
+kairo:0x060012d7	documented	docs/subsystems/fonts.md	HEIGHT/WIDTH presets, requestFontScale_=100
+kairo:0x060012ed	documented	docs/subsystems/fonts.md	reads static +0x59
+kairo:0x060012ee	documented	docs/subsystems/fonts.md	stores arg&1; no direct callers
+kairo:0x06001361	documented	docs/subsystems/fonts.md	returns copy of Graphics font
+kairo:0x06000730	documented	docs/subsystems/fonts.md	font-texture measurement wrapper
+kairo:0x060007e0	documented	docs/subsystems/fonts.md	editor reflection / Android CallStatic -> SizeF
+kairo:0x060003dd	traced	docs/subsystems/fonts.md	prefs -> SetLanguagePack; inline font-scale stores
+kairo:0x060003f8	traced	docs/subsystems/fonts.md	writes langPackFile_/langPackCode_
+kairo:0x060003fa	traced	docs/subsystems/fonts.md	@language directive, code normalisation
+kairo:0x060003fe	documented	docs/subsystems/fonts.md	langPackCode_ or ja-JP/en-US
+kairo:0x060003e1	traced	docs/subsystems/fonts.md	Language.Get()==0
+kairo:0x060003df	traced	docs/subsystems/fonts.md	language index compared by Japanese

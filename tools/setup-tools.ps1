@@ -7,7 +7,7 @@ param([string]$ProjectDirectory = (Join-Path $PSScriptRoot '..'))
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $projectRoot = [IO.Path]::GetFullPath($ProjectDirectory)
-$toolRoot = Join-Path $projectRoot '.tools'
+$toolRoot = Join-Path $projectRoot 'external'
 $downloadRoot = Join-Path $toolRoot 'downloads'
 $javaCommand = (Get-Command java -ErrorAction Stop).Source
 $null = Get-Command javac -ErrorAction Stop
