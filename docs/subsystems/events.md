@@ -522,6 +522,32 @@ Evidence: local `notification-culture-bootstrap/F1e13b88.asm`, `notification-cul
 
 Limits: the projection excludes decimal/currency/calendar formatting, managed allocation/barrier events and setters; it assumes the decoded factory's CultureData name/index correspond to the supplied culture fields. Domain state is explicitly owned, with no invented process-global singleton. The desktop loader, Unicode lowering and live host/exception adapters still need binding; Android comparison remains pending.
 
+### Invariant UTF-16 lowercase conversion
+
+String.ToLowerInvariant (`0x1cf17b4`) obtains InvariantCulture.TextInfo and dispatches TextInfo.ToLower(string). The string overload `0x1e194a0` rejects null and calls `0x1e194f4`, which allocates a same-length result and invokes the character overload separately for every UTF-16 unit. It neither combines surrogate pairs nor expands a character into multiple units; embedded NUL is processed normally. The later native culture-name encoder, independently, truncates at NUL. Managed string allocation identity is outside the portable value contract.
+
+TextInfo.ToLower(char) `0x1e18e94` maps ASCII A..Z with OR 0x20 when IsAsciiCasingSameAsInvariant (`0x1e18f00`) is true. That predicate excludes CultureData +0x50 equal to 'az' or 'tr'; invariant CultureData initializes it to 'iv' and +0x58 to empty. These three short literals and the empty name were resolved from relocated metadata usages, so the ASCII branch is established for the invariant instance. Non-ASCII units use the invariant-name branch of `0x1e1901c`.
+
+That branch selects nine little-endian uint16 arrays by inclusive code-unit range, then handles fullwidth A..Z (0xff21..0xff3a) by adding 0x20, U+2132 -> U+214E and U+2183 -> U+2184. All other units are unchanged. The special cases belonging to the *non-invariant* branch (including U+212A) must not be imported into this one.
+
+| Static field offset | Input range | Units | Metadata default-data offset |
+| --- | --- | ---: | ---: |
+| +0x00 | 0x00c0..0x0556 | 1175 | 98432 |
+| +0x08 | 0x10a0..0x10c5 | 38 | 6824 |
+| +0x10 | 0x1e00..0x1ffc | 509 | 105288 |
+| +0x18 | 0x2160..0x216f | 16 | 106360 |
+| +0x20 | 0x24b6..0x24cf | 26 | 31832 |
+| +0x28 | 0x2c00..0x2c2e | 47 | 43136 |
+| +0x30 | 0x2c60..0x2ce2 | 131 | 62816 |
+| +0x38 | 0xa640..0xa696 | 87 | 29032 |
+| +0x40 | 0xa722..0xa78b | 106 | 47744 |
+
+TextInfoToLowerData .cctor (`0x1e2460c`) allocates those lengths in that order and initializes each array from a RuntimeFieldHandle. The GOT references 0x274bfd0..0x274c010 (stride 8) resolve to field metadata usages, then field_refs, the declaring type's field_start, field_defaults and the metadata default_data section. The listed offsets are relative to that section, specific to the maintainer's APK. A bounded local extraction recovered 4,270 bytes into `research/exports/culture-lower-data/`; full table contents remain local.
+
+`culture_lower.{hpp,cpp}` ports this invariant algorithm using caller-owned table views, with exact-length validation on accessed tables. `culture_lower_contract` exhaustively checks all 65,536 possible units against a synthetic mapping, covers table boundaries, UTF-16 surrogates/NUL and invalid extents. Its optional nine local file arguments swept the recovered tables: 973 input units change; ASCII names and representative Latin/Georgian values passed, and U+212A remains unchanged. The specific-culture test now calls this real kernel for its ASCII fixture. Windows CTest passes 49/49.
+
+Evidence: local `culture-lower/F1cf17b4.asm`, `culture-lower-text/`, `culture-lower-tables/`, invariant CultureData export and metadata/GOT resolution. Confidence high for the invariant algorithm and table extents. Limits: the automatic APK extractor/manifest and desktop host still need these nine arrays wired in; no Android comparison or culture-specific lowercasing is claimed.
+
 ### Supplied-item initialization and null SecureString inputs
 
 `initialize_apply_task` now composes both routes of `ApplyTask.Init` (`game:0x0600057d`); the gift-only entry delegates with a null item. Store the supplied item identity before normalizing the gift and resetting common fields. A present item takes precedence over every gift syntax, including TAB and special-prefix gifts. Copy name, product id, provision type, provision text and numeric provision value in that order, then return. Re-fetch the live item reference at each getter boundary; earlier field writes survive later getter/constructor failures. The copied fields do not overwrite talkCharaId_ or talkText_. `ApplyTaskState` retains the item reference, decoded fields and flags.
@@ -544,7 +570,7 @@ Null names fail; empty names return the host's invariant singleton. Nonempty nam
 
 The factory composes with `construct_current_culture`: managed selection failures reach its invariant fallback, while malformed extracted buffers remain C++ data errors and propagate. `specific_culture_contract` exercises canonical names, fallback, flags, null versus empty territory, 16-bit LCID aliases, missing neutral targets, singleton versus new invariant instances, cache composition and malformed buffers. Windows CTest passes 47/47 after a clean rebuild. Local inspection confirms that all 339 canonical-name and nonzero territory references fit the existing 19,129-byte extracted pool.
 
-Limits: this is the decoded selection/number-index contract, not full CultureInfo/CultureData construction; calendar data, Unicode lowercasing, number-format setters, thread storage/setters and collation remain explicit host responsibilities or open work. The original also constructs CultureData after neutral selection; its allocation and unrelated fields are not represented by this value model. The host must load and validate the extracted neutral JSON into unique typed entries before calling the factory; no proprietary mapping is embedded in source.
+Limits: this is the decoded selection/number-index contract, not full CultureInfo/CultureData construction; calendar data, lowercase-table host loading, number-format setters, thread storage/setters and collation remain explicit host responsibilities or open work. The original also constructs CultureData after neutral selection; its allocation and unrelated fields are not represented by this value model. The host must load and validate the extracted neutral JSON into unique typed entries before calling the factory; no proprietary mapping is embedded in source.
 
 
 ## Port

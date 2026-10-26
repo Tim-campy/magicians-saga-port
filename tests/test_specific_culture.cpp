@@ -1,4 +1,5 @@
 #include "core/gameplay/specific_culture.hpp"
+#include "core/gameplay/culture_lower.hpp"
 #include <cstdlib>
 #include <iostream>
 using namespace saga::core;
@@ -24,10 +25,9 @@ struct Host:SpecificCultureHost {
     std::shared_ptr<CultureInstance> invariant=state.instance;
     std::shared_ptr<CultureNumberFormat> invariant_number_format()override{return state.number_format;}
     std::u16string lower_invariant(const std::u16string& value)override{
-        lowered.push_back(value);auto result=value;
-        // Synthetic fixture uses ASCII only; production Unicode lowering is a host contract.
-        for(auto& c:result)if(c>=u'A' && c<=u'Z')c=static_cast<char16_t>(c+32);
-        return result;
+        lowered.push_back(value);
+        // ASCII fixture needs no table reads; use the recovered lowering kernel.
+        return lower_invariant_text(value,{});
     }
     std::shared_ptr<CultureInstance> invariant_culture()override{return invariant;}
 };
