@@ -92,7 +92,6 @@ struct LateBindings final:SelectBuildingHost,SelectTownButtonsHost,SelectGuidanc
     EventObject notification_manager() override {return std::make_shared<int>(1);}
     std::int32_t value_count(EventObject) override {++notification_reads;return 0;}
     NotificationText value(EventObject,std::int32_t) override {throw std::logic_error("unexpected notification value");}
-    bool matches(NotificationText,NotificationPattern) override {throw std::logic_error("unexpected notification pattern");}
     bool starts_currency_sale(NotificationText) override {throw std::logic_error("unexpected sale prefix");}
     EventObject billing_manager() override {throw std::logic_error("unexpected billing");}
     std::shared_ptr<NotificationApplyTask> make_apply_task(NotificationText) override {throw std::logic_error("unexpected task");}
