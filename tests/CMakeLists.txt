@@ -274,3 +274,8 @@ add_executable(test_synchronization_copy test_synchronization_copy.cpp)
 target_link_libraries(test_synchronization_copy PRIVATE synchronization_copy context_capture)
 project_warnings(test_synchronization_copy)
 add_test(NAME synchronization_copy_contract COMMAND test_synchronization_copy)
+
+add_executable(test_collation_selection test_collation_selection.cpp)
+target_link_libraries(test_collation_selection PRIVATE collation_selection)
+project_warnings(test_collation_selection)
+add_test(NAME collation_selection_contract COMMAND test_collation_selection)
