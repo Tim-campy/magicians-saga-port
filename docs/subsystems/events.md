@@ -171,13 +171,33 @@ Fields: `delayId_`+0x10, `line_`+0x14, `wait_`+0x18, `hour_`+0x1c, `talkChara_`+
 - `src/core/gameplay/event_progression.{hpp,cpp}` — `resolve_event_arguments` (sentinel substitution) and `apply_event_progression` (opcodes 1/2/4/15 on decoded `EventProgression`; `crystal_subtraction_mode` must be supplied, no default). Test `tests/test_event_progression.cpp` (`event_progression_contract`).
 - `src/core/gameplay/event_dispatch.{hpp,cpp}` — `stamina_limit_from_item_state`, `event_stamina_balance`, `dispatch_known_event_instruction` (opcodes 1/2/4/8/10/12/15/31; 10 is a no-op; others return `handled=false`). `EventEffectsHost` supplies progression state, stamina read/write/limit, form creation and push. Test `tests/test_event_dispatch.cpp` (`event_dispatch_contract`); `tests/test_presentation_forms.cpp` also drives the dispatcher.
 - `src/core/gameplay/event_catalog.{hpp,cpp}` ? record loading, id indexing, identity lookup and delay script resolution. Accepts decoded UTF-8 text, an explicit CRLF-normalization gate and an integer parser callback; `parse_event_decimal` implements the observed ASCII decimal subset. The host remains responsible for invalid UTF-8/culture policy. `identify_event_script` scans non-null records by shared script identity (including null), invokes an explicit fallback callback when no match exists, then returns -1. The generic callback must reproduce the original +0x1e8 access or fail when unavailable; the decoded execution adapter implements the complete lookup and fallback contract with fresh catalog accesses. `resolve_event_script` preserves the >999 guard, signed modulo, negative-multiple-of-1000 behavior and null-record failures. Tests: `event_catalog_contract`.
-- `src/platform/desktop/event_trace.cpp` ? research harness protocol `SAGA_EVENT_TRACE_2`: event id, reached queue passes, fixture balances/settings and the hex-encoded original table bytes. The tool uses the C++ loader and id-based delay lookup. Conditions and ExecEvent counters are not yet invoked; initial execution is injected directly into the matrix executor. Unknown effects and missing discovery state fail; form requests are logged.
-- `tools/run_event_scenario.py` validates UTF-8 and passes the intact table to the native loader. `--id` replaces the former catalog-position `--index`. Example (local data):
+- `src/platform/desktop/event_trace.cpp` ? research harness protocol `SAGA_EVENT_TRACE_3`: mode (`inject` or `auto`), event id, reached queue passes, fixture balances/settings, hex-encoded original table bytes and explicit state fields. The native loader supplies the catalog. Auto mode performs exactly one selection scan through `DecodedEventExecutionHost` and `DecodedEventConditionHost`, then the requested counted queue passes; it does not infer SelectForm scheduling or repeat selection every pass. Inject mode retains direct matrix execution for a chosen id (no eligibility check or ExecEvent increment). Snapshots include balances, queue waits and execution counters indexed by id (null gaps retained); form requests, diagnostics and whether selection returned a form are emitted separately.
+- Effect dispatch refreshes condition balances and area discovery state before the next eligibility check. Fixture quest discovery state is separate from completion flags/counters, matching the recovered contracts. Unknown effects fail; forms are logged, not displayed. Missing fixture data remains absent and fails if queried.
+- `tools/run_event_scenario.py` validates UTF-8 and sends the table and JSON fixture to the native executable. Use `--auto --state <fixture.json>` for one selection scan or `--id <id>` for direct injection. Both require explicit `--money`, `--crystals`, `--crystal-mode`, `--stamina`, `--item-state`, `--talk-character`, and `--passes`. Example injection (local data):
   ```
-  python -I tools/run_event_scenario.py extracted/members/06_xls/0007_English.lproj_Event.txt --exe build/desktop/event_trace.exe --id 10 --passes 50 --money 7 --crystals 11 --crystal-mode 10000 --stamina 3 --item-state 0 --talk-character 2 --output research/exports/event-catalog-scenario.json
+  python -I tools/run_event_scenario.py extracted/members/06_xls/0007_English.lproj_Event.txt --exe build/desktop/event_trace.exe --id 10 --passes 50 --money 7 --crystals 11 --crystal-mode 10000 --stamina 3 --item-state 0 --talk-character 2 --output research/exports/event-auto-injection-regression.json
   ```
-  Record 10 still produces money 8007, crystals 1011 and an empty queue after pass 50. A synthetic table with records 0 and 181 resumes id 181 correctly across the gap: wait 1, then money 7 -> 27. Evidence: `research/exports/event-catalog-scenario.json`, `event-catalog-gap-scenario.json`. Neither executes the original APK.
-- Last recorded build: Windows/MSVC, 23/23 CTest, including `event_execution_contract`.
+  Record 10 retains money 8007, crystals 1011 and an empty queue after pass 50. Integration tests use only synthetic tables: a money-gated discovery enables a later area condition, queues a delay, then resumes to change money from 5 to 12; preexisting execution counters skip records; a form stops the scan; missing context fails. Test `tests/test_event_scenario.py` runs fixture validation standalone and native integration through CTest (`event_scenario_integration`). This is not a comparison against a running APK.
+
+Fixture JSON schema (all keys optional; absence preserves missing state rather than supplying defaults):
+
+| Fields | JSON shape |
+| --- | --- |
+| `context_present`, `sys_save_present`, `print_enabled`, `debug_enabled` | Boolean |
+| `context_character_count`, `quest_data_count` | Nonnegative integer array lengths |
+| `hero_level`, `debug_rescue_count`, `town_capacity` | Signed int32 |
+| `high_score` | Signed int64 |
+| `sys_save_strings` | Array of strings or null converted SecureString slots |
+| `execution_counts` | Array of `[event_id, signed_count]`; ids must exist |
+| `areas` | Array of `[state, is_new]` or null gaps |
+| `quests` | Array of `[state, is_new, flags_byte, completed, record]` or null gaps; record is `[challenges, clears, rescued]` or null |
+| `characters` | Array of `[sub, flags_byte]` or null gaps |
+| `town_flags` | Array of uint32 flags or null gaps |
+| `buildings` | Array of int32 rows or null gaps |
+
+For a synthetic money-only event with nonempty effects, a minimal auto fixture is `{"context_present": true, "context_character_count": 1, "sys_save_present": false}`. This is test state, not an inferred new-game state. PRINT is required when an empty script or failed identity lookup reaches its diagnostic gate; quest_data_count is required only for that lookup's fallback. Additional predicates require their corresponding catalogs/scalars. Tool collection lengths are limited to 100000; these are harness limits, not recovered game limits.
+
+- Last recorded build: Windows/MSVC, 24/24 CTest (23 C++ contracts plus native scenario integration).
 - Missing: population of decoded default-args/diagnostic state from saves/configuration, SelectForm integration, remaining unit `CheckTerm` predicates, integration with save-loaded execution counters; hour-based delays; `SubForm.delayEvent_` path (slot 5); `SelectForm.Update` guards; opcodes other than the eight; `SecureLong`/`SecureInt` storage; billing item source for stamina; UI forms.
 
 ## Evidence

@@ -3,7 +3,7 @@ target_link_libraries(asset_inspect PRIVATE jar_archive opt_grid seb)
 project_warnings(asset_inspect)
 
 add_executable(event_trace event_trace.cpp)
-target_link_libraries(event_trace PRIVATE event_flow event_dispatch event_catalog)
+target_link_libraries(event_trace PRIVATE event_flow event_dispatch event_catalog event_execution)
 project_warnings(event_trace)
 
 option(SAGA_BUILD_VIEWER "Build the optional desktop PNG research viewer" OFF)

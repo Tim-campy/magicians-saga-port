@@ -29,7 +29,6 @@ The plan in one page. Agents take the first unblocked task of the current work p
 ## Next tasks
 
 ### 1. Events and scripts
-- [ ] Extend the desktop scenario to drive automatic selection through DecodedEventExecutionHost and DecodedEventConditionHost with explicit state, reporting execution counters and queue effects; do not invent save/config defaults.
 - [ ] Map `SelectForm+0x31` and the other `SelectForm.Update` guards (`+0xc0`, states of `+0xf8`, origin of `+0x5c` in `AcquireBalance`).
 - [ ] Find the consumer of `hour_ != -1`, the writer of `SubForm.delayEvent_` (`+0x1d0`) and the remaining effect opcodes of the 15-entry table at `0x627b6e`.
 

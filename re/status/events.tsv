@@ -1,5 +1,5 @@
 id	status	evidence	note
-game:0x060001c8	reimplemented	src/core/gameplay/event_execution.cpp	selection with fresh catalog reads; tests/test_event_execution.cpp
+game:0x060001c8	reimplemented	src/core/gameplay/event_execution.cpp	selection with fresh catalog reads; C++ contract and tests/test_event_scenario.py native integration
 game:0x060001c9	traced	docs/subsystems/events.md	ExecEvent forwarder to 0x110c668 with null args
 game:0x060001cb	reimplemented	src/core/gameplay/event_execution.cpp	indexed execution, default-args/diagnostic host boundary, counter wrap; tests/test_event_execution.cpp
 game:0x060001cc	reimplemented	src/core/gameplay/event_flow.cpp	matrix executor + opcode 10; tests/test_event_flow.cpp

@@ -93,3 +93,6 @@ add_executable(test_event_execution test_event_execution.cpp)
 target_link_libraries(test_event_execution PRIVATE event_execution)
 project_warnings(test_event_execution)
 add_test(NAME event_execution_contract COMMAND test_event_execution)
+
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+add_test(NAME event_scenario_integration COMMAND "${Python3_EXECUTABLE}" -I "${CMAKE_CURRENT_SOURCE_DIR}/test_event_scenario.py" "$<TARGET_FILE:event_trace>")
