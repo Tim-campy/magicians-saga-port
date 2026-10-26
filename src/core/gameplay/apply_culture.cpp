@@ -1,6 +1,36 @@
 #include "apply_culture.hpp"
 #include "assets/culture_signs.hpp"
 namespace saga::core {
+// CultureInfo.get_NumberFormat 0x1e26f40: cache after successful construction only.
+std::shared_ptr<CultureNumberFormat> culture_number_format(CultureInstance& culture,CultureNumberHost& host) {
+    if(culture.number_format)return culture.number_format;
+    auto value=host.construct_number_format(culture);
+    if(!value)throw CultureManagedError("null constructed number format");
+    value->read_only=culture.read_only;
+    culture.number_format=value;
+    return value;
+}
+// NumberFormatInfo.CurrentInfo 0x1e146cc: inherited cultures always dispatch GetFormat.
+std::shared_ptr<CultureNumberFormat> current_number_format(CurrentCultureState& state,ThreadCultureHost& thread,
+    CurrentCultureHost& current,CultureNumberHost& formats) {
+    auto culture=resolve_current_culture(state,thread,current);
+    if(!culture)throw CultureManagedError("null current culture");
+    if(!culture->inherited && culture->number_format)return culture->number_format;
+    return formats.get_format(*culture); // Original permits a null virtual result.
+}
+std::shared_ptr<CultureNumberFormat> read_culture_number_format(const CultureInstance& culture,
+    bool invariant_mode,std::string_view records,std::string_view pool) {
+    auto value=std::make_shared<CultureNumberFormat>();
+    if(invariant_mode){value->invariant=true;return value;}
+    if(!culture.name.empty()) {
+        if(!culture.number_index)throw std::invalid_argument("missing culture number index");
+        const auto signs=read_apply_number_signs(records,pool,*culture.number_index);
+        value->positive=signs.positive;value->negative=signs.negative;
+    }
+    // CultureData.IsInvariantCulture 0x1e1a3d0 tests its name with IsNullOrEmpty.
+    value->invariant=culture.name.empty();
+    return value;
+}
 // The extractor proves valid UTF-8 for every reachable sign. Reject corrupted
 // inputs at this adapter boundary; managed replacement fallback is not modeled.
 std::u16string decode_culture_utf8(std::string_view bytes) {

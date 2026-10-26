@@ -3,21 +3,33 @@
 #include <memory>
 #include <stdexcept>
 namespace saga::core {
+// NumberFormatInfo projection for integer parsing, not the full formatting API.
+struct CultureNumberFormat {
+    std::u16string positive=u"+",negative=u"-";
+    bool read_only=false,invariant=false;
+};
+std::shared_ptr<CultureNumberFormat> clone_number_format(const std::shared_ptr<CultureNumberFormat>&);
+std::shared_ptr<CultureNumberFormat> readonly_number_format(const std::shared_ptr<CultureNumberFormat>&);
+std::shared_ptr<CultureNumberFormat> make_invariant_number_format();
 struct CultureInstance {
     CultureIdentity identity;
     std::u16string name;
     std::optional<std::size_t> number_index;
+    std::shared_ptr<CultureNumberFormat> number_format;
+    bool inherited=false;
     bool read_only=false;
     bool use_user_override=false;
 };
 // Host-translated managed throws. Unrelated C++ failures are not swallowed.
 class CultureManagedError:public std::runtime_error {public:using std::runtime_error::runtime_error;};
 struct CurrentCultureState {std::shared_ptr<CultureInstance> cached;};
-// Decoded CultureInfo fields only; NumberFormatInfo/calendar objects are separate.
-std::shared_ptr<CultureInstance> make_invariant_culture(bool user_override,bool read_only);
+// Decoded culture and integer-sign projection; calendar/other formatting fields are omitted.
+std::shared_ptr<CultureInstance> make_invariant_culture(bool user_override,bool read_only,
+    const std::shared_ptr<CultureNumberFormat>& invariant_format);
 struct InvariantCultureState {
+    std::shared_ptr<CultureNumberFormat> number_format=make_invariant_number_format();
     // CultureInfo .cctor constructs (127, false, true) once per managed domain.
-    std::shared_ptr<CultureInstance> instance=make_invariant_culture(false,true);
+    std::shared_ptr<CultureInstance> instance=make_invariant_culture(false,true,number_format);
 };
 class CurrentCultureHost {
 public:

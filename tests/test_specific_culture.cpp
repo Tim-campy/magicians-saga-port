@@ -20,7 +20,9 @@ struct Fixture {
 };
 struct Host:SpecificCultureHost {
     std::vector<std::u16string> lowered;
-    std::shared_ptr<CultureInstance> invariant=std::make_shared<CultureInstance>();
+    InvariantCultureState state;
+    std::shared_ptr<CultureInstance> invariant=state.instance;
+    std::shared_ptr<CultureNumberFormat> invariant_number_format()override{return state.number_format;}
     std::u16string lower_invariant(const std::u16string& value)override{
         lowered.push_back(value);auto result=value;
         // Synthetic fixture uses ASCII only; production Unicode lowering is a host contract.
@@ -50,11 +52,11 @@ int main(){
     check((h.lowered==std::vector<std::u16string>{u"AA-extra",u"aa"}));
     fails([&]{create_specific_culture(u"bb",f.tables(),h);},CultureSelectionFailure::UnknownNeutral);
     fails([&]{create_specific_culture(u"missing",f.tables(),h);},CultureSelectionFailure::NameNotFound);
-    fails([&]{create_culture_by_lcid(-1,false,false,f.tables());},CultureSelectionFailure::NegativeLcid);
-    fails([&]{create_culture_by_lcid(99,false,false,f.tables());},CultureSelectionFailure::MissingLcid);
-    auto alias=create_culture_by_lcid(65538,false,true,f.tables());
+    fails([&]{create_culture_by_lcid(-1,false,false,f.tables(),h);},CultureSelectionFailure::NegativeLcid);
+    fails([&]{create_culture_by_lcid(99,false,false,f.tables(),h);},CultureSelectionFailure::MissingLcid);
+    auto alias=create_culture_by_lcid(65538,false,true,f.tables(),h);
     check(alias->identity.lcid==2 && alias->read_only && !alias->use_user_override);
-    auto inv=create_culture_by_lcid(127,true,true,f.tables());
+    auto inv=create_culture_by_lcid(127,true,true,f.tables(),h);
     check(inv!=h.invariant && inv->identity.lcid==127 && inv->identity.constructed && inv->name.empty() && !inv->number_index && inv->read_only && inv->use_user_override);
     f.neutral[0].lcid=99;
     fails([&]{create_specific_culture(u"aa",f.tables(),h);},CultureSelectionFailure::MissingLcid);

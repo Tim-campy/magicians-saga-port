@@ -74,7 +74,7 @@ int main(){
         check(a.instance!=b.instance && a.instance->read_only && !a.instance->use_user_override);
         check(a.instance->identity.lcid==127 && a.instance->identity.constructed);
         check(!a.instance->identity.territory && a.instance->name.empty() && !a.instance->number_index);
-        auto fresh=make_invariant_culture(true,false);
+        auto fresh=make_invariant_culture(true,false,a.number_format);
         check(fresh!=a.instance && !fresh->read_only && fresh->use_user_override);
         fresh->name=u"mutated";check(a.instance->name.empty());
         Host h;h.invariant=a.instance;h.specific=a.instance;h.name=u"";CurrentCultureState s;

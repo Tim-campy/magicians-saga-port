@@ -1,7 +1,28 @@
 #include "current_culture.hpp"
 namespace saga::core {
+// NumberFormatInfo.Clone 0x1e147c0 and ReadOnly 0x1e14450.
+std::shared_ptr<CultureNumberFormat> clone_number_format(const std::shared_ptr<CultureNumberFormat>& value) {
+    if(!value)throw CultureManagedError("null number format");
+    auto result=std::make_shared<CultureNumberFormat>(*value);
+    result->read_only=false;
+    return result;
+}
+std::shared_ptr<CultureNumberFormat> readonly_number_format(const std::shared_ptr<CultureNumberFormat>& value) {
+    if(!value)throw CultureManagedError("null number format");
+    if(value->read_only)return value;
+    auto result=std::make_shared<CultureNumberFormat>(*value);
+    result->read_only=true;
+    return result;
+}
+// InvariantInfo 0x1e10458: default constructor, invariant flag, ReadOnly copy.
+std::shared_ptr<CultureNumberFormat> make_invariant_number_format() {
+    auto value=std::make_shared<CultureNumberFormat>();
+    value->invariant=true;
+    return readonly_number_format(value);
+}
 // CultureInfo .ctor 0x1e275c8 / ConstructInvariant 0x1e27468.
-std::shared_ptr<CultureInstance> make_invariant_culture(bool user_override,bool read_only) {
+std::shared_ptr<CultureInstance> make_invariant_culture(bool user_override,bool read_only,
+    const std::shared_ptr<CultureNumberFormat>& invariant_format) {
     auto value=std::make_shared<CultureInstance>();
     value->identity.lcid=127;
     value->identity.constructed=true;
@@ -9,6 +30,7 @@ std::shared_ptr<CultureInstance> make_invariant_culture(bool user_override,bool 
     // No native number-record lookup occurs on this path.
     value->use_user_override=user_override;
     value->read_only=read_only;
+    value->number_format=read_only?invariant_format:clone_number_format(invariant_format);
     return value;
 }
 // Thread.GetCurrentCultureNoAppX 0x1ecd268; UserDefaultCulture 0x1e2a8e0.
