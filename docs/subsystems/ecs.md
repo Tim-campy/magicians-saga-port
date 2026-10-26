@@ -23,7 +23,7 @@ Position uses slot 0 with binary32 x/y/z at +0x10/+0x14/+0x18; Bullet presence u
 
 ### Projectile hit components
 
-The generated getters confirm Speed slot 1, Projectile slot 27, Collision slot 32 and Damage slot 33. Projectile.parent (+0x38) supplies the attacker; Damage.value/attribute (+0x10/+0x14) supply numeric attack inputs. OnBulletHit removes Projectile and Collision after impact, then stores zero in Speed.vx/vy/vz (+0x10/+0x14/+0x18). Generated removers notify through entity removal before returning the captured object to ComponentFactory stacks. Portable component projections and the handler live in `projectile_hit`; unobserved shape/motion fields are not invented. See [combat.md](combat.md#damage-callers) for guards and callback-sensitive ordering.
+The generated getters confirm Speed slot 1, Projectile slot 27, Collision slot 32 and Damage slot 33. Projectile.parent (+0x38) supplies the attacker; Damage.value/attribute (+0x10/+0x14) supply numeric attack inputs. OnBulletHit removes Projectile and Collision after impact, then stores zero in Speed.vx/vy/vz (+0x10/+0x14/+0x18). Generated removers notify through entity removal before returning the captured object to ComponentFactory stacks. Portable component projections and the handler live in `projectile_hit`; Collision radius/offset fields and pairwise geometry are now implemented in `collision_check`; visited bookkeeping remains unported. See [combat.md](combat.md#damage-callers) for guards and callback-sensitive ordering.
 
 ### Combat record links
 

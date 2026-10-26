@@ -404,3 +404,8 @@ add_executable(test_enemy_defeat test_enemy_defeat.cpp)
 target_link_libraries(test_enemy_defeat PRIVATE enemy_defeat)
 project_warnings(test_enemy_defeat)
 add_test(NAME enemy_defeat_contract COMMAND test_enemy_defeat)
+
+add_executable(test_collision_check test_collision_check.cpp)
+target_link_libraries(test_collision_check PRIVATE collision_check)
+project_warnings(test_collision_check)
+add_test(NAME collision_check_contract COMMAND test_collision_check)

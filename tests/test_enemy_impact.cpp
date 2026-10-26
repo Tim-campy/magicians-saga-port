@@ -17,7 +17,8 @@ struct Host final:EnemyImpactHost,RandomSource,ComponentObserver {
     bool destroyed(ComponentSlots&)override{calls.push_back("guard");return dead;}
     void read_bullet_data(ComponentSlots&)override{calls.push_back("bulletData");}
     void create_bullet_impact(ComponentSlots&,ComponentSlots&)override{calls.push_back("bulletEffect");if(on_bullet)on_bullet();}
-    bool check_hit(ComponentSlots&,ComponentSlots&)override{calls.push_back("checkHit");if(on_check)on_check();return hit;}
+    bool check_hit(ComponentSlots& source,ComponentSlots& target)override{calls.push_back("checkHit");
+        const auto result=EnemyImpactHost::check_hit(source,target);if(on_check)on_check();return result;}
     void bullet_hit(ComponentSlots&,ComponentSlots* target)override{calls.push_back("bulletHit");hit_target=target;}
     ComponentSlots* create_effect(std::int32_t x,std::int32_t y,std::int32_t z,ProjectilePoint p)override{
         check(x==0&&y==24&&z==0&&p.x==10&&p.y==30&&p.z==30);calls.push_back("effect");
@@ -37,11 +38,12 @@ struct Host final:EnemyImpactHost,RandomSource,ComponentObserver {
 struct Fixture {
     Host host;ComponentSlots e{35,&host},parent{35},target{35},other{35};
     ProjectileLink p;EnemyRecordLink enemy;HumanRecordLink human;EquipmentRecordLinks equipment_link;
-    ContactPosition pos;Component cell,bullet;
+    ContactPosition pos,target_pos;ProjectileCollision collision,target_collision;Component cell,bullet;
     CharacterProgressionTable characters;EnemyTable enemies;EquipmentCombatTable equipment{EquipmentCombatRecord{}};
     CombatRecordTables tables{characters,enemies,equipment,equipment,equipment};
     Fixture(){pos.x=10;pos.y=20;pos.z=30;enemy.flags=1;p.parent=&parent;
         e.add(0,&pos).add(5,&cell).add(27,&p).add(24,&enemy);
+        collision.radius=target_collision.radius=100;e.add(32,&collision);target.add(0,&target_pos).add(32,&target_collision);
         equipment_link.ids=std::make_shared<EventIntegers>(EventIntegers{0,0,0,0});
         parent.add(14,&human).add(8,&equipment_link);}
     void run(){enemy_projectile_impact(&e,tables,host,host);}
@@ -70,6 +72,8 @@ int main(){
         check(f.host.calls==std::vector<std::string>{"guard","bulletData","bulletEffect","checkHit","bulletHit"}&&f.host.hit_target==&f.other&&f.host.draws==0);}
     {Fixture f;f.e.remove(24);f.e.add(29,&f.bullet);f.equipment[0].reset();f.run();
         check(f.host.calls==std::vector<std::string>{"guard","bulletData","bulletEffect"});} // Unused null weapon result is permitted.
+    {Fixture f;f.e.remove(24);f.e.add(29,&f.bullet);f.human.opponent=&f.target;f.target_pos.z=1000;f.run();
+        check(f.host.calls.back()=="checkHit"&&f.host.hit_target==nullptr);}
     {Fixture f;f.e.add(29,&f.bullet);f.p.parent=nullptr;bool failed=false;try{f.run();}catch(const std::invalid_argument&){failed=true;}
         check(failed&&f.host.calls==std::vector<std::string>{"guard","bulletData"});}
 }

@@ -105,3 +105,4 @@ game:0x06000f80	traced	docs/subsystems/combat.md	Emitter destroy then destroyed 
 game:0x06000ecf	reimplemented	src/core/gameplay/human_impact.cpp	Cell Human state-4 guards; animation effect state-5 then event 30; callbacks and failures tested
 game:0x06000e7c	reimplemented	src/core/gameplay/enemy_impact.cpp	Ordered bullet-parent checks emitter launches 12 RNG draws modification replacement and boss notification; host services explicit
 game:0x06000fb5	traced	docs/subsystems/combat.md	Boss flag delay key release victory form and ReleaseMoveKeys sequence; UI/input services pending
+game:0x06000e0d	reimplemented	src/core/gameplay/collision_check.cpp	Inclusive binary32 sphere distance with wrapping int32 radius square; gates overflow and impact integration tested
