@@ -16,7 +16,7 @@ public:
     virtual ComponentSlots* create_effect(std::int32_t,std::int32_t,std::int32_t,ProjectilePoint)=0;
     virtual ComponentSlots* create_entity(std::int32_t)=0;
     virtual ContactPosition& acquire_position()=0;
-    // Returns collision storage with traversal bookkeeping (visited) reset to zero.
+    // Borrowed storage; impact creation initializes the collision payload before insertion.
     virtual ProjectileCollision& acquire_collision()=0;
     virtual ProjectileDamage& acquire_damage()=0;
     // Garbage lifetime scheduling and color rendering remain world services.

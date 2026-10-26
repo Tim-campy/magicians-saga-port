@@ -429,3 +429,13 @@ add_executable(test_collision_pass test_collision_pass.cpp)
 target_link_libraries(test_collision_pass PRIVATE collision_pass)
 project_warnings(test_collision_pass)
 add_test(NAME collision_pass_contract COMMAND test_collision_pass)
+
+add_executable(test_entity_subset test_entity_subset.cpp)
+target_link_libraries(test_entity_subset PRIVATE entity_subset)
+project_warnings(test_entity_subset)
+add_test(NAME entity_subset_contract COMMAND test_entity_subset)
+
+add_executable(test_live_combat_subsets test_live_combat_subsets.cpp)
+target_link_libraries(test_live_combat_subsets PRIVATE subset_cursors)
+project_warnings(test_live_combat_subsets)
+add_test(NAME live_combat_subsets_contract COMMAND test_live_combat_subsets)

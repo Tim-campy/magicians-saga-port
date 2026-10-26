@@ -52,12 +52,12 @@ game:0x06000c41	documented	docs/subsystems/ecs.md
 game:0x06000c42	documented	docs/subsystems/ecs.md	
 game:0x06000c43	documented	docs/subsystems/ecs.md	
 game:0x06000c75	documented	docs/subsystems/ecs.md	
-game:0x06000c76	documented	docs/subsystems/ecs.md	
+game:0x06000c76	reimplemented	src/core/ecs/entity_subset.cpp	Count reflects live membership including reference-distinct equal-ID entries
 game:0x06000c77	documented	docs/subsystems/ecs.md	
-game:0x06000c79	documented	docs/subsystems/ecs.md	
-game:0x06000c7a	documented	docs/subsystems/ecs.md	
-game:0x06000c7b	documented	docs/subsystems/ecs.md	
-game:0x06000c7c	documented	docs/subsystems/ecs.md	
+game:0x06000c79	reimplemented	src/core/ecs/entity_subset.cpp	Silent matching add with cache invalidation; public-source slot order and duplicate semantics tested
+game:0x06000c7a	reimplemented	src/core/ecs/entity_subset.cpp	Matching add notifies even for duplicates; cache clear before callback; live membership tests
+game:0x06000c7b	reimplemented	src/core/ecs/entity_subset.cpp	Remove notifies only on success then clears cache; LIFO reuse and callback failure tests
+game:0x06000c7c	reimplemented	src/core/ecs/entity_subset.cpp	Forwards component change without membership recomputation; Change null stale-group behavior tested
 game:0x06000ca5	documented	docs/subsystems/ecs.md	
 game:0x06000ca6	documented	docs/subsystems/ecs.md	
 game:0x06000ca7	documented	docs/subsystems/ecs.md	
