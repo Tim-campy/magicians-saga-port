@@ -229,3 +229,8 @@ add_executable(test_call_context test_call_context.cpp)
 target_link_libraries(test_call_context PRIVATE call_context)
 project_warnings(test_call_context)
 add_test(NAME call_context_contract COMMAND test_call_context)
+
+add_executable(test_hashtable_enumerator test_hashtable_enumerator.cpp)
+target_link_libraries(test_hashtable_enumerator PRIVATE hashtable_enumerator)
+project_warnings(test_hashtable_enumerator)
+add_test(NAME hashtable_enumerator_contract COMMAND test_hashtable_enumerator)
