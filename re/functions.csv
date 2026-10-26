@@ -579,8 +579,8 @@ game:0x06000255,game:0x06000255,boot,,108,0x11171cc
 game:0x06000256,game:0x06000256,boot,,436,0x1117238
 game:0x06000257,game:0x06000257,boot,,16,0x11173ec
 game:0x06000258,game:0x06000258,boot,,272,0x11173fc
-game:0x06000259,game:0x06000259,boot,,152,0x111750c
-game:0x0600025a,game:0x0600025a,boot,,152,0x11175a4
+game:0x06000259,main.AppData.IsReviewed,boot,reimplemented,152,0x111750c
+game:0x0600025a,main.AppData.HasReviewedCoinGotten,boot,reimplemented,152,0x11175a4
 game:0x0600025b,game:0x0600025b,boot,,300,0x111763c
 game:0x0600025c,game:0x0600025c,boot,,96,0x1117768
 game:0x0600025d,main.AppData.GetAttributesAffinity,boot,reimplemented,216,0x11177c8
@@ -2443,7 +2443,7 @@ game:0x060009da,game:0x060009da,util,,16,0x1120af0
 game:0x060009db,game:0x060009db,util,,12,0x1120b00
 game:0x060009dc,game:0x060009dc,util,,32,0x1120b0c
 game:0x060009dd,game:0x060009dd,util,,32,0x1120b2c
-game:0x060009df,game:0x060009df,util,,96,0x1120b4c
+game:0x060009df,ext.util.Lib.Hits,util,documented,96,0x1120b4c
 game:0x060009e3,game:0x060009e3,util,,152,0x1120bac
 game:0x060009e4,game:0x060009e4,util,,260,0x1120c44
 game:0x060009e5,game:0x060009e5,util,,340,0x1120d48

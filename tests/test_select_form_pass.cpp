@@ -1,5 +1,6 @@
 #include "core/gameplay/select_form_pass.hpp"
 #include "core/gameplay/select_navigation.hpp"
+#include "core/gameplay/select_late.hpp"
 #include <cstdlib>
 #include <iostream>
 #include <stdexcept>
@@ -11,14 +12,14 @@ struct Host:SelectFormPassHost,SelectCloudHost,SelectMarkerHost,EventExecutionHo
     DecodedEventConditionState decoded;
     DecodedEventConditionHost conditions{decoded};
     std::vector<std::string> log;
-    bool input=false,label=false,balance=false,fail_push=false;
+    bool input=false,label=false,balance=false,fail_push=false,room_button=true;
     int town_count=0,effects=0;
     EventObject child=std::make_shared<int>(7);
     std::shared_ptr<SelectClouds> cloud_list=std::make_shared<SelectClouds>();
     std::shared_ptr<EventCatalog> catalog=std::make_shared<EventCatalog>(2);
     Host() {decoded.context_present=true;decoded.context_character_count=1;decoded.money=0;}
     std::function<void()> pending;
-    bool pressed(std::uint32_t mask) override {log.push_back("button");return mask==0x04000000U;}
+    bool pressed(std::uint32_t mask) override {log.push_back("button");return room_button && mask==0x04000000U;}
     void play_button_sound() override {log.push_back("sound");}
     void make_transition(std::int32_t,bool,std::uint32_t,std::function<void()> action) override {log.push_back("transition");pending=std::move(action);}
     EventObject room_form() override {return child;}
@@ -48,7 +49,7 @@ struct Host:SelectFormPassHost,SelectCloudHost,SelectMarkerHost,EventExecutionHo
     void update_town_humans() override {log.push_back("humans");}
     std::int32_t town_enable_count() override {log.push_back("count");return town_count;}
     bool update_town_enable(std::int32_t n) override {log.push_back("enable"+std::to_string(n));return true;}
-    void check_guide_arrow(bool force) override {check(force,"forced guide");log.push_back("guide");}
+    void check_guide_arrow(bool force) override {log.push_back(force?"guide":"guide_late");}
     std::shared_ptr<SelectClouds> clouds() override {log.push_back("clouds");return cloud_list;}
     std::int32_t right_edge() override {return 100;}
     std::int32_t cloud_resource() override {return 1;}
@@ -85,7 +86,76 @@ struct Host:SelectFormPassHost,SelectCloudHost,SelectMarkerHost,EventExecutionHo
         catalog->at(1)=record;
     }
 };
+struct LateBindings final:SelectBuildingHost,SelectTownButtonsHost,SelectGuidanceSaveHost,SelectCameraHost,SelectReviewHost {
+    int save_calls=0,platform_calls=0;
+    bool pressed(std::uint32_t) override {return false;}
+    void play_button_sound() override {throw std::logic_error("unexpected sound");}
+    std::shared_ptr<BuildingSlots> building_slots() override {throw std::logic_error("unexpected slots");}
+    std::shared_ptr<EventIntegers> save_integers() override {throw std::logic_error("unexpected save array");}
+    std::shared_ptr<BuildingMenuCatalog> buildings() override {throw std::logic_error("unexpected buildings");}
+    bool can_build(std::int32_t) override {throw std::logic_error("unexpected build");}
+    std::shared_ptr<std::vector<EventObject>> living_members() override {throw std::logic_error("unexpected members");}
+    std::int32_t system_share_value() override {throw std::logic_error("unexpected share");}
+    EventObject make_shop(std::int32_t) override {throw std::logic_error("unexpected shop");}
+    void set_shop_selection(EventObject,std::int32_t) override {throw std::logic_error("unexpected shop selection");}
+    EventObject make_build_list(std::int32_t) override {throw std::logic_error("unexpected build list");}
+    EventObject make_human_house(EventObject,std::int32_t,bool) override {throw std::logic_error("unexpected house");}
+    EventObject make_subform(std::int32_t) override {throw std::logic_error("unexpected subform");}
+    EventObject make_share_window(bool) override {throw std::logic_error("unexpected share window");}
+    EventObject area_form() override {throw std::logic_error("unexpected area form");}
+    EventObject make_obstacle(std::int32_t) override {throw std::logic_error("unexpected obstacle");}
+    EventObject make_store_invite() override {throw std::logic_error("unexpected invite");}
+    std::int32_t sum_quest_challenges() override {throw std::logic_error("unexpected quests");}
+    std::shared_ptr<EventIntegers> system_save_integers() override {throw std::logic_error("unexpected system save");}
+    std::int32_t store_limit_slot() override {throw std::logic_error("unexpected limit");}
+    void add_money(std::int32_t) override {throw std::logic_error("unexpected money");}
+    FormText format_present_value(std::int32_t) override {throw std::logic_error("unexpected formatting");}
+    EventObject make_present_popup(FormText) override {throw std::logic_error("unexpected popup");}
+    std::shared_ptr<TownHumanRows> town_humans() override {throw std::logic_error("unexpected bubble row");}
+    std::shared_ptr<TownVoices> voices() override {throw std::logic_error("unexpected voices");}
+    std::shared_ptr<TownSpeakers> speakers() override {throw std::logic_error("unexpected speakers");}
+    std::int32_t game_width() override {return 320;}
+    std::int32_t game_height() override {return 240;}
+    std::int32_t view_width() override {return 320;}
+    std::int32_t view_height() override {return 240;}
+    bool is_top_form() override {return true;}
+    void save_game(bool automatic,bool option) override {check(automatic && option,"autosave options");++save_calls;}
+    void report_autosave_error(const SelectSaveError&) override {throw std::logic_error("unexpected save failure");}
+    bool soft_label(std::int32_t n) override {check(n==19,"late label");return false;}
+    void save_system() override {throw std::logic_error("unexpected system store");}
+    void show_offerwall() override {throw std::logic_error("unexpected offerwall");}
+    bool print_enabled() override {throw std::logic_error("unexpected print");}
+    void report_offerwall_error(const SelectSaveError&) override {throw std::logic_error("unexpected offer error");}
+    std::int32_t random(std::int32_t) override {throw std::logic_error("unexpected review RNG");}
+    std::int32_t area_state(std::int32_t) override {throw std::logic_error("unexpected area");}
+    std::int32_t reviewed_slot() override {throw std::logic_error("unexpected reviewed");}
+    std::int32_t review_coin_slot() override {throw std::logic_error("unexpected coin");}
+    std::int32_t platform_code() override {++platform_calls;return 0;}
+    EventObject make_reviewed(bool) override {throw std::logic_error("unexpected review form");}
+};
 int main() {
+    {
+        auto h=std::make_shared<Host>();h->room_button=false;h->state.events.loop_counter=2;
+        SelectPreludeState prelude{0,0,0,-10};SelectTouchMoveState movement{false,0,0,0,-1};
+        auto owner=std::shared_ptr<SelectFormPassState>(h,&h->state);
+        SelectUpdateBindings bindings{prelude,*h,owner,*h,*h,*h,h->queue,*h,h->conditions,movement,*h,*h,h};
+        SelectBuildingState building{-1,prelude.camera_x,0,movement.drag_distance,-1,3};
+        SelectTownButtonsState town{-1,0};TownBubbleState bubble{-1,nullptr,3};
+        SelectCameraState camera{false,2,0,prelude.camera_x,building.camera_y,0,1000};LateBindings late;
+        h->state.auto_save=true;
+        check(update_select_form(bindings,building,late,town,bubble,late,late,camera,late,late),"full Update return");
+        check(prelude.camera_x==-9 && building.unlock_info_frames==2 && bubble.frames==2,"full update reaches movement and lifetimes");
+        check(late.save_calls==1 && late.platform_calls==1 && !h->state.auto_save,"full update saves before late gates");
+        check(h->log.at(h->log.size()-2)=="guide_late" && h->log.back()=="bgm","late guide and BGM order");
+        h->state.form.dialog=h->child;h->state.auto_save=true;h->log.clear();
+        update_select_form(bindings,building,late,town,bubble,late,late,camera,late,late);
+        check(late.save_calls==1 && late.platform_calls==1 && bubble.frames==2 && prelude.camera_x==-9,"dialog skips the entire late continuation");
+        h->room_button=true;
+        update_select_form(bindings,building,late,town,bubble,late,late,camera,late,late);
+        check(bool(h->pending) && late.save_calls==1 && bubble.frames==2,"button return skips guidance and late continuation");
+        h->pending={};
+    }
+
     {
         auto h=std::make_shared<Host>();SelectPreludeState prelude{0,0,0,0};SelectTouchMoveState movement{false,0,0,0,-1};
         auto owner=std::shared_ptr<SelectFormPassState>(h,&h->state);

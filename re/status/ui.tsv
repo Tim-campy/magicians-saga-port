@@ -20,3 +20,6 @@ game:0x0600006c	documented	docs/subsystems/events.md	GameView width scaled binar
 game:0x0600006d	documented	docs/subsystems/events.md	GameView height scaled binary32 arithmetic with +0.01 bias; arithmetic kernels tested; live fields binding pending
 game:0x0600081d	documented	docs/subsystems/events.md	SelectForm width requires live view and int32 scale; wrapped multiply and SDIV; arithmetic kernels tested; live fields binding pending
 game:0x0600081e	documented	docs/subsystems/events.md	SelectForm height requires live view and int32 scale; wrapped multiply and SDIV; arithmetic kernels tested; live fields binding pending
+game:0x06000259	reimplemented	src/core/gameplay/select_late.cpp	IsReviewed: captured system array, explicit live slot and exact 1; tests/test_select_late.cpp
+game:0x0600025a	reimplemented	src/core/gameplay/select_late.cpp	HasReviewedCoinGotten: captured system array and exact 1; tests/test_select_late.cpp
+game:0x060009df	documented	docs/subsystems/events.md	Hits: signed Random(100) < threshold; late review caller uses 40; RNG backend unresolved
