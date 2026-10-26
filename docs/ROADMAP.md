@@ -29,7 +29,7 @@ The plan in one page. Agents take the first unblocked task of the current work p
 ## Next tasks
 
 ### 1. Events and scripts
-- [ ] Recover selected-chip guidance/autosave and late updates (0x11ed144), connecting town_bubble lifetime (0x11ed538) and Update exception handlers; bind update_select_through_town_buttons to a desktop host, including orientation/image-dictionary and notification/decor/town/guide/capture callbacks.
+- [ ] Port late updates from MoveCursor (0x11ed520), connecting town_bubble lifetime (0x11ed538), review gates and BGM; bind update_select_through_guidance_save to a desktop host, including orientation/image-dictionary and notification/decor/town/guide/capture callbacks.
 - [ ] Find the consumer of `hour_ != -1`, the writer of `SubForm.delayEvent_` (`+0x1d0`) and the remaining effect opcodes of the 15-entry table at `0x627b6e`.
 
 ### 2. Game data and saves

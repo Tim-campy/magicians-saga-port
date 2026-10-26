@@ -1,4 +1,5 @@
 import sys
+import subprocess
 from pathlib import Path
 import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
@@ -6,6 +7,13 @@ from inspect_exception_callsites import callsites
 
 
 class CallsitesTests(unittest.TestCase):
+    def test_isolated_cli(self):
+        script = Path(__file__).resolve().parents[1] / 'tools' / 'inspect_exception_callsites.py'
+        result = subprocess.run([sys.executable, '-I', str(script), '--help'],
+                                capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('--function', result.stdout)
+
     def test_ranges_and_no_landing(self):
         data = bytes([255,255,1,8, 0,4,0,0, 4,8,20,3])
         rows = callsites(data, 0, 0x1000, 32)

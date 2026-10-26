@@ -262,7 +262,7 @@ If both initial buttons are false, continuation is `0x11ecb5c`. The subsequent p
 | 0x20000000 / 0x11ecf94 | Clear two selection-message fields, sound, MakeObstacle(selected building), Push, clear selected building. Ported in the town-button chain below. |
 | 0x40000000 / 0x11ed038 | MakeStoreInvite then Push; update first town row with state 1 to state 2, save a system value and reset bubble fields. Control flow ported below; decoded data/form bindings remain explicit. |
 | 0x02000000 / 0x11ed0d4 | Find first town row with state 3, clear its state, apply reward, build/push message form, SetTalkFuki; returns even when no matching row. Control flow ported below; decoded data/form bindings remain explicit. |
-| no button / 0x11ed144 | Selected-building guidance, then conditional autosave and later common updates before bubble lifetime. Pending port. |
+| no button / 0x11ed144 | Selected-building guidance and conditional autosave are ported below; late updates from MoveCursor remain pending. |
 
 These are input masks passed to the original input helper, not desktop key assignments. No later branch is treated as implemented by the first-two-button kernel.
 
@@ -289,9 +289,25 @@ After the selected-building action falls through, `process_select_town_buttons` 
 
 Each scan requires list storage and non-null rows with slot 8, visits only until its first match and queries the live list between iterations. The mutation deliberately re-fetches the matched row. The sum/system-save slot and decoded catalogs remain required host providers; their missing values are not substituted. Invitation/present handling does not decrement the bubble timer in the same returned path.
 
-`update_select_through_town_buttons` composes these branches after the building/navigation/prefix chain. When no button consumes the update it returns the preserved camera/view snapshot and continues at `0x11ed144`: selected-chip guidance, autosave, soft-label processing and then the late lifetime block are still pending.
+`update_select_through_town_buttons` composes these branches after the building/navigation/prefix chain. When no button consumes the update it returns the preserved camera/view snapshot and continues at `0x11ed144`: the guidance/save extension below continues from here; MoveCursor and the late lifetime integration remain pending.
+
+### Selected-chip guidance and save exception scopes
+
+`process_select_guidance_save` covers the fallthrough at ELF `0x11ed144` through `0x11ed520`. Confidence high from the bounded Update instructions and its LSDA at `0x911700`; this is static evidence, not a runtime comparison.
+
+- Selection -1 skips guidance. Selection 999 writes unlock-info number 999 and frame 3 from the int32 pair at `0x6272f0`, retaining selection. Every other selection requires the building list and bounds-checks the current index after obtaining it. Null row or row[1] other than -1 skips guidance. Otherwise CheckEnable runs; false writes frame 60, copies the live selection into the unlock-info number, then clears selection to -1. Negative indices other than -1 are not silently ignored.
+- A pending autoSave flag queries IsTopForm. False retains the flag. True invokes SaveGame(true,true), then clears the flag, including after a handled System.Exception. The handler reports the exception message; if reporting itself fails, the flag is not cleared. IsTopForm failures are outside this catch.
+- Soft-label 19 is queried next, outside the save catches. True runs SaveGame(false,true), SaveSystem, ShowOfferwall in order. A System.Exception skips the remaining operations, optionally reports the exception object when Config.PRINT is enabled, and resumes at MoveCursor. No rollback occurs. The portable host interface does not itself open a network service.
+
+The auto-save protected interval is `[0x11ed498,0x11ed4a8)`, landing at `0x11ed998`, with its null-context throw at `[0x11ed994,0x11ed998)` also protected. Offerwall intervals are `[0x11ed4e8,0x11ed4f8)` and `[0x11ed500,0x11ed520)`, landing at `0x11eda44`/`0x11eda48`, plus their null-context throws at `[0x11ed98c,0x11ed994)`. Handler code checks System.Exception (type usage through GOT `0x272f548`); LSDA alone does not establish the catch type. These are local catches, not a catch around the entire Update. C++ adapters must translate original managed failures into SelectSaveError at the save boundaries, including missing original save context; unrelated C++ exceptions propagate. Diagnostic implementations remain host callbacks.
+
+The remaining native sequence begins with MoveCursor at `0x11ed520`, decrements nonnegative unlock-info frames, updates bubble lifetime using the earlier camera/view snapshots, then CheckGuidArrow(false). At live loopCounter 90, Hits(40) compares Random(100) < 40 before checking area 4 discovery and the two review flags; eligible state pushes MakeReviewed(false) and returns. The later platform gate (Config static int32 +0 equals 2) can write the review-reward flag, run event 14 and request autosave before BGM. Those later branches and their bindings still need porting; no timer is prematurely decremented by this save kernel.
+
+Evidence: local `research/exports/delay-resume/M35965.asm`, `research/exports/select-late/*.asm` and `research/exports/select-late-exceptions.json`. Export instruction addresses use the Ghidra image base +0x100000; all addresses above are ELF virtual addresses. `inspect_exception_callsites.py` now supports the required isolated Python invocation; its CLI import is regression-tested without game data.
 
 ## Port
+
+- `src/core/gameplay/select_guidance_save.{hpp,cpp}` composes guidance and the two save exception scopes after the town-button chain. `tests/test_select_guidance_save.cpp` checks special/invalid selections, live selection changes, pending autosave retention, save order, exception scope and failures at each offerwall step. The returned snapshot remains available for the later bubble pass.
 
 - `src/core/gameplay/select_town_buttons.{hpp,cpp}` ports the remaining area/obstacle/resident button chain and composes it after building actions. `tests/test_select_town_buttons.cpp` verifies button priority, separate save stores, first-resident-only mutation, mutation-before-failure behavior, post-credit value re-read, concrete money progression and bubble selection.
 
@@ -353,7 +369,7 @@ Fixture JSON schema (all keys optional; absence preserves missing state rather t
 
 For a synthetic money-only event with nonempty effects, a minimal auto fixture is `{"context_present": true, "context_character_count": 1, "sys_save_present": false}`. This is test state, not an inferred new-game state. PRINT is required when an empty script or failed identity lookup reaches its diagnostic gate; quest_data_count is required only for that lookup's fallback. Additional predicates require their corresponding catalogs/scalars. Tool collection lengths are limited to 100000; these are harness limits, not recovered game limits.
 
-- Last recorded build: Windows/MSVC, 36/36 CTest (35 C++ contracts plus native scenario integration).
+- Last recorded build: Windows/MSVC, 37/37 CTest (36 C++ contracts plus native scenario integration).
 - Missing: population of decoded default-args/diagnostic state from saves/configuration, SelectForm integration, remaining unit `CheckTerm` predicates, integration with save-loaded execution counters; hour-based delays; `SubForm.delayEvent_` path (slot 5); `SelectForm.Update` guards; opcodes other than the eight; `SecureLong`/`SecureInt` storage; billing item source for stamina; UI forms.
 
 ## Evidence
@@ -387,7 +403,7 @@ For a synthetic money-only event with nonempty effects, a minimal auto fixture i
 ## Open questions
 
 1. (blocking) Concrete context/catalog bindings for the 14 recovered table-used conditions; automatic selection is composed with the kernels but not yet called by a desktop form/frame loop. Populate the decoded host from data/save/ECS providers, including hero level and the Config.DEBUG/AppData.debugRescueNum initialization state. Other unit branches remain unresolved for scripts outside Event.txt.
-2. (blocking) Bind the composed select_form_pass to a desktop form host: recover selected-chip guidance/autosave and remaining late updates at 0x11ed144, including the town_bubble lifetime call and outer Update exception handlers, and implement its required notification/decor/town/guide/capture callbacks plus orientation and image-dictionary bindings for the recovered prelude. The guards, clouds, markers, counter, initial event loop and reached-pass scheduling are composed and tested.
+2. (blocking) Bind the composed select_form_pass to a desktop form host: port remaining late updates at 0x11ed520, including MoveCursor, the town_bubble lifetime call, review gates and BGM; guidance/autosave and their local exception scopes are now composed, and implement its required notification/decor/town/guide/capture callbacks plus orientation and image-dictionary bindings for the recovered prelude. The guards, clouds, markers, counter, initial event loop and reached-pass scheduling are composed and tested.
 3. (blocking) Initial/real values of `SYSSAVEI_YUGAMI`, the `ITEM_STAMINA_UP` item state, and the money/crystal/stamina slots from save/new game.
 4. Unit dispatcher opcodes other than 1/2/4/8/10/12/15/31 (jump table has 15 entries); scripts outside `Event.txt` (quests, built events) may use them.
 5. Consumer of `DelayEvent` entries with `hour_ != -1` (none in the extracted table).
