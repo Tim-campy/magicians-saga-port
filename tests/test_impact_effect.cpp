@@ -1,4 +1,5 @@
 #include "core/gameplay/impact_effect.hpp"
+#include "core/gameplay/garbage_lifetime.hpp"
 #include <cstdlib>
 #include <deque>
 #include <functional>
@@ -7,7 +8,7 @@
 #include <string>
 using namespace saga::core;
 void check(bool v){if(!v)std::abort();}
-struct Host final:ImpactEffectHost,ComponentObserver,ProjectileHitHost {
+struct Host final:ImpactEffectHost,ComponentObserver,ProjectileHitHost,GarbagePool,GarbageUpdateHost {
     BulletImpactData data{0,2,17,0};std::int32_t bonus=0;
     std::deque<ComponentSlots> effects,areas;
     std::deque<ContactPosition> positions;
@@ -16,6 +17,20 @@ struct Host final:ImpactEffectHost,ComponentObserver,ProjectileHitHost {
     std::deque<ProjectileModification> modifications;
     std::vector<ProjectilePoint> points;std::vector<int> images;
     std::vector<std::string> calls;std::vector<std::pair<ComponentSlots*,int>> garbage;
+    std::deque<GarbageLifetime> garbage_components;std::deque<QuestEntityLifetime> lifetimes;
+    struct Cursor final:GarbageCursor {
+        Host& host;std::size_t index=0;explicit Cursor(Host& h):host(h){}
+        std::optional<GarbageEntity> next()override{
+            while(index<host.garbage.size()){
+                const auto id=index++;auto* e=host.garbage[id].first;
+                if(e->contains(garbage_slot))return GarbageEntity{static_cast<QuestMemberId>(id),e};
+            }return std::nullopt;
+        }
+    };
+    GarbageLifetime& acquire_garbage()override{garbage_components.emplace_back();return garbage_components.back();}
+    std::unique_ptr<GarbageCursor> open_garbage_cursor()override{return std::make_unique<Cursor>(*this);}
+    QuestEntityLifetime& entity_lifetime(QuestMemberId id)override{return lifetimes.at(static_cast<std::size_t>(id));}
+    void delete_from_manager(QuestMemberId id,bool remove)override{check(remove);garbage.at(static_cast<std::size_t>(id)).first->remove_all();}
     std::function<void()> on_effect,on_collision,on_bonus;bool null_effect=false,null_data=false;
     Component* returned=nullptr;
     const CombatRecordTables* tables=nullptr;
@@ -32,7 +47,7 @@ struct Host final:ImpactEffectHost,ComponentObserver,ProjectileHitHost {
     ProjectileCollision& acquire_collision()override{calls.push_back("collision");collisions.emplace_back();return collisions.back();}
     ProjectileDamage& acquire_damage()override{calls.push_back("damage");damages.emplace_back();return damages.back();}
     ProjectileModification& acquire_modification()override{calls.push_back("modifier");modifications.emplace_back();return modifications.back();}
-    void add_garbage(ComponentSlots& e,std::int32_t n)override{calls.push_back("garbage"+std::to_string(n));garbage.emplace_back(&e,n);}
+    void add_garbage(ComponentSlots& e,std::int32_t n)override{calls.push_back("garbage"+std::to_string(n));add_garbage_lifetime(e,n,*this);garbage.emplace_back(&e,n);lifetimes.emplace_back();}
     void add_color(ComponentSlots&,std::int32_t a,std::int32_t b,std::int32_t c,std::int32_t d)override{
         check(a==255&&b==255&&c==255&&d==3192);calls.push_back("color");}
     void return_component(std::int32_t slot,Component* p)override{check(slot==15||slot==27||slot==32);returned=p;calls.push_back("pool");}
@@ -99,4 +114,11 @@ int main(){
         check(f.host.calls.front()=="hit"&&f.host.areas.size()==4&&f.host.garbage.size()==5);
         check(!f.e.contains(27)&&!f.e.contains(32)&&speed.x==0&&speed.y==0&&speed.z==0);
         check(f.host.damages[0].parent==&f.owner&&f.host.damages[0].value==123);}
+    {Fixture f;f.equipment[0]->range=2;f.run();GarbagePass pass;
+        check(f.e.contains(22)&&f.host.areas[0].contains(32));
+        pass.update(f.host);check(f.host.lifetimes[4].destroyed&&!f.e.contains(22));
+        for(std::size_t i=0;i<4;++i)check(!f.host.lifetimes[i].destroyed&&f.host.areas[i].contains(32)&&f.host.garbage_components[i].frames==1);
+        pass.update(f.host);for(std::size_t i=0;i<4;++i)check(f.host.lifetimes[i].destroyed&&!f.host.areas[i].contains(32)&&!f.host.areas[i].contains(33));
+        pass.update(f.host); // Destroyed entities no longer belong to the synthetic slot-22 group.
+    }
 }

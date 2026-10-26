@@ -225,7 +225,17 @@ Relative system order is ProjectileSystem -> MoveSystem -> CollisionSystem (fact
 
 Evidence: local `research/exports/move-system/Init.asm`, `Update.asm`, `movement-gates/`, existing `ecs-order/factory-order.json`, metadata PositionComponent offsets and raw v31 type interface entries. Confidence high for the per-entity path and this relative order; no runtime comparison.
 
+### Temporary entity lifetime
+
+GarbageSystem.Init (0x11530b8) requests the subset whose And filter contains only slot 22 (Garbage). NeedsUpdate (0x115314c) returns BaseSystem.enabled (+0x18) and ignores the pass argument. Update (0x1153154, 904 bytes) itself does not test enabled. It allocates a pending list, enumerates the live subset, requires each entity and Garbage component, decrements its int32 counter at +0x10 with wrapping, stores it, and queues the entity when the new value is <= 0. The comparison uses the decremented value: 1 expires immediately, 2 after two successful passes, 0 becomes -1 and expires, and INT_MIN wraps to INT_MAX and survives. It does not skip destroyed entities during this counting phase.
+
+Only after the entire subset enumeration and its disposal does it traverse the pending list and call Entity.Destroy(true) in discovery order. It does not re-read the Garbage component/counter before destruction. Thus a deletion callback changing a later queued entity's counter cannot cancel that deletion; the existing Entity.Destroy destroyed guard can still skip an already-destroyed entity. A counting/enumeration failure leaves earlier decrements visible but destroys none of the pending entries. A deletion failure retains previous deletions and all decrements, and prevents later deletions. The temporary queue is not retained for another update.
+
+Entity.AddGarbage (0x112eccc) pops from the Garbage pool if available, otherwise constructs a component, writes the supplied counter and invokes AddComponent at slot 22. No existing-slot guard or clamping precedes acquisition/write. The port uses an explicit pool interface and the existing ComponentSlots add contract: an occupied slot ignores the new component, so AddGarbage does not refresh an existing counter, although acquisition and the new component write still occur. Impact creation now composes this operation with GarbagePass in tests: the source counter 1 expires on the first pass, while neighboring damage areas with counter 2 retain Collision/Damage until the second pass. These are update passes, not a claim of wall-clock duration or collision opportunities.
+
 ## Port
+
+- `garbage_lifetime.hpp/.cpp` implements AddGarbage, the wrapping countdown and two-phase expiration orchestration, reusing Entity.Destroy and the existing deletion sequence. Tests cover overflow, callback mutations, deferred deletion, enumeration/deletion failure, destroyed guards and reentrant passes. Cursor ownership preserves disposal before deletion and during exceptions; live HashSet order/version checks remain a host obligation, so GarbageSystem.Update stays documented, not wholly reimplemented. Scratch capacity is reused between successful passes without sharing the active queue across callbacks.
 
 - `src/core/gameplay/movement.hpp/.cpp` implements the complete per-entity MoveSystem body over borrowed Position/Speed components, including parent overrides. `tests/test_movement.cpp` covers three-axis integration, missing parent Position, self-parent, partial failure, binary32 precision and order-sensitive parent/child updates. `test_projectile_motion` now composes Fire, Projectile's motion/completion pass and Move for a full trajectory. Live subset enumeration and exception-disposal remain outside this kernel, so MoveSystem.Update stays documented rather than reimplemented as a whole.
 
@@ -235,6 +245,8 @@ Evidence: local `research/exports/move-system/Init.asm`, `Update.asm`, `movement
 - Header comments in `src/core/ecs/*.hpp` still cite the old `docs/35-component-slots.md` path; should point here.
 
 ## Evidence
+
+- Temporary lifetime: local `research/exports/garbage-lifetime/{Init,NeedsUpdate,Update,AddGarbage}.asm`. Init writes filter value 0x16; AddGarbage writes +0x10 and passes slot 0x16; Update stores the decremented counter at 0x11532e0, then queues on signed <= 0, and calls Entity.Destroy(true) at 0x1153384 only after the first enumeration finishes. Confidence high for arithmetic and call order; Android comparison absent.
 
 - [32-ecs-animation-order.md](../archive/reports/32-ecs-animation-order.md) — CreateSystems, Add, Init/Update dispatch, QuestForm passes
 - [33-ecs-lifecycle.md](../archive/reports/33-ecs-lifecycle.md) — enable/disable, pause, RemoveAll, system (de)serialize

@@ -411,7 +411,7 @@ project_warnings(test_collision_check)
 add_test(NAME collision_check_contract COMMAND test_collision_check)
 
 add_executable(test_impact_effect test_impact_effect.cpp)
-target_link_libraries(test_impact_effect PRIVATE impact_effect)
+target_link_libraries(test_impact_effect PRIVATE impact_effect garbage_lifetime)
 project_warnings(test_impact_effect)
 add_test(NAME impact_effect_contract COMMAND test_impact_effect)
 
@@ -419,3 +419,8 @@ add_executable(test_boss_notification test_boss_notification.cpp)
 target_link_libraries(test_boss_notification PRIVATE boss_notification)
 project_warnings(test_boss_notification)
 add_test(NAME boss_notification_contract COMMAND test_boss_notification)
+
+add_executable(test_garbage_lifetime test_garbage_lifetime.cpp)
+target_link_libraries(test_garbage_lifetime PRIVATE garbage_lifetime stage_cleanup)
+project_warnings(test_garbage_lifetime)
+add_test(NAME garbage_lifetime_contract COMMAND test_garbage_lifetime)

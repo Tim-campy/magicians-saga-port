@@ -2766,7 +2766,7 @@ game:0x06000b5d,game:0x06000b5d,ecs,,412,0x112e9f0
 game:0x06000b5e,game:0x06000b5e,ecs,,168,0x112eb8c
 game:0x06000b5f,game:0x06000b5f,ecs,,136,0x112ec34
 game:0x06000b60,game:0x06000b60,ecs,,16,0x112ecbc
-game:0x06000b61,game:0x06000b61,ecs,,272,0x112eccc
+game:0x06000b61,kairo.unity.ecs.Entity.AddGarbage,ecs,reimplemented,272,0x112eccc
 game:0x06000b62,game:0x06000b62,ecs,,168,0x112eddc
 game:0x06000b63,game:0x06000b63,ecs,,136,0x112ee84
 game:0x06000b64,game:0x06000b64,ecs,,16,0x112ef0c
@@ -3534,9 +3534,9 @@ game:0x06000e9f,game:0x06000e9f,ecs,,8,0x1152e54
 game:0x06000ea0,game:0x06000ea0,ecs,,588,0x1152e5c
 game:0x06000ea1,game:0x06000ea1,ecs,,8,0x11530a8
 game:0x06000ea2,game:0x06000ea2,ecs,,8,0x11530b0
-game:0x06000ea3,game:0x06000ea3,ecs,,148,0x11530b8
-game:0x06000ea4,game:0x06000ea4,ecs,,8,0x115314c
-game:0x06000ea5,game:0x06000ea5,ecs,,904,0x1153154
+game:0x06000ea3,ecs.GarbageSystem.Init,ecs,traced,148,0x11530b8
+game:0x06000ea4,ecs.GarbageSystem.NeedsUpdate,ecs,documented,8,0x115314c
+game:0x06000ea5,ecs.GarbageSystem.Update,ecs,documented,904,0x1153154
 game:0x06000ea6,game:0x06000ea6,ecs,,8,0x11534dc
 game:0x06000ea7,game:0x06000ea7,ecs,,8,0x11534e4
 game:0x06000ea8,game:0x06000ea8,ecs,,88,0x11534ec

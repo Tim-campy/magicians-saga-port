@@ -134,3 +134,7 @@ game:0x06000f6f	documented	docs/subsystems/ecs.md	Per-entity three-axis integrat
 game:0x06000f6d	traced	docs/subsystems/ecs.md	Required Position Speed subset slots 0 1
 game:0x06000f6e	documented	docs/subsystems/ecs.md	NeedsUpdate returns enabled byte and ignores pass
 game:0x06000f7d	documented	docs/subsystems/ecs.md	NeedsUpdate returns enabled byte and ignores pass
+game:0x06000b61	reimplemented	src/core/gameplay/garbage_lifetime.cpp	Pool acquire counter write and slot-22 add; impact creation binding tested
+game:0x06000ea3	traced	docs/subsystems/ecs.md	And filter containing only Garbage slot 22
+game:0x06000ea4	documented	docs/subsystems/ecs.md	Returns enabled byte +0x18 ignoring pass argument
+game:0x06000ea5	documented	docs/subsystems/ecs.md	Wrapping countdown then deferred ordered destruction ported; live subset cursor and scheduler remain adapters
