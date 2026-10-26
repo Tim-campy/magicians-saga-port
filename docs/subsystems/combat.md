@@ -84,7 +84,7 @@ Max 0 disables the clamp (value may go negative). Overkill returns a negative ex
 
 ### Easing factors
 
-`Graph.Easing(start, end, duration, progress, amplitude)` (0x1c5df9c): progress < 0 -> start; progress >= duration -> end; inside: ratio = (float)progress/duration, plus amplitude-scaled sine correction (`FastMath.Sin` -> double, `JMath.ToRadians` [double pi 0x626c28, /180 0x627428], libc `sin` via PLT 0x25fe590; float pi at 0x627830, divisor 314.1592712402344 at 0x6278ac), times (end-start), plus start, truncated to int and limited toward the start/end direction. Separate float32 multiply and add, no FMA. Both combat calls have amplitude 0, so the sine term contributes nothing; across their 148 interior points the result equals `start + progress*(end-start)/duration` (integer). Only these two cases are ported; `wrap32(B-1)` makes INT32_MIN become INT32_MAX (upper limit, factor 70). IEEE-754 default rounding assumed; FPCR not captured.
+`Graph.Easing(start, end, duration, progress, amplitude)` (0x1c5df9c): progress < 0 -> start; progress >= duration -> end; inside: ratio = (float)progress/duration, plus amplitude-scaled sine correction (`FastMath.Sin` -> double, `JMath.ToRadians` [double pi 0x626c28, /180 0x627428], libc `sin` via PLT 0x25fe590; float pi at 0x627830, divisor 314.1592712402344 at 0x6278ac), times (end-start), plus start, truncated to int and limited toward the start/end direction. Separate float32 multiply and add, no FMA. Both combat calls have amplitude 0, so the sine term contributes nothing; across their 148 interior points the result equals `start + progress*(end-start)/duration` (integer). The zero-amplitude numeric path is now shared with EnemyData.GetExp, including descending endpoints, wrapping differences and saturating float-to-int conversion; `wrap32(B-1)` makes INT32_MIN become INT32_MAX (upper limit, factor 70). IEEE-754 default rounding assumed; FPCR not captured.
 
 ### RNG consumption order
 
@@ -108,6 +108,8 @@ OnBulletHit requires an Enemy component on the receiver, reads attack/attackAttr
 
 ## Evidence
 
+- `combat_rules.cpp::easing_zero_amplitude` preserves separate binary32 division/multiplication/addition and the wrapping int32 endpoint difference. Tests include descending (100 -> 1, duration 999, progress 555 -> 44 rather than mathematical 45), large positive endpoints, overflowed differences and branch ordering. The sine correction is zero on this finite zero-amplitude path; nonzero amplitude remains unported.
+
 - [58-gameplay-combat-entry.md](../archive/reports/58-gameplay-combat-entry.md)
 - [59-combat-hit-threshold.md](../archive/reports/59-combat-hit-threshold.md)
 - [60-damage-pipeline-and-subtraction.md](../archive/reports/60-damage-pipeline-and-subtraction.md)
@@ -126,4 +128,4 @@ OnBulletHit requires an Enemy component on the receiver, reads attack/attackAttr
 5. Full guards of `OnCollide`/`OnBulletHit` and `SearchAndAttack` filters; state numbers 2 and 4; indirect callers of `Damage`.
 6. Contributions inside `GetTotalParamValue` (equipment modifiers) and `MemberSystem.GetAttributeValue`.
 7. Whether the affinity/rate statics are modified after `AppData..cctor`.
-8. General `Graph.Easing` (non-zero amplitude, other ranges), needed by drop presentation (amplitude -50/-80).
+8. General `Graph.Easing` with non-zero amplitude, needed by drop presentation (amplitude -50/-80).

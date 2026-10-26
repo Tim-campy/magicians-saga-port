@@ -126,6 +126,14 @@ Confidence: high for read/store order from bounded ARM64 instructions and metada
 
 `load_treasure_table` in `quest_rewards.cpp` retains all these fields using the shared `table_catalog.hpp` framing/id-indexing helper. Both extracted languages load 184 populated records into 184 slots. Confidence high: bounded instructions in local `research/exports/quest-reward-pipeline/` and metadata field offsets. The fresh-record reader does not implement in-place partial receiver mutation on parse failure.
 
+### Enemy records
+
+`EnemyData.Load` (`game:0x060010e3`, `0x116ec2c`, 344 bytes) reads id, name, enemySeb, exp (int32[]), treasureDrop (int32[][][]), voiceId, attribute, res (string), img, seb, frame, rank, parameters (int32[][]), and inherited flag. Fields map to +0x18, +0x28, +0x30, +0x38, +0x40, +0x48, +0x4c, +0x50, +0x58, +0x5c, +0x60, +0x64, +0x68 and +0x1c. defeatCount_ (+0x20) is separate mutable state and is not loaded here. The method mutates/returns the receiver in sequential read/store order; the initial string guard bypasses reads and extra tokens are ignored.
+
+`GetIntArray` (`0x1126fd8`) permits any negative outer length as null. `GetIntTripleArray` (`0x11271bc`) also permits a negative outer length as null, but allocates nested group/row lengths directly: negative inner lengths fault, rather than creating null inner arrays. Zero lengths remain distinct from null. `load_enemy_table` shares the existing token/framing/id-indexing readers and retains the entire static record schema. As with other fresh-record loaders, it does not expose in-place partial mutations after a parse failure.
+
+Both English and Japanese shipped tables decode to 83 populated slots. Evidence: bounded exports `research/exports/enemy-rewards/` and `enemy-reward-readers/`, metadata field offsets, plus synthetic schema/null/negative-inner-size tests. Confidence high. Runtime-added null inner arrays are not represented by the decoded-record projection.
+
 ## Port
 
 `src/core/gameplay/progression_tables.cpp` loads complete level-table records and a character progression projection, preserving id gaps and last-duplicate-wins indexing. It shares token parsing with the event reader and accepts the existing integer-parser callback. `TableExperienceHost` resolves the live character id/rate and level row for the experience kernel. The character projection consumes and validates all fields but retains only id and needExpRate. These fresh-record readers do not expose partial mutation of an existing record on failure; neither original Load method is claimed fully reimplemented. BaseData lifecycle, the general loader, data list and check-script groups remain unported. `tools/audit_game_table_text.py` audits the extracted tables (encoding/line endings) only; `tools/inspect_event_table.py` belongs to the events subsystem.

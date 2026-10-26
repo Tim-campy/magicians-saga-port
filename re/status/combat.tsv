@@ -29,10 +29,10 @@ game:0x0600025d	reimplemented	src/core/gameplay/combat_rules.cpp	attribute_affin
 game:0x06000e82	documented	docs/subsystems/combat.md	hit test, damage arithmetic, Sub, event 15, death flag; effect tables partial
 game:0x06000e7e	traced	docs/subsystems/combat.md	projectile hit -> Damage -> Defeat; guards partial
 game:0x06000e7d	traced	docs/subsystems/combat.md	two Damage sites; guards partial
-game:0x06000e83	documented	docs/subsystems/rewards.md	defeat sequence, EXP drop, treasure Hits1000 rolls
+game:0x06000e83	documented	docs/subsystems/rewards.md	Reward suffix ported with ordered live data queries and pending drop/RNG interfaces; motion counters and full binding pending
 game:0x06000d47	traced	docs/subsystems/rewards.md	flag +0x14 via BitUtil.Check; bit meaning unknown
 game:0x060010ca	documented	docs/subsystems/rewards.md	wrap32 add then Clamp(0,INT_MAX)
-game:0x060010c7	documented	docs/subsystems/rewards.md	Easing(exp_[0],exp_[1],999,level-1,0)
+game:0x060010c7	reimplemented	src/core/gameplay/enemy_rewards.cpp	Binary32 zero-amplitude interpolation with wrapped progress/difference; synthetic edges and full local table audit
 game:0x06000bf9	traced	docs/subsystems/rewards.md	drop entity; jump table; type 3 overrides scale to 100
 game:0x06000fa4	documented	docs/subsystems/rewards.md	start collection / boss reward pickup
 game:0x06000fa5	documented	docs/subsystems/rewards.md	31-tick interpolation then OnCollectedDrop

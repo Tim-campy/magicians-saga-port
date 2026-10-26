@@ -319,3 +319,8 @@ add_executable(test_stage_cleanup test_stage_cleanup.cpp)
 target_link_libraries(test_stage_cleanup PRIVATE stage_cleanup component_slots)
 project_warnings(test_stage_cleanup)
 add_test(NAME stage_cleanup_contract COMMAND test_stage_cleanup)
+
+add_executable(test_enemy_rewards test_enemy_rewards.cpp)
+target_link_libraries(test_enemy_rewards PRIVATE enemy_rewards stage_rewards)
+project_warnings(test_enemy_rewards)
+add_test(NAME enemy_rewards_contract COMMAND test_enemy_rewards)

@@ -3,20 +3,26 @@
 #include <limits>
 
 namespace saga::core {
-namespace {
-// Fixed small positive bounds only. Separate volatile stores retain each
+// Separate volatile stores retain each
 // binary32 rounding and prevent contraction into an FMA.
-std::int32_t combat_easing(std::int32_t start, std::int32_t end,
+std::int32_t easing_zero_amplitude(std::int32_t start, std::int32_t end,
                           std::int32_t duration, std::int32_t progress) {
     static_assert(std::numeric_limits<float>::is_iec559 &&
                   std::numeric_limits<float>::digits == 24);
     if (progress < 0) return start;
     if (progress >= duration) return end;
     const volatile float ratio = static_cast<float>(progress) / static_cast<float>(duration);
-    const volatile float product = ratio * static_cast<float>(end - start);
+    const auto bits=static_cast<std::uint32_t>(end)-static_cast<std::uint32_t>(start);
+    const auto difference=static_cast<std::int32_t>(bits<=0x7fffffffU?static_cast<std::int64_t>(bits):
+                                                 static_cast<std::int64_t>(bits)-0x100000000LL);
+    const volatile float product = ratio * static_cast<float>(difference);
     const volatile float result = product + static_cast<float>(start);
-    return std::clamp(static_cast<std::int32_t>(result), start, end);
+    // Finite inputs on this path; FCVTZS saturates before the directional endpoint clamp.
+    const auto converted=result>=2147483648.0F?std::numeric_limits<std::int32_t>::max():
+        result<=-2147483648.0F?std::numeric_limits<std::int32_t>::min():static_cast<std::int32_t>(result);
+    return std::clamp(converted, std::min(start,end), std::max(start,end));
 }
+namespace {
 std::int32_t subtract32(std::int32_t a, std::int32_t b) {
     const auto bits = static_cast<std::uint32_t>(a) - static_cast<std::uint32_t>(b);
     return static_cast<std::int32_t>(bits < 0x80000000U ? static_cast<std::int64_t>(bits)
@@ -54,9 +60,9 @@ std::int32_t attribute_affinity(const AttributeAffinityTables& tables,
     return pair[0] == -1 || pair[1] == -1 ? 3 : 1;
 }
 std::int32_t noncritical_human_damage_factor(std::int32_t rate) {
-    return combat_easing(10, 100, 50, rate);
+    return easing_zero_amplitude(10, 100, 50, rate);
 }
 std::int32_t matching_attribute_damage_factor(std::int32_t bonus) {
-    return 100 - combat_easing(1, 30, 98, subtract32(bonus, 1));
+    return 100 - easing_zero_amplitude(1, 30, 98, subtract32(bonus, 1));
 }
 }

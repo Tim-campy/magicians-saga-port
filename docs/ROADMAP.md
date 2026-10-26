@@ -31,7 +31,7 @@ Current maintainer priority: game-specific decompilation and gameplay integratio
 ## Next tasks
 
 ### Current gameplay focus
-- [ ] Decode EnemyData exp_/treasureDrop_ and port EnemyData.GetExp using the recovered binary32 Easing contract, then connect enemy rewards to stage accumulators; keep RNG backend resolution explicit.
+- [ ] Establish the game's RNG backend and seed initialization (JRandom.Logic/fix_ writers and constructor path) to bind combat/drop draws; consult matching public runtime sources before implementing any System.Random backend.
 
 ### 1. Events and scripts
 - [ ] Bind decoded billing-item/catalog providers and complete notification manager adapters, preserving task execution gates.
@@ -48,7 +48,7 @@ Current maintainer priority: game-specific decompilation and gameplay integratio
 ### 3. Combat, RNG and rewards
 - [ ] RNG generator (blocking for damage and drops): effective `JRandom.Logic`, writer of `fix_`, seeding, IL2CPP `System.Random.Next` and `Xorshift128.Next`, whether any backend returns negatives.
 - [ ] Name parameter indices 0/1/2/6/7/8/9 and resolve `MyConfig.FPS`/`DEBUG`; then compose a native `damage()` that keeps the documented RNG order.
-- [ ] Bind `EnemyData` (`exp_`, `treasureDrop_`) to the data loader and port EnemyData.GetExp; bind the composed ShowQuestResult reward pipeline to ECS/storage/UI (treasures, character rates and level costs now decoded/tested).
+- [ ] Bind the ported enemy reward suffix and ShowQuestResult pipeline to ECS/drop creation/storage/UI; enemy, treasure, character-rate and level-cost records are decoded/tested.
 - [ ] Read `OnGameOver`'s retry path, resolve the state-4 quest method and event 1133.
 - [ ] Port `Graph.Easing` in the general case (amplitudes −50 and −80), checked against the binary32 model.
 

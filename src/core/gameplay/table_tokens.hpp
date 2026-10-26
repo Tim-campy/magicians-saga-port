@@ -1,6 +1,7 @@
 #pragma once
 #include "event_catalog.hpp"
 #include <stdexcept>
+#include <optional>
 
 namespace saga::core::detail {
 class TableTokens {
@@ -15,6 +16,16 @@ public:
         return token;
     }
     std::int32_t integer() { return parser_(take()); }
+    std::optional<EventIntegers> integers(bool allow_null=true) {
+        const auto count=integer();
+        if(count<0){
+            if(allow_null)return std::nullopt;
+            throw std::length_error("negative nested integer array size");
+        }
+        EventIntegers values;
+        for(std::int32_t i=0;i<count;++i)values.push_back(integer());
+        return values;
+    }
     EventScript script() {
         const auto count=integer();
         if (count<0) return nullptr;

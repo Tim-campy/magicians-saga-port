@@ -125,3 +125,6 @@ target_link_libraries(quest_return PUBLIC quest_rewards)
 
 saga_library(stage_cleanup stage_cleanup.cpp)
 target_link_libraries(stage_cleanup PUBLIC quest_return)
+
+saga_library(enemy_rewards enemy_rewards.cpp)
+target_link_libraries(enemy_rewards PUBLIC event_catalog combat_rules)

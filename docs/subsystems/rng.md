@@ -53,7 +53,7 @@ Known gameplay consumers (call order matters for determinism) are listed in [com
 
 ## Port
 
-None. `src/core/gameplay/combat_rules.*` deliberately takes pre-resolved values and never draws random numbers.
+No generator is ported. `combat_rules.*` takes pre-resolved values; `enemy_rewards.cpp` now consumes an explicit Hits1000 provider in recovered row order. Thresholds are not pre-clamped and every visited row draws, preserving the future backend call sequence. Public runtime sources must be consulted before implementing a selected standard-library backend.
 
 ## Evidence
 

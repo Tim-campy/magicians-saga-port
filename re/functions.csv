@@ -4082,7 +4082,7 @@ game:0x060010c3,game:0x060010c3,data,,136,0x116e83c
 game:0x060010c4,game:0x060010c4,data,,136,0x116e8c4
 game:0x060010c5,game:0x060010c5,data,,108,0x116e94c
 game:0x060010c6,game:0x060010c6,data,,8,0x116e9b8
-game:0x060010c7,data.EnemyData.GetExp,data,documented,68,0x116e9c0
+game:0x060010c7,data.EnemyData.GetExp,data,reimplemented,68,0x116e9c0
 game:0x060010c8,game:0x060010c8,data,,228,0x116ea04
 game:0x060010c9,game:0x060010c9,data,,12,0x116eae8
 game:0x060010ca,data.EnemyData.AddDefeatCount,data,documented,120,0x116eaf4
@@ -4110,7 +4110,7 @@ game:0x060010df,game:0x060010df,data,,8,0x116ec0c
 game:0x060010e0,game:0x060010e0,data,,8,0x116ec14
 game:0x060010e1,game:0x060010e1,data,,8,0x116ec1c
 game:0x060010e2,game:0x060010e2,data,,8,0x116ec24
-game:0x060010e3,game:0x060010e3,data,,344,0x116ec2c
+game:0x060010e3,data.EnemyData.Load,data,documented,344,0x116ec2c
 game:0x060010e4,game:0x060010e4,data,,120,0x116ed84
 game:0x060010e5,game:0x060010e5,data,,120,0x116edfc
 game:0x060010e6,game:0x060010e6,data,,108,0x116ee74

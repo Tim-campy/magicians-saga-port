@@ -3,6 +3,9 @@
 #include <array>
 
 namespace saga::core {
+// Graph.Easing zero-amplitude numeric path; binary32 rounds and wrapping endpoint difference.
+std::int32_t easing_zero_amplitude(std::int32_t start,std::int32_t end,
+                                   std::int32_t duration,std::int32_t progress);
 // EnemySystem.Damage: parameter 7 of attacker and parameter 9 of receiver.
 // Inputs are already resolved through MemberSystem/EnemyData. This computes
 // the threshold only; it neither consumes nor replaces the original RNG.

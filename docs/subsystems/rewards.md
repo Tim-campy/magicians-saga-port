@@ -171,6 +171,16 @@ After all five groups, CleanUp reads optional StageSystem+0xa0. If present, it c
 
 Evidence: local `research/exports/stage-cleanup-evidence.json`, `quest-return/F11654b8.asm`, `stage-cleanup-wrapper/`, and existing `entity-destruction-load/` / `entity-load-followup/`. Confidence high for slots, arguments and ordering. Limits: concrete world/subset/registry adapters and runtime comparisons remain open.
 
+### Enemy experience and pending reward drops
+
+`enemy_experience` ports EnemyData.GetExp (`0x116e9c0`, 68 bytes): it first requires exp_ (+0x38) and its first two elements, then calls the zero-amplitude Easing path with duration 999 and wrap32(level-1). Therefore even an out-of-range level still faults for a short EXP array. Progress below 0 returns the first endpoint; progress >=999 returns the second. Interior values use binary32 division, a binary32 product with wrap32(end-start), a separately rounded addition, saturating FCVTZS conversion and a directional endpoint clamp. Level INT_MIN wraps its progress to INT_MAX and returns the second endpoint. Integer interpolation is not equivalent for all endpoint/progress combinations.
+
+`spawn_enemy_rewards` ports the reward-selection suffix of EnemySystem.Defeat after its motion/state/counter effects. It resolves the current enemy data for GetExp, creates a pending EXP drop only for a positive value, then resolves enemy data again to check treasureDrop_[0]. If the first group is nonempty, it resolves data once more and captures that group for iteration. Each row must have at least two elements; id and threshold are captured before Hits1000. Every visited row invokes Hits1000, including thresholds <=0 or >=1000; the first success spawns one treasure and stops, without reading later rows. Later outer groups are unused. Missing/short groups or rows fault; an already spawned EXP drop survives a later treasure failure.
+
+The host retains original drop positioning, Easing scale, depth and entity-creation side effects, and supplies Hits1000 from the eventual confirmed RNG backend. The port does not credit the stage accumulator at spawn time. The integration test explicitly collects pending type-0/type-3 drops through record_collected_drop; no immediate or duplicate reward grant is inserted.
+
+Evidence: `research/exports/enemy-rewards/`, `enemy-reward-readers/`, existing `gameplay-combat/M37632_EnemySystem_Defeat.asm` and `defeat-helpers/`. Static artifact audit: 83 enemy records x 1200 levels = 99600 C++ queries per language, matching an independent Python binary32 model (result hash 985714270517449481 for both languages, local `enemy-experience-model.json`). This is static-model agreement, not Android verification. Confidence high for the decoded schema, arithmetic and observed suffix ordering; full Defeat remains partial.
+
 ## Port
 
 - `src/core/gameplay/stage_rewards.hpp/.cpp`: `StageRewards{experience, money, prisoners, treasure_ids}` + `record_collected_drop(rewards, type, value)` (only the OnCollectedDrop accumulator switch, no effects/cleanup); `ItemStock{discovery_state, is_new, stock}` + `add_item_stock(item, amount)` (AddStock with its Find hook).
@@ -180,7 +190,8 @@ Evidence: local `research/exports/stage-cleanup-evidence.json`, `quest-return/F1
 - [quest_rewards.cpp](../../src/core/gameplay/quest_rewards.cpp) composes the reward pipeline, reads TreasureData, ports recruitment and QuestRecord mutation. [Tests](../../tests/test_quest_rewards.cpp) check exact cross-subsystem order, duplicate grants, stock caps, full member EXP, live versus snapshot prisoners, skipped/invalid ids, overflow, non-clear records and partial effects at failure boundaries. The generic framing/indexing code is shared with the progression readers.
 - [quest_return.cpp](../../src/core/gameplay/quest_return.cpp) ports OnFinish, the destroyed-flag wrapper, saved-level clamp and ReturnTown scheduling/callback order. [Tests](../../tests/test_quest_return.cpp) cover duplicate/order behavior, repeat human lookups, delayed null checks, clamped levels/unclamped EXP, manager/clear failures, live callback payload and event ordering. The reward test additionally runs grant -> member finalization and confirms EXP is copied without being granted twice.
 - [stage_cleanup.cpp](../../src/core/gameplay/stage_cleanup.cpp) ports cleanup and the manager deletion sequence. [Tests](../../tests/test_stage_cleanup.cpp) use the existing ComponentSlots implementation to verify notifications before event disposal, live group changes versus snapshots, registry removal, null/already-destroyed entries and failure boundaries. The ReturnTown test binds this cleanup before member writeback.
-- Missing: Defeat, CreateDrop, collection cadence, ECS/storage binding and presentation for ShowQuestResult, AddMoney/AddCrystal storage helpers, transition timing, event-31 consumers and high score.
+- [enemy_rewards.cpp](../../src/core/gameplay/enemy_rewards.cpp) reads EnemyData, computes level EXP and selects pending reward drops through explicit creation/RNG interfaces. [Tests](../../tests/test_enemy_rewards.cpp) cover binary32 differences, null/short data, nested lengths, lookup/draw order, first-success behavior, partial spawn failures and collection into stage totals.
+- Missing: Defeat motion/state/counter composition, CreateDrop, collection cadence, ECS/storage binding and presentation for ShowQuestResult, AddMoney/AddCrystal storage helpers, transition timing, event-31 consumers and high score.
 
 ## Evidence
 
@@ -198,7 +209,7 @@ Evidence: local `research/exports/stage-cleanup-evidence.json`, `quest-return/F1
 
 ## Open questions
 
-1. (blocking) Loaded data for EnemyData exp_/treasureDrop_. TreasureData, CharaData.needExpRate_ and TableData.exp_ are decoded; the reward pipeline is ported with explicit ECS/storage hosts. Complete stage binding remains.
+1. (blocking) Concrete ECS/drop-creation bindings for the ported enemy reward suffix. EnemyData, TreasureData, CharaData.needExpRate_ and TableData.exp_ are decoded; the reward pipeline is ported with explicit ECS/storage hosts. Complete stage binding remains.
 2. (blocking) RNG backend for `Hits1000` drop rolls (see [rng.md](rng.md)).
 3. Contracts of the AddMoney/AddCrystal value helpers (SecureLong-like? limits) and save persistence of money, records and high score.
 4. `TreasureData.get_isBossReward` semantics; `CreateDrop` types 1/2 and its other jump targets; who creates money/prisoner drops.
