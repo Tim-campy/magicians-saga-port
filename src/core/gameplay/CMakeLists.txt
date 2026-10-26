@@ -194,3 +194,6 @@ if(MSVC)
 else()
   target_compile_options(projectile_launch PRIVATE -ffp-contract=off)
 endif()
+
+saga_library(combat_event_receivers combat_event_receivers.cpp)
+target_link_libraries(combat_event_receivers PUBLIC combat_records entity_subset)

@@ -449,3 +449,8 @@ add_executable(test_update_scheduler test_update_scheduler.cpp)
 target_link_libraries(test_update_scheduler PRIVATE update_scheduler)
 project_warnings(test_update_scheduler)
 add_test(NAME update_scheduler_contract COMMAND test_update_scheduler)
+
+add_executable(test_combat_event_receivers test_combat_event_receivers.cpp)
+target_link_libraries(test_combat_event_receivers PRIVATE combat_event_receivers)
+project_warnings(test_combat_event_receivers)
+add_test(NAME combat_event_receivers_contract COMMAND test_combat_event_receivers)

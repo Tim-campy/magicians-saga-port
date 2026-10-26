@@ -12,6 +12,7 @@ struct HumanRecordLink final:Component {
 struct EnemyRecordLink final:Component {
     std::int32_t enemy_id=0,level=0,flags=0; // +0x20/+0x10/+0x14.
     std::int32_t state=0,frame=0; // +0x18/+0x1c.
+    ComponentSlots* opponent=nullptr; // +0x28; EnemySystem.OnHumanDead.
 };
 struct EquipmentRecordLinks final:Component {EventInstruction ids;}; // EquipComponent +0x10, nullable.
 inline constexpr std::int32_t combat_equipment_slot=8,combat_human_slot=14,

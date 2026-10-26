@@ -3474,7 +3474,7 @@ game:0x06000e63,game:0x06000e63,ecs,,84,0x114c2b8
 game:0x06000e64,game:0x06000e64,ecs,,28,0x114c30c
 game:0x06000e65,game:0x06000e65,ecs,,8,0x114c328
 game:0x06000e66,game:0x06000e66,ecs,,8,0x114c330
-game:0x06000e67,game:0x06000e67,ecs,,588,0x114c338
+game:0x06000e67,ecs.EnemySystem.Init,ecs,traced,588,0x114c338
 game:0x06000e68,game:0x06000e68,ecs,,108,0x114c584
 game:0x06000e69,ecs.EnemySystem.NeedsUpdate,ecs,reimplemented,8,0x114c68c
 game:0x06000e6a,game:0x06000e6a,ecs,,2368,0x114c694
@@ -3498,7 +3498,7 @@ game:0x06000e7b,game:0x06000e7b,ecs,,772,0x114e4b0
 game:0x06000e7c,ecs.EnemySystem.OnProjectileImpact,ecs,reimplemented,1232,0x114e7b4
 game:0x06000e7d,ecs.EnemySystem.OnCollide,ecs,reimplemented,1600,0x114f604
 game:0x06000e7e,ecs.EnemySystem.OnBulletHit,ecs,reimplemented,344,0x114f4ac
-game:0x06000e7f,game:0x06000e7f,ecs,,440,0x11511cc
+game:0x06000e7f,ecs.EnemySystem.OnHumanDead,ecs,reimplemented,440,0x11511cc
 game:0x06000e80,ecs.EnemySystem.CreateImpactEffect,ecs,reimplemented,2088,0x114ec84
 game:0x06000e81,game:0x06000e81,ecs,,980,0x1151384
 game:0x06000e82,ecs.EnemySystem.Damage,ecs,documented,3924,0x114fc44
@@ -3558,7 +3558,7 @@ game:0x06000eb7,game:0x06000eb7,ecs,,8,0x1154e44
 game:0x06000eb8,game:0x06000eb8,ecs,,88,0x1154e4c
 game:0x06000eb9,game:0x06000eb9,unassigned,,8,0x1154208
 game:0x06000eba,game:0x06000eba,unassigned,,108,0x1154ea4
-game:0x06000ebb,game:0x06000ebb,ecs,,508,0x1154f10
+game:0x06000ebb,ecs.HumanSystem.Init,ecs,traced,508,0x1154f10
 game:0x06000ebc,ecs.HumanSystem.NeedsUpdate,ecs,reimplemented,8,0x115510c
 game:0x06000ebd,game:0x06000ebd,ecs,,804,0x1155114
 game:0x06000ebe,game:0x06000ebe,ecs,,240,0x1155438
@@ -3755,7 +3755,7 @@ game:0x06000f7c,ecs.ProjectileSystem.Init,ecs,traced,340,0x115febc
 game:0x06000f7d,ecs.ProjectileSystem.NeedsUpdate,ecs,reimplemented,8,0x1160010
 game:0x06000f7e,ecs.ProjectileSystem.Update,ecs,reimplemented,2992,0x1160018
 game:0x06000f7f,game:0x06000f7f,ecs,,16,0x1160bc8
-game:0x06000f80,ecs.ProjectileSystem.OnProjectileImpact,ecs,traced,104,0x1160bd8
+game:0x06000f80,ecs.ProjectileSystem.OnProjectileImpact,ecs,reimplemented,104,0x1160bd8
 game:0x06000f81,ecs.ProjectileSystem.Fire,ecs,reimplemented,480,0x1157230
 game:0x06000f82,game:0x06000f82,ecs,,8,0x1160c40
 game:0x06000f83,game:0x06000f83,ecs,,8,0x1160c48

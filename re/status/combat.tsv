@@ -101,7 +101,7 @@ game:0x06000ec8	reimplemented	src/core/gameplay/combat_state.cpp	Ordered speed i
 game:0x06000e84	reimplemented	src/core/gameplay/projectile_launch.cpp	Ordered position reads RNG draws Fire and modification replacement; contact integration tested
 game:0x06000f7e	reimplemented	src/core/gameplay/motion_pass.cpp	Live projectile group motion then persistent completion queue delivery; failure retention callbacks and launch integration tested
 game:0x06000f7c	traced	docs/subsystems/combat.md	Required subset slots 27 0 1 and event-23 subscription
-game:0x06000f80	traced	docs/subsystems/combat.md	Emitter destroy then destroyed Cell and Projectile checks; other event-23 subscribers open
+game:0x06000f80	reimplemented	src/core/gameplay/combat_event_receivers.cpp	Emitter destruction and required-reference receiver; tested.
 game:0x06000ecf	reimplemented	src/core/gameplay/human_impact.cpp	Cell Human state-4 guards; animation effect state-5 then event 30; callbacks and failures tested
 game:0x06000e7c	reimplemented	src/core/gameplay/enemy_impact.cpp	Ordered bullet-parent checks emitter launches 12 RNG draws modification replacement and boss notification; host services explicit
 game:0x06000fb5	reimplemented	src/core/gameplay/boss_notification.cpp	Boss flag maxZRate victory and movement release; enemy-impact composition tested; presentation adapters explicit
@@ -113,3 +113,6 @@ game:0x06000fca	reimplemented	src/core/gameplay/boss_notification.cpp	Ordered ke
 game:0x06000e0a	traced	docs/subsystems/combat.md	And filter requires Collision 32 and Position 0; initializes persistent pair list
 game:0x06000e0b	reimplemented	src/core/ecs/update_scheduler.cpp	Ordered dispatch or concrete enabled/pass gate; contract test; runtime comparison pending.
 game:0x06000e0c	documented	docs/subsystems/combat.md	Visited reset ordered pair filters HP geometry and deferred event-29 delivery ported; live subset scheduler remain adapters
+game:0x06000e7f	reimplemented	src/core/gameplay/combat_event_receivers.cpp	Live enemy retargeting after human death; SearchTarget remains explicit.
+game:0x06000e67	traced	docs/subsystems/combat.md	Enemy group and event 23/29/30 delegate targets resolved; complete Init not ported.
+game:0x06000ebb	traced	docs/subsystems/combat.md	Human group and event 23/29 delegate targets resolved; complete Init not ported.
