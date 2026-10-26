@@ -20,7 +20,7 @@ private:
     CombatEntity& entity_;
     CharacterParameterHost& characters_;
 };
-DamageParameter* parameter_slot(CombatEntity& entity,std::size_t index) {
+DamageParameter* parameter_slot(CombatEntity& entity,std::int32_t index) {
     return require(entity.parameters).at(index);
 }
 }

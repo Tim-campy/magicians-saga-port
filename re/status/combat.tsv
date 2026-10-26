@@ -93,3 +93,4 @@ game:0x06000d50	reimplemented	src/core/gameplay/combat_records.cpp	Equipment ID 
 game:0x06000d51	reimplemented	src/core/gameplay/combat_records.cpp	Equipment ID index 3 resolves cloth table; tested correct catalog selection
 game:0x06000d53	reimplemented	src/core/gameplay/combat_records.cpp	Integer weapon setter writes ID without record validation or component notification
 game:0x06000d55	reimplemented	src/core/gameplay/combat_records.cpp	Integer shield setter shares checked ID-array store contract
+game:0x06000109	reimplemented	src/core/gameplay/ecs_combat.cpp	ParamSet keyed lookup via standard map; missing key faults, null values preserved, sparse-key and capture tests

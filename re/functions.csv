@@ -243,7 +243,7 @@ game:0x06000105,game:0x06000105,gameplay,,8,0x11791cc
 game:0x06000106,game:0x06000106,gameplay,,148,0x11791d4
 game:0x06000107,game:0x06000107,gameplay,,88,0x1179268
 game:0x06000108,game:0x06000108,gameplay,,80,0x11792c0
-game:0x06000109,game:0x06000109,gameplay,,88,0x1179310
+game:0x06000109,parameter.ParamSet.get_Item,gameplay,reimplemented,88,0x1179310
 game:0x0600010a,game:0x0600010a,gameplay,,80,0x1179368
 game:0x0600010b,game:0x0600010b,gameplay,,80,0x11793b8
 game:0x0600010c,game:0x0600010c,gameplay,,4,0x1179408

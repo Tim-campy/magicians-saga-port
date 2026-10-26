@@ -13,7 +13,7 @@ struct CombatEnemy { const EnemyRecord* data=nullptr;std::int32_t level=1; };
 struct CombatEntity {
     CombatHuman* human=nullptr;
     CombatEnemy* enemy=nullptr;
-    const std::vector<DamageParameter*>* parameters=nullptr;
+    const DamageParameterMap* parameters=nullptr;
 };
 struct CombatConfiguration { bool debug=false,damage_diagnostics=false; };
 class CombatPresentation {

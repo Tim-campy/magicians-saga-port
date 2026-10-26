@@ -37,7 +37,7 @@ struct Fixture {
     EnemyRecord enemy;
     CombatEnemy monster{&enemy,1};
     DamageParameter hp{10,100,0,0},energy{25,100,0,0};
-    std::vector<DamageParameter*> attack_parameters{nullptr,&energy},receive_parameters{&hp};
+    DamageParameterMap attack_parameters{{1,&energy}},receive_parameters{{0,&hp}};
     CombatEntity attacker{&human,nullptr,&attack_parameters},receiver{nullptr,&monster,&receive_parameters};
     AttributeAffinityTables affinities=initial_attribute_affinity_tables();
     CombatConfiguration config;
