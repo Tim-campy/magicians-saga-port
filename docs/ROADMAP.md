@@ -31,7 +31,7 @@ Current maintainer priority: game-specific decompilation and gameplay integratio
 ## Next tasks
 
 ### Current gameplay focus
-- [ ] Bind the composed damage path to game parameter/equipment providers and event-15 consumers; recover effect selection only where needed by the first combat scenario. Numeric damage, seeded RNG and callback-sensitive death are tested; concrete ECS integration remains open.
+- [ ] Bind base character growth/shop upgrades and enemy parameter curves to the damage host, then event-15 consumers. Equipment interpolation, total ordering, elemental bonuses and parameter rate now compose with damage in tests; concrete ECS/data integration remains open.
 
 ### 1. Events and scripts
 - [ ] Bind decoded billing-item/catalog providers and complete notification manager adapters, preserving task execution gates.
@@ -50,7 +50,7 @@ Current maintainer priority: game-specific decompilation and gameplay integratio
 - [ ] Name and bind parameter indices 0/1/2/6/7/8/9, equipment contributions and attribute bonus; resolve `MyConfig.FPS`/`DEBUG` for the composed damage host and attack timing.
 - [ ] Bind the ported enemy reward suffix and ShowQuestResult pipeline to ECS/drop creation/storage/UI; enemy, treasure, character-rate and level-cost records are decoded/tested.
 - [ ] Read `OnGameOver`'s retry path, resolve the state-4 quest method and event 1133.
-- [ ] Port `Graph.Easing` in the general case (amplitudes −50 and −80), checked against the binary32 model.
+- [ ] Port `Graph.Easing` with amplitudes -50 and -80 against the binary32 model; -50 blocks enemy parameter growth as well as drop presentation.
 
 ### 4. ECS world and animation
 - [ ] Build the slot index → component type table (`ComponentFactory.Create`) and recover the payloads and Extra hooks of the remaining components (blocking for an entity reader).

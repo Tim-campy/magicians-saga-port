@@ -221,7 +221,7 @@ game:0x060000ef,game:0x060000ef,gameplay,,8,0x1178bec
 game:0x060000f0,game:0x060000f0,gameplay,,8,0x1178bf4
 game:0x060000f1,game:0x060000f1,gameplay,,8,0x1178bfc
 game:0x060000f2,game:0x060000f2,gameplay,,128,0x1178c04
-game:0x060000f3,game:0x060000f3,gameplay,,60,0x1178c84
+game:0x060000f3,parameter.Parameter.get_rate,gameplay,reimplemented,60,0x1178c84
 game:0x060000f4,game:0x060000f4,gameplay,,48,0x1178cc0
 game:0x060000f5,game:0x060000f5,gameplay,,84,0x1178cf0
 game:0x060000f6,game:0x060000f6,gameplay,,8,0x1178d44
@@ -3687,12 +3687,12 @@ game:0x06000f38,game:0x06000f38,ecs,,116,0x115da70
 game:0x06000f39,game:0x06000f39,ecs,,116,0x115dae4
 game:0x06000f3a,game:0x06000f3a,ecs,,116,0x115db58
 game:0x06000f3b,game:0x06000f3b,ecs,,160,0x115dbcc
-game:0x06000f3c,ecs.MemberSystem.GetTotalParamValue,ecs,documented,248,0x1156424
+game:0x06000f3c,ecs.MemberSystem.GetTotalParamValue,ecs,reimplemented,248,0x1156424
 game:0x06000f3d,game:0x06000f3d,ecs,,180,0x115dcb4
 game:0x06000f3e,game:0x06000f3e,ecs,,72,0x115dc6c
 game:0x06000f3f,game:0x06000f3f,ecs,,24,0x115dd68
-game:0x06000f40,game:0x06000f40,ecs,,260,0x115dd80
-game:0x06000f41,game:0x06000f41,ecs,,24,0x1157410
+game:0x06000f40,ecs.MemberSystem.GetParamValue,ecs,traced,260,0x115dd80
+game:0x06000f41,ecs.MemberSystem.GetAttributeValue,ecs,reimplemented,24,0x1157410
 game:0x06000f42,game:0x06000f42,ecs,,24,0x1158ed4
 game:0x06000f43,game:0x06000f43,ecs,,104,0x115de84
 game:0x06000f44,game:0x06000f44,ecs,,260,0x115c39c
@@ -4000,7 +4000,7 @@ game:0x06001071,game:0x06001071,data,,8,0x116d770
 game:0x06001072,game:0x06001072,data,,8,0x116d778
 game:0x06001073,game:0x06001073,data,,136,0x116d780
 game:0x06001074,game:0x06001074,data,,8,0x116d808
-game:0x06001075,game:0x06001075,data,,328,0x116d810
+game:0x06001075,data.CharaData.GetParamValue,data,traced,328,0x116d810
 game:0x06001076,game:0x06001076,data,,12,0x116d958
 game:0x06001077,game:0x06001077,data,,128,0x116d964
 game:0x06001078,data.CharaData.GetNextExp,data,reimplemented,232,0x116d9e4
@@ -4055,7 +4055,7 @@ game:0x060010a8,game:0x060010a8,data,,8,0x116e450
 game:0x060010a9,data.ClothData.NewGame,data,traced,60,0x116e458
 game:0x060010aa,data.ClothData.AddStock,data,reimplemented,140,0x116e494
 game:0x060010ab,game:0x060010ab,data,,116,0x116e520
-game:0x060010ac,game:0x060010ac,data,,92,0x116e594
+game:0x060010ac,data.ClothData.GetParamValue,data,reimplemented,92,0x116e594
 game:0x060010ad,game:0x060010ad,data,,116,0x116e5f0
 game:0x060010ae,game:0x060010ae,data,,8,0x116e664
 game:0x060010af,game:0x060010af,data,,8,0x116e66c
@@ -4083,7 +4083,7 @@ game:0x060010c4,game:0x060010c4,data,,136,0x116e8c4
 game:0x060010c5,game:0x060010c5,data,,108,0x116e94c
 game:0x060010c6,game:0x060010c6,data,,8,0x116e9b8
 game:0x060010c7,data.EnemyData.GetExp,data,reimplemented,68,0x116e9c0
-game:0x060010c8,game:0x060010c8,data,,228,0x116ea04
+game:0x060010c8,data.EnemyData.GetParamValue,data,documented,228,0x116ea04
 game:0x060010c9,game:0x060010c9,data,,12,0x116eae8
 game:0x060010ca,data.EnemyData.AddDefeatCount,data,documented,120,0x116eaf4
 game:0x060010cb,game:0x060010cb,data,,8,0x116eb6c
@@ -4123,7 +4123,7 @@ game:0x060010ec,game:0x060010ec,data,,140,0x116efd8
 game:0x060010ed,data.EquipmentData.NewGame,data,traced,60,0x116f0c8
 game:0x060010ee,data.EquipmentData.AddStock,data,reimplemented,140,0x116f104
 game:0x060010ef,game:0x060010ef,data,,116,0x116f190
-game:0x060010f0,game:0x060010f0,data,,92,0x116f204
+game:0x060010f0,data.EquipmentData.GetParamValue,data,reimplemented,92,0x116f204
 game:0x060010f1,game:0x060010f1,data,,104,0x116f260
 game:0x060010f2,game:0x060010f2,data,,8,0x116f2c8
 game:0x060010f3,game:0x060010f3,data,,8,0x116f2d0
@@ -4255,7 +4255,7 @@ game:0x06001175,game:0x06001175,data,,8,0x117188c
 game:0x06001176,data.HatData.NewGame,data,traced,60,0x1171894
 game:0x06001177,data.HatData.AddStock,data,reimplemented,140,0x11718d0
 game:0x06001178,game:0x06001178,data,,116,0x117195c
-game:0x06001179,game:0x06001179,data,,92,0x11719d0
+game:0x06001179,data.HatData.GetParamValue,data,reimplemented,92,0x11719d0
 game:0x0600117a,game:0x0600117a,data,,104,0x1171a2c
 game:0x0600117b,game:0x0600117b,data,,136,0x1171a94
 game:0x0600117c,game:0x0600117c,data,,136,0x1171b1c

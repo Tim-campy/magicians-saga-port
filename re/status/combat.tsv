@@ -21,7 +21,7 @@ game:0x06000dc7	traced	docs/subsystems/combat.md	enumerator drain only, no comba
 game:0x06000ec5	traced	docs/subsystems/combat.md	target search, ChangeState(2); filters unnamed
 game:0x06000eea	documented	docs/subsystems/combat.md	trunc((GetTotalParamValue(6)+100)/2)
 game:0x06000ee8	documented	docs/subsystems/combat.md	ClampMin(FPS*100/speed, 2)
-game:0x06000f3c	documented	docs/subsystems/combat.md	base + weapon + shield + hat + cloth, 32-bit
+game:0x06000f3c	reimplemented	src/core/gameplay/combat_parameters.cpp	Base plus weapon/shield/hat/cloth in order; explicit base and record providers; tested wrapping and failure order
 game:0x06000e72	documented	docs/subsystems/combat.md	enemy+0x1c % ClampMin(FPS/V,1) == 0
 game:0x060000e8	documented	docs/subsystems/combat.md	value_ + extraValue_ (32-bit)
 game:0x060000fd	reimplemented	src/core/gameplay/combat_rules.cpp	subtract_parameter; tests/test_combat_rules.cpp
@@ -67,3 +67,11 @@ game:0x06001079	reimplemented	src/core/gameplay/experience_progression.cpp	GetEx
 game:0x0600120b	reimplemented	src/core/gameplay/experience_progression.cpp	GetExp wraps int32 product then divides by 100 toward zero; tested
 game:0x060007de	reimplemented	src/core/gameplay/quest_experience.cpp	Result fields and wrapping display arithmetic; second human lookup preserved by tested member composition
 game:0x06000fb3	reimplemented	src/core/gameplay/stage_cleanup.cpp	Five ordered live group snapshots, true registry removal, optional entity cleanup and collecting-drop clear tested
+game:0x06000f41	reimplemented	src/core/gameplay/combat_parameters.cpp	Unsigned attribute guard maps 0..2 to total parameter 10..12; no provider reads otherwise
+game:0x060000f3	reimplemented	src/core/gameplay/combat_parameters.cpp	Base maximum guard; wrapped total percentage with SDIV and clamp; integrated damage test
+game:0x060010f0	reimplemented	src/core/gameplay/combat_parameters.cpp	Equipment row endpoints; level minus one; duration 99; shared tested kernel
+game:0x060010ac	reimplemented	src/core/gameplay/combat_parameters.cpp	Cloth row endpoints; level minus one; duration 99; shared tested kernel
+game:0x06001179	reimplemented	src/core/gameplay/combat_parameters.cpp	Hat row endpoints; level minus one; duration 99; shared tested kernel
+game:0x060010c8	documented	docs/subsystems/combat.md	Enemy endpoints and parameter maximum; easing amplitude -50; not linear
+game:0x06001075	traced	docs/subsystems/combat.md	Character growth plus extra term for parameters 0/1 beyond maximum; constant unresolved
+game:0x06000f40	traced	docs/subsystems/combat.md	Character growth then main-character MagicShopData upgrade contribution

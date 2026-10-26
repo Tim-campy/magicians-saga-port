@@ -6,7 +6,7 @@
 namespace saga::core {
 enum class CombatSide { attacker, receiver };
 enum class CombatKind { other, enemy, human };
-struct DamageParameter { std::int32_t value=0,maximum=0,extra=0; };
+struct DamageParameter { std::int32_t value=0,maximum=0,extra=0,extra_maximum=0; };
 struct ReceiverDefence { std::int32_t parameter2=0,attribute=4,bonus=0; };
 struct DamageNumbers {
     std::int32_t amount=0,affinity=0;

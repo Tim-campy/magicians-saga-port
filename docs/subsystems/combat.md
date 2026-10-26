@@ -11,6 +11,8 @@ Combat is driven by ECS systems: `HumanSystem` (party targeting and attack inter
 
 Parameter lookup (used throughout `Damage`): for entity E and index k, if E has the human component use `MemberSystem.GetTotalParamValue(k)`; else if it has the enemy component use `EnemyData.GetParamValue(k, EnemyComponent+0x10)`; else 0. Human takes precedence when both are present. `GetTotalParamValue` sums, in order and in 32 bits, `MemberSystem.GetParamValue(k)` + weapon + shield + hat + cloth contributions for k. Nominal names of indices 0/1/2/6/7/8/9 are not yet tied to the parameter catalog (0 is very likely HP).
 
+Equipment getters and attribute bonuses now have portable contracts. Human base stats still go through an explicit provider: `MemberSystem.GetParamValue(Entity,k)` resolves `Entity.get_human` then `HumanComponent.get_data`, uses the character's level at +0x40, and calls the character-record overload. The latter calls `CharaData.GetParamValue(k,level)` and, for `get_isMain`, asks `MagicShopData.GetDataIdForParamKey(k)`; a result other than -1 selects a shop record and adds its `GetAddValue` with int32 wrapping. Those base-growth/shop bindings are not replaced with guessed values.
+
 ## Key methods
 
 | Method | Registry id | Role | Confidence |
@@ -22,6 +24,12 @@ Parameter lookup (used throughout `Damage`): for entity E and index k, if E has 
 | ecs.MemberSystem.GetTotalParamValue | game:0x06000f3c | Base + 4 equipment contributions | high |
 | ecs.EnemySystem.IsAttackTiming | game:0x06000e72 | `enemy+0x1c % max(1, FPS/V) == 0` | high |
 | parameter.Parameter.get_value | game:0x060000e8 | `value_ + extraValue_` (32-bit) | high |
+| parameter.Parameter.get_rate | game:0x060000f3 | Wrapped total / total maximum percentage, base-maximum guard | high |
+| ecs.MemberSystem.GetAttributeValue(Entity,int) | game:0x06000f41 | Attributes 0..2 select total parameters 10..12; others zero | high |
+| data.EquipmentData.GetParamValue | game:0x060010f0 | Weapon/shield endpoint interpolation at stored level | high |
+| data.ClothData.GetParamValue | game:0x060010ac | Clothing endpoint interpolation at stored level | high |
+| data.HatData.GetParamValue | game:0x06001179 | Hat endpoint interpolation at stored level | high |
+| data.EnemyData.GetParamValue | game:0x060010c8 | Endpoint interpolation with per-parameter maximum and amplitude -50 | high |
 | parameter.Parameter.Sub | game:0x060000fd | Subtract with optional clamp, returns excess | high |
 | main.AppData.GetAttributesAffinity | game:0x0600025d | Affinity selector 0..3 | high |
 | ecs.EnemySystem.Damage | game:0x06000e82 | Hit test, damage, Sub, effects, event 15, death flag | medium |
@@ -74,6 +82,22 @@ value_ = new; return wrap32(cand - new)
 ```
 Max 0 disables the clamp (value may go negative). Overkill returns a negative excess. With a negative maximum the lower test still wins. Extras are untouched. Not `std::clamp`.
 
+### Parameter rate, equipment and attribute bonuses
+
+`Parameter.get_rate` (0x1178c84) first returns 0 if the **base** maximum (+0x18) is zero, even when extra maximum is nonzero. Otherwise numerator is `wrap32(wrap32(value + extraValue) * 100)`; denominator is `wrap32(maxValue + extraMaxValue)`. ARM64 signed division precedes clamp to [0,100]; zero denominator yields 0 and INT_MIN/-1 yields INT_MIN (thus clamps to 0). Neither double precision nor a combined rational expression is equivalent for overflowing inputs.
+
+The three equipment getters take an int32 parameter index and return an int32. Each reads a jagged row's first two integers **before** interpolation, faults on missing/short rows or invalid index, ignores trailing row values, and calls zero-amplitude Easing with duration 99 and progress `wrap32(level-1)`. They have no state writes. Data layout, confirmed by metadata field offsets:
+
+| Record | Level int32 | Parameter rows reference |
+|---|---|---|
+| EquipmentData (weapon/shield) | +0x28 `level_` | +0x88 `status_` |
+| HatData | +0x60 `level_` | +0x50 `parameters_` |
+| ClothData | +0x20 `level_` | +0x58 `parameters_` |
+
+`MemberSystem.GetTotalParamValue(Entity,k)` calls the base provider, then resolves weapon, shield, hat and cloth separately in that order, querying parameter k on each. Missing equipment faults; there is no zero-contribution fallback. It then sums base and the four contributions with int32 wrapping. The current port preserves provider order and failure short-circuiting. The entity overload of `GetAttributeValue` uses an unsigned comparison: attributes 0,1,2 select total parameters 10,11,12; all other values (including negatives) return 0 without resolving anything. The second overload at 0x1158ed4 uses the same guard with the character-record total provider; that provider is not ported here.
+
+`EnemyData.GetParamValue(k,level)` (0x116ea04) reads row k at +0x68, its first two endpoints, then static per-parameter maximum k at +0x8. It calls Easing with duration `wrap32(maximum-1)`, progress `wrap32(level-1)` and amplitude **-50**, so equipment's linear kernel cannot be reused for enemies. The static maximum values and general curve remain unbound. `CharaData.GetParamValue` instead uses amplitude 0 and a different per-parameter maximum table; indices 0/1 above their maximum also have a second growth term toward level 1200. That term's constant and data binding remain open.
+
 ### Attribute affinity
 
 `AppData..cctor` (0x1117b30, region 0x1119ef8-0x111a078) builds two statics:
@@ -107,9 +131,12 @@ OnBulletHit requires an Enemy component on the receiver, reads attack/attackAttr
 - `src/core/gameplay/combat_damage.hpp/.cpp`: `apply_combat_damage` composes the numeric/state path with `RandomSource` and `DamageHost`. Receiver P9 is read before attacker kind/P7; a miss draws once and calls only the miss presentation suffix. A hit captures receiver parameter zero, resolves defence then attacker P8, draws variation then critical then the conditional floor. Noncritical human rate is fetched lazily. Each percentage wraps its product before signed division; percentages are never combined. DEBUG is read after the floor. Subtraction changes only the captured base value; the final wrapping base-plus-extra test follows `after_damage`, even if that callback replaces the host's current parameter pointer.
 - `DamageHost` keeps parameter resolution, live kind checks, affinity state and presentation explicit. `after_damage` is an adapter boundary for effects, event 15 and diagnostics, not an implemented ECS dispatcher. The captured parameter must survive callbacks. Missing parameter zero faults at subtraction (or the final read if DEBUG skips subtraction), not when captured. Adapter failure propagates without undoing subtraction.
 - `tests/test_combat_damage.cpp` (CTest `combat_damage_contract`) covers read/draw order, miss short circuit, critical exclusivity, attribute matching, human/enemy/sentinel floors, DEBUG, extra values, callback-driven death/resurrection, captured identity, overflow, malformed affinity/parameter failures and a seeded backend vector (seed 42: damage 47, four draws). These are static-contract tests, not Android observations.
+- `src/core/gameplay/combat_parameters.hpp/.cpp` implements the three equipment getters with one shared function, entity total and elemental-bonus aggregation, and `Parameter.get_rate`. `EquipmentParameters` uses the existing nullable jagged int32 representation; it is a projection, not a complete equipment-table loader. `MemberParameterHost` keeps base growth/shop data and live equipment resolution explicit. Tests cover provider order, wrapped totals, malformed rows, level boundaries, extra maxima and ARM division edges; a damage integration fixture uses defence 36, bonus 30 and rate 25 to produce damage 58 from attack 100 at 100% variation. This establishes arithmetic integration, not live ECS/data loading.
 - Missing: concrete parameter resolution (GetTotalParamValue, EnemyData), attack timing, effective live RNG configuration/seeding, effect selection/animation/diagnostics, event-15 dispatch, collision guards and full Defeat integration. `Damage` remains **documented**, because this port covers its numeric/state composition with explicit services rather than the entire method.
 
 ## Evidence
+
+- Local `research/exports/combat-parameters/` contains FDE-bounded exports for the ten parameter/attribute methods above, all with full syntactic coverage; ELF addresses equal exported addresses minus 0x100000. The equipment field names/offsets were checked through `research/il2cpp-metadata-inventory.json` and the ELF field-offset table 0x277ece8. Total-provider ordering comes from `research/exports/attack-timing-helpers/M37817_MemberSystem_GetTotalParamValue.asm`; rate arithmetic from `research/exports/damage-helpers/M34160_Parameter_get_rate.asm`. These are static observations, not runtime verification.
 
 - Numeric composition: local `research/exports/gameplay-combat/M37631_EnemySystem_Damage.asm`, ELF 0x114fc44-0x1150b98 (export addresses have a +0x100000 image base). High confidence: entry 0x114fc74 retains attacker x1 in x20; 0x115025c passes x20 to `Entity.get_parameter` (0x113070c), then indexes 1 at 0x1150284 and calls `Parameter.get_rate` at 0x1150290. Thus the human noncritical rate belongs to the attacker, not the receiver. No dependency reimplementation was needed.
 - `Random.Hits` at 0x1128f34 calls Rand(100) unconditionally and uses signed LT; local `research/exports/combat-hit/M36634_Random_Hits.asm`. The port reuses the existing seeded RNG and game wrapper arithmetic.
@@ -132,6 +159,6 @@ OnBulletHit requires an Enemy component on the receiver, reads attack/attackAttr
 3. (blocking) Value of `MyConfig.FPS` and `MyConfig.DEBUG` in release; scheduler cadence consuming the attack interval; writers of `enemy+0x1c`.
 4. Effect tables +0x450/+0x458 and the effect/animation side of `Damage`; other event-15 subscribers.
 5. Full guards of `OnCollide`/`OnBulletHit` and `SearchAndAttack` filters; state numbers 2 and 4; indirect callers of `Damage`.
-6. Contributions inside `GetTotalParamValue` (equipment modifiers) and `MemberSystem.GetAttributeValue`.
+6. (blocking) Character base growth, parameter-specific maximum tables, main-character shop upgrades and equipment record resolution/loaders. Equipment interpolation, total ordering and elemental-bonus selection are established above.
 7. Whether the affinity/rate statics are modified after `AppData..cctor`.
-8. General `Graph.Easing` with non-zero amplitude, needed by drop presentation (amplitude -50/-80).
+8. (blocking) General `Graph.Easing` with non-zero amplitude: required by enemy parameters (-50) as well as drop presentation (-50/-80).
