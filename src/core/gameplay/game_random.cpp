@@ -40,4 +40,6 @@ std::int32_t random_inclusive(RandomSource& source,std::int32_t minimum,std::int
 std::int32_t jrandom_bounded(RandomSource& source,std::int32_t bound){return remainder(source.next(),bound);}
 // Random.Hits1000 0x1128f94.
 bool random_hits1000(RandomSource& source,std::int32_t threshold){return random_bounded(source,1000)<threshold;}
+// Random.Hits 0x1128f34: the draw occurs even outside the probability range.
+bool random_hits(RandomSource& source,std::int32_t threshold){return random_bounded(source,100)<threshold;}
 }

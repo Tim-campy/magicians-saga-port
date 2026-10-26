@@ -130,3 +130,5 @@ saga_library(enemy_rewards enemy_rewards.cpp)
 target_link_libraries(enemy_rewards PUBLIC event_catalog combat_rules)
 
 saga_library(game_random game_random.cpp legacy_system_random.cpp)
+saga_library(combat_damage combat_damage.cpp)
+target_link_libraries(combat_damage PUBLIC combat_rules game_random)

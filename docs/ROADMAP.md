@@ -31,7 +31,7 @@ Current maintainer priority: game-specific decompilation and gameplay integratio
 ## Next tasks
 
 ### Current gameplay focus
-- [ ] Compose EnemySystem.Damage with the existing numeric helpers and explicit RNG source, preserving hit/critical/variation draw order and parameter side effects; seeded System.Random/drop integration is tested, while live configuration and reseeding remain open.
+- [ ] Bind the composed damage path to game parameter/equipment providers and event-15 consumers; recover effect selection only where needed by the first combat scenario. Numeric damage, seeded RNG and callback-sensitive death are tested; concrete ECS integration remains open.
 
 ### 1. Events and scripts
 - [ ] Bind decoded billing-item/catalog providers and complete notification manager adapters, preserving task execution gates.
@@ -46,8 +46,8 @@ Current maintainer priority: game-specific decompilation and gameplay integratio
 - [ ] Enumerate every selector `PackSave` writes and who writes the BaseData sections (`BaseData.Serialize` and overrides).
 
 ### 3. Combat, RNG and rewards
-- [ ] RNG generator (blocking for damage and drops): effective `JRandom.Logic`, writer of `fix_`, seeding, IL2CPP `System.Random.Next` and `Xorshift128.Next`, whether any backend returns negatives.
-- [ ] Name parameter indices 0/1/2/6/7/8/9 and resolve `MyConfig.FPS`/`DEBUG`; then compose a native `damage()` that keeps the documented RNG order.
+- [ ] Resolve effective live `JRandom.Logic` and seeding/reseeding; seeded System.Random and the replay fix_ gate are established. Inspect alternative generators only if the gameplay configuration selects them.
+- [ ] Name and bind parameter indices 0/1/2/6/7/8/9, equipment contributions and attribute bonus; resolve `MyConfig.FPS`/`DEBUG` for the composed damage host and attack timing.
 - [ ] Bind the ported enemy reward suffix and ShowQuestResult pipeline to ECS/drop creation/storage/UI; enemy, treasure, character-rate and level-cost records are decoded/tested.
 - [ ] Read `OnGameOver`'s retry path, resolve the state-4 quest method and event 1133.
 - [ ] Port `Graph.Easing` in the general case (amplitudes −50 and −80), checked against the binary32 model.

@@ -329,3 +329,8 @@ add_executable(test_game_random test_game_random.cpp)
 target_link_libraries(test_game_random PRIVATE game_random enemy_rewards)
 project_warnings(test_game_random)
 add_test(NAME game_random_contract COMMAND test_game_random)
+
+add_executable(test_combat_damage test_combat_damage.cpp)
+target_link_libraries(test_combat_damage PRIVATE combat_damage)
+project_warnings(test_combat_damage)
+add_test(NAME combat_damage_contract COMMAND test_combat_damage)

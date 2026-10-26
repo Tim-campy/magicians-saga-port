@@ -43,4 +43,5 @@ std::int32_t random_bounded(RandomSource&,std::int32_t bound);
 std::int32_t random_inclusive(RandomSource&,std::int32_t minimum,std::int32_t maximum);
 std::int32_t jrandom_bounded(RandomSource&,std::int32_t bound);
 bool random_hits1000(RandomSource&,std::int32_t threshold);
+bool random_hits(RandomSource&,std::int32_t threshold);
 }

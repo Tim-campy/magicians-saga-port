@@ -2615,7 +2615,7 @@ game:0x06000a99,kairo.unity.math.Random..cctor,util,traced,184,0x1128ce4
 game:0x06000a9a,kairo.unity.math.Random.Rand,util,documented,100,0x1128d9c
 game:0x06000a9b,kairo.unity.math.Random.Rand,util,reimplemented,168,0x1128e00
 game:0x06000a9c,kairo.unity.math.Random.Rand,util,reimplemented,140,0x1128ea8
-game:0x06000a9d,kairo.unity.math.Random.Hits,util,documented,96,0x1128f34
+game:0x06000a9d,kairo.unity.math.Random.Hits,util,reimplemented,96,0x1128f34
 game:0x06000a9e,kairo.unity.math.Random.Hits1000,util,reimplemented,96,0x1128f94
 game:0x06000a9f,kairo.unity.math.Random.Choose,util,traced,112,0x1128ff4
 game:0x06000aa1,kairo.unity.math.Random.Lot,util,traced,476,0x1129064

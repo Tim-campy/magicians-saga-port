@@ -3,7 +3,7 @@ game:0x06000a99	traced	docs/subsystems/rng.md	cctor: 256-element array, JRandom 
 game:0x06000a9a	documented	docs/subsystems/rng.md	Rand(): forwards to JRandom.NextInt
 game:0x06000a9b	reimplemented	src/core/gameplay/game_random.cpp	Explicit source preserves draw count and ARM64 arithmetic; seeded public backend integration tested
 game:0x06000a9c	reimplemented	src/core/gameplay/game_random.cpp	Explicit source preserves draw count and ARM64 arithmetic; seeded public backend integration tested
-game:0x06000a9d	documented	docs/subsystems/rng.md	Hits: Rand(100) < p, always draws
+game:0x06000a9d	reimplemented	src/core/gameplay/game_random.cpp	Unconditional Rand(100) signed comparison; composed damage and threshold edge tests
 game:0x06000a9e	reimplemented	src/core/gameplay/game_random.cpp	Explicit source preserves draw count and ARM64 arithmetic; seeded public backend integration tested
 game:0x06000a9f	traced	docs/subsystems/rng.md	Choose: calls Hits; body not read
 game:0x06000aa1	traced	docs/subsystems/rng.md	Lot: calls Rand; body not read
@@ -26,7 +26,7 @@ game:0x06000e72	documented	docs/subsystems/combat.md	enemy+0x1c % ClampMin(FPS/V
 game:0x060000e8	documented	docs/subsystems/combat.md	value_ + extraValue_ (32-bit)
 game:0x060000fd	reimplemented	src/core/gameplay/combat_rules.cpp	subtract_parameter; tests/test_combat_rules.cpp
 game:0x0600025d	reimplemented	src/core/gameplay/combat_rules.cpp	attribute_affinity with initial tables; tests/test_combat_rules.cpp
-game:0x06000e82	documented	docs/subsystems/combat.md	hit test, damage arithmetic, Sub, event 15, death flag; effect tables partial
+game:0x06000e82	documented	docs/subsystems/combat.md	numeric/state path ported with RNG and explicit host; attacker rate owner resolved; effects/ECS remain partial
 game:0x06000e7e	traced	docs/subsystems/combat.md	projectile hit -> Damage -> Defeat; guards partial
 game:0x06000e7d	traced	docs/subsystems/combat.md	two Damage sites; guards partial
 game:0x06000e83	documented	docs/subsystems/rewards.md	Reward suffix ported with ordered live data queries and pending drop/RNG interfaces; motion counters and full binding pending

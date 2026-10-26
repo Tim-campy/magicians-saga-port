@@ -67,7 +67,7 @@ Seven public seed vectors (0, 1, -1, 42, 123456789, INT_MIN, INT_MAX) match the 
 
 ## Port
 
-`game_random.cpp` ports live backend selection, game Rand(bound)/Rand(min,max)/Hits1000 and JRandom.NextInt(bound) arithmetic. It preserves one draw per call, inclusive range wrapping, negative remainder behavior, INT_MIN negation and ARM64 division-by-zero/remainder behavior without C++ undefined operations. `legacy_system_random.cpp` adapts the public seeded backend; missing selected alternatives throw explicitly rather than silently using it. The replay gate and seed conversion are also tested. `enemy_rewards.cpp` now has a deterministic seeded-backend integration test.
+`game_random.cpp` ports live backend selection, game Rand(bound)/Rand(min,max)/Hits/Hits1000 and JRandom.NextInt(bound) arithmetic. It preserves one draw per call, inclusive range wrapping, negative remainder behavior, INT_MIN negation and ARM64 division-by-zero/remainder behavior without C++ undefined operations. `legacy_system_random.cpp` adapts the public seeded backend; missing selected alternatives throw explicitly rather than silently using it. The replay gate and seed conversion are also tested. `enemy_rewards.cpp` and `combat_damage.cpp` have deterministic seeded-backend integration tests; damage tests preserve miss short-circuiting and variation/critical/floor draw order.
 
 Tests in `test_game_random.cpp` cover public reference vectors, independent instances, gate query order/no-reset behavior, live backend switches, unsupported selections and wrapper edge cases. Full startup/SetSeed, Random2018/Xorshift128 and the effective runtime seed are not implemented/verified. Public runtime source should remain the first reference for those follow-ups.
 

@@ -1,6 +1,6 @@
 # Combat
 
-Combat is driven by ECS systems: `HumanSystem` (party targeting and attack interval), `EnemySystem` (enemy attack timing, `Damage`, `Defeat`) and the collision/projectile handlers that call `Damage`. The hit test, damage arithmetic up to the HP subtraction, the attribute-affinity tables, the two Easing factors and the defeat trigger are established from static ARM64 analysis. The port has pure, ECS-free helpers for the hit threshold, `Parameter.Sub`, attribute affinity and the two damage factors; there is no integrated damage pipeline, no RNG backend and no playable combat yet.
+Combat is driven by ECS systems: `HumanSystem` (party targeting and attack interval), `EnemySystem` (enemy attack timing, `Damage`, `Defeat`) and the collision/projectile handlers that call `Damage`. The hit test, damage arithmetic up to the HP subtraction, the attribute-affinity tables, the two Easing factors and the defeat trigger are established from static ARM64 analysis. The port composes hit testing, damage arithmetic, parameter subtraction and the post-callback death predicate with an explicit RNG source and host interface. A seeded public System.Random backend is available. Concrete ECS bindings, effects and playable combat remain open.
 
 ## Overview
 
@@ -53,7 +53,7 @@ Helpers used but owned elsewhere: `main.AppData.Clamp` (game:0x0600014b, signed 
    D = trunc(wrap32(ATTRIBUTE_AFFINITY_RATE[I] * Y) / 100)
    C = Random.Hits(trunc(atk.P8 / 2))            # critical
    if C:                 D = D * 170 / 100
-   elif attacker human:  D = D * Easing(10,100,50, Parameter[1].rate, 0) / 100
+   elif attacker human:  D = D * Easing(10,100,50, attacker.Parameter[1].rate, 0) / 100
    if rcvAttribute == attackAttribute:
                          D = D * (100 - Easing(1,30,98, wrap32(B - 1), 0)) / 100
    floor: human receiver Rand(1,3); enemy receiver Rand(3-I, 6-2*I) if (unsigned)I < 3 else Rand(1,1)
@@ -62,7 +62,7 @@ Helpers used but owned elsewhere: `main.AppData.Clamp` (game:0x0600014b, signed 
    Crit and the human non-crit factor are exclusive, not cumulative. Do not merge percentages or defer rounding.
 4. **Subtraction**: if `MyConfig.DEBUG` (static +0x4) is true and the attacker is not human, `Parameter.Sub` is skipped; the rest of the function still runs. Otherwise `Parameter.Sub(ParamSet[0], D)`.
 5. **Effects**: parameters chosen from static tables +0x450/+0x458 with attribute/affinity branches; a numeric effect showing D; enemy receivers may have `ModifyAnimation` removed/recreated; a positional effect; then event 15 (receiver, D) at 0x11507b8 via `World.Send` (GOT 0x2731400).
-6. **Result** (0x1150a64): return `Parameter.get_value(ParamSet[0]) < 1` (includes extraValue_). Event-15 callbacks run **before** this test, so they can affect it. `Damage` does not return the damage amount and does not call `Defeat`.
+6. **Diagnostics and result**: after event 15, the code reads `MyConfig.DEBUG` (+0x4) and a second flag (+0x70); only when both are set does it format a seven-element diagnostic payload and call the logging route (0x11507bc-0x1150a54). This presentation path remains in the host boundary. At 0x1150a64: return `Parameter.get_value(ParamSet[0]) < 1` (includes extraValue_). Event-15 callbacks run **before** this test, so they can affect it. `Damage` does not return the damage amount and does not call `Defeat`.
 
 ### Parameter.Sub (0x1178dec)
 
@@ -104,9 +104,15 @@ OnBulletHit requires an Enemy component on the receiver, reads attack/attackAttr
 
 - `src/core/gameplay/combat_rules.hpp/.cpp` (`saga::core`): `hit_threshold`, `subtract_parameter` (`ParameterSubtraction{value, remainder}`), `AttributeAffinityTables` + `initial_attribute_affinity_tables()` + `attribute_affinity` (tables passed as explicit state; `.at()` rejects bad attackers), `noncritical_human_damage_factor`, `matching_attribute_damage_factor` (volatile float32 steps).
 - Test `tests/test_combat_rules.cpp` (CTest `combat_rules_contract`): all interior Easing points, clamps and wrap; threshold bases, clamp edges, truncation of negative halves, INT32 wrap; Sub ordinary/overkill/max 0/negative amount/negative max/wrap; 25-cell affinity matrix, sentinel precedence, out-of-range receiver and attacker. `tools/verify_combat_easing.py` checks the 148 points against a binary32 model. Fixtures come from assembly, not captures.
-- Missing: parameter resolution (GetTotalParamValue, EnemyData), attack timing, RNG, the composed `Damage`, effects, event 15, collision guards, Defeat.
+- `src/core/gameplay/combat_damage.hpp/.cpp`: `apply_combat_damage` composes the numeric/state path with `RandomSource` and `DamageHost`. Receiver P9 is read before attacker kind/P7; a miss draws once and calls only the miss presentation suffix. A hit captures receiver parameter zero, resolves defence then attacker P8, draws variation then critical then the conditional floor. Noncritical human rate is fetched lazily. Each percentage wraps its product before signed division; percentages are never combined. DEBUG is read after the floor. Subtraction changes only the captured base value; the final wrapping base-plus-extra test follows `after_damage`, even if that callback replaces the host's current parameter pointer.
+- `DamageHost` keeps parameter resolution, live kind checks, affinity state and presentation explicit. `after_damage` is an adapter boundary for effects, event 15 and diagnostics, not an implemented ECS dispatcher. The captured parameter must survive callbacks. Missing parameter zero faults at subtraction (or the final read if DEBUG skips subtraction), not when captured. Adapter failure propagates without undoing subtraction.
+- `tests/test_combat_damage.cpp` (CTest `combat_damage_contract`) covers read/draw order, miss short circuit, critical exclusivity, attribute matching, human/enemy/sentinel floors, DEBUG, extra values, callback-driven death/resurrection, captured identity, overflow, malformed affinity/parameter failures and a seeded backend vector (seed 42: damage 47, four draws). These are static-contract tests, not Android observations.
+- Missing: concrete parameter resolution (GetTotalParamValue, EnemyData), attack timing, effective live RNG configuration/seeding, effect selection/animation/diagnostics, event-15 dispatch, collision guards and full Defeat integration. `Damage` remains **documented**, because this port covers its numeric/state composition with explicit services rather than the entire method.
 
 ## Evidence
+
+- Numeric composition: local `research/exports/gameplay-combat/M37631_EnemySystem_Damage.asm`, ELF 0x114fc44-0x1150b98 (export addresses have a +0x100000 image base). High confidence: entry 0x114fc74 retains attacker x1 in x20; 0x115025c passes x20 to `Entity.get_parameter` (0x113070c), then indexes 1 at 0x1150284 and calls `Parameter.get_rate` at 0x1150290. Thus the human noncritical rate belongs to the attacker, not the receiver. No dependency reimplementation was needed.
+- `Random.Hits` at 0x1128f34 calls Rand(100) unconditionally and uses signed LT; local `research/exports/combat-hit/M36634_Random_Hits.asm`. The port reuses the existing seeded RNG and game wrapper arithmetic.
 
 - `combat_rules.cpp::easing_zero_amplitude` preserves separate binary32 division/multiplication/addition and the wrapping int32 endpoint difference. Tests include descending (100 -> 1, duration 999, progress 555 -> 44 rather than mathematical 45), large positive endpoints, overflowed differences and branch ordering. The sine correction is zero on this finite zero-amplitude path; nonzero amplitude remains unported.
 
@@ -121,8 +127,8 @@ OnBulletHit requires an Enemy component on the receiver, reads attack/attackAttr
 
 ## Open questions
 
-1. (blocking) Names/meaning of parameter indices 0, 1, 2, 6, 7, 8, 9, `EnemyComponent+0x10`, and whose `Parameter[1].rate` feeds the human non-crit factor.
-2. (blocking) RNG backend and seed (see [rng.md](rng.md)); without it no damage sequence can be reproduced.
+1. (blocking) Names/meaning and concrete bindings of parameter indices 0, 1, 2, 6, 7, 8, 9 and `EnemyComponent+0x10`; the human noncritical rate owner is now established above.
+2. (blocking) Effective live RNG selection and seeding (see [rng.md](rng.md)); explicit-seed System.Random damage sequences are now reproducible in contract tests.
 3. (blocking) Value of `MyConfig.FPS` and `MyConfig.DEBUG` in release; scheduler cadence consuming the attack interval; writers of `enemy+0x1c`.
 4. Effect tables +0x450/+0x458 and the effect/animation side of `Damage`; other event-15 subscribers.
 5. Full guards of `OnCollide`/`OnBulletHit` and `SearchAndAttack` filters; state numbers 2 and 4; indirect callers of `Damage`.
