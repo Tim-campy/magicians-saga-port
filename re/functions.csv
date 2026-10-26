@@ -3736,9 +3736,9 @@ game:0x06000f69,game:0x06000f69,ecs,,1776,0x115f2b4
 game:0x06000f6a,game:0x06000f6a,ecs,,8,0x115f9a4
 game:0x06000f6b,game:0x06000f6b,ecs,,8,0x115f9ac
 game:0x06000f6c,game:0x06000f6c,ecs,,88,0x115f9b4
-game:0x06000f6d,game:0x06000f6d,ecs,,152,0x115fa0c
-game:0x06000f6e,game:0x06000f6e,ecs,,8,0x115faa4
-game:0x06000f6f,game:0x06000f6f,ecs,,616,0x115faac
+game:0x06000f6d,ecs.MoveSystem.Init,ecs,traced,152,0x115fa0c
+game:0x06000f6e,ecs.MoveSystem.NeedsUpdate,ecs,documented,8,0x115faa4
+game:0x06000f6f,ecs.MoveSystem.Update,ecs,documented,616,0x115faac
 game:0x06000f70,game:0x06000f70,ecs,,16,0x115fd14
 game:0x06000f71,game:0x06000f71,ecs,,8,0x115fd24
 game:0x06000f72,game:0x06000f72,ecs,,8,0x115fd2c
@@ -3752,7 +3752,7 @@ game:0x06000f79,game:0x06000f79,ecs,,8,0x115fe54
 game:0x06000f7a,game:0x06000f7a,ecs,,8,0x115fe5c
 game:0x06000f7b,game:0x06000f7b,ecs,,88,0x115fe64
 game:0x06000f7c,ecs.ProjectileSystem.Init,ecs,traced,340,0x115febc
-game:0x06000f7d,game:0x06000f7d,ecs,,8,0x1160010
+game:0x06000f7d,ecs.ProjectileSystem.NeedsUpdate,ecs,documented,8,0x1160010
 game:0x06000f7e,ecs.ProjectileSystem.Update,ecs,documented,2992,0x1160018
 game:0x06000f7f,game:0x06000f7f,ecs,,16,0x1160bc8
 game:0x06000f80,ecs.ProjectileSystem.OnProjectileImpact,ecs,traced,104,0x1160bd8

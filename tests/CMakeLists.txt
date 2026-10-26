@@ -381,6 +381,11 @@ project_warnings(test_projectile_launch)
 add_test(NAME projectile_launch_contract COMMAND test_projectile_launch)
 
 add_executable(test_projectile_motion test_projectile_motion.cpp)
-target_link_libraries(test_projectile_motion PRIVATE projectile_motion)
+target_link_libraries(test_projectile_motion PRIVATE projectile_motion movement)
 project_warnings(test_projectile_motion)
 add_test(NAME projectile_motion_contract COMMAND test_projectile_motion)
+
+add_executable(test_movement test_movement.cpp)
+target_link_libraries(test_movement PRIVATE movement)
+project_warnings(test_movement)
+add_test(NAME movement_contract COMMAND test_movement)

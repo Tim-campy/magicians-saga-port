@@ -1,4 +1,5 @@
 #include "core/gameplay/projectile_motion.hpp"
+#include "core/gameplay/movement.hpp"
 #include <cmath>
 #include <cstdlib>
 #include <functional>
@@ -32,7 +33,7 @@ int main(){
             check(complete==(frame==10)&&f.host.p.frame==frame+1);
             if(frame==0)check(f.pos.y==0&&std::abs(f.speed.y-9.091634750366211F)<0.000001F); // Independent binary32 model.
             if(frame==5)check(f.pos.y==26&&f.speed.y==0); // Peak uses ascent for equality.
-            if(!complete){check(f.speed.x==0&&f.speed.z==4);f.pos.z+=f.speed.z;} // Explicit separate movement pass.
+            if(!complete){check(f.speed.x==0&&f.speed.z==4);move_entity(f.e);}
         }
         check(f.pos.x==0&&f.pos.y==0&&f.pos.z==40&&f.speed.x==0&&f.speed.y==0&&f.speed.z==0);
         check(f.e.contains(27)&&!f.e.contains(15)&&f.host.calls==std::vector<std::string>{"remove15","pool15"});
@@ -61,4 +62,10 @@ int main(){
         check(advance_projectile(first.e,first.host));check(advance_projectile(second.e,second.host));
         first.host.impact=[&](ComponentSlots&){check(second.pos.z==40&&second.e.contains(27));};
         finish_projectile(first.e,first.host);finish_projectile(second.e,second.host);}
+    {Fixture f;for(int i=0;i<11;++i){
+            if(advance_projectile(f.e,f.host))finish_projectile(f.e,f.host);
+            const float old_y=f.pos.y;move_entity(f.e);
+            check(f.pos.y==old_y+f.speed.y); // Move integrates y too, after the projectile pass.
+        }
+        check(!f.e.contains(27)&&f.pos.z==40&&f.pos.y==0);}
 }

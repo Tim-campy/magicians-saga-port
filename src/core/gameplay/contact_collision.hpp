@@ -3,7 +3,11 @@
 
 namespace saga::core {
 inline constexpr std::int32_t contact_position_slot=0,contact_direction_slot=12,contact_bullet_slot=29;
-struct ContactPosition final:Component {float x=0,y=0,z=0;};
+struct ContactPosition final:Component {
+    float x=0,y=0,z=0; // +0x10/+0x14/+0x18.
+    float offset_x=0,offset_y=0,offset_z=0; // +0x1c/+0x20/+0x24.
+    ComponentSlots* parent=nullptr; // +0x28; independent of Projectile.parent.
+};
 struct ContactDirection final:Component {std::int32_t direction=0;bool locked=false;};
 class ContactCollisionHost:public ProjectileHitHost {
 public:
