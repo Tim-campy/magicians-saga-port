@@ -120,6 +120,12 @@ See [../formats/game-tables.md](../formats/game-tables.md): `LoadStringArray` â†
 
 Confidence: high for read/store order from bounded ARM64 instructions and metadata field offsets. Calls are GetInt `0x1126e4c`, GetString `0x1126dcc`, GetIntDoubleArray `0x112708c`. These game record mappings require no new Mono/runtime implementation.
 
+### Treasure records
+
+`TreasureData.Load` (`game:0x06001235`, `0x11737a4`, 312 bytes) consumes twelve logical fields: id, name (string), res (string), img, exp, money, crystal, weaponId, charaId, clothId, hatId, inherited flag. Numeric fields are int32. Stores target `+0x18`, `+0x20`, `+0x28`, `+0x30`, `+0x34`, `+0x38`, `+0x3c`, `+0x40`, `+0x44`, `+0x48`, `+0x4c`, `+0x1c`, respectively. It returns the receiver; the initial guard bypasses parsing, reads/stores are sequential and extra fields are ignored. Its data-loading caller and partial-mutation caveat are the same as the progression readers above.
+
+`load_treasure_table` in `quest_rewards.cpp` retains all these fields using the shared `table_catalog.hpp` framing/id-indexing helper. Both extracted languages load 184 populated records into 184 slots. Confidence high: bounded instructions in local `research/exports/quest-reward-pipeline/` and metadata field offsets. The fresh-record reader does not implement in-place partial receiver mutation on parse failure.
+
 ## Port
 
 `src/core/gameplay/progression_tables.cpp` loads complete level-table records and a character progression projection, preserving id gaps and last-duplicate-wins indexing. It shares token parsing with the event reader and accepts the existing integer-parser callback. `TableExperienceHost` resolves the live character id/rate and level row for the experience kernel. The character projection consumes and validates all fields but retains only id and needExpRate. These fresh-record readers do not expose partial mutation of an existing record on failure; neither original Load method is claimed fully reimplemented. BaseData lifecycle, the general loader, data list and check-script groups remain unported. `tools/audit_game_table_text.py` audits the extracted tables (encoding/line endings) only; `tools/inspect_event_table.py` belongs to the events subsystem.

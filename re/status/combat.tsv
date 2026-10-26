@@ -39,7 +39,7 @@ game:0x06000fa5	documented	docs/subsystems/rewards.md	31-tick interpolation then
 game:0x06000fb9	documented	docs/subsystems/rewards.md	accumulator switch ported in src/core/gameplay/stage_rewards.cpp; effects/SE not ported
 game:0x06000d36	documented	docs/subsystems/rewards.md	frame >= 0
 game:0x06000f9d	traced	docs/subsystems/rewards.md	stage state machine 0..6; several states partial
-game:0x06000fa0	documented	docs/subsystems/rewards.md	Treasure and total grant order documented; ordered member EXP/result cluster ported with decoded tables; full stage/UI composition pending
+game:0x06000fa0	documented	docs/subsystems/rewards.md	Reward pipeline composed and tested across inventory/currency/records/member EXP; ECS storage and presentation binding pending
 game:0x06000fb1	documented	docs/subsystems/rewards.md	UpdateQuestRecord(code) if code!=0, CleanUp, OnFinish, transition
 game:0x06000fda	documented	docs/subsystems/rewards.md	form switch, World.Send<QuestResult>(31)
 game:0x06000fb7	traced	docs/subsystems/rewards.md	retry flag and code -> state 5/6 or dialog; retry path unread
@@ -47,12 +47,12 @@ game:0x06000fb6	documented	docs/subsystems/rewards.md	isMain -> OnGameOver(1)
 game:0x06000f9b	traced	docs/subsystems/rewards.md	subscribes OnDamage to event 15; rest of Init not read
 game:0x06000f9e	traced	docs/subsystems/rewards.md	zeroes totalGaveDamage_; rest of Start not read
 game:0x06000fbb	documented	docs/subsystems/rewards.md	totalGaveDamage_ += D for enemy receivers
-game:0x06000fb2	documented	docs/subsystems/rewards.md	QuestRecord counters and bests
+game:0x06000fb2	reimplemented	src/core/gameplay/quest_rewards.cpp	Counters and signed bests ported with ordered live host reads and partial-failure tests
 game:0x06000fc9	documented	docs/subsystems/rewards.md	signed max of bestTotalGaveDamage over questData
 game:0x060011f1	documented	docs/subsystems/rewards.md	QuestData+0xa0 += n (32-bit)
 game:0x06001078	reimplemented	src/core/gameplay/experience_progression.cpp	GetNextExp clamps level and uses decoded TableData.exp_ and needExpRate_; tests preserve gaps and wrapping product
 game:0x0600106c	documented	docs/subsystems/rewards.md	Clamp(1,1200) -> level_ +0x40
-game:0x0600107b	documented	docs/subsystems/rewards.md	recruit_=1, Find(true)
+game:0x0600107b	reimplemented	src/core/gameplay/quest_rewards.cpp	Recruitment state reset tested
 game:0x06001021	documented	docs/subsystems/rewards.md	state_ == 0
 game:0x060010ee	reimplemented	src/core/gameplay/stage_rewards.cpp	add_item_stock; tests/test_stage_rewards.cpp
 game:0x060010aa	reimplemented	src/core/gameplay/stage_rewards.cpp	add_item_stock; tests/test_stage_rewards.cpp

@@ -31,7 +31,7 @@ Current maintainer priority: game-specific decompilation and gameplay integratio
 ## Next tasks
 
 ### Current gameplay focus
-- [ ] Compose the complete quest-result reward pipeline: decode TreasureData rewards, preserve treasure/item grant order, and connect currency/prisoner/quest-record updates before the implemented ordered member EXP/result cluster.
+- [ ] Port MemberSystem.OnFinish and connect the return-to-town progression writeback after the composed reward pipeline; retain member/sub-member order, level clamping and failure semantics. Secure currency storage and ECS host bindings remain explicit follow-ups.
 
 ### 1. Events and scripts
 - [ ] Bind decoded billing-item/catalog providers and complete notification manager adapters, preserving task execution gates.
@@ -48,7 +48,7 @@ Current maintainer priority: game-specific decompilation and gameplay integratio
 ### 3. Combat, RNG and rewards
 - [ ] RNG generator (blocking for damage and drops): effective `JRandom.Logic`, writer of `fix_`, seeding, IL2CPP `System.Random.Next` and `Xorshift128.Next`, whether any backend returns negatives.
 - [ ] Name parameter indices 0/1/2/6/7/8/9 and resolve `MyConfig.FPS`/`DEBUG`; then compose a native `damage()` that keeps the documented RNG order.
-- [ ] Bind `EnemyData` (`exp_`, `treasureDrop_`) and `TreasureData` to the data loader; port EnemyData.GetExp and complete ShowQuestResult integration (character rates and level costs now decoded/tested).
+- [ ] Bind `EnemyData` (`exp_`, `treasureDrop_`) to the data loader and port EnemyData.GetExp; bind the composed ShowQuestResult reward pipeline to ECS/storage/UI (treasures, character rates and level costs now decoded/tested).
 - [ ] Read `OnGameOver`'s retry path, `CleanUp`, the state-4 quest method and event 1133.
 - [ ] Port `Graph.Easing` in the general case (amplitudes −50 and −80), checked against the binary32 model.
 

@@ -1,6 +1,6 @@
 # Rewards, quest result and town return
 
-Enemy defeat spawns drop entities (EXP orb, treasure); collecting a drop credits a per-stage accumulator (`StageSystem.drop_`); only the boss-cleared path through `StageSystem.ShowQuestResult` turns that accumulator into money, crystals, prisoners, character EXP/levels and item unlocks. Every exit goes through `StageSystem.ReturnTown`, which records the quest, writes member levels/EXP back to `CharaData`, and sends event 31 (`game.QuestResult`) to `TownSystem.OnReturnFromQuest`. The port implements accumulator mutation, item-stock rules, experience cost accessors, decoded progression records and the ordered quest-member experience/result cluster. Full reward presentation and stage integration remain open.
+Enemy defeat spawns drop entities (EXP orb, treasure); collecting a drop credits a per-stage accumulator (`StageSystem.drop_`); only the boss-cleared path through `StageSystem.ShowQuestResult` turns that accumulator into money, crystals, prisoners, character EXP/levels and item unlocks. Every exit goes through `StageSystem.ReturnTown`, which records the quest, writes member levels/EXP back to `CharaData`, and sends event 31 (`game.QuestResult`) to `TownSystem.OnReturnFromQuest`. The port composes treasure totals, item grants, recruitment, currency adapters, rescued prisoners, quest records and the ordered member EXP/result cluster. Decoded treasure/progression tables feed this pipeline. Full reward presentation, ECS binding and original secure currency storage remain open.
 
 ## Overview
 
@@ -19,6 +19,7 @@ ReturnTown(code) ── [code!=0] UpdateQuestRecord(code,0,0) ── CleanUp ─
 | Method | Registry id | Role | Confidence |
 |---|---|---|---|
 | data.EnemyData.AddDefeatCount | game:0x060010ca | wrap32 add then Clamp(0, INT_MAX) | high |
+| data.TreasureData.Load | game:0x06001235 | Twelve-field treasure record reader | high |
 | data.EnemyData.GetExp | game:0x060010c7 | Easing(exp_[0], exp_[1], 999, level-1, 0) | high |
 | kairo.unity.ecs.World.CreateDrop | game:0x06000bf9 | Drop entity; type 3 forces scale 100 | medium |
 | ecs.StageSystem.CollectDrop | game:0x06000fa4 | Start collection / boss reward pickup | high |
@@ -136,13 +137,22 @@ Unboxed result layout: entity `+0x00` (64-bit reference), upLevel `+0x08`, addEx
 
 Evidence: bounded ShowQuestResult instructions in local `research/exports/game-experience/`; constructor in `research/exports/quest-member-results/`; IL2CPP metadata names the six result fields. Confidence high. Enumeration lifetime/version checking remains the supplied ECS cursor's responsibility; no .NET collection implementation was reconstructed.
 
+### Composed reward pipeline
+
+`grant_quest_rewards` follows ShowQuestResult's grant order with live data/storage interfaces. It snapshots drop EXP, money and display prisoner count at `0x116468c..0x1164700`, initializes crystals to zero, then visits every treasure id (including duplicates). Each row adds wrapping int32 totals before granting weapon, character, cloth and hat. Only -1 skips an item; other negative ids still reach the checked lookup. Item stock uses the existing AddStock port; character recruitment sets recruit_=1 and Find(true), including already-found characters. Display pairs [id,1] are appended after each grant. The row remains live for subsequent item fields and display id reads.
+
+After treasure enumeration, money and crystal adapters run in order even for zero/negative totals. The prisoner credit reads the live drop count at `0x1164c24..0x1164c3c`; it does not reuse the earlier display snapshot. Then UpdateQuestRecord runs with result code 0, followed by the member EXP/result cluster. The returned value contains totals and display lists; the UI/area/stage presentation call is not implemented. Earlier inventory/currency/member mutations survive later failures, and no result is returned on failure.
+
+`update_quest_record` also accepts nonzero result codes for future ReturnTown binding. It increments challengeCount before reading defeatedEnemiesNum; adds that count; nonzero result returns here. For a clear it updates signed best EXP/money, increments clearCount, reads/credits the live prisoner count and updates signed best damage. Counters wrap int32. Failures during defeated/prisoner retrieval preserve earlier stores. Evidence: `0x1165728..0x11657c4`, bounded instructions in `research/exports/quest-reward-pipeline/`. Confidence high. Host accessors preserve unresolved storage/world contracts rather than inventing currency limits or rebuilding runtime libraries.
+
 ## Port
 
 - `src/core/gameplay/stage_rewards.hpp/.cpp`: `StageRewards{experience, money, prisoners, treasure_ids}` + `record_collected_drop(rewards, type, value)` (only the OnCollectedDrop accumulator switch, no effects/cleanup); `ItemStock{discovery_state, is_new, stock}` + `add_item_stock(item, amount)` (AddStock with its Find hook).
 - Test `tests/test_stage_rewards.cpp` (CTest `stage_rewards_contract`): mixed sequence, separate totals, prisoner payload ignored, duplicate/negative ids, unknown types, overflow of the three sums; first grant, duplicate cap, state != 1, negative amount, overflow both ways.
 - [experience_progression.cpp](../../src/core/gameplay/experience_progression.cpp) implements the three data accessors and the per-member level-up loop with a live table/cost host. [Tests](../../tests/test_experience_progression.cpp) cover eligibility, full rewards, multiple levels, cap/cursor separation, zero/negative costs, overflow, table gaps and partial mutation on failure.
 - [quest_experience.cpp](../../src/core/gameplay/quest_experience.cpp) composes ordered member grants and result records through an explicit ECS cursor/component host. [Tests](../../tests/test_quest_experience.cpp) exercise the decoded-table adapter, full rewards, duplicate order, ineligible display records, snapshot-before-eligibility order, repeated component lookup, wrapping display arithmetic and failure boundaries. The caller must bind the cursor and invoke this cluster after money/crystal/prisoner/quest-record grants.
-- Missing: Defeat, CreateDrop, collection cadence, full ShowQuestResult composition, AddMoney/AddCrystal helpers, QuestRecord update, ReturnTown/OnFinish, event 31, high score.
+- [quest_rewards.cpp](../../src/core/gameplay/quest_rewards.cpp) composes the reward pipeline, reads TreasureData, ports recruitment and QuestRecord mutation. [Tests](../../tests/test_quest_rewards.cpp) check exact cross-subsystem order, duplicate grants, stock caps, full member EXP, live versus snapshot prisoners, skipped/invalid ids, overflow, non-clear records and partial effects at failure boundaries. The generic framing/indexing code is shared with the progression readers.
+- Missing: Defeat, CreateDrop, collection cadence, ECS/storage binding and presentation for ShowQuestResult, AddMoney/AddCrystal storage helpers, ReturnTown/OnFinish, event 31, high score.
 
 ## Evidence
 
@@ -160,7 +170,7 @@ Evidence: bounded ShowQuestResult instructions in local `research/exports/game-e
 
 ## Open questions
 
-1. (blocking) Loaded data for EnemyData exp_/treasureDrop_ and TreasureData. CharaData.needExpRate_ and TableData.exp_ are now decoded and bound through TableExperienceHost; the ordered member EXP/result cluster is ported with an explicit ECS host; complete stage binding remains.
+1. (blocking) Loaded data for EnemyData exp_/treasureDrop_. TreasureData, CharaData.needExpRate_ and TableData.exp_ are decoded; the reward pipeline is ported with explicit ECS/storage hosts. Complete stage binding remains.
 2. (blocking) RNG backend for `Hits1000` drop rolls (see [rng.md](rng.md)).
 3. Contracts of the AddMoney/AddCrystal value helpers (SecureLong-like? limits) and save persistence of money, records and high score.
 4. `TreasureData.get_isBossReward` semantics; `CreateDrop` types 1/2 and its other jump targets; who creates money/prisoner drops.

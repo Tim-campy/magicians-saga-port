@@ -3805,7 +3805,7 @@ game:0x06000fae,game:0x06000fae,ecs,,192,0x1166324
 game:0x06000faf,game:0x06000faf,ecs,,180,0x1164378
 game:0x06000fb0,game:0x06000fb0,ecs,,12,0x116372c
 game:0x06000fb1,ecs.StageSystem.ReturnTown,ecs,documented,244,0x1162dc4
-game:0x06000fb2,ecs.StageSystem.UpdateQuestRecord,ecs,documented,156,0x1165728
+game:0x06000fb2,ecs.StageSystem.UpdateQuestRecord,ecs,reimplemented,156,0x1165728
 game:0x06000fb3,game:0x06000fb3,ecs,,476,0x11654b8
 game:0x06000fb4,game:0x06000fb4,ecs,,464,0x11641a8
 game:0x06000fb5,game:0x06000fb5,ecs,,304,0x11663e4
@@ -4006,7 +4006,7 @@ game:0x06001077,game:0x06001077,data,,128,0x116d964
 game:0x06001078,data.CharaData.GetNextExp,data,reimplemented,232,0x116d9e4
 game:0x06001079,data.CharaData.GetExp,data,reimplemented,40,0x116db54
 game:0x0600107a,game:0x0600107a,data,,8,0x116db7c
-game:0x0600107b,data.CharaData.Recruit,data,documented,24,0x116db84
+game:0x0600107b,data.CharaData.Recruit,data,reimplemented,24,0x116db84
 game:0x0600107c,game:0x0600107c,data,,12,0x116db9c
 game:0x0600107d,game:0x0600107d,data,,12,0x116dba8
 game:0x0600107e,game:0x0600107e,data,,8,0x116dbb4
@@ -4443,7 +4443,7 @@ game:0x06001231,game:0x06001231,data,,8,0x1173784
 game:0x06001232,game:0x06001232,data,,8,0x117378c
 game:0x06001233,game:0x06001233,data,,8,0x1173794
 game:0x06001234,game:0x06001234,data,,8,0x117379c
-game:0x06001235,game:0x06001235,data,,312,0x11737a4
+game:0x06001235,data.TreasureData.Load,data,documented,312,0x11737a4
 game:0x06001236,game:0x06001236,data,,12,0x11738dc
 game:0x06001237,game:0x06001237,data,,4,0x11738e8
 game:0x06001238,game:0x06001238,data,,4,0x11738ec

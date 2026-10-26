@@ -304,3 +304,8 @@ add_executable(test_quest_experience test_quest_experience.cpp)
 target_link_libraries(test_quest_experience PRIVATE quest_experience progression_tables)
 project_warnings(test_quest_experience)
 add_test(NAME quest_experience_contract COMMAND test_quest_experience)
+
+add_executable(test_quest_rewards test_quest_rewards.cpp)
+target_link_libraries(test_quest_rewards PRIVATE quest_rewards)
+project_warnings(test_quest_rewards)
+add_test(NAME quest_rewards_contract COMMAND test_quest_rewards)

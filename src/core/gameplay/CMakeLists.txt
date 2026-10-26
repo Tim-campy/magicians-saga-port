@@ -116,3 +116,6 @@ target_link_libraries(progression_tables PUBLIC event_catalog experience_progres
 
 saga_library(quest_experience quest_experience.cpp)
 target_link_libraries(quest_experience PUBLIC experience_progression)
+
+saga_library(quest_rewards quest_rewards.cpp)
+target_link_libraries(quest_rewards PUBLIC event_catalog quest_experience stage_rewards)
