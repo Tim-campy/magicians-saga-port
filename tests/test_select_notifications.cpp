@@ -32,7 +32,7 @@ struct Host:SelectNotificationHost,ApplyGiftHost {
     void put(const char16_t* s){values.push_back(std::make_shared<const std::u16string>(s));}
 };
 int main(){
-    {Host h;h.put(u"crystal_5");update_select_notifications(h);auto task=std::static_pointer_cast<ApplyGiftState>(h.constructed->original);check(task->provision_type==u"crystal" && task->provision_value==5 && h.values.empty() && h.log.back()=="update");}
+    {Host h;h.put(u"crystal_5");update_select_notifications(h);auto task=std::static_pointer_cast<ApplyTaskState>(h.constructed->original);check(task->provision_type==u"crystal" && task->provision_value==5 && h.values.empty() && h.log.back()=="update");}
 
     check(!notification_task_enabled({nullptr,std::nullopt,nullptr}));
     check(notification_task_enabled({std::make_shared<int>(1),std::nullopt,nullptr}));
