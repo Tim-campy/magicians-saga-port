@@ -33,6 +33,8 @@ The normal APK hash gate applies before this extraction. `--check --culture-neut
 
 The arrays are copied byte-for-byte without normalization, deduplication or use of the operating system's Unicode tables. The manifest's existing culture inventory records each size and SHA-256. `--check --culture-lower` requires all 14 culture outputs; ordinary checks accept the old 2/4/5-file inventories and the new 14-file inventory, but reject incomplete or duplicated entries. Synthetic tests cover exact reconstruction, endian preservation, invalid version/header/section/initializer bounds, file modification and inventory compatibility. Full arrays remain local.
 
+The desktop `CultureData::load` reader now owns and validates all 14 files and their cross-table references, including the schema-1 JSON neutral map. It does not replace manifest hash checking. The base host consumes these buffers directly for selection, lowering and integer signs; see [events](../subsystems/events.md) for tests and remaining live-host boundaries.
+
 ## Evidence
 
 Native record expansion at 0x10367cc copies record +0x14 into scratch +0x28 and record +0x16 into scratch +0x58. CultureData.GetNFIValues at 0x1e1dec4 decodes these into NumberFormatInfo +0x30 and +0x28. Its helper at 0x1e1ddcc scans to NUL and calls UTF8 Encoding.GetString. The 339-entry culture-name index and culture records cover number indices 0..338. Details and local evidence paths: [events](../subsystems/events.md). Confidence high; no runtime comparison yet.
@@ -41,5 +43,5 @@ Native record expansion at 0x10367cc copies record +0x14 into scratch +0x28 and 
 
 ## Open questions
 
-- (blocking for host integration) Connect the extracted buffers and selected record index to the desktop host.
-- Bind the extracted neutral-map loader and invariant contents; audit later culture/sign setters.
+- (blocking for gameplay integration) Connect the desktop CultureDataHost to live thread/notification providers with the recovered exception scopes.
+- Audit later culture/sign setters; the neutral-map loader and invariant integer-sign projection are implemented.
