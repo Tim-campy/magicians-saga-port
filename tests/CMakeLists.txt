@@ -264,3 +264,8 @@ add_executable(test_context_switch test_context_switch.cpp)
 target_link_libraries(test_context_switch PRIVATE context_switch)
 project_warnings(test_context_switch)
 add_test(NAME context_switch_contract COMMAND test_context_switch)
+
+add_executable(test_context_capture test_context_capture.cpp)
+target_link_libraries(test_context_capture PRIVATE context_capture)
+project_warnings(test_context_capture)
+add_test(NAME context_capture_contract COMMAND test_context_capture)

@@ -99,3 +99,6 @@ target_link_libraries(context_notifications PUBLIC async_local_values)
 
 saga_library(context_switch context_switch.cpp)
 target_link_libraries(context_switch PUBLIC execution_context context_notifications)
+
+saga_library(context_capture context_capture.cpp)
+target_link_libraries(context_capture PUBLIC call_context context_switch)
