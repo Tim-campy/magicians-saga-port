@@ -16,6 +16,8 @@ The plan in one page. Agents take the first unblocked task of the current work p
 
 ## Work packages (priority order)
 
+Current maintainer priority: game-specific decompilation and gameplay integration. Start with the experience/level progression cluster below, then combat and stage completion. Public/runtime dependency reconstruction is deferred unless a concrete gameplay scenario cannot proceed through an explicit adapter. Consult public source first as required by AGENTS.md.
+
 1. **Events and scripts** ([events](subsystems/events.md), [event table](formats/event-table.md)): the game's progression runs on Event.txt scripts.
 2. **Game data and saves** ([data](subsystems/data.md), [save](subsystems/save.md)): table loader with ids and gaps; save envelope.
 3. **Combat, RNG and rewards** ([combat](subsystems/combat.md), [rng](subsystems/rng.md), [rewards](subsystems/rewards.md)).
@@ -28,8 +30,10 @@ The plan in one page. Agents take the first unblocked task of the current work p
 
 ## Next tasks
 
+### Current gameplay focus
+- [ ] Bind the recovered experience progression to decoded CharaData.needExpRate_ and TableData.exp_ records, then compose the quest-result grant for the ordered member list; the cost accessors and per-member level-up loop are ported/tested.
+
 ### 1. Events and scripts
-- [ ] Recover ignorable/CJK guards and tailoring interpretation, then the comparison backend (seven original indexer configurations extracted/read and all UTF-16 category/weight indices bounds-checked; interval indexing/byte-weight access/exact tailoring lookup ported; version-3 core/tailoring C++ reader tested with original local data; seven resources extracted with manifest integrity); bind live entry state (collation selection cache/internal prefix dispatch ported; lazy LCID population for the integer-parsing projection connected to the desktop setter; native null synchronization fallback and initial async-culture switch resolved; synchronization selection/setter, public Run/capture/copies/switch/culture rollback composed). AOSP duplicate selection awaits device comparison. Replace prefix providers only after recovering the collation contract; recover further Hashtable mutations only if reached.
 - [ ] Bind decoded billing-item/catalog providers and complete notification manager adapters, preserving task execution gates.
 - [ ] Port decor/town/capture callbacks, then bind update_select_form to a desktop host with orientation/image-dictionary storage, decoded saves, camera dimensions and form factories.
 - [ ] Find the consumer of `hour_ != -1`, the writer of `SubForm.delayEvent_` (`+0x1d0`) and the remaining effect opcodes of the 15-entry table at `0x627b6e`.
@@ -44,7 +48,7 @@ The plan in one page. Agents take the first unblocked task of the current work p
 ### 3. Combat, RNG and rewards
 - [ ] RNG generator (blocking for damage and drops): effective `JRandom.Logic`, writer of `fix_`, seeding, IL2CPP `System.Random.Next` and `Xorshift128.Next`, whether any backend returns negatives.
 - [ ] Name parameter indices 0/1/2/6/7/8/9 and resolve `MyConfig.FPS`/`DEBUG`; then compose a native `damage()` that keeps the documented RNG order.
-- [ ] Bind `EnemyData` (`exp_`, `treasureDrop_`), `TreasureData`, `CharaData+0x9c` and `tableData+0x24` to the data loader; port `GetExp`, `GetNextExp` and the level-up loop of `ShowQuestResult`.
+- [ ] Bind `EnemyData` (`exp_`, `treasureDrop_`), `TreasureData`, `CharaData+0x9c` and `tableData+0x24` to the data loader; port EnemyData.GetExp and bind the implemented character cost/level-up kernel into ShowQuestResult.
 - [ ] Read `OnGameOver`'s retry path, `CleanUp`, the state-4 quest method and event 1133.
 - [ ] Port `Graph.Easing` in the general case (amplitudes −50 and −80), checked against the binary32 model.
 
@@ -77,6 +81,12 @@ The plan in one page. Agents take the first unblocked task of the current work p
 
 ### 8. Platform replacement
 - [ ] Read `Main.OnResume/OnSuspend`, `FormManagerBase.OnDraw` and the conditions around `IsIllegalPackage` and `GooglePlayLicenseCheck`: what must be stubbed.
+
+### Deferred dependency research
+
+Mono/.NET collation, culture and execution-context internals are not the active gameplay queue. Existing committed modules remain available; unfinished character-classification work is preserved in a local Git stash. Consult matching public Mono sources before any further binary analysis.
+
+- [ ] Recover ignorable/CJK guards and tailoring interpretation, then the comparison backend (seven original indexer configurations extracted/read and all UTF-16 category/weight indices bounds-checked; interval indexing/byte-weight access/exact tailoring lookup ported; version-3 core/tailoring C++ reader tested with original local data; seven resources extracted with manifest integrity); bind live entry state (collation selection cache/internal prefix dispatch ported; lazy LCID population for the integer-parsing projection connected to the desktop setter; native null synchronization fallback and initial async-culture switch resolved; synchronization selection/setter, public Run/capture/copies/switch/culture rollback composed). AOSP duplicate selection awaits device comparison. Replace prefix providers only after recovering the collation contract; recover further Hashtable mutations only if reached.
 
 ### Tooling
 - [ ] Extract `declaringTypeIndex` (and nested types) from `global-metadata.dat` in `tools/inspect_il2cpp_metadata.py`, so compiler-generated closures (`<>c`, `<>c__DisplayClass*`) get their owner's group in the registry instead of `unassigned`.
