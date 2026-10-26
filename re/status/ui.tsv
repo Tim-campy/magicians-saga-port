@@ -8,3 +8,6 @@ game:0x06001013	reimplemented	src/core/gameplay/select_markers.cpp	AreaData.Chec
 game:0x06000843	reimplemented	src/core/gameplay/select_markers.cpp	equipment marker predicate: stock positive, flags bit 2 absent, new; tests/test_select_markers.cpp
 game:0x06000844	reimplemented	src/core/gameplay/select_markers.cpp	hat marker predicate: stock positive and new; tests/test_select_markers.cpp
 game:0x06000845	reimplemented	src/core/gameplay/select_markers.cpp	cloth marker predicate: stock positive and new; tests/test_select_markers.cpp
+game:0x06000811	reimplemented	src/core/gameplay/town_bubble.cpp	SetTalkFuki ordered normal/type4 text selection and index/text/frame writes; tests/test_town_bubble.cpp
+game:0x06000838	reimplemented	src/core/gameplay/town_bubble.cpp	CheckViewArea inclusive wrapped bounds and short-circuit dimension queries; tests/test_town_bubble.cpp
+game:0x06000846	reimplemented	src/core/gameplay/town_bubble.cpp	SetTalkFuki predicate requires nonnull VoiceData and type==4; tests/test_town_bubble.cpp

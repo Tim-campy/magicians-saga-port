@@ -214,9 +214,9 @@ When touchMove_ is false, no movement or collision query occurs. Otherwise compa
 
 After a movement branch, ARM64 FCVTZS converts toward zero with signed saturation (NaN becomes zero), then SCVTF returns binary32. An explicit +infinity check overrides that result to -2147483648. Finite positive overflow saturates to INT32_MAX, whose binary32 conversion rounds to 2147483648. The C++ kernel defines these cases without an out-of-range float-to-int cast.
 
-`CheckCollisionTownHuman` (`0x11eecdc`, `game:0x0600081f`) scans the live list in increasing index order, re-reading it between iterations. Each required int32[] row must have slot 8; value 2 skips the row. Otherwise convert row[1] to binary32, subtract the current witchX_, take absolute value, and return the first index with distance strictly less than 5. No match returns -1; null storage/rows and short rows fail. A newly encountered nonnegative index invokes `SetTalkFuki(index,false)` before assigning collisionId_; the same index does not repeat the call. Losing contact assigns -1. A failing bubble callback leaves the prior collisionId_ intact. The callback still owns text-table selection and the 120-tick bubble lifetime observed in SetTalkFuki (`0x11eedd8`); those bodies are not ported here.
+`CheckCollisionTownHuman` (`0x11eecdc`, `game:0x0600081f`) scans the live list in increasing index order, re-reading it between iterations. Each required int32[] row must have slot 8; value 2 skips the row. Otherwise convert row[1] to binary32, subtract the current witchX_, take absolute value, and return the first index with distance strictly less than 5. No match returns -1; null storage/rows and short rows fail. A newly encountered nonnegative index invokes `SetTalkFuki(index,false)` before assigning collisionId_; the same index does not repeat the call. Losing contact assigns -1. A failing bubble callback leaves the prior collisionId_ intact. The callback now has a concrete TownBubbleTouchHost binding to the selection routine described below; lifetime updates occur later in Update.
 
-`update_select_form_prefix` now includes this block after `process_select_form_pass` returns ContinueInput. Its next continuation address is `0x11ec948` (the standalone pass still stops at `0x11ec7ec`). The trigger paths are composed below; the remaining buttons and bubble data bindings remain open.
+`update_select_form_prefix` now includes this block after `process_select_form_pass` returns ContinueInput. Its next continuation address is `0x11ec948` (the standalone pass still stops at `0x11ec7ec`). The trigger paths are composed below; the remaining buttons and decoded voice/character catalog providers remain open.
 
 ### Post-movement progression triggers
 
@@ -230,7 +230,23 @@ Next query `FlagCheck(0x2000)` (`0x1101944`): sysSave_.intArray at the index sel
 
 The required SelectTriggerHost supplies decoded stamina, the system flag word and normal-save integer storage. SecureInt storage/encoding and effective SYSSAVEI_FLAG initialization remain outside this kernel. `update_select_form_prefix` now runs these triggers after touch movement on ContinueInput, and its next continuation address is `0x11eca28`. Tests use synthetic event catalogs to cover both effect-bearing ids and the observed short-catalog shape.
 
+### Town bubble selection and lifetime
+
+`SetTalkFuki` (`0x11eedd8`, `game:0x06000811`) writes townTalkIndex_ (+0x1d8) before any row lookup. Its parameters are int32 index and bool force; force is unused in the observed body. It requires townHuman_[index], reads character id from row[0] and a sequence value from row[10], obtains voiceData before charaData, then uses CharaData.voiceId_ (+0xa8) to index the retained voice catalog. VoiceData.text (+0x28) is a string array; select `sequence % length` with signed remainder. Empty text arrays fail; negative nonzero remainders fail; a negative multiple of length selects element 0. A null selected string is allowed.
+
+After normal text selection, re-read charaData and test isRecruit (int32 +0x50 !=0). Only when true, re-read it again and test isLiving (int32 +0x4c !=-1). Recruited/nonliving characters obtain voiceData again and search from the start for the first record whose type (+0x20) equals 4. Predicate `0x120739c` (`game:0x06000846`) requires each encountered record: a null before the first match fails, while later records are not examined. The generic FirstOrDefault body (`0x12b13b0`, FDE size 852 bytes) returns null on no match, which SetTalkFuki rejects. Choose the replacement text with the same signed remainder. Normal text selection always precedes this path, so an invalid normal voice is not rescued by a valid type-4 voice.
+
+Only after successful selection does the method assign townTalkText_ (+0x1e0), then townTalkFrame_=120 (+0x1e8). Failures retain the newly written index and previous text/count. `TownBubbleTouchHost` binds this complete selection routine to the existing touch-contact interface.
+
+The lifetime block is later in Update, ELF `0x11ed538`?`0x11ed660`; it must not run immediately at the contact callback. A negative frame count bypasses it. For index !=-1, get the current human row, form x=wrap32(saved camX + saved VIEW_X + row[1]), then y=wrap32(GetGameHeight()-1), and call CheckViewArea(x,y,16,0). If outside, set index/count=-1 and text to the empty string. If inside (or index was -1), decrement the live count with wrap32 and set index=-1 only if the result is negative. Ordinary expiry retains text, unlike offscreen cancellation. Zero is a live count and becomes -1 on this pass.
+
+`CheckViewArea` (`0x11f43ec`, `game:0x06000838`) uses inclusive bounds and ordered calls: reject x < wrap32(-marginX) before any dimension query; query width; reject y < wrap32(-marginY), then x > wrap32(width+marginX); finally query height and accept y <= wrap32(height+marginY). Dimensions are SelectForm's scaled dimensions. The width/height providers remain explicit host callbacks; their raw-size/scale binding is not supplied here.
+
+Evidence: `research/exports/select-camera/F11eedd8.asm`, `select-bubble/` (voice getter, predicates), `select-bubble-lifetime/` (FirstOrDefault and view helpers), and the Update export. Field identities use native field offsets and metadata. GOT 0x2734278 maps to the type-4 predicate; GOT 0x272ee88 maps to string literal 0, whose metadata length is zero. Confidence high for these static contracts; no Android comparison yet.
+
 ## Port
+
+- `src/core/gameplay/town_bubble.{hpp,cpp}` implements ordered normal/recruitment text selection, view bounds and the late lifetime kernel; `TownBubbleTouchHost` connects contact detection to text selection. `tests/test_town_bubble.cpp` covers repeated catalog access, signed remainder, nullable text, partial failure, first voice selection, visible countdown, offscreen clearing and movement composition. The late lifetime call still awaits the intervening button-path integration.
 
 - `src/core/gameplay/select_triggers.{hpp,cpp}` ports CheckAlreadyEvent and the two ordered post-movement triggers with normal/system save separation. `tests/test_select_triggers.cpp` covers low-word stamina, repeat eligibility for nonpositive counters, dynamic second-gate effects, discarded forms, out-of-range ids, catalog replacement and missing-save failure ordering. `test_select_form_pass.cpp` checks composition after movement and early-return bypass.
 
@@ -284,7 +300,7 @@ Fixture JSON schema (all keys optional; absence preserves missing state rather t
 
 For a synthetic money-only event with nonempty effects, a minimal auto fixture is `{"context_present": true, "context_character_count": 1, "sys_save_present": false}`. This is test state, not an inferred new-game state. PRINT is required when an empty script or failed identity lookup reaches its diagnostic gate; quest_data_count is required only for that lookup's fallback. Additional predicates require their corresponding catalogs/scalars. Tool collection lengths are limited to 100000; these are harness limits, not recovered game limits.
 
-- Last recorded build: Windows/MSVC, 32/32 CTest (31 C++ contracts plus native scenario integration).
+- Last recorded build: Windows/MSVC, 33/33 CTest (32 C++ contracts plus native scenario integration).
 - Missing: population of decoded default-args/diagnostic state from saves/configuration, SelectForm integration, remaining unit `CheckTerm` predicates, integration with save-loaded execution counters; hour-based delays; `SubForm.delayEvent_` path (slot 5); `SelectForm.Update` guards; opcodes other than the eight; `SecureLong`/`SecureInt` storage; billing item source for stamina; UI forms.
 
 ## Evidence

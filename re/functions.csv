@@ -2019,7 +2019,7 @@ game:0x0600080d,game:0x0600080d,ui,,624,0x11f417c
 game:0x0600080e,game:0x0600080e,ui,,276,0x11eb418
 game:0x0600080f,game:0x0600080f,ui,,16,0x11f4464
 game:0x06000810,game:0x06000810,ui,,84,0x11ef088
-game:0x06000811,game:0x06000811,ui,,688,0x11eedd8
+game:0x06000811,form.SelectForm.SetTalkFuki,ui,reimplemented,688,0x11eedd8
 game:0x06000812,game:0x06000812,ui,,1076,0x11f00c0
 game:0x06000813,game:0x06000813,ui,,60,0x11f4474
 game:0x06000814,game:0x06000814,ui,,44,0x11f44b0
@@ -2058,7 +2058,7 @@ game:0x06000834,game:0x06000834,ui,,732,0x11f53cc
 game:0x06000835,game:0x06000835,ui,,164,0x11efe10
 game:0x06000836,game:0x06000836,ui,,96,0x11f56a8
 game:0x06000837,form.SelectForm.Push,ui,reimplemented,168,0x11eec34
-game:0x06000838,game:0x06000838,ui,,120,0x11f43ec
+game:0x06000838,form.SelectForm.CheckViewArea,ui,reimplemented,120,0x11f43ec
 game:0x06000839,game:0x06000839,ui,,56,0x11ef1fc
 game:0x0600083a,game:0x0600083a,ui,,56,0x11f5708
 game:0x0600083b,game:0x0600083b,ui,,376,0x11f5740
@@ -2072,7 +2072,7 @@ game:0x06000842,game:0x06000842,unassigned,,24,0x12072c8
 game:0x06000843,<>c.<Update>b__117_1,unassigned,reimplemented,76,0x12072e0
 game:0x06000844,<>c.<Update>b__117_2,unassigned,reimplemented,56,0x120732c
 game:0x06000845,<>c.<Update>b__117_3,unassigned,reimplemented,56,0x1207364
-game:0x06000846,game:0x06000846,unassigned,,32,0x120739c
+game:0x06000846,<>c.<SetTalkFuki>b__135_0,unassigned,reimplemented,32,0x120739c
 game:0x06000847,game:0x06000847,unassigned,,60,0x12073bc
 game:0x06000848,game:0x06000848,unassigned,,52,0x12073f8
 game:0x06000849,game:0x06000849,unassigned,,8,0x120742c
