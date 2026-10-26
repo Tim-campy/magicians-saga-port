@@ -1,6 +1,6 @@
 # Event table (Event.txt)
 
-`Event.txt` is the tab-separated text table loaded by `Data.Load` into `Data.eventData` (`Data+0x38`) via `LoadData<EventData>`; each line becomes one `data.EventData` through `EventData.Load` (`0x116fa4c`) and `StringArrayStream`. Each record carries an id, a name, a timing value and two integer script matrices: `terms` (conditions) and `execs` (effects). The record layout and the eight effect opcodes used by the extracted table are recovered statically. The 14 condition opcodes are only located (jump-table targets), not their semantics. File encoding, line splitting and id-indexing are shared with the other game tables, see [game-tables.md](game-tables.md).
+`Event.txt` is the tab-separated text table loaded by `Data.Load` into `Data.eventData` (`Data+0x38`) via `LoadData<EventData>`; each line becomes one `data.EventData` through `EventData.Load` (`0x116fa4c`) and `StringArrayStream`. Each record carries an id, a name, a timing value and two integer script matrices: `terms` (conditions) and `execs` (effects). The record layout and the eight effect opcodes used by the extracted table are recovered statically. The 14 condition opcodes used by this table are documented and ported behind explicit data-host queries; see [events](../subsystems/events.md). File encoding, line splitting and id-indexing are shared with the other game tables, see [game-tables.md](game-tables.md).
 
 ## Layout
 
@@ -60,20 +60,20 @@ Jump table `0x627ae0`: 32 uint16 entries. Matrix semantics: null/empty → false
 
 | Op | Count | Target | Semantics |
 |---|---:|---|---|
-| 1 | 3 | `0x110b7e0` | unknown |
-| 2 | 2 | `0x110b848` | unknown |
-| 4 | 8 | `0x110b8c4` | unknown |
-| 5 | 1 | `0x110b930` | unknown |
-| 7 | 1 | `0x110b9b8` | unknown |
-| 15 | 75 | `0x110bad4` | unknown |
-| 16 | 29 | `0x110bb40` | unknown |
-| 18 | 1 | `0x110bc98` | unknown |
-| 19 | 1 | `0x110bce0` | unknown |
-| 20 | 7 | `0x110bd28` | unknown |
-| 21 | 3 | `0x110be00` | unknown |
-| 22 | 10 | `0x110bf48` | unknown |
-| 31 | 2 | `0x110c058` | unknown |
-| 32 | 1 | `0x110c0ac` | unknown |
+| 1 | 3 | `0x110b7e0` | int64 money comparison |
+| 2 | 2 | `0x110b848` | int64 crystal comparison |
+| 4 | 8 | `0x110b8c4` | area state == 1 |
+| 5 | 1 | `0x110b930` | hero CharaData +0x40 int32 comparison |
+| 7 | 1 | `0x110b9b8` | rescued count plus conditional static adjustment |
+| 15 | 75 | `0x110bad4` | quest completion bit or boolean |
+| 16 | 29 | `0x110bb40` | sum quest challengeCount |
+| 18 | 1 | `0x110bc98` | sum quest clearCount |
+| 19 | 1 | `0x110bce0` | sum quest challengeCount - clearCount |
+| 20 | 7 | `0x110bd28` | count matching building type > 0 |
+| 21 | 3 | `0x110be00` | town capacity minus flagged town count |
+| 22 | 10 | `0x110bf48` | count recruited sub characters |
+| 31 | 2 | `0x110c058` | stamina low int32 comparison |
+| 32 | 1 | `0x110c0ac` | int64 high score comparison |
 
 Condition and effect opcode numbers are separate spaces (e.g. condition 15 ≠ effect 15).
 
@@ -93,7 +93,7 @@ Condition and effect opcode numbers are separate spaces (e.g. condition 15 ≠ e
 
 ## Open questions
 
-1. (blocking) Semantics and arguments of the 14 condition opcodes.
+1. (blocking) Concrete host data for the 14 recovered condition opcodes; integration with the id-indexed event loader.
 2. The generic delegate `<LoadData>b__74_0` that calls `EventData.Load` and its policy for invalid/null lines (see [game-tables.md](game-tables.md)).
 3. Meaning of `timing_`.
 4. Effect opcodes absent from the extracted table; whether other script sources (quests, built events) use them.

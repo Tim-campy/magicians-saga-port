@@ -27,30 +27,56 @@ bool compare_event_values(std::int64_t left, std::int64_t right, std::int32_t co
     default: return false;
     }
 }
-// AppData.CheckTerm(int[]), 0x110b5f8. Five recovered branches; others host-owned.
+// AppData.CheckTerm(int[]), 0x110b5f8. Fourteen recovered branches; others host-owned.
 bool check_event_condition(const EventInstruction& instruction, EventConditionHost& host) {
     host.require_condition_context();
     const auto& row=required(instruction.get());
     switch (row.at(0)) {
+    case 1: case 2: case 5: case 31: case 32: {
+        const auto opcode=row[0];
+        const auto kind=opcode==1 ? ConditionScalar::Money : opcode==2 ? ConditionScalar::Crystals :
+            opcode==5 ? ConditionScalar::HeroField40 : opcode==31 ? ConditionScalar::Stamina : ConditionScalar::HighScore;
+        const auto raw=host.scalar(kind); // Query precedes argument checks.
+        const auto value=(opcode==5 || opcode==31) ? signed32(static_cast<std::uint32_t>(raw)) : raw;
+        const auto threshold=row.at(1);
+        const auto comparison=row.at(2);
+        return compare_event_values(value,threshold,comparison);
+    }
     case 15: {
         const auto* quests=host.quests(); // Getter precedes argument/bounds checks.
         const auto id=row.at(1);
         const auto& quest=at(quests,id);
         return (quest.flags & 2U)!=0 || quest.completed;
     }
-    case 16: {
-        // SumAllQuestsChallengeCount, 0x110c284. Null entries skipped; null
-        // challenge arrays fail; ADD W wraps before signed comparison.
+    case 7: case 16: case 18: case 19: {
+        // GetTotalRescueCount / SumAllQuests{Challenge,Clear,Lose}Count.
+        // +0xa8 is a QuestRecord, not an array. Every arithmetic step wraps32.
+        const auto opcode=row[0];
         const auto& quests=required(host.quests());
         std::uint32_t total=0;
         for (const auto& quest:quests) {
-            if (!quest) continue;
-            if (!quest->challenge_count) throw std::invalid_argument("null challenge array");
-            total+=static_cast<std::uint32_t>(*quest->challenge_count);
+            if (!quest && opcode!=7) continue;
+            const auto& record=required(quest.get()).record;
+            if (!record) throw std::invalid_argument("null QuestRecord");
+            if (opcode==7) total+=static_cast<std::uint32_t>(record->rescued);
+            if (opcode==16 || opcode==19) total+=static_cast<std::uint32_t>(record->challenges);
+            if (opcode==18) total+=static_cast<std::uint32_t>(record->clears);
+            if (opcode==19) total-=static_cast<std::uint32_t>(record->clears);
         }
+        if (opcode==7) total+=static_cast<std::uint32_t>(host.rescue_adjustment());
         const auto threshold=row.at(1);
         const auto comparison=row.at(2);
         return compare_event_values(signed32(total),threshold,comparison);
+    }
+    case 21: {
+        // Count town records with BaseData.Check(1), then capacity minus count.
+        std::uint32_t occupied=0;
+        for (const auto& flags:required(host.town_flags()))
+            if ((required(flags.get()) & 1U)!=0) ++occupied;
+        const auto available=static_cast<std::uint32_t>(host.town_capacity())-occupied;
+        const auto threshold=row.at(1);
+        const auto comparison=row.at(2);
+        return compare_event_values(signed32(available),threshold,comparison);
     }
     case 4: {
         const auto* areas=host.area_states();

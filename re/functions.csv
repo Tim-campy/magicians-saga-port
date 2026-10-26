@@ -409,7 +409,7 @@ game:0x060001ab,game:0x060001ab,boot,,4,0x1109d04
 game:0x060001ac,game:0x060001ac,boot,,284,0x1109d08
 game:0x060001ad,game:0x060001ad,boot,,312,0x1109e24
 game:0x060001ae,game:0x060001ae,boot,,140,0x1109f5c
-game:0x060001af,game:0x060001af,boot,,280,0x1109fe8
+game:0x060001af,main.AppData.GetTotalRescueCount,boot,documented,280,0x1109fe8
 game:0x060001b0,game:0x060001b0,boot,,428,0x110a100
 game:0x060001b1,game:0x060001b1,boot,,456,0x110a2ac
 game:0x060001b2,game:0x060001b2,boot,,280,0x110a474
@@ -431,8 +431,8 @@ game:0x060001c1,main.AppData.CheckTerm,boot,reimplemented,196,0x110b534
 game:0x060001c2,main.AppData.Compare,boot,reimplemented,116,0x110c1d4
 game:0x060001c3,main.AppData.CheckTerm,boot,traced,3036,0x110b5f8
 game:0x060001c4,main.AppData.SumAllQuestsChallengeCount,boot,documented,172,0x110c284
-game:0x060001c5,game:0x060001c5,boot,,172,0x110c330
-game:0x060001c6,game:0x060001c6,boot,,176,0x110c3dc
+game:0x060001c5,main.AppData.SumAllQuestsClearCount,boot,documented,172,0x110c330
+game:0x060001c6,main.AppData.SumAllQuestsLoseCount,boot,documented,176,0x110c3dc
 game:0x060001c7,game:0x060001c7,boot,,188,0x110c4c4
 game:0x060001c8,main.AppData.ExecEvent,boot,documented,220,0x110c580
 game:0x060001c9,main.AppData.ExecEvent,boot,traced,12,0x110c65c
@@ -525,7 +525,7 @@ game:0x0600021f,game:0x0600021f,boot,,156,0x11121ec
 game:0x06000220,game:0x06000220,boot,,8,0x11121e4
 game:0x06000221,game:0x06000221,boot,,48,0x1112288
 game:0x06000222,game:0x06000222,boot,,56,0x11122b8
-game:0x06000223,game:0x06000223,boot,,60,0x110c248
+game:0x06000223,main.AppData.GetStamina,boot,documented,60,0x110c248
 game:0x06000224,main.AppData.GetStaminaMax,boot,documented,140,0x110d3fc
 game:0x06000225,game:0x06000225,boot,,1776,0x11122f0
 game:0x06000226,game:0x06000226,boot,,48,0x1112ea4
@@ -592,7 +592,7 @@ game:0x06000262,game:0x06000262,unassigned,,92,0x117c51c
 game:0x06000263,game:0x06000263,unassigned,,8,0x117c578
 game:0x06000264,game:0x06000264,unassigned,,24,0x117c580
 game:0x06000265,<>c.<CheckTerm>b__1067_0,unassigned,documented,56,0x117c598
-game:0x06000266,game:0x06000266,unassigned,,28,0x117c5d0
+game:0x06000266,<>c.<CheckTerm>b__1067_2,unassigned,documented,28,0x117c5d0
 game:0x06000267,game:0x06000267,unassigned,,24,0x117c5ec
 game:0x06000268,game:0x06000268,unassigned,,8,0x117c604
 game:0x06000269,<>c__DisplayClass1067_0.<CheckTerm>b__1,unassigned,documented,72,0x117c60c
@@ -3940,7 +3940,7 @@ game:0x06001035,game:0x06001035,data,,116,0x116c7f0
 game:0x06001036,game:0x06001036,data,,40,0x116c73c
 game:0x06001037,game:0x06001037,data,,4,0x116c864
 game:0x06001038,data.BaseData.NewGame,data,documented,4,0x116bf98
-game:0x06001039,game:0x06001039,data,,16,0x1169924
+game:0x06001039,data.BaseData.Check,data,documented,16,0x1169924
 game:0x0600103a,data.BuildingData.NewGame,data,traced,132,0x116c868
 game:0x0600103b,game:0x0600103b,data,,216,0x116c8ec
 game:0x0600103c,game:0x0600103c,data,,44,0x116c9c4

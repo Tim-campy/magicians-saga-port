@@ -18,6 +18,13 @@ struct Host:EventConditionHost {
     ConditionCatalog<CharacterConditionState> c;
     EventScript b=std::make_shared<std::vector<EventInstruction>>();
     std::vector<int> calls;
+    std::int64_t value=0;
+    std::int32_t bonus=0,capacity=0;
+    ConditionCatalog<std::uint32_t> towns;
+    std::int64_t scalar(ConditionScalar k) override {calls.push_back(100+static_cast<int>(k));return value;}
+    std::int32_t rescue_adjustment() override {calls.push_back(7);return bonus;}
+    const ConditionCatalog<std::uint32_t>* town_flags() override {calls.push_back(21);return &towns;}
+    std::int32_t town_capacity() override {calls.push_back(19);return capacity;}
     void require_condition_context() override { calls.push_back(0); }
     const ConditionCatalog<QuestConditionState>* quests() override { calls.push_back(15);return &q; }
     const ConditionCatalog<std::int32_t>* area_states() override { calls.push_back(4);return &a; }
@@ -40,15 +47,49 @@ int main() {
     check(compare_event_values(std::numeric_limits<std::int64_t>::min(),0,3) &&
           compare_event_values(std::numeric_limits<std::int64_t>::max(),0,0) &&
           !compare_event_values(1,0,-1) && !compare_event_values(1,0,6),"signed64 and invalid codes");
-    h.q={nullptr,std::make_shared<QuestConditionState>(QuestConditionState{2,false,3}),
-        std::make_shared<QuestConditionState>(QuestConditionState{0,true,4})};
+    h.q={nullptr,std::make_shared<QuestConditionState>(QuestConditionState{2,false,QuestConditionRecord{3,2,5}}),
+        std::make_shared<QuestConditionState>(QuestConditionState{0,true,QuestConditionRecord{4,1,6}})};
     check(check_event_condition(row({15,1}),h) && check_event_condition(row({15,2}),h),"either quest completion path");
     h.q[2]->completed=false;
     check(!check_event_condition(row({15,2}),h),"quest without completion flags");
-    check(check_event_condition(row({16,7,4}),h),"challenge array lengths summed, null quest skipped");
-    h.q[1]->challenge_count=std::numeric_limits<std::int32_t>::max();
+    check(check_event_condition(row({16,7,4}),h),"challenge counters summed, null quest skipped");
+    h.q[1]->record->challenges=std::numeric_limits<std::int32_t>::max();
     check(check_event_condition(row({16,0,3}),h),"sum wraps32 before comparison");
-    h.q[1]->challenge_count.reset(); fails([&]{check_event_condition(row({16}),h);});
+    h.q[1]->record->challenges=3;
+    check(check_event_condition(row({18,3,4}),h),"clear count skips null quest");
+    check(check_event_condition(row({19,4,4}),h),"loss is challenges minus clears");
+    fails([&]{check_event_condition(row({7,11,4}),h);}); // Rescue does not skip gaps.
+    h.q.erase(h.q.begin());h.bonus=-2;
+    check(check_event_condition(row({7,9,4}),h),"rescue count plus signed adjustment");
+    h.q.insert(h.q.begin(),nullptr);
+    for (int opcode:{1,2,32}) {
+        h.value=0x100000000LL;
+        check(check_event_condition(row({opcode,0,0}),h),"64-bit scalar is not truncated");
+        h.value=-1;
+        check(check_event_condition(row({opcode,-1,4}),h),"threshold sign extension");
+    }
+    for (int opcode:{5,31}) {
+        h.value=0xffffffffLL;
+        check(check_event_condition(row({opcode,-1,4}),h),"int32 comparison uses low word");
+    }
+    h.towns={std::make_shared<std::uint32_t>(1),std::make_shared<std::uint32_t>(2)};
+    h.capacity=3;h.calls.clear();
+    check(check_event_condition(row({21,2,4}),h) && h.calls==std::vector<int>({0,21,19}),"capacity minus occupied flags and query order");
+    h.capacity=std::numeric_limits<std::int32_t>::min();
+    check(check_event_condition(row({21,std::numeric_limits<std::int32_t>::max(),4}),h),"capacity subtraction wraps32");
+    h.towns.push_back(nullptr);h.calls.clear();
+    fails([&]{check_event_condition(row({21,0,4}),h);});
+    check(h.calls==std::vector<int>({0,21}),"null town fails before capacity read");
+    h.q[1]->record->challenges=-5;
+    check(check_event_condition(row({16,-1,4}),h),"challenge counter is signed, not an array length");
+    h.q[1]->record->clears=std::numeric_limits<std::int32_t>::max();
+    check(check_event_condition(row({18,std::numeric_limits<std::int32_t>::min(),4}),h),"clear total wraps32");
+    h.value=0;h.calls.clear();
+    fails([&]{check_event_condition(row({32}),h);});
+    check(h.calls==std::vector<int>({0,104}),"high score queried before argument failure");
+    h.calls.clear();
+    check(!check_event_condition(row({31,0,6}),h) && h.calls==std::vector<int>({0,103}),"invalid comparison still reads stamina");
+    h.q[1]->record.reset(); fails([&]{check_event_condition(row({16}),h);});
     h.a={std::make_shared<std::int32_t>(2)};
     *terms={row({4,0}),nullptr}; h.calls.clear();
     check(!check_event_conditions(terms,h) && h.calls==std::vector<int>({0,4}),"AND short circuits before null row");
