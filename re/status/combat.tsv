@@ -85,3 +85,11 @@ game:0x0600119c	documented	docs/subsystems/data.md	Shop schema and combat projec
 game:0x0600111e	documented	docs/subsystems/data.md	Equipment full token framing; retained attribute/status combat projection; mutable level separate
 game:0x060010c2	documented	docs/subsystems/data.md	Cloth token framing and parameter projection; shares reader shape with Hat
 game:0x06001171	documented	docs/subsystems/data.md	Hat token framing and parameter projection; shares reader shape with Cloth
+game:0x06000d6a	reimplemented	src/core/gameplay/combat_records.cpp	Human character id indexes decoded table; null record preserved and invalid id faults
+game:0x06000d40	reimplemented	src/core/gameplay/combat_records.cpp	Enemy id indexes decoded table independently of enemy level; null record preserved
+game:0x06000d4e	reimplemented	src/core/gameplay/combat_records.cpp	Equipment ID index 0 resolves shared equipment table; tested bounds and null entries
+game:0x06000d4f	reimplemented	src/core/gameplay/combat_records.cpp	Equipment ID index 1 resolves shared equipment table; tested bounds and null entries
+game:0x06000d50	reimplemented	src/core/gameplay/combat_records.cpp	Equipment ID index 2 resolves hat table; tested correct catalog selection
+game:0x06000d51	reimplemented	src/core/gameplay/combat_records.cpp	Equipment ID index 3 resolves cloth table; tested correct catalog selection
+game:0x06000d53	reimplemented	src/core/gameplay/combat_records.cpp	Integer weapon setter writes ID without record validation or component notification
+game:0x06000d55	reimplemented	src/core/gameplay/combat_records.cpp	Integer shield setter shares checked ID-array store contract

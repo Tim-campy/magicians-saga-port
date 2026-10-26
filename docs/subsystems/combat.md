@@ -134,6 +134,8 @@ OnBulletHit requires an Enemy component on the receiver, reads attack/attackAttr
 
 ## Port
 
+- `combat_records.hpp/.cpp` resolves decoded character, enemy and equipment records from the existing component slots and component IDs. It preserves null catalog entries and rejects invalid IDs. See [ecs.md](ecs.md#combat-record-links) for slot mapping, failure behavior and setter contracts. Lookup results can feed the explicit saved-level binding functions; automatic live refresh throughout damage and entity construction remain pending.
+
 - `combat_tables.hpp/.cpp` loads the static shop/equipment inputs and extends the existing character reader to retain parameters. Explicit saved-level/purchase-count binding functions produce `CharacterParameters`, `CombatEquipment` and `ShopParameterUpgrade` for the resolved host; they preserve shared parameter-array identity. See [data.md](data.md#combat-table-projections) for schemas and real-table validation in both languages. Concrete entity IDs/component lookup and save-state restoration are still external.
 
 - `combat_host.hpp/.cpp` adds `ResolvedDamageHost`, a concrete binding over non-owning `CombatEntity` projections. Human components take precedence for stat lookup; character growth plus shop bonuses and all four equipment records feed totals. Enemy components use their own level, decoded `EnemyRecord`, and separate live maximum array. Human defence resolves P2, weapon attribute and elemental bonus in order; enemy defence resolves P2 then data attribute, bonus zero. Other entities return parameter zero and defence {0,4,0}. Parameter-set slots provide the captured receiver zero and attacker one rate. Missing required rows/components fault rather than silently falling back to another entity kind.
