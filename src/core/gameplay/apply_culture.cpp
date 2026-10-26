@@ -5,7 +5,7 @@ namespace saga::core {
 std::shared_ptr<CultureNumberFormat> culture_number_format(CultureInstance& culture,CultureNumberHost& host) {
     if(culture.number_format)return culture.number_format;
     auto value=host.construct_number_format(culture);
-    if(!value)throw CultureManagedError("null constructed number format");
+    if(!value)throw CultureManagedException("null constructed number format");
     value->read_only=culture.read_only;
     culture.number_format=value;
     return value;
@@ -14,7 +14,7 @@ std::shared_ptr<CultureNumberFormat> culture_number_format(CultureInstance& cult
 std::shared_ptr<CultureNumberFormat> current_number_format(CurrentCultureState& state,ThreadCultureHost& thread,
     CurrentCultureHost& current,CultureNumberHost& formats) {
     auto culture=resolve_current_culture(state,thread,current);
-    if(!culture)throw CultureManagedError("null current culture");
+    if(!culture)throw CultureManagedException("null current culture");
     if(!culture->inherited && culture->number_format)return culture->number_format;
     return formats.get_format(*culture); // Original permits a null virtual result.
 }

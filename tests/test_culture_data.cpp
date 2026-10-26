@@ -1,8 +1,22 @@
 #include "platform/desktop/culture_data.hpp"
+#include "core/gameplay/apply_culture_host.hpp"
 #include <cstdlib>
 #include <iostream>
 using namespace saga::desktop;
 void check(bool value){if(!value){std::cerr<<"culture data contract failure\n";std::exit(1);}}
+struct SuppliedContext:saga::core::ThreadCultureHost,saga::core::CurrentCultureHost,saga::core::ApplyGiftContentHost {
+    CultureDataHost& data;std::u16string name;
+    SuppliedContext(CultureDataHost& d,std::u16string n):data(d),name(std::move(n)){}
+    std::shared_ptr<saga::core::CultureInstance> thread_culture()override{return {};}
+    std::shared_ptr<saga::core::CultureInstance> default_thread_culture()override{return {};}
+    bool invariant_mode()override{return false;}
+    std::optional<std::u16string> native_locale_name()override{return name;}
+    std::shared_ptr<saga::core::CultureInstance> create_specific(const std::u16string& n)override{return data.specific(n);}
+    std::shared_ptr<saga::core::CultureInstance> invariant_culture()override{return data.invariant_culture();}
+    // Test gifts use an ordinary prefix; production collation remains a required provider.
+    bool starts_special_gift(const std::u16string&)override{return false;}
+    std::shared_ptr<saga::core::ApplyCatalog> catalog()override{return std::make_shared<saga::core::ApplyCatalog>();}
+};
 int main(int argc,char** argv){
     const auto parsed=parse_neutral_cultures(R"({"entries":[{"lcid":2147483647,"name":"a\u00e9\ud801\udc00"},{"name":"b","lcid":-2147483648}],"schema":1})");
     check(parsed.size()==2 && parsed[0].name==u"a\u00e9\U00010400" && parsed[1].lcid==(-2147483647-1));
@@ -33,6 +47,13 @@ int main(int argc,char** argv){
         check(host.get_format(*culture)==format);
         auto invariant=host.specific(u"");check(invariant==host.invariant_culture());
         check(host.get_format(*invariant)==host.invariant_number_format());
+        SuppliedContext context(host,saga::core::decode_culture_utf8(argv[2]));
+        saga::core::CurrentCultureState current;
+        saga::core::CultureApplyGiftHost gift_host(current,context,context,host,context);
+        saga::core::ApplyTaskState task{};
+        saga::core::initialize_apply_gift(task,u"reward_"+saga::core::decode_culture_utf8(argv[3]),0,true,gift_host);
+        check(task.provision_value==value && current.cached && current.cached->read_only);
+        check(current.cached->identity.lcid==culture->identity.lcid);
         std::cout<<culture->identity.lcid<<' '<<value<<'\n';
     }catch(const std::exception& error){std::cerr<<error.what()<<'\n';return 1;}
 }

@@ -22,6 +22,9 @@ struct CultureInstance {
 };
 // Host-translated managed throws. Unrelated C++ failures are not swallowed.
 class CultureManagedError:public std::runtime_error {public:using std::runtime_error::runtime_error;};
+// System.Exception subset; the current-culture factory catches System.Object,
+// while ApplyTask.Init catches only System.Exception in its provision branch.
+class CultureManagedException:public CultureManagedError {public:using CultureManagedError::CultureManagedError;};
 struct CurrentCultureState {std::shared_ptr<CultureInstance> cached;};
 // Decoded culture and integer-sign projection; calendar/other formatting fields are omitted.
 std::shared_ptr<CultureInstance> make_invariant_culture(bool user_override,bool read_only,

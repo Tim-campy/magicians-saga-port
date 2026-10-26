@@ -2,13 +2,13 @@
 namespace saga::core {
 // NumberFormatInfo.Clone 0x1e147c0 and ReadOnly 0x1e14450.
 std::shared_ptr<CultureNumberFormat> clone_number_format(const std::shared_ptr<CultureNumberFormat>& value) {
-    if(!value)throw CultureManagedError("null number format");
+    if(!value)throw CultureManagedException("null number format");
     auto result=std::make_shared<CultureNumberFormat>(*value);
     result->read_only=false;
     return result;
 }
 std::shared_ptr<CultureNumberFormat> readonly_number_format(const std::shared_ptr<CultureNumberFormat>& value) {
-    if(!value)throw CultureManagedError("null number format");
+    if(!value)throw CultureManagedException("null number format");
     if(value->read_only)return value;
     auto result=std::make_shared<CultureNumberFormat>(*value);
     result->read_only=true;

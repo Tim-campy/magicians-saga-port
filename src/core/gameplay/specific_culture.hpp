@@ -8,9 +8,9 @@ struct CultureTables {
     const std::vector<NeutralCultureEntry>& neutral; // Validated unique extracted keys.
 };
 enum class CultureSelectionFailure { NullName,NameNotFound,UnknownNeutral,NegativeLcid,MissingLcid };
-class CultureSelectionError:public CultureManagedError {
+class CultureSelectionError:public CultureManagedException {
 public:
-    explicit CultureSelectionError(CultureSelectionFailure value):CultureManagedError("culture selection failed"),kind(value){}
+    explicit CultureSelectionError(CultureSelectionFailure value):CultureManagedException("culture selection failed"),kind(value){}
     CultureSelectionFailure kind;
 };
 // Full CultureData/calendar allocation is outside this decoded number-selection model.
