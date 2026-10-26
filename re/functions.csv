@@ -4043,7 +4043,7 @@ game:0x0600109c,game:0x0600109c,data,,8,0x116dca4
 game:0x0600109d,game:0x0600109d,data,,8,0x116dcac
 game:0x0600109e,game:0x0600109e,data,,8,0x116dcb4
 game:0x0600109f,game:0x0600109f,data,,8,0x116dcbc
-game:0x060010a0,game:0x060010a0,data,,424,0x116dcc4
+game:0x060010a0,data.CharaData.Load,data,documented,424,0x116dcc4
 game:0x060010a1,game:0x060010a1,data,,276,0x116de6c
 game:0x060010a2,game:0x060010a2,data,,296,0x116df80
 game:0x060010a3,game:0x060010a3,data,,472,0x116e0a8
@@ -4400,7 +4400,7 @@ game:0x06001206,game:0x06001206,data,,8,0x11732b0
 game:0x06001207,game:0x06001207,data,,8,0x11732b8
 game:0x06001208,game:0x06001208,data,,8,0x11732c0
 game:0x06001209,game:0x06001209,data,,8,0x11732c8
-game:0x0600120a,game:0x0600120a,data,,280,0x11732d0
+game:0x0600120a,data.TableData.Load,data,documented,280,0x11732d0
 game:0x0600120b,data.TableData.GetExp,data,reimplemented,36,0x116db30
 game:0x0600120c,game:0x0600120c,data,,4,0x11733e8
 game:0x0600120d,game:0x0600120d,data,,4,0x11733ec

@@ -1,40 +1,12 @@
 #include "event_catalog.hpp"
+#include "table_tokens.hpp"
 #include <limits>
 #include <stdexcept>
 
 namespace saga::core {
 namespace {
 bool space(char c) { return c==' ' || (c>='\t' && c<='\r'); }
-class Tokens {
-public:
-    Tokens(std::string_view line, const EventIntegerParser& parser) : line_(line), parser_(parser) {}
-    std::string_view take() {
-        if (done_) throw std::out_of_range("truncated event record");
-        const auto tab=line_.find('\t');
-        const auto token=line_.substr(0,tab);
-        if (tab==std::string_view::npos) done_=true;
-        else line_.remove_prefix(tab+1);
-        return token;
-    }
-    std::int32_t integer() { return parser_(take()); }
-    EventScript script() {
-        const auto count=integer();
-        if (count<0) return nullptr;
-        auto result=std::make_shared<std::vector<EventInstruction>>();
-        for (std::int32_t i=0;i<count;++i) {
-            const auto length=integer();
-            if (length<0) throw std::length_error("negative event row size");
-            auto row=std::make_shared<EventIntegers>();
-            for (std::int32_t j=0;j<length;++j) row->push_back(integer());
-            result->push_back(row);
-        }
-        return result;
-    }
-private:
-    std::string_view line_;
-    const EventIntegerParser& parser_;
-    bool done_=false;
-};
+
 }
 std::int32_t parse_event_decimal(std::string_view token) {
     while (!token.empty() && space(token.front())) token.remove_prefix(1);
@@ -67,7 +39,7 @@ EventCatalog load_event_catalog(std::string_view text, bool normalize_crlf,
         if (normalize_crlf && end!=std::string_view::npos && !line.empty() && line.back()=='\r')
             line.remove_suffix(1);
         if (!line.empty()) {
-            Tokens tokens(line,integer);
+            detail::TableTokens tokens(line,integer);
             auto record=std::make_shared<EventConditionRecord>();
             record->execution_count=0;
             record->id=tokens.integer();record->name=std::string(tokens.take());

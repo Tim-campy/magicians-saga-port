@@ -294,3 +294,8 @@ add_executable(test_experience_progression test_experience_progression.cpp)
 target_link_libraries(test_experience_progression PRIVATE experience_progression)
 project_warnings(test_experience_progression)
 add_test(NAME experience_progression_contract COMMAND test_experience_progression)
+
+add_executable(test_progression_tables test_progression_tables.cpp)
+target_link_libraries(test_progression_tables PRIVATE progression_tables)
+project_warnings(test_progression_tables)
+add_test(NAME progression_tables_contract COMMAND test_progression_tables)

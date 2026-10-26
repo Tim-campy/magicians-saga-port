@@ -110,3 +110,6 @@ saga_library(collation_selection collation_selection.cpp)
 saga_library(collation_index collation_index.cpp)
 target_link_libraries(collation_index PUBLIC collation_tables)
 saga_library(experience_progression experience_progression.cpp)
+
+saga_library(progression_tables progression_tables.cpp)
+target_link_libraries(progression_tables PUBLIC event_catalog experience_progression)

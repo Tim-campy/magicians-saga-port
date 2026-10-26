@@ -130,6 +130,8 @@ Evidence: local `research/exports/game-experience/`, bounded ARM64 exports for t
 
 ## Evidence
 
+- `src/core/gameplay/progression_tables.cpp` connects decoded character rates and level costs to the per-member kernel; see [data record schema](data.md#progression-record-readers). Real English/Japanese table cost lookups pass locally, with synthetic tests for holes and live record changes.
+
 - [63-damage-event-and-quest-record.md](../archive/reports/63-damage-event-and-quest-record.md)
 - [65-defeat-and-reward-order.md](../archive/reports/65-defeat-and-reward-order.md)
 - [66-drop-collection-and-stage-rewards.md](../archive/reports/66-drop-collection-and-stage-rewards.md)
@@ -142,7 +144,7 @@ Evidence: local `research/exports/game-experience/`, bounded ARM64 exports for t
 
 ## Open questions
 
-1. (blocking) Loaded data for EnemyData exp_/treasureDrop_, TreasureData, CharaData.needExpRate_ (+0x9c) and TableData.exp_ (+0x24) (needs the data loaders).
+1. (blocking) Loaded data for EnemyData exp_/treasureDrop_ and TreasureData. CharaData.needExpRate_ and TableData.exp_ are now decoded and bound through TableExperienceHost; ordered quest-member integration remains.
 2. (blocking) RNG backend for `Hits1000` drop rolls (see [rng.md](rng.md)).
 3. Contracts of the AddMoney/AddCrystal value helpers (SecureLong-like? limits) and save persistence of money, records and high score.
 4. `TreasureData.get_isBossReward` semantics; `CreateDrop` types 1/2 and its other jump targets; who creates money/prisoner drops.

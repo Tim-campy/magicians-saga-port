@@ -110,11 +110,23 @@ Arguments: descriptor table, `SecureProperty`, bool. Per descriptor: element 0 c
 
 See [../formats/game-tables.md](../formats/game-tables.md): `LoadStringArray` → `JString.New` (UTF-8, BOM stripped) → `Split(LF, flags 0,1,0)` (no trim, no escaped separators, zero-length segments dropped); CRLF → LF only when Unity ≥ 6000.0.0; array sized `maxId+1`, gaps null, last duplicate wins, negative ids throw.
 
+### Progression record readers
+
+`TableData.Load` (`game:0x0600120a`, `0x11732d0`, 280 bytes) and `CharaData.Load` (`game:0x060010a0`, `0x116dcc4`, 424 bytes) take a line and mutate/return the receiver. The initial string guard returns without reading fields; otherwise they construct `StringArrayStream` (`0x1126cb4`). Each read is immediately stored, so a later parse failure can leave an existing receiver partly modified. Extra tokens are ignored. Caller: the per-type data-loading path; the generic delegate body remains unresolved.
+
+`TableData.Load` reads ten int32 tokens in order: id (`+0x18`), level (`+0x20`), exp (`+0x24`), shopParam1/2/3 (`+0x28/+0x2c/+0x30`), unlockMoney (`+0x34`), unlockCrystal (`+0x38`), unlockWebPage (`+0x3c`), unlockRescue (`+0x40`). The progression kernel indexes by id, not by the separately stored level value.
+
+`CharaData.Load` reads: id; baseName (string); lockLevel; res (string); img; res2 (string); weaponId; recruitType; recruitCost; initLevel; rank; needExpRate; parameters (count-prefixed int32[][]); voiceId; townId; areaId; residentTerm (count-prefixed int32[][]); appearRate; inherited flag (`+0x1c`). The first twelve logical fields are fixed tokens; nested arrays make later token positions variable. needExpRate is token 11 (zero-based), stored at `+0x9c`. Saved level/exp and witchExp are not loaded here.
+
+Confidence: high for read/store order from bounded ARM64 instructions and metadata field offsets. Calls are GetInt `0x1126e4c`, GetString `0x1126dcc`, GetIntDoubleArray `0x112708c`. These game record mappings require no new Mono/runtime implementation.
+
 ## Port
 
-None. No `src/` loader for tables, BaseData types, data list or check-script groups. `tools/audit_game_table_text.py` audits the extracted tables (encoding/line endings) only; `tools/inspect_event_table.py` belongs to the events subsystem.
+`src/core/gameplay/progression_tables.cpp` loads complete level-table records and a character progression projection, preserving id gaps and last-duplicate-wins indexing. It shares token parsing with the event reader and accepts the existing integer-parser callback. `TableExperienceHost` resolves the live character id/rate and level row for the experience kernel. The character projection consumes and validates all fields but retains only id and needExpRate. These fresh-record readers do not expose partial mutation of an existing record on failure; neither original Load method is claimed fully reimplemented. BaseData lifecycle, the general loader, data list and check-script groups remain unported. `tools/audit_game_table_text.py` audits the extracted tables (encoding/line endings) only; `tools/inspect_event_table.py` belongs to the events subsystem.
 
 ## Evidence
+
+- Local `research/exports/game-progression-tables/`: bounded ARM64 exports of both record loaders. `tests/test_progression_tables.cpp` covers field mapping, arrays, gaps, duplicates, CRLF gates, live rate/id changes and progression failure ordering. Local English and Japanese tables each load into 1201 level slots and 79 character slots; 80400 character/level cost lookups succeed per language (67 populated characters). Static artifact smoke tests, not Android verification.
 
 - [../archive/reports/48-system-save-and-data-loading.md](../archive/reports/48-system-save-and-data-loading.md), [49-continue-game-preparation.md](../archive/reports/49-continue-game-preparation.md), [51-basedata-newgame-overrides.md](../archive/reports/51-basedata-newgame-overrides.md), [52-data-list-and-check-timing.md](../archive/reports/52-data-list-and-check-timing.md), [53-checkscript-arrays-and-consumer.md](../archive/reports/53-checkscript-arrays-and-consumer.md), [73-game-data-id-indexing.md](../archive/reports/73-game-data-id-indexing.md), [74-game-data-text-source.md](../archive/reports/74-game-data-text-source.md), [75-table-encoding-and-line-endings.md](../archive/reports/75-table-encoding-and-line-endings.md)
 - Local (`build/research/`): `basedata-newgame-overrides.json`, `basedata-newgame.tsv`, `basedata-newgame/`, `basedata-slot8.json`, `basedata-reset-callees/`, `data-list-return-types.json`, `checkscript-context/`, `data-list-getters/`, `script-checks/`, `makearray-helpers/`, `checkscript-field-candidates.json`, `newdata-preload.tsv`, `newdata-tail.tsv`, `data-generic-load/`, `data-load-helpers/`, `data-load-entry/`, `data-text-reader/`, `string-lines/`, `string-lines-helpers/`, `data-encoding/`, `event-index-model.json`, `game-table-text-audit.json`

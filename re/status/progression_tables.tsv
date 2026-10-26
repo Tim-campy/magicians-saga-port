@@ -1,0 +1,3 @@
+id	status	evidence	note
+game:0x0600120a	documented	docs/subsystems/data.md	Ten int32 fields mapped; fresh-record loader tested; existing-object partial failure semantics not ported
+game:0x060010a0	documented	docs/subsystems/data.md	Full field read order and rate token mapped; progression projection tested on both local languages

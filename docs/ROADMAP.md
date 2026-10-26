@@ -31,7 +31,7 @@ Current maintainer priority: game-specific decompilation and gameplay integratio
 ## Next tasks
 
 ### Current gameplay focus
-- [ ] Bind the recovered experience progression to decoded CharaData.needExpRate_ and TableData.exp_ records, then compose the quest-result grant for the ordered member list; the cost accessors and per-member level-up loop are ported/tested.
+- [ ] Compose the quest-result EXP grant for the ordered member list, preserving per-member snapshots, eligibility and failure ordering; decoded CharaData rates and TableData costs are bound to the tested per-member kernel.
 
 ### 1. Events and scripts
 - [ ] Bind decoded billing-item/catalog providers and complete notification manager adapters, preserving task execution gates.
@@ -48,7 +48,7 @@ Current maintainer priority: game-specific decompilation and gameplay integratio
 ### 3. Combat, RNG and rewards
 - [ ] RNG generator (blocking for damage and drops): effective `JRandom.Logic`, writer of `fix_`, seeding, IL2CPP `System.Random.Next` and `Xorshift128.Next`, whether any backend returns negatives.
 - [ ] Name parameter indices 0/1/2/6/7/8/9 and resolve `MyConfig.FPS`/`DEBUG`; then compose a native `damage()` that keeps the documented RNG order.
-- [ ] Bind `EnemyData` (`exp_`, `treasureDrop_`), `TreasureData`, `CharaData+0x9c` and `tableData+0x24` to the data loader; port EnemyData.GetExp and bind the implemented character cost/level-up kernel into ShowQuestResult.
+- [ ] Bind `EnemyData` (`exp_`, `treasureDrop_`) and `TreasureData` to the data loader; port EnemyData.GetExp and complete ShowQuestResult integration (character rates and level costs now decoded/tested).
 - [ ] Read `OnGameOver`'s retry path, `CleanUp`, the state-4 quest method and event 1133.
 - [ ] Port `Graph.Easing` in the general case (amplitudes −50 and −80), checked against the binary32 model.
 
