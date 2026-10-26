@@ -175,6 +175,8 @@ Call chain from the form layer (see [ui.md](ui.md)): form event 1 → `QuestForm
 ### Destruction
 
 `DestroyEntity(entity, bool)` (`0x1137950`, 152 bytes; null entity → exception): (1) vtable slot 6 = `RemoveAll` (callbacks still live, so subsets update), (2) `Entity.DisposeEvents` nulls `+0x10/+0x18/+0x20`, (3) if bool, `Dictionary.Remove(entity+0x28)`. No try/finally: a throwing callback aborts before disposal/removal.
+`World.DestroyEntities` (`0x1135794`) forwards collection/except to the manager with registry removal **true**; the null argument supplied by StageSystem.CleanUp is except, not the removal flag. This differs from the manager's DestroyAllEntities path below. The manager's per-entity RemoveAll -> DisposeEvents -> optional registry removal sequence is ported in `stage_cleanup.cpp`, tested with ComponentSlots and callback-driven subset changes; see [stage cleanup](rewards.md#stage-cleanup-and-entity-deletion).
+
 `DestroyAllEntities` (`0x11379e8`): `Dictionary.Values` → `DestroyEntities(values, except=null, false)` → `Dictionary.Clear` (Dictionary generic instance 399: `get_Values` spec (12523,399), `Clear` (12532,399), `Remove` (12545,399)). Removal from the dictionary is deferred to the Clear, avoiding mutation during enumeration. **Does not reset the counter `+0x14`.** `DestroyEntities` (`0x1137a6c`) skips the entity equal to `except` and calls `Entity.Destroy(bool)` on the rest; enumerator Dispose on all paths.
 
 ### Load (two passes)

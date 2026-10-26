@@ -1,4 +1,5 @@
 #include "core/gameplay/quest_return.hpp"
+#include "core/gameplay/stage_cleanup.hpp"
 #include <cstdlib>
 #include <map>
 #include <stdexcept>
@@ -12,7 +13,7 @@ struct Host final:MemberFinishHost,QuestReturnHost {
     std::map<QuestMemberId,QuestEntityLifetime> life;
     std::vector<std::string> calls;std::string fail;int human_count=0,fail_human=0;
     bool null_character=false,change_human=false;MemberExperience replacement{8,321};
-    QuestRecord record;std::function<void()> callback;std::int32_t area=5,stage=7;
+    QuestRecord record;std::function<void()> callback,cleanup_action;std::int32_t area=5,stage=7;
     TownReturnEvent event{};
     void call(std::string name){calls.push_back(name);if(name==fail)throw std::runtime_error(name);}
     std::optional<QuestMemberId> next_finish_member(FinishMemberList list)override{
@@ -40,7 +41,7 @@ struct Host final:MemberFinishHost,QuestReturnHost {
     std::int32_t defeated_enemies()override{call("defeated");return 3;}
     std::int32_t collected_prisoners()override{throw std::runtime_error("unexpected clear record");}
     std::int32_t total_damage()override{throw std::runtime_error("unexpected damage query");}
-    void cleanup_stage()override{call("cleanup");}
+    void cleanup_stage()override{call("cleanup");if(cleanup_action)cleanup_action();}
     MemberFinishHost& finish_members_host()override{call("finish");return *this;}
     void make_transition(std::int32_t mode,std::function<void()> fn,bool flag,std::uint32_t color)override{
         check(mode==1&&flag&&color==0xff000000U);call("transition");callback=std::move(fn);
@@ -50,7 +51,24 @@ struct Host final:MemberFinishHost,QuestReturnHost {
     void change_to_town_form(bool flag)override{check(!flag);call("form");area=100;stage=200;}
     void send_town_return(std::int32_t id,const TownReturnEvent& payload)override{check(id==31);call("event");event=payload;}
 };
+struct Cleanup final:StageCleanupHost {
+    Host& owner;std::optional<QuestMemberId> extra=3;
+    explicit Cleanup(Host& h):owner(h){}
+    std::vector<std::optional<QuestMemberId>> snapshot_group(std::int32_t slot)override{
+        owner.call("group"+std::to_string(slot));
+        if(slot==34)return {3};return {};
+    }
+    QuestEntityHost& destruction_host()override{return owner;}
+    std::optional<QuestMemberId> extra_entity()override{return extra;}
+    void clear_extra_entity()override{extra.reset();}
+    void clear_collecting_drops()override{owner.call("collecting_clear");}
+};
 int main(){
+    {Host h;Cleanup cleanup(h);h.cleanup_action=[&]{cleanup_quest_stage(cleanup);};return_to_town(0,h);
+        check(h.life[3].destroyed&&!cleanup.extra&&h.saved[1].level==1200&&h.saved[2].experience==99&&h.callback);
+        check(h.calls[0]=="cleanup"&&h.calls[1]=="group34"&&h.calls[4]=="group29"&&h.calls[7]=="group31");
+        check(h.calls[9]=="collecting_clear"&&h.calls[10]=="finish");}
+
     {Host h;finish_quest_members(h);
         check(h.saved[1].level==1200&&h.saved[1].experience==-8&&h.saved[2].level==1&&h.saved[2].experience==99);
         check(h.members.empty()&&h.subs.empty()&&h.life[2].destroyed&&h.life[3].destroyed&&h.human_count==9);

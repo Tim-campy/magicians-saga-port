@@ -2915,7 +2915,7 @@ game:0x06000c01,game:0x06000c01,ecs,,152,0x113565c
 game:0x06000c02,kairo.unity.ecs.World.Destroy,ecs,traced,128,0x11356f4
 game:0x06000c03,kairo.unity.ecs.World.CreateEntity,ecs,documented,32,0x1133568
 game:0x06000c04,game:0x06000c04,ecs,,32,0x1135774
-game:0x06000c05,game:0x06000c05,ecs,,32,0x1135794
+game:0x06000c05,kairo.unity.ecs.World.DestroyEntities,ecs,documented,32,0x1135794
 game:0x06000c06,kairo.unity.ecs.World.AddSystems,ecs,documented,40,0x11357b4
 game:0x06000c07,game:0x06000c07,ecs,,40,0x11357dc
 game:0x06000c09,game:0x06000c09,ecs,,28,0x113314c
@@ -2995,7 +2995,7 @@ game:0x06000c5b,game:0x06000c5b,ecs,,80,0x1137544
 game:0x06000c5c,game:0x06000c5c,ecs,,80,0x1137594
 game:0x06000c5d,kairo.unity.ecs.EntityManager.CreateEntity,ecs,documented,372,0x11375e4
 game:0x06000c5e,kairo.unity.ecs.EntityManager.Create,ecs,documented,128,0x11378d0
-game:0x06000c5f,kairo.unity.ecs.EntityManager.DestroyEntity,ecs,documented,152,0x1137950
+game:0x06000c5f,kairo.unity.ecs.EntityManager.DestroyEntity,ecs,reimplemented,152,0x1137950
 game:0x06000c60,kairo.unity.ecs.EntityManager.DestroyAllEntities,ecs,documented,132,0x11379e8
 game:0x06000c61,kairo.unity.ecs.EntityManager.DestroyEntities,ecs,documented,756,0x1137a6c
 game:0x06000c62,kairo.unity.ecs.EntityManager.AddEntity,ecs,documented,376,0x1137758
@@ -3806,7 +3806,7 @@ game:0x06000faf,game:0x06000faf,ecs,,180,0x1164378
 game:0x06000fb0,game:0x06000fb0,ecs,,12,0x116372c
 game:0x06000fb1,ecs.StageSystem.ReturnTown,ecs,reimplemented,244,0x1162dc4
 game:0x06000fb2,ecs.StageSystem.UpdateQuestRecord,ecs,reimplemented,156,0x1165728
-game:0x06000fb3,ecs.StageSystem.CleanUp,ecs,traced,476,0x11654b8
+game:0x06000fb3,ecs.StageSystem.CleanUp,ecs,reimplemented,476,0x11654b8
 game:0x06000fb4,game:0x06000fb4,ecs,,464,0x11641a8
 game:0x06000fb5,game:0x06000fb5,ecs,,304,0x11663e4
 game:0x06000fb6,ecs.StageSystem.OnHumanDead,ecs,documented,80,0x1166514

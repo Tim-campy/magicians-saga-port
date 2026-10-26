@@ -311,6 +311,11 @@ project_warnings(test_quest_rewards)
 add_test(NAME quest_rewards_contract COMMAND test_quest_rewards)
 
 add_executable(test_quest_return test_quest_return.cpp)
-target_link_libraries(test_quest_return PRIVATE quest_return)
+target_link_libraries(test_quest_return PRIVATE quest_return stage_cleanup)
 project_warnings(test_quest_return)
 add_test(NAME quest_return_contract COMMAND test_quest_return)
+
+add_executable(test_stage_cleanup test_stage_cleanup.cpp)
+target_link_libraries(test_stage_cleanup PRIVATE stage_cleanup component_slots)
+project_warnings(test_stage_cleanup)
+add_test(NAME stage_cleanup_contract COMMAND test_stage_cleanup)

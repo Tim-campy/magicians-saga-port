@@ -122,3 +122,6 @@ target_link_libraries(quest_rewards PUBLIC event_catalog quest_experience stage_
 
 saga_library(quest_return quest_return.cpp)
 target_link_libraries(quest_return PUBLIC quest_rewards)
+
+saga_library(stage_cleanup stage_cleanup.cpp)
+target_link_libraries(stage_cleanup PUBLIC quest_return)

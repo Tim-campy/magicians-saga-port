@@ -31,7 +31,7 @@ game:0x06000c62	documented	docs/subsystems/ecs.md
 game:0x06000c63	documented	docs/subsystems/ecs.md	
 game:0x06000c64	documented	docs/subsystems/ecs.md	
 game:0x06000c65	documented	docs/subsystems/ecs.md	
-game:0x06000c5f	documented	docs/subsystems/ecs.md	
+game:0x06000c5f	reimplemented	src/core/gameplay/stage_cleanup.cpp	RemoveAll callbacks before DisposeEvents and conditional registry erase; failure ordering tested with ComponentSlots
 game:0x06000c60	documented	docs/subsystems/ecs.md	
 game:0x06000c61	documented	docs/subsystems/ecs.md	
 game:0x06000c69	documented	docs/subsystems/ecs.md	
@@ -129,3 +129,4 @@ game:0x06000bf5	traced	docs/subsystems/animation.md
 game:0x06000bf7	traced	docs/subsystems/animation.md	
 game:0x06000e5f	traced	docs/subsystems/animation.md	
 game:0x06000f81	traced	docs/subsystems/animation.md	
+game:0x06000c05	documented	docs/subsystems/ecs.md	World wrapper forwards collection and excluded entity, forces manager registry removal true

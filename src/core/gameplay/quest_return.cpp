@@ -7,11 +7,11 @@ void set_saved_character_level(SavedCharacterProgression& character,std::int32_t
     // CharaData.set_level 0x116d5b4; exp_ is a distinct, unclamped field.
     character.level=std::clamp(level,1,1200);
 }
-void destroy_quest_entity(QuestMemberId id,bool notify,MemberFinishHost& host){
+void destroy_quest_entity(QuestMemberId id,bool remove_registration,QuestEntityHost& host){
     // Entity.Destroy 0x1131aa0: manager deletion precedes the destroyed flag store.
     auto& lifetime=host.entity_lifetime(id);
     if(lifetime.destroyed)return;
-    host.delete_from_manager(id,notify);
+    host.delete_from_manager(id,remove_registration);
     lifetime.destroyed=true;
 }
 void finish_quest_members(MemberFinishHost& host){

@@ -7,19 +7,23 @@ struct SavedCharacterProgression {std::int32_t level=1,experience=0;};
 void set_saved_character_level(SavedCharacterProgression&,std::int32_t);
 struct QuestEntityLifetime {bool destroyed=false;};
 enum class FinishMemberList { members,sub_members };
-class MemberFinishHost {
+class QuestEntityHost {
 public:
-    virtual ~MemberFinishHost()=default;
+    virtual ~QuestEntityHost()=default;
+    virtual QuestEntityLifetime& entity_lifetime(QuestMemberId)=0;
+    // Boolean controls removal from the entity registry, not component notifications.
+    virtual void delete_from_manager(QuestMemberId,bool remove_registration)=0;
+};
+class MemberFinishHost:public QuestEntityHost {
+public:
     // Fresh ordered cursors, opened lazily for each list; disposal/version checks belong to host.
     virtual std::optional<QuestMemberId> next_finish_member(FinishMemberList)=0;
     virtual MemberExperience& finish_human(QuestMemberId)=0;
     // May return null; original delays that null check until after the second human lookup.
     virtual SavedCharacterProgression* saved_character(MemberExperience&)=0;
-    virtual QuestEntityLifetime& entity_lifetime(QuestMemberId)=0;
-    virtual void delete_from_manager(QuestMemberId,bool)=0;
     virtual void clear_finish_members(FinishMemberList)=0;
 };
-void destroy_quest_entity(QuestMemberId,bool,MemberFinishHost&);
+void destroy_quest_entity(QuestMemberId,bool remove_registration,QuestEntityHost&);
 // MemberSystem.OnFinish: write memory, destroy sub-members, clear lists. Does not write a save file.
 void finish_quest_members(MemberFinishHost&);
 struct TownReturnEvent {std::int32_t result,area_id,stage;};
