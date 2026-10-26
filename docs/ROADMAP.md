@@ -29,7 +29,7 @@ The plan in one page. Agents take the first unblocked task of the current work p
 ## Next tasks
 
 ### 1. Events and scripts
-- [ ] Recover SelectForm state-0 cloud_ updates and sceneResume_/IsTopForm-gated areaMark_/weaponNew_ preparation; compose state/dialog/balance guards, form_push and select_event_pass through a form host.
+- [ ] Compose SelectForm state/dialog/balance guards, select_clouds, select_markers, form_push and select_event_pass through a form host; preserve the intervening notification/decor/town update order.
 - [ ] Find the consumer of `hour_ != -1`, the writer of `SubForm.delayEvent_` (`+0x1d0`) and the remaining effect opcodes of the 15-entry table at `0x627b6e`.
 
 ### 2. Game data and saves

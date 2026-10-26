@@ -24,3 +24,5 @@ target_link_libraries(event_execution PUBLIC event_conditions event_flow event_c
 saga_library(select_event_pass select_event_pass.cpp)
 target_link_libraries(select_event_pass PUBLIC event_execution)
 saga_library(form_push form_push.cpp)
+saga_library(select_markers select_markers.cpp)
+saga_library(select_clouds select_clouds.cpp)

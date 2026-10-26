@@ -4,3 +4,7 @@ game:0x06000837	reimplemented	src/core/gameplay/form_push.cpp	SelectForm.Push: a
 game:0x06000758	reimplemented	src/core/gameplay/form_push.cpp	text-only dialog wrapper leaves dialog_ untouched; tests/test_form_push.cpp
 game:0x06000759	reimplemented	src/core/gameplay/form_push.cpp	two-text dialog wrapper stores dialog_ before push; tests/test_form_push.cpp
 game:0x0600075a	reimplemented	src/core/gameplay/form_push.cpp	dialog wrapper with factory int argument stores dialog_ before push; tests/test_form_push.cpp
+game:0x06001013	reimplemented	src/core/gameplay/select_markers.cpp	AreaData.CheckAllCompleted; repeated queries and DEBUG-dependent null behavior; tests/test_select_markers.cpp
+game:0x06000843	reimplemented	src/core/gameplay/select_markers.cpp	equipment marker predicate: stock positive, flags bit 2 absent, new; tests/test_select_markers.cpp
+game:0x06000844	reimplemented	src/core/gameplay/select_markers.cpp	hat marker predicate: stock positive and new; tests/test_select_markers.cpp
+game:0x06000845	reimplemented	src/core/gameplay/select_markers.cpp	cloth marker predicate: stock positive and new; tests/test_select_markers.cpp

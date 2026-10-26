@@ -2069,9 +2069,9 @@ game:0x0600083f,game:0x0600083f,ui,,424,0x11f5a98
 game:0x06000840,game:0x06000840,unassigned,,92,0x1207264
 game:0x06000841,game:0x06000841,unassigned,,8,0x12072c0
 game:0x06000842,game:0x06000842,unassigned,,24,0x12072c8
-game:0x06000843,game:0x06000843,unassigned,,76,0x12072e0
-game:0x06000844,game:0x06000844,unassigned,,56,0x120732c
-game:0x06000845,game:0x06000845,unassigned,,56,0x1207364
+game:0x06000843,<>c.<Update>b__117_1,unassigned,reimplemented,76,0x12072e0
+game:0x06000844,<>c.<Update>b__117_2,unassigned,reimplemented,56,0x120732c
+game:0x06000845,<>c.<Update>b__117_3,unassigned,reimplemented,56,0x1207364
 game:0x06000846,game:0x06000846,unassigned,,32,0x120739c
 game:0x06000847,game:0x06000847,unassigned,,60,0x12073bc
 game:0x06000848,game:0x06000848,unassigned,,52,0x12073f8
@@ -3902,7 +3902,7 @@ game:0x0600100f,game:0x0600100f,unassigned,,820,0x116b510
 game:0x06001010,game:0x06001010,unassigned,,948,0x116b844
 game:0x06001011,game:0x06001011,unassigned,,800,0x116bbf8
 game:0x06001012,data.AreaData.NewGame,data,traced,48,0x116bf68
-game:0x06001013,game:0x06001013,data,,456,0x116c1dc
+game:0x06001013,data.AreaData.CheckAllCompleted,data,reimplemented,456,0x116c1dc
 game:0x06001014,data.AreaData.oldNewGame,data,traced,576,0x116bf9c
 game:0x06001015,game:0x06001015,data,,8,0x116c3d4
 game:0x06001016,game:0x06001016,data,,8,0x116c3dc

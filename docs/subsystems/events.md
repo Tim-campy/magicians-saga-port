@@ -138,6 +138,19 @@ Field identities from metadata plus native field-offset tables: SelectForm.state
 - If evenCheck_ is true, ExecEvent selection runs. Null result clears evenCheck_; non-null result retains it and branches to SelectForm.Push (`0x11eec34`) via `0x11ecb30`. Pushing/returning from that form is outside the portable reached-pass kernel.
 - AcquireBalance's source is inherited Tapjoy.balance_ (field `0x04000602`). GetBalance `0x11873b4` returns +0x5c. AddBalance `0x11873bc` stores wrap32(balance+amount) at `0x1187418`; SubBalance `0x118746c` stores max(wrap32(balance-amount),0) at `0x11874c8`. HandleGetCurrencyBalanceResponse `0x1187a60` calls AddBalance with its incoming amount (`0x1187af4`), after its diagnostic call. These are static observations, not SDK execution.
 
+### Area and equipment markers after scene resume
+
+The block `0x11ec0c0` through `0x11ec498` first tests sceneResume_, then AppData.IsTopForm(this). A false test preserves the existing markers and sceneResume_. On success it allocates a zeroed areaMark_ array sized to the current area catalog, then re-reads the catalog at each loop bound, null-entry check and record fetch. Null area entries retain 0. A present area receives 2 when AreaData.CheckAllCompleted passes, otherwise 1. Allocation/partial writes are not rolled back if a later query fails. Confidence high.
+
+AreaData.CheckAllCompleted (`0x116c1dc`, `game:0x06001013`) reads its stages_ int32 array at +0x50. Null array faults; empty array returns true. It visits IDs in order:
+
+- ID -1 is skipped before reading Config.DEBUG or the quest catalog. Other invalid indices follow the catalog's bounds failure.
+- With DEBUG false, the first quest query must return non-null; flags byte +0x1c bit 1 skips the remaining checks for that ID.
+- The next quest query may be null and is skipped. Consequently DEBUG true tolerates a null entry that DEBUG false faults on in its earlier flag check.
+- A fresh quest query checks state_ (+0x10) == 1. Other states are ignored. Another fresh query then checks completion: flags bit 1 or boolean +0xa4. A found, incomplete quest returns false immediately. If every ID is skipped or completed, return true.
+
+After all area markers, Update fully enumerates equipmentData, hatData and clothData in that order using three LINQ predicates. It does not stop after a positive catalog or matching row. All predicates reject null entries and require stock_ > 0 and isNew_ byte +0x14 nonzero; EquipmentData additionally excludes flags bit 2 (BaseData.Check(4)). Stock offsets: equipment +0x2c, hat +0x64, cloth +0x24. The predicates are `0x12072e0` (`game:0x06000843`), `0x120732c` (`game:0x06000844`), and `0x1207364` (`game:0x06000845`). Their getter calls target `0x116efb8`, `0x1171874`, and `0x116e438`, respectively. Only after all three counts finish does Update assign weaponNew_ to whether any count is positive and clear sceneResume_. There is no mutation of stock or item new flags in this block.
+
 ### Form-attached continuation — `SubForm.Finish` `0x120488c`
 - Calls base `Finish`; if `delayEvent_` (+0x1d0) is set, restores `talkChara_` into state array **element 5** (not 7), resolves `delayId_`, resumes at `line_` with `args_`/`argi_`; no `wait_` decrement. Keep the 5 vs 7 asymmetry.
 - No writer of +0x1d0 found: not in `AppData.Push`, `SetEvent`, `MakeEvent`, the three `SubForm..ctor`; immediate `STR`/`STP`/`ADD` scans found only other types (`BootForm.Load`, `QuestForm..ctor`, `SelectForm.Init`). Not proof the field is dead.
@@ -169,7 +182,17 @@ Field identities from metadata plus native field-offset tables: SelectForm.state
 - 12 → `SubForm.MakeEvent(id, args)` (`0x1205028`): `Data.eventMsgData[id]`, string of int +0x20 + content +0x28 → overload `0x1205120`.
 - Both: `AppData.Push(form)` (`0x110d3b8`: `FormManager.GetInstance` → `GetCurrentForm` → `Push`), then the form is the opcode's return value. Form preparation is in [text.md](text.md).
 
+### State-0 cloud updates
+
+Confidence high: SelectForm.Update ELF `0x11ebe64`?`0x11ec0bc`, local `research/exports/delay-resume/M35965.asm`. This block follows the counter increment and precedes scene-resume markers. It captures the list count once and visits indices backwards, retrieving the live list at each access. Each non-null int32 array increments slot 6 with wrap32; when it reaches slot 7, slot 0 increments with wrap32 only when the live loop counter is divisible by 3, then slot 6 resets to zero. The native multiply/add unsigned comparison implements that divisibility test. Missing slot 7 faults after the slot-6 mutation.
+
+When slot 0 exceeds wrap32(form field +0x160 + AppData static +0x394), remove the entry first. Read AppData static +0x19c, GameView.GetGameHeight (`0x10f77f4`), AppData.IsLowAspect (`0x1113870`), Random(30), then Random(4) (`0x1102f70`), in that order. Append an eight-int32 array `[-30, y, resource, 0, 1, variant, 0, 20]`, with y = wrap32(height - (lowAspect ? 285 : 280) - firstRandom). Appended records are not updated in this pass. Failure after removal does not restore the old entry. Resource and right-edge fields remain explicit host inputs; their initialization and the RNG implementation are not inferred.
+
 ## Port
+
+- `src/core/gameplay/select_clouds.{hpp,cpp}` ports the complete cloud-update block with explicit host queries. `tests/test_select_clouds.cpp` covers backward replacement, RNG order, no second update of appended entries, signed counter gating, int32 overflow, aspect offsets and partial mutation on failure. This kernel does not complete SelectForm.Update.
+
+- `src/core/gameplay/select_markers.{hpp,cpp}` ports AreaData.CheckAllCompleted, the three equipment predicates and the scene-resume marker refresh block. The host supplies decoded records, DEBUG, the top-form test and fresh catalog accesses. It preserves partial marker writes and final dirty-flag clearing order. Tests cover sentinel IDs, empty/null stage arrays, DEBUG-dependent null behavior, discovery/completion states, sparse area marks, stock/flag filtering, full catalog enumeration and failure after successful area refresh. It is called after cloud updates and before UpdateNotifyValue, not as a complete form update.
 
 - `src/core/gameplay/select_event_pass.{hpp,cpp}` ports the state-0 counter arithmetic and the reached queue/selection block as separate entry points. `process_select_event_pass` resumes counted delays first, then checks the live counter and request flag, then selects events; it clears the flag only after a null selection result. The caller must establish the UI/state/balance guards before invoking it and handle a returned form. Tests cover modulo boundaries, queue effects changing later eligibility, retained versus cleared requests, signed periodic counters and failure ordering. This is not a full SelectForm.Update port.
 
@@ -211,10 +234,12 @@ Fixture JSON schema (all keys optional; absence preserves missing state rather t
 
 For a synthetic money-only event with nonempty effects, a minimal auto fixture is `{"context_present": true, "context_character_count": 1, "sys_save_present": false}`. This is test state, not an inferred new-game state. PRINT is required when an empty script or failed identity lookup reaches its diagnostic gate; quest_data_count is required only for that lookup's fallback. Additional predicates require their corresponding catalogs/scalars. Tool collection lengths are limited to 100000; these are harness limits, not recovered game limits.
 
-- Last recorded build: Windows/MSVC, 26/26 CTest (25 C++ contracts plus native scenario integration).
+- Last recorded build: Windows/MSVC, 28/28 CTest (26 C++ contracts plus native scenario integration).
 - Missing: population of decoded default-args/diagnostic state from saves/configuration, SelectForm integration, remaining unit `CheckTerm` predicates, integration with save-loaded execution counters; hour-based delays; `SubForm.delayEvent_` path (slot 5); `SelectForm.Update` guards; opcodes other than the eight; `SecureLong`/`SecureInt` storage; billing item source for stamina; UI forms.
 
 ## Evidence
+
+- Marker evidence: `research/exports/select-markers/` (area predicate and three LINQ predicates), `research/exports/select-equipment/` (stock getters), and `research/exports/delay-resume/M35965.asm` (gating, allocation and mutation order). GOT method usages 0x2734210/0x2734218/0x2734220 resolve to metadata methods 36032/36033/36034. Native field-offset metadata maps AreaData.stages_ to +0x50 and each stock_ field to the offsets above. Build log: `research/exports/select-markers-build.log`.
 
 - Scheduling: `research/exports/delay-resume/M35965.asm`, `research/exports/select-gates/` (Init, ChangeState) and `research/exports/select-balance/` (balance getter, arithmetic producers, response callback). Field identities use metadata definitions and the field-offset table at ELF 0x277ece8. Portable contract validation: `tests/test_select_event_pass.cpp`, local build `research/exports/select-event-pass-build.log`.
 
@@ -243,7 +268,7 @@ For a synthetic money-only event with nonempty effects, a minimal auto fixture i
 ## Open questions
 
 1. (blocking) Concrete context/catalog bindings for the 14 recovered table-used conditions; automatic selection is composed with the kernels but not yet called by a desktop form/frame loop. Populate the decoded host from data/save/ECS providers, including hero level and the Config.DEBUG/AppData.debugRescueNum initialization state. Other unit branches remain unresolved for scripts outside Event.txt.
-2. (blocking) Complete state-0 cloud updates and sceneResume_/IsTopForm-gated table preparation, then connect the recovered state/dialog/balance guards and portable Push wrappers to a real form host. The flag, counter arithmetic and reached-pass scheduling are recovered.
+2. (blocking) Connect the recovered state-0 cloud updates, the recovered marker refresh and the recovered state/dialog/balance guards and portable Push wrappers to a real form host. The flag, counter arithmetic and reached-pass scheduling are recovered.
 3. (blocking) Initial/real values of `SYSSAVEI_YUGAMI`, the `ITEM_STAMINA_UP` item state, and the money/crystal/stamina slots from save/new game.
 4. Unit dispatcher opcodes other than 1/2/4/8/10/12/15/31 (jump table has 15 entries); scripts outside `Event.txt` (quests, built events) may use them.
 5. Consumer of `DelayEvent` entries with `hour_ != -1` (none in the extracted table).
