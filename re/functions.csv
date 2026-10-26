@@ -2046,7 +2046,7 @@ game:0x06000828,game:0x06000828,ui,,504,0x11f514c
 game:0x06000829,game:0x06000829,ui,,800,0x11f33f4
 game:0x0600082a,game:0x0600082a,ui,,156,0x11eb8f4
 game:0x0600082b,game:0x0600082b,ui,,156,0x11eb990
-game:0x0600082c,game:0x0600082c,ui,,892,0x11ee8b8
+game:0x0600082c,form.SelectForm.CheckGuidArrow,ui,reimplemented,892,0x11ee8b8
 game:0x0600082d,form.SelectForm.SetReturnFlag,ui,documented,92,0x11f5344
 game:0x0600082e,game:0x0600082e,ui,,360,0x11eba2c
 game:0x0600082f,game:0x0600082f,ui,,24,0x11f53a0
@@ -2064,7 +2064,7 @@ game:0x0600083a,game:0x0600083a,ui,,56,0x11f5708
 game:0x0600083b,game:0x0600083b,ui,,376,0x11f5740
 game:0x0600083c,game:0x0600083c,ui,,372,0x11f58b8
 game:0x0600083d,form.SelectForm.<Update>b__117_0,ui,reimplemented,32,0x11f5a2c
-game:0x0600083e,game:0x0600083e,ui,,76,0x11f5a4c
+game:0x0600083e,form.SelectForm.<CheckGuidArrow>b__162_0,ui,reimplemented,76,0x11f5a4c
 game:0x0600083f,game:0x0600083f,ui,,424,0x11f5a98
 game:0x06000840,game:0x06000840,unassigned,,92,0x1207264
 game:0x06000841,game:0x06000841,unassigned,,8,0x12072c0
@@ -2073,8 +2073,8 @@ game:0x06000843,<>c.<Update>b__117_1,unassigned,reimplemented,76,0x12072e0
 game:0x06000844,<>c.<Update>b__117_2,unassigned,reimplemented,56,0x120732c
 game:0x06000845,<>c.<Update>b__117_3,unassigned,reimplemented,56,0x1207364
 game:0x06000846,<>c.<SetTalkFuki>b__135_0,unassigned,reimplemented,32,0x120739c
-game:0x06000847,game:0x06000847,unassigned,,60,0x12073bc
-game:0x06000848,game:0x06000848,unassigned,,52,0x12073f8
+game:0x06000847,<>c.<CheckGuidArrow>b__162_1,unassigned,reimplemented,60,0x12073bc
+game:0x06000848,<>c.<CheckGuidArrow>b__162_2,unassigned,reimplemented,52,0x12073f8
 game:0x06000849,game:0x06000849,unassigned,,8,0x120742c
 game:0x0600084a,game:0x0600084a,unassigned,,52,0x1207434
 game:0x0600084b,game:0x0600084b,ui,,272,0x1207468

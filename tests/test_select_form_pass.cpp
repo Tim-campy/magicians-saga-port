@@ -1,6 +1,7 @@
 #include "core/gameplay/select_form_pass.hpp"
 #include "core/gameplay/select_navigation.hpp"
 #include "core/gameplay/select_late.hpp"
+#include "core/gameplay/select_guide.hpp"
 #include <cstdlib>
 #include <iostream>
 #include <stdexcept>
@@ -86,11 +87,12 @@ struct Host:SelectFormPassHost,SelectCloudHost,SelectMarkerHost,EventExecutionHo
         catalog->at(1)=record;
     }
 };
-struct LateBindings final:SelectBuildingHost,SelectTownButtonsHost,SelectGuidanceSaveHost,SelectCameraHost,SelectReviewHost {
-    int save_calls=0,platform_calls=0;
+struct LateBindings final:SelectBuildingHost,SelectTownButtonsHost,SelectGuidanceSaveHost,SelectCameraHost,SelectReviewHost,SelectGuideHost {
+    int save_calls=0,platform_calls=0,guide_sums=0;
     bool pressed(std::uint32_t) override {return false;}
     void play_button_sound() override {throw std::logic_error("unexpected sound");}
-    std::shared_ptr<BuildingSlots> building_slots() override {throw std::logic_error("unexpected slots");}
+    std::shared_ptr<BuildingSlots> building_slots() override {return std::make_shared<BuildingSlots>();}
+    std::shared_ptr<GuideTowns> towns() override {return std::make_shared<GuideTowns>();}
     std::shared_ptr<EventIntegers> save_integers() override {throw std::logic_error("unexpected save array");}
     std::shared_ptr<BuildingMenuCatalog> buildings() override {throw std::logic_error("unexpected buildings");}
     bool can_build(std::int32_t) override {throw std::logic_error("unexpected build");}
@@ -105,7 +107,7 @@ struct LateBindings final:SelectBuildingHost,SelectTownButtonsHost,SelectGuidanc
     EventObject area_form() override {throw std::logic_error("unexpected area form");}
     EventObject make_obstacle(std::int32_t) override {throw std::logic_error("unexpected obstacle");}
     EventObject make_store_invite() override {throw std::logic_error("unexpected invite");}
-    std::int32_t sum_quest_challenges() override {throw std::logic_error("unexpected quests");}
+    std::int32_t sum_quest_challenges() override {++guide_sums;return 0;}
     std::shared_ptr<EventIntegers> system_save_integers() override {throw std::logic_error("unexpected system save");}
     std::int32_t store_limit_slot() override {throw std::logic_error("unexpected limit");}
     void add_money(std::int32_t) override {throw std::logic_error("unexpected money");}
@@ -135,18 +137,19 @@ struct LateBindings final:SelectBuildingHost,SelectTownButtonsHost,SelectGuidanc
 };
 int main() {
     {
-        auto h=std::make_shared<Host>();h->room_button=false;h->state.events.loop_counter=2;
+        auto h=std::make_shared<Host>();h->room_button=false;h->state.events.loop_counter=0;
         SelectPreludeState prelude{0,0,0,-10};SelectTouchMoveState movement{false,0,0,0,-1};
         auto owner=std::shared_ptr<SelectFormPassState>(h,&h->state);
-        SelectUpdateBindings bindings{prelude,*h,owner,*h,*h,*h,h->queue,*h,h->conditions,movement,*h,*h,h};
+        LateBindings late;SelectGuideState guide_state;SelectGuidePassHost guide_pass{*h,guide_state,late};
+        SelectUpdateBindings bindings{prelude,*h,owner,guide_pass,*h,*h,h->queue,*h,h->conditions,movement,*h,*h,h};
         SelectBuildingState building{-1,prelude.camera_x,0,movement.drag_distance,-1,3};
         SelectTownButtonsState town{-1,0};TownBubbleState bubble{-1,nullptr,3};
-        SelectCameraState camera{false,2,0,prelude.camera_x,building.camera_y,0,1000};LateBindings late;
+        SelectCameraState camera{false,2,0,prelude.camera_x,building.camera_y,0,1000};
         h->state.auto_save=true;
         check(update_select_form(bindings,building,late,town,bubble,late,late,camera,late,late),"full Update return");
         check(prelude.camera_x==-9 && building.unlock_info_frames==2 && bubble.frames==2,"full update reaches movement and lifetimes");
         check(late.save_calls==1 && late.platform_calls==1 && !h->state.auto_save,"full update saves before late gates");
-        check(h->log.at(h->log.size()-2)=="guide_late" && h->log.back()=="bgm","late guide and BGM order");
+        check(late.guide_sums==2 && guide_state.flags->at(0)==1 && guide_state.flags->at(1)==0 && h->log.back()=="bgm","forced and late recovered guide calls before BGM");
         h->state.form.dialog=h->child;h->state.auto_save=true;h->log.clear();
         update_select_form(bindings,building,late,town,bubble,late,late,camera,late,late);
         check(late.save_calls==1 && late.platform_calls==1 && bubble.frames==2 && prelude.camera_x==-9,"dialog skips the entire late continuation");

@@ -204,7 +204,7 @@ The portable image helpers accept an ordered values view with stable membership 
 
 State 0 executes counter advance, clouds, conditional markers, notifications, balance guard, active-X, decorations and town-human updates, in that order. At `0x11ec4e0`, the live signed counter <=2 enters a loop starting at zero. Each condition re-reads sysSave integer slot 19 through SecureInt conversion (`0x11ec4f8`?`0x11ec520`). Each `TownSystem.UpdateEnable(index)` (`0x116a424`) returning true invokes `AppData.ExecEvent(1)` through the null-context forwarder (`0x110c65c`). This bypasses eligibility, can execute event 1 multiple times, and discards each returned form without stopping the loop. Afterward `CheckGuidArrow(true)` (`0x11ee8b8`) runs, including when the count is zero or negative. The counter >2 path skips only this setup, not the queue. Confidence high from the bounded Update export and method registry.
 
-The composed pass then runs counted delays and selection. A selected form goes through `push_select_form`, preserving autoSave/evenCheck writes before manager access. `ReturnTrue` means the original returns true at this boundary. `ContinueInput` means resume at `0x11ec7ec`; it is deliberately not a successful whole-frame result. Notification, decoration, town, balance, capture and guide bodies remain required host methods with no default no-op implementation. The host also owns ChangeState's label updates and final state write. A desktop binding must preserve shared application/static flag ownership across forms, rather than create independent copies per form.
+The composed pass then runs counted delays and selection. A selected form goes through `push_select_form`, preserving autoSave/evenCheck writes before manager access. `ReturnTrue` means the original returns true at this boundary. `ContinueInput` means resume at `0x11ec7ec`; it is deliberately not a successful whole-frame result. Notification, decoration, town, balance and capture bodies remain required host methods with no default no-op implementation. The host also owns ChangeState's label updates and final state write. A desktop binding must preserve shared application/static flag ownership across forms, rather than create independent copies per form.
 
 ### Touch movement and town-human contact
 
@@ -332,7 +332,25 @@ IsReviewed (`0x111750c`, `game:0x06000259`) and HasReviewedCoinGotten (`0x11175a
 
 `tests/test_select_late.cpp` covers normal timer passage, zero expiry, the old camera snapshot after movement, RNG and area short circuits, exact-value flags, guide-side counter mutation, prompt early return, reward flag-before-event order, discarded event forms, prior-event suppression, captured array identity and failures without rollback. `test_select_form_pass.cpp` exercises `update_select_form` from the common prelude through camera/lifetime/BGM, then verifies that dialog and room-button returns bypass the entire late continuation. Missing platform/form/save providers remain explicit; no live review service or payment operation is performed by these tests.
 
+### Guide-arrow state and complete count passes
+
+`SelectForm.CheckGuidArrow` (`0x11ee8b8`, `game:0x0600082c`) maintains the two-byte bool array at +0x1f8. Force true replaces it with a newly zeroed length-2 array before querying anything else. Force false requires the existing array and tests slot 0: only a true slot recomputes it as SumAllQuestsChallengeCount()==0. False stays false until a forced refresh. The sum is written into the array captured before the call. On an unforced refresh, the method re-fetches the current array before checking slot 1, so replacement during the sum callback is observable. Null and short arrays fail at their reached accesses. Confidence high.
+
+Slot 1 is recomputed only when forced or currently true. It performs three complete counts in order, even when the first count is zero:
+
+1. Capture TownSystem.GetBuildingList. Count rows accepted by `<CheckGuidArrow>b__162_0` (`0x11f5a4c`, `game:0x0600083e`): null is false; otherwise require row[1], accept only -1, then CheckEnable(row[0]). The chip id comes from row[0], not the array position. Invalid short rows fault.
+2. Capture Data.get_townData. Count `<CheckGuidArrow>b__162_1` (`0x12073bc`, `game:0x06000847`): non-null record, BaseData.Check(1) true (flags +0x1c bit 0), then int32 +0x20 != -1. The field is represented as id without assuming its wider gameplay meaning.
+3. Obtain a fresh building list. Count `<CheckGuidArrow>b__162_2` (`0x12073f8`, `game:0x06000848`): non-null row and row[1] != -1.
+
+Only after all three counts complete, fetch the live +0x1f8 array and write slot 1 as `(available_count > 0) && (occupied_count == active_town_count)`. Existing slot 1 is retained if any enumeration fails. Each captured container remains the source of its own enumeration; replacement of the provider's building list during CheckEnable affects the third pass, not the first. Managed array lengths remain fixed. These are not short-circuit Any queries: later invalid rows still fault. Count uses a checked int32 increment. The cached delegates used by the original do not add gameplay state in the portable predicates.
+
+Evidence: bounded instructions in local `research/exports/select-guide/`. Relocation-aware method-spec records at `0x6968d4` resolve indices 57465/57475 to Enumerable.Count and 57623/57636 to Enumerable.Where; GOT slots are `0x272fd08`/`0x272fd18` and `0x272fd28`/`0x272fd38`. Predicate method references resolve via GOT `0x2734250`, `0x2734258`, `0x2734260`. `research/exports/select-guide-linq/F12addec.asm` shows the Count overflow guard at ELF `0x12ae034` before increment at `0x12ae03c`. Array/reference validation and predicate control flow were read from the native code; original runtime state remains unobserved.
+
+`select_guide.{hpp,cpp}` implements the state machine and all three predicates. `SelectGuidePassHost` replaces the guide callback while forwarding the other required services. The full Update integration test now runs this concrete adapter for both the first-cycle forced call and the late unforced call; the standalone contract test covers sticky false flags, forced replacement, nulls, malformed later rows, captured array writes, row chip ids and provider replacement. Drawing the arrows and loading the town/building data remain separate work.
+
 ## Port
+
+- `src/core/gameplay/select_guide.{hpp,cpp}` ports CheckGuidArrow and its predicates; `SelectGuidePassHost` binds both calls in the composed Update. See `test_select_guide.cpp` and the full pass integration test.
 
 - `src/core/gameplay/select_late.{hpp,cpp}` composes the remaining Update flow, review flag getters and the prompt/reward gates. The full callback-based entry is `update_select_form`; it is tested across early returns and a normal complete pass.
 
@@ -400,7 +418,7 @@ Fixture JSON schema (all keys optional; absence preserves missing state rather t
 
 For a synthetic money-only event with nonempty effects, a minimal auto fixture is `{"context_present": true, "context_character_count": 1, "sys_save_present": false}`. This is test state, not an inferred new-game state. PRINT is required when an empty script or failed identity lookup reaches its diagnostic gate; quest_data_count is required only for that lookup's fallback. Additional predicates require their corresponding catalogs/scalars. Tool collection lengths are limited to 100000; these are harness limits, not recovered game limits.
 
-- Last recorded build: Windows/MSVC, 39/39 CTest (38 C++ contracts plus native scenario integration).
+- Last recorded build: Windows/MSVC, 40/40 CTest (39 C++ contracts plus native scenario integration).
 - Missing: population of decoded default-args/diagnostic state from saves/configuration, SelectForm integration, remaining unit `CheckTerm` predicates, integration with save-loaded execution counters; hour-based delays; `SubForm.delayEvent_` path (slot 5); `SelectForm.Update` guards; opcodes other than the eight; `SecureLong`/`SecureInt` storage; billing item source for stamina; UI forms.
 
 ## Evidence
@@ -434,7 +452,7 @@ For a synthetic money-only event with nonempty effects, a minimal auto fixture i
 ## Open questions
 
 1. (blocking) Concrete context/catalog bindings for the 14 recovered table-used conditions; automatic selection is composed with the kernels but not yet called by a desktop form/frame loop. Populate the decoded host from data/save/ECS providers, including hero level and the Config.DEBUG/AppData.debugRescueNum initialization state. Other unit branches remain unresolved for scripts outside Event.txt.
-2. (blocking) Bind update_select_form to a desktop form host: implement notification/decor/town/guide/capture callbacks, orientation/image-dictionary storage, live camera dimensions, decoded saves and form factories. The full recovered control flow through buttons, guidance/save, camera, lifetime, review gates and BGM is composed and tested with explicit callbacks. Recover the writers/initial values of review slots (+0x30c/+0x310) and Config platform code (+0x0); no values are guessed.
+2. (blocking) Bind update_select_form to a desktop form host: implement notification/decor/town/capture callbacks and populate the recovered guide adapter, orientation/image-dictionary storage, live camera dimensions, decoded saves and form factories. The full recovered control flow through buttons, guidance/save, camera, lifetime, review gates and BGM is composed and tested with explicit callbacks. Recover the writers/initial values of review slots (+0x30c/+0x310) and Config platform code (+0x0); no values are guessed.
 3. (blocking) Initial/real values of `SYSSAVEI_YUGAMI`, the `ITEM_STAMINA_UP` item state, and the money/crystal/stamina slots from save/new game.
 4. Unit dispatcher opcodes other than 1/2/4/8/10/12/15/31 (jump table has 15 entries); scripts outside `Event.txt` (quests, built events) may use them.
 5. Consumer of `DelayEvent` entries with `hour_ != -1` (none in the extracted table).
