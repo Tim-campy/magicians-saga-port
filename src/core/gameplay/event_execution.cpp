@@ -54,4 +54,44 @@ EventObject select_and_execute_events(EventDelayQueue& queue, EventExecutionHost
     }
     return nullptr;
 }
+std::shared_ptr<EventCatalog> DecodedEventExecutionHost::events() { return state_.catalog; }
+EventObject DecodedEventExecutionHost::default_event_args() {
+    if (!state_.sys_save_present.value()) return nullptr;
+    if (!state_.sys_save_strings) throw std::invalid_argument("null sysSave string array");
+    return state_.sys_save_strings->at(0);
+}
+void DecodedEventExecutionHost::diagnose(EventDiagnostic kind,std::int32_t id) {
+    if (state_.print_enabled.value()) state_.diagnostic(kind,id);
+}
+void DecodedEventExecutionHost::empty_event_diagnostic(std::int32_t id) {
+    diagnose(EventDiagnostic::EmptyScript,id);
+}
+EventObject DecodedEventExecutionHost::dispatch(const EventInstruction& row,const EventContext& context) {
+    return flow_.dispatch(row,context);
+}
+std::int32_t DecodedEventExecutionHost::identify_script(const EventScript& script) {
+    // GetDelayId 0x110caa0: fresh catalog accesses, then a length-only fallback.
+    for (std::size_t i=0;i<catalog(*this)->size();++i) {
+        if (!record(*this,static_cast<std::int32_t>(i))) continue;
+        if (required(record(*this,static_cast<std::int32_t>(i))).effects==script)
+            return static_cast<std::int32_t>(i);
+    }
+    const auto count=state_.quest_data_count.value();
+    if (count>static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max()))
+        throw std::length_error("questData length exceeds managed array bounds");
+    // 0x110cbc8..0x110cbd8 increments a local index without loading any element.
+    // Under valid managed-array bounds the loop has no observable side effect.
+    diagnose(EventDiagnostic::UnknownScript,-1);
+    return -1;
+}
+EventScript DecodedEventExecutionHost::resolve_script(std::int32_t id) {
+    // Preserve the original early guard even if the catalog is absent.
+    if (id>999) return nullptr;
+    return resolve_event_script(*catalog(*this),id);
+}
+std::int32_t DecodedEventExecutionHost::read_talk_character() {return flow_.read_talk_character();}
+void DecodedEventExecutionHost::restore_talk_character(std::size_t slot,std::int32_t value) {
+    flow_.restore_talk_character(slot,value);
+}
+
 }

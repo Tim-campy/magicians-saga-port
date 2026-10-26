@@ -445,7 +445,7 @@ game:0x060001cf,game:0x060001cf,boot,,436,0x110d488
 game:0x060001d0,game:0x060001d0,boot,,160,0x110d63c
 game:0x060001d1,main.AppData.Push,boot,documented,68,0x110d3b8
 game:0x060001d2,main.AppData.GetDelayScript,boot,reimplemented,176,0x110d6dc
-game:0x060001d3,main.AppData.GetDelayId,boot,documented,428,0x110caa0
+game:0x060001d3,main.AppData.GetDelayId,boot,reimplemented,428,0x110caa0
 game:0x060001d4,game:0x060001d4,boot,,248,0x110d78c
 game:0x060001d5,game:0x060001d5,boot,,308,0x110d884
 game:0x060001d6,game:0x060001d6,boot,,204,0x110d9b8

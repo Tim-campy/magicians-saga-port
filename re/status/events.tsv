@@ -7,7 +7,7 @@ game:0x060001cd	traced	docs/subsystems/events.md	8-byte forwarder to unit dispat
 game:0x060001ce	documented	docs/subsystems/events.md	unit dispatcher; opcodes 1/2/4/8/10/12/15/31 ported in event_dispatch.cpp, others unknown
 game:0x060001d1	documented	docs/subsystems/events.md	AppData.Push -> FormManager current form Push
 game:0x060001d2	reimplemented	src/core/gameplay/event_catalog.cpp	GetDelayScript on supplied id-indexed catalog; tests/test_event_catalog.cpp
-game:0x060001d3	documented	docs/subsystems/events.md	identity path ported in event_catalog.cpp; fallback requires explicit host callback
+game:0x060001d3	reimplemented	src/core/gameplay/event_execution.cpp	fresh identity scan, questData_ length fallback, PRINT gate; tests/test_event_execution.cpp
 game:0x060001c0	reimplemented	src/core/gameplay/event_conditions.cpp	record eligibility on supplied catalog; tests/test_event_conditions.cpp
 game:0x060001c1	reimplemented	src/core/gameplay/event_conditions.cpp	matrix AND; empty false and short-circuit; tests/test_event_conditions.cpp
 game:0x060001c3	traced	docs/subsystems/events.md	unit evaluator: 14 Event.txt predicates ported behind data host; other handlers unresolved
