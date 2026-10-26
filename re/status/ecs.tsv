@@ -130,7 +130,7 @@ game:0x06000bf7	traced	docs/subsystems/animation.md
 game:0x06000e5f	traced	docs/subsystems/animation.md	
 game:0x06000f81	reimplemented	src/core/gameplay/projectile_launch.cpp	Binary32 distance and int32 duration height; ordered projectile modification animation additions
 game:0x06000c05	documented	docs/subsystems/ecs.md	World wrapper forwards collection and excluded entity, forces manager registry removal true
-game:0x06000f6f	documented	docs/subsystems/ecs.md	Per-entity three-axis integration and parent override ported; live subset enumerator pending
+game:0x06000f6f	reimplemented	src/core/gameplay/motion_pass.cpp	Live And 0 1 group iteration and complete movement kernel; parent order and group reinsertion tested
 game:0x06000f6d	traced	docs/subsystems/ecs.md	Required Position Speed subset slots 0 1
 game:0x06000f6e	documented	docs/subsystems/ecs.md	NeedsUpdate returns enabled byte and ignores pass
 game:0x06000f7d	documented	docs/subsystems/ecs.md	NeedsUpdate returns enabled byte and ignores pass

@@ -14,14 +14,14 @@ The game is a Unity 6 / IL2CPP build: its logic is ARM64 code in `libil2cpp.so`,
 
 <sub>Percentages count the 10,959 methods with native code in the two game assemblies (`re/functions.csv`) and the formats in `re/formats.csv`, at the `documented` stage. Unity, mscorlib and other third-party assemblies are not counted.</sub>
 
-Milestone **M3** (first playable loop) is current. No playable build exists yet: the C++ modules reproduce documented contracts in isolation and are tested on Windows and, in CI, on Linux.
+Milestone **M3** (first playable loop) is current. No playable build exists yet: the C++ modules reproduce documented contracts with both unit and composed gameplay tests on Windows and, in CI, on Linux. Projectile/movement and collision/expiration sequences now use live entity groups; the complete frame loop is not integrated.
 
 | Work package | State |
 | --- | --- |
 | 1. Events and scripts | [Event pipeline](docs/subsystems/events.md) from Event.txt to effects: executor, delayed-event queue, dispatcher of the 8 effect opcodes in use and the progression effects (money, crystals, areas, missions, stamina) are ported; condition predicates and the id-indexed loader are open. |
 | 2. Game data and saves | [Data tables](docs/subsystems/data.md) (UTF-8, id-indexed with gaps) and the [save](docs/subsystems/save.md) structure are mapped; the [script payload](docs/formats/script-payload.md) codec is ported. The save envelope (`SecureProperty`, CRC64) is not decoded yet. |
-| 3. Combat, RNG and rewards | [Combat](docs/subsystems/combat.md) entry, hit test, damage pipeline and affinity, [rewards](docs/subsystems/rewards.md) from defeat to the quest result and town return; parameter subtraction, affinity and stock grants are ported. The [RNG](docs/subsystems/rng.md) generator is open. |
-| 4. ECS world and animation | [ECS](docs/subsystems/ecs.md) entities, component slots, filters, enumeration and lifecycle; [animation](docs/subsystems/animation.md) transitions and payload codecs are ported. |
+| 3. Combat, RNG and rewards | [Combat](docs/subsystems/combat.md) damage, flight, collisions, impacts and temporary areas have tested ports; [rewards](docs/subsystems/rewards.md), progression and town-return modules are available. Live group passes compose with hit/expiration tests. A public seeded [RNG](docs/subsystems/rng.md) backend is ported; the original live generator selection/seed remains open. |
+| 4. ECS world and animation | [ECS](docs/subsystems/ecs.md) component slots, filters and live subset membership/order are ported; dynamic registration/IDs and the full scheduler remain open; [animation](docs/subsystems/animation.md) transitions and payload codecs are ported. |
 | 5. Text and fonts | [Text](docs/subsystems/text.md) preparation, split/trim, argument substitution, markup parameters, reveal timing and fitting are ported; [fonts](docs/subsystems/fonts.md) state is ported, the rendering backend is open. |
 | 6. Boot, forms and frame loop | [Boot](docs/subsystems/boot.md) path, frame and pause gates, [form](docs/subsystems/ui.md) events are mapped statically. |
 | 7. Assets | [Asset pipeline](docs/subsystems/assets.md): the [Jar containers](docs/formats/jar-container.md), [SEB](docs/formats/seb.md) and [OPT](docs/formats/opt.md) are rebuilt byte-exactly; Unity textures, audio and fonts are extracted; C++ readers and a technical viewer exist. |

@@ -439,3 +439,8 @@ add_executable(test_live_combat_subsets test_live_combat_subsets.cpp)
 target_link_libraries(test_live_combat_subsets PRIVATE subset_cursors)
 project_warnings(test_live_combat_subsets)
 add_test(NAME live_combat_subsets_contract COMMAND test_live_combat_subsets)
+
+add_executable(test_motion_pass test_motion_pass.cpp)
+target_link_libraries(test_motion_pass PRIVATE motion_pass)
+project_warnings(test_motion_pass)
+add_test(NAME motion_pass_contract COMMAND test_motion_pass)
