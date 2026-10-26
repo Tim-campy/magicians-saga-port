@@ -43,6 +43,11 @@ int main(int argc,char** argv){
         check(argc==4);auto data=CultureData::load(argv[1]);CultureDataHost host(data);
         auto culture=host.specific(saga::core::decode_culture_utf8(argv[2]));
         auto format=host.get_format(*culture);
+        saga::core::CultureInstance lazy;lazy.identity.lcid=culture->identity.lcid;
+        auto assigned=std::make_shared<saga::core::CultureNumberFormat>();assigned->positive=u"P";
+        saga::core::set_culture_number_format(lazy,assigned,host);
+        check(lazy.identity.constructed&&lazy.name==culture->name&&lazy.number_index==culture->number_index);
+        check(lazy.number_format==assigned&&host.get_format(lazy)==assigned);
         const auto value=saga::core::parse_apply_integer(saga::core::decode_culture_utf8(argv[3]),{format->positive,format->negative});
         check(host.get_format(*culture)==format);
         auto invariant=host.specific(u"");check(invariant==host.invariant_culture());

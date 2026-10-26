@@ -42,6 +42,23 @@ struct Current:CurrentCultureHost {
 };
 int main(){
     Fixture f;Host h;
+    {CultureInstance existing;existing.identity.lcid=99;existing.identity.territory=u"old";
+        existing.name=u"old";existing.number_index=77;existing.read_only=true;existing.use_user_override=true;
+        existing.inherited=true;existing.number_format=std::make_shared<CultureNumberFormat>();
+        auto original_format=existing.number_format;
+        check(!populate_culture_by_lcid(existing,99,f.tables()));
+        check(existing.identity.lcid==99&&existing.name==u"old"&&existing.number_index==77);
+        check(populate_culture_by_lcid(existing,65537,f.tables()));
+        check(existing.identity.lcid==1&&existing.name==u"aa"&&existing.number_index==8);
+        check(existing.identity.territory==u"old"&&!existing.identity.constructed);
+        check(existing.read_only&&existing.use_user_override&&existing.inherited&&existing.number_format==original_format);
+        check(populate_culture_by_lcid(existing,-65534,f.tables()));
+        check(existing.identity.lcid==2&&existing.identity.territory==u"ZZ");
+        existing.identity.constructed=true;
+        check(populate_culture_by_lcid(existing,1,f.tables())&&existing.identity.constructed);
+        word(f.records,0x14,f.add(""));
+        check(populate_culture_by_lcid(existing,1,f.tables())&&existing.identity.territory==u"");
+        word(f.records,0x14,0);}
     fails([&]{create_specific_culture(std::nullopt,f.tables(),h);},CultureSelectionFailure::NullName);
     check(create_specific_culture(u"",f.tables(),h)==h.invariant && h.lowered.empty());
     auto direct=create_specific_culture(u"AA-ZZ",f.tables(),h);

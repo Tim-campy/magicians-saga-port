@@ -109,6 +109,7 @@ CultureData CultureData::load(const std::filesystem::path& root){
 }
 std::u16string CultureDataHost::lower_invariant(const std::u16string& value){return core::lower_invariant_text(value,data_.lowercase_tables());}
 std::shared_ptr<core::CultureInstance> CultureDataHost::specific(const std::optional<std::u16string>& name){return core::create_specific_culture(name,data_.tables(),*this);}
+bool CultureDataHost::populate(core::CultureInstance& culture,std::int32_t lcid){return core::populate_culture_by_lcid(culture,lcid,data_.tables());}
 std::shared_ptr<core::CultureNumberFormat> CultureDataHost::construct_number_format(const core::CultureInstance& culture){
     return core::read_culture_number_format(culture,false,data_.number_records(),data_.tables().pool);
 }

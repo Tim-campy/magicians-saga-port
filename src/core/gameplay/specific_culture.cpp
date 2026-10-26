@@ -13,19 +13,23 @@ std::u16string text(std::string_view pool,std::size_t offset) {
     if(end==pool.npos)throw std::invalid_argument("unterminated culture text");
     return decode_culture_utf8(pool.substr(offset,end-offset));
 }
-std::shared_ptr<CultureInstance> populate(const CultureTables& tables,std::size_t row) {
+void populate_row(CultureInstance& result,const CultureTables& tables,std::size_t row) {
     if(tables.records.size()%56 || row>=tables.records.size()/56)throw std::invalid_argument("invalid culture row");
     const auto record=tables.records.substr(row*56,56);
-    auto result=std::make_shared<CultureInstance>();
     const auto lcid=word(record,0);
-    result->identity.lcid=static_cast<std::int32_t>(lcid)-(lcid>=0x8000?65536:0);
-    result->identity.constructed=true;
-    result->name=text(tables.pool,word(record,8));
+    result.identity.lcid=static_cast<std::int32_t>(lcid)-(lcid>=0x8000?65536:0);
+    result.name=text(tables.pool,word(record,8));
     const auto territory=word(record,0x14);
-    if(territory)result->identity.territory=text(tables.pool,territory);
+    // Native zero-offset branch skips the store, preserving an existing territory.
+    if(territory)result.identity.territory=text(tables.pool,territory);
     const auto number=word(record,0x20);
     if(number>=0x8000)throw std::invalid_argument("negative culture number index");
-    result->number_index=number;
+    result.number_index=number;
+}
+std::shared_ptr<CultureInstance> populate(const CultureTables& tables,std::size_t row) {
+    auto result=std::make_shared<CultureInstance>();
+    populate_row(*result,tables,row);
+    result->identity.constructed=true;
     return result;
 }
 struct NameLookup:CultureNameLookup {
@@ -38,7 +42,14 @@ struct NameLookup:CultureNameLookup {
     }
 };
 }
-// CultureInfo .ctor(int,bool,bool) 0x1e275c8: decoded fields needed for number parsing.
+// Native LCID lookup 0x1036a00 and field population 0x1036a60.
+bool populate_culture_by_lcid(CultureInstance& result,std::int32_t lcid,const CultureTables& tables){
+    const auto row=assets::find_culture_record_by_lcid(lcid,tables.records);
+    if(!row)return false;
+    populate_row(result,tables,*row);
+    return true;
+}
+// CultureInfo .ctor(int,bool,bool) 0x1e275c8 validates and sets initialization flags.
 std::shared_ptr<CultureInstance> create_culture_by_lcid(std::int32_t id,bool user_override,bool read_only,
     const CultureTables& tables,SpecificCultureHost& host) {
     if(id<0)throw CultureSelectionError(CultureSelectionFailure::NegativeLcid);

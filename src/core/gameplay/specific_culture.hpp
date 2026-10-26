@@ -22,6 +22,9 @@ public:
     virtual std::shared_ptr<CultureInstance> invariant_culture() = 0;
     virtual std::shared_ptr<CultureNumberFormat> invariant_number_format() = 0;
 };
+// Native LCID helper 0x1036a00, projected onto fields used by number selection.
+// A miss leaves the object untouched; constructed is owned by the managed caller.
+bool populate_culture_by_lcid(CultureInstance&,std::int32_t,const CultureTables&);
 std::shared_ptr<CultureInstance> create_culture_by_lcid(std::int32_t,bool user_override,bool read_only,
     const CultureTables&,SpecificCultureHost&);
 std::shared_ptr<CultureInstance> create_specific_culture(const std::optional<std::u16string>&,

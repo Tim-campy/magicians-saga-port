@@ -2,6 +2,7 @@
 #include "core/gameplay/specific_culture.hpp"
 #include "core/gameplay/apply_culture.hpp"
 #include "core/gameplay/culture_lower.hpp"
+#include "core/gameplay/culture_setters.hpp"
 #include <filesystem>
 namespace saga::desktop {
 // Strict schema-1 decoder; rejects unknown/duplicate fields and duplicate names.
@@ -19,7 +20,7 @@ private:
     std::vector<core::NeutralCultureEntry> neutral_;
 };
 // Data must outlive the host. Locale/thread selection stays with the caller.
-class CultureDataHost:public core::SpecificCultureHost,public core::CultureNumberHost {
+class CultureDataHost:public core::SpecificCultureHost,public core::CultureNumberHost,public core::CulturePopulationHost {
 public:
     explicit CultureDataHost(const CultureData& data):data_(data){}
     CultureDataHost(CultureData&&) = delete;
@@ -29,6 +30,7 @@ public:
     std::shared_ptr<core::CultureNumberFormat> construct_number_format(const core::CultureInstance&)override;
     std::shared_ptr<core::CultureNumberFormat> get_format(core::CultureInstance&)override;
     std::shared_ptr<core::CultureInstance> specific(const std::optional<std::u16string>&);
+    bool populate(core::CultureInstance&,std::int32_t lcid)override;
 private:
     const CultureData& data_;
     core::InvariantCultureState invariant_;

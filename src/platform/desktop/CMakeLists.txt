@@ -1,6 +1,6 @@
 add_executable(asset_inspect asset_inspect.cpp)
 saga_library(culture_data culture_data.cpp)
-target_link_libraries(culture_data PUBLIC specific_culture culture_lower)
+target_link_libraries(culture_data PUBLIC specific_culture culture_lower culture_setters)
 target_link_libraries(asset_inspect PRIVATE jar_archive opt_grid seb)
 project_warnings(asset_inspect)
 
