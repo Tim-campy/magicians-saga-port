@@ -441,6 +441,11 @@ project_warnings(test_live_combat_subsets)
 add_test(NAME live_combat_subsets_contract COMMAND test_live_combat_subsets)
 
 add_executable(test_motion_pass test_motion_pass.cpp)
-target_link_libraries(test_motion_pass PRIVATE motion_pass)
+target_link_libraries(test_motion_pass PRIVATE motion_pass update_scheduler)
 project_warnings(test_motion_pass)
 add_test(NAME motion_pass_contract COMMAND test_motion_pass)
+
+add_executable(test_update_scheduler test_update_scheduler.cpp)
+target_link_libraries(test_update_scheduler PRIVATE update_scheduler)
+project_warnings(test_update_scheduler)
+add_test(NAME update_scheduler_contract COMMAND test_update_scheduler)

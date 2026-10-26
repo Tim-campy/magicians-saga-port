@@ -72,7 +72,7 @@ game:0x06000bd5	documented	docs/subsystems/ecs.md
 game:0x06000ce4	documented	docs/subsystems/ecs.md	
 game:0x06000ce5	documented	docs/subsystems/ecs.md	
 game:0x06000ce7	documented	docs/subsystems/ecs.md	
-game:0x06000ce8	documented	docs/subsystems/ecs.md	
+game:0x06000ce8	reimplemented	src/core/ecs/update_scheduler.cpp	Ordered dispatch or concrete enabled/pass gate; contract test; runtime comparison pending.
 game:0x06000cee	documented	docs/subsystems/ecs.md	
 game:0x06000cf0	documented	docs/subsystems/ecs.md	
 game:0x06000ce2	documented	docs/subsystems/ecs.md	
@@ -99,7 +99,7 @@ game:0x06000cde	traced	docs/subsystems/ecs.md
 game:0x06000cc2	traced	docs/subsystems/ecs.md	
 game:0x06000cca	traced	docs/subsystems/ecs.md	
 game:0x06000dba	documented	docs/subsystems/animation.md	
-game:0x06000dbb	documented	docs/subsystems/animation.md	
+game:0x06000dbb	reimplemented	src/core/ecs/update_scheduler.cpp	Ordered dispatch or concrete enabled/pass gate; contract test; runtime comparison pending.
 game:0x06000dbe	documented	docs/subsystems/animation.md	
 game:0x06000dc2	documented	docs/subsystems/animation.md	
 game:0x06000dc3	documented	docs/subsystems/animation.md	
@@ -132,9 +132,30 @@ game:0x06000f81	reimplemented	src/core/gameplay/projectile_launch.cpp	Binary32 d
 game:0x06000c05	documented	docs/subsystems/ecs.md	World wrapper forwards collection and excluded entity, forces manager registry removal true
 game:0x06000f6f	reimplemented	src/core/gameplay/motion_pass.cpp	Live And 0 1 group iteration and complete movement kernel; parent order and group reinsertion tested
 game:0x06000f6d	traced	docs/subsystems/ecs.md	Required Position Speed subset slots 0 1
-game:0x06000f6e	documented	docs/subsystems/ecs.md	NeedsUpdate returns enabled byte and ignores pass
-game:0x06000f7d	documented	docs/subsystems/ecs.md	NeedsUpdate returns enabled byte and ignores pass
+game:0x06000f6e	reimplemented	src/core/ecs/update_scheduler.cpp	Ordered dispatch or concrete enabled/pass gate; contract test; runtime comparison pending.
+game:0x06000f7d	reimplemented	src/core/ecs/update_scheduler.cpp	Ordered dispatch or concrete enabled/pass gate; contract test; runtime comparison pending.
 game:0x06000b61	reimplemented	src/core/gameplay/garbage_lifetime.cpp	Pool acquire counter write and slot-22 add; impact creation binding tested
 game:0x06000ea3	traced	docs/subsystems/ecs.md	And filter containing only Garbage slot 22
-game:0x06000ea4	documented	docs/subsystems/ecs.md	Returns enabled byte +0x18 ignoring pass argument
+game:0x06000ea4	reimplemented	src/core/ecs/update_scheduler.cpp	Ordered dispatch or concrete enabled/pass gate; contract test; runtime comparison pending.
 game:0x06000ea5	documented	docs/subsystems/ecs.md	Wrapping countdown then deferred ordered destruction ported; live subset cursor and scheduler remain adapters
+game:0x06000dc6	reimplemented	src/core/ecs/update_scheduler.cpp	Concrete enabled/pass gate; tested across all 26 update systems.
+game:0x06000dce	reimplemented	src/core/ecs/update_scheduler.cpp	Concrete enabled/pass gate; tested across all 26 update systems.
+game:0x06000de3	reimplemented	src/core/ecs/update_scheduler.cpp	Concrete enabled/pass gate; tested across all 26 update systems.
+game:0x06000df2	reimplemented	src/core/ecs/update_scheduler.cpp	Concrete enabled/pass gate; tested across all 26 update systems.
+game:0x06000e05	reimplemented	src/core/ecs/update_scheduler.cpp	Concrete enabled/pass gate; tested across all 26 update systems.
+game:0x06000e19	reimplemented	src/core/ecs/update_scheduler.cpp	Concrete enabled/pass gate; tested across all 26 update systems.
+game:0x06000e2b	reimplemented	src/core/ecs/update_scheduler.cpp	Concrete enabled/pass gate; tested across all 26 update systems.
+game:0x06000e3f	reimplemented	src/core/ecs/update_scheduler.cpp	Concrete enabled/pass gate; tested across all 26 update systems.
+game:0x06000e5e	reimplemented	src/core/ecs/update_scheduler.cpp	Concrete enabled/pass gate; tested across all 26 update systems.
+game:0x06000e69	reimplemented	src/core/ecs/update_scheduler.cpp	Concrete enabled/pass gate; tested across all 26 update systems.
+game:0x06000e91	reimplemented	src/core/ecs/update_scheduler.cpp	Concrete enabled/pass gate; tested across all 26 update systems.
+game:0x06000e9c	reimplemented	src/core/ecs/update_scheduler.cpp	Concrete enabled/pass gate; tested across all 26 update systems.
+game:0x06000eab	reimplemented	src/core/ecs/update_scheduler.cpp	Concrete enabled/pass gate; tested across all 26 update systems.
+game:0x06000ebc	reimplemented	src/core/ecs/update_scheduler.cpp	Concrete enabled/pass gate; tested across all 26 update systems.
+game:0x06000efa	reimplemented	src/core/ecs/update_scheduler.cpp	Concrete enabled/pass gate; tested across all 26 update systems.
+game:0x06000f20	reimplemented	src/core/ecs/update_scheduler.cpp	Concrete enabled/pass gate; tested across all 26 update systems.
+game:0x06000f68	reimplemented	src/core/ecs/update_scheduler.cpp	Concrete enabled/pass gate; tested across all 26 update systems.
+game:0x06000f75	reimplemented	src/core/ecs/update_scheduler.cpp	Concrete enabled/pass gate; tested across all 26 update systems.
+game:0x06000f86	reimplemented	src/core/ecs/update_scheduler.cpp	Concrete enabled/pass gate; tested across all 26 update systems.
+game:0x06000f8d	reimplemented	src/core/ecs/update_scheduler.cpp	Concrete enabled/pass gate; tested across all 26 update systems.
+game:0x06000f9c	reimplemented	src/core/ecs/update_scheduler.cpp	Concrete enabled/pass gate; tested across all 26 update systems.

@@ -213,7 +213,7 @@ Call chain from the form layer (see [ui.md](ui.md)): form event 1 → `QuestForm
 - `BasePauseSystem.OnEnabled/OnDisabled` (`0x113b020/0x113b324`): null-check `this+0x10` (manager) then tail-call `PauseSystems(true/false)`. No nesting counter. Order: set_enabled writes byte → hook → PauseSystems writes isPause → IPausable dispatch → OnPause phase.
 - `RemoveAllSystems` (`0x113c1bc`): first enumerate `+0x20` and call `DisableSystem([typeof(system)])` for each (hooks and notifications **before** clearing), then reset sizes / bump versions / clear references of `+0x20,+0x28,+0x30,+0x38,+0x40,+0x48,+0x58,+0x60`, and a separate generic call on `+0x50`. Caller: `World.Destroy`.
 - `SystemManager.Serialize` (`0x113ce34`): for each system in `+0x20` ascending, slots 11 OnBeforeSerialize, 7 Serialize, 9 SerializeExtra. No count or system ID written by the wrapper. `Deserialize` (`0x113cefc`): `CreateSystems` + `AddSystems`, then for each in `+0x20`: slots 8 Deserialize, 10 DeserializeExtra, 12 OnDeserialized. No RemoveAllSystems. The stream is positional: **system order must not change**.
-- Consequence: since Update dispatch ignores the enabled byte, toggling `enabled` alone does not stop a system whose `NeedsUpdate` returns true (e.g. AnimationSystem). Do not add a generic `if (!enabled) skip`.
+- Consequence: since Update dispatch ignores the enabled byte, the manager delegates enable handling to each concrete `NeedsUpdate`; all 26 game overrides check it, including AnimationSystem. Do not add a generic `if (!enabled) skip`.
 
 ### Movement integration and projectile ordering
 
@@ -221,7 +221,7 @@ MoveSystem.Init (0x115fa0c) selects required slots [0,1]: Position and Speed. Mo
 
 Position additionally contains offsetX/Y/Z +0x1c/+0x20/+0x24 and parent +0x28. After velocity integration, a nonnull parent with Position slot 0 causes each child coordinate to be overwritten with the freshly fetched parent coordinate plus the corresponding offset. A parent without Position leaves the velocity result intact. There is no self-parent or destroyed-parent guard. A self-parent therefore adds offsets to the already integrated coordinates. The captured child's Position object remains the destination; this parent link is independent of Projectile.parent, which identifies the attacker. Parent-before-child versus child-before-parent iteration changes the result, so the production adapter must preserve subset order.
 
-Relative system order is ProjectileSystem -> MoveSystem -> CollisionSystem (factory indices 10/11/12, stores at 0x1168da0/0x1168df4/0x1168e48). Both ProjectileSystem and MoveSystem explicitly implement IUpdateSystem (native type 12847), confirmed from metadata interface arrays for type indices 4486/4484. SystemManager.Add preserves factory order in its update list. Their NeedsUpdate methods (0x1160010 / 0x115faa4) both return the enabled byte +0x18 and ignore pass. Projectile processing, including its deferred event-23/removal pass, completes before MoveSystem integrates all three velocity axes. Thus Move also applies vy after Projectile has written the current curve height; horizontal-only integration is insufficient. Other systems and the complete update-list membership remain separately scoped.
+Relative system order is ProjectileSystem -> MoveSystem -> CollisionSystem (factory indices 10/11/12, stores at 0x1168da0/0x1168df4/0x1168e48). Both ProjectileSystem and MoveSystem explicitly implement IUpdateSystem (native type 12847), confirmed from metadata interface arrays for type indices 4486/4484. SystemManager.Add preserves factory order in its update list. Their NeedsUpdate methods (0x1160010 / 0x115faa4) both return the enabled byte +0x18 and ignore pass. Projectile processing, including its deferred event-23/removal pass, completes before MoveSystem integrates all three velocity axes. Thus Move also applies vy after Projectile has written the current curve height; horizontal-only integration is insufficient. The complete membership and gates are listed below.
 
 Evidence: local `research/exports/move-system/Init.asm`, `Update.asm`, `movement-gates/`, existing `ecs-order/factory-order.json`, metadata PositionComponent offsets and raw v31 type interface entries. Confidence high for the per-entity path and this relative order; no runtime comparison.
 
@@ -260,6 +260,49 @@ The integrated test constructs Collision/Position and Garbage groups, changes me
 - Missing: GC/pooling, array type checks, subclasses overriding virtual slot methods, EntityManager/registry/ID counter and dynamic subset registration/dedup, Filter identity/hash/builders, World, SystemManager lists, dispatch, enable/pause/remove-all, (de)serialization passes. No link yet between component_slots and the animation module.
 - Header comments in `src/core/ecs/*.hpp` still cite the old `docs/35-component-slots.md` path; should point here.
 
+### Complete update schedule
+
+All 32 factory systems implement IInitSystem. The 26 IUpdateSystem entries below retain factory order; MapSystem, MemberSystem, TownSystem, SubMenuSystem, MenuSystem and StatusRenderSystem do not enter the update list. Every gate reads BaseSystem.enabled at +0x18. Five additionally require pass == 0; the other 21 ignore pass, including negative values. Gates have no side effects and are called immediately before their system body.
+
+| Factory index | System / NeedsUpdate registry id | ELF address | Gate |
+| --- | --- | --- | --- |
+| 0 | `InputSystem.NeedsUpdate` / game:0x06000f20 | 0x115b4e0 | enabled && pass == 0 |
+| 2 | `BattleSystem.NeedsUpdate` / game:0x06000dc6 | 0x1142364 | enabled |
+| 3 | `StageSystem.NeedsUpdate` / game:0x06000f9c | 0x11625e0 | enabled |
+| 4 | `HumanSystem.NeedsUpdate` / game:0x06000ebc | 0x115510c | enabled |
+| 5 | `EnemySystem.NeedsUpdate` / game:0x06000e69 | 0x114c68c | enabled |
+| 8 | `CameraSystem.NeedsUpdate` / game:0x06000de3 | 0x1143f54 | enabled && pass == 0 |
+| 9 | `ExpSystem.NeedsUpdate` / game:0x06000e91 | 0x1151b38 | enabled |
+| 10 | `ProjectileSystem.NeedsUpdate` / game:0x06000f7d | 0x1160010 | enabled |
+| 11 | `MoveSystem.NeedsUpdate` / game:0x06000f6e | 0x115faa4 | enabled |
+| 12 | `CollisionSystem.NeedsUpdate` / game:0x06000e0b | 0x1145f38 | enabled |
+| 13 | `RotateSystem.NeedsUpdate` / game:0x06000f8d | 0x1161ea4 | enabled |
+| 14 | `ParameterSystem.NeedsUpdate` / game:0x06000f75 | 0x115fe34 | enabled |
+| 15 | `EmitterSystem.NeedsUpdate` / game:0x06000e5e | 0x114ba20 | enabled |
+| 16 | `FukidashiSystem.NeedsUpdate` / game:0x06000e9c | 0x1152468 | enabled |
+| 17 | `CellSystem.NeedsUpdate` / game:0x06000e05 | 0x1145a10 | enabled |
+| 18 | `ModifyAnimatinSystem.NeedsUpdate` / game:0x06000f68 | 0x115f2ac | enabled |
+| 19 | `AnimationSystem.NeedsUpdate` / game:0x06000dbb | 0x1141bb8 | enabled |
+| 20 | `CellCullingSystem.NeedsUpdate` / game:0x06000df2 | 0x1144df4 | enabled && pass == 0 |
+| 21 | `RenderSystem.NeedsUpdate` / game:0x06000f86 | 0x1160d14 | enabled && pass == 0 |
+| 22 | `GaugeSystem.NeedsUpdate` / game:0x06000eab | 0x1153690 | enabled |
+| 23 | `EffectSystem.NeedsUpdate` / game:0x06000e3f | 0x1149e64 | enabled |
+| 24 | `CursorRenderSystem.NeedsUpdate` / game:0x06000e19 | 0x1147474 | enabled |
+| 25 | `InfoSystem.NeedsUpdate` / game:0x06000efa | 0x1159ad0 | enabled |
+| 26 | `ButtonSystem.NeedsUpdate` / game:0x06000dce | 0x1142884 | enabled && pass == 0 |
+| 30 | `DebugVisualizeSystem.NeedsUpdate` / game:0x06000e2b | 0x1147f60 | enabled |
+| 31 | `GarbageSystem.NeedsUpdate` / game:0x06000ea4 | 0x115314c | enabled |
+
+SystemManager.Update captures the current list element before calling the diagnostic stopwatch. On pass 0 it reads stopwatch +0x68 separately for Reset, Start and Stop: Reset -> Start -> NeedsUpdate -> optional Update -> Stop. Even a skipped body is timed; an exception does not execute Stop. An empty list does not require a stopwatch. Other passes never access it. This uses an explicit clock adapter, not a reimplementation of public System.Diagnostics.Stopwatch.
+
+Traversal uses an increasing index and rereads the manager's list pointer and size after each body. Appended entries may execute in the same pass; removing an earlier entry may skip a shifted entry. Replacing the list affects the next index. The captured current system still executes if callbacks remove it. There is no collection-version check or manager-wide enabled/pause guard.
+
+IPausable membership, in factory order: Battle, Human, Enemy, Exp, Projectile, Move, Rotate, Parameter, Emitter, Animation, Effect and Menu systems. Membership alone does not specify each Pause body.
+
+Evidence: local `research/exports/ecs-order/update-membership.json` derived from metadata type/interface arrays (including inherited interfaces), the existing factory allocation/order evidence, `research/exports/system-gates/*.asm`, and `ecs-order/M37221_Update.asm`. The gate exports are 8 bytes for enabled-only and 28 bytes for pass-zero gates. Confidence high; no Android comparison.
+
+Port: `src/core/ecs/update_scheduler.hpp/.cpp` implements indexed dispatch, all 26 gates and ordered binding of the 26 required system bodies. Tests cover callback mutations, timer ordering, failure propagation and live enabled changes. This does not implement the missing system bodies, initialization/event subscriptions or a complete playable frame.
+
 ## Evidence
 
 - Temporary lifetime: local `research/exports/garbage-lifetime/{Init,NeedsUpdate,Update,AddGarbage}.asm`. Init writes filter value 0x16; AddGarbage writes +0x10 and passes slot 0x16; Update stores the decremented counter at 0x11532e0, then queues on signed <= 0, and calls Entity.Destroy(true) at 0x1153384 only after the first enumeration finishes. Confidence high for arithmetic and call order; Android comparison absent.
@@ -285,5 +328,5 @@ The integrated test constructs Collision/Position and Garbage groups, changes me
 5. `World.GetSubSet` contract (dedup of equal filters, initial population of a new subset from existing entities), Filter hash/equality.
 6. `Subset.get_entity` helper (`0x12af8d4`), `entitiesCache_`/`dirty_` usage, and delegate disposal of subsets.
 7. Meaning of `World.byte+0x38`; entity+0x2c is the destroyed guard, set after successful manager deletion; who subscribes OnSystemEnabled/Disabled.
-8. Which systems implement IUpdateSystem/IPausable and the final Update list order; which `NeedsUpdate` overrides check `enabled` (MoveSystem and ProjectileSystem are confirmed above).
+8. Bind initialization/event subscriptions and the remaining update bodies to the established complete system schedule.
 9. Remaining SystemManager collections (`+0x38,+0x40,+0x50,+0x58,+0x60`) and BaseSystem ctor / SetWorld initial state.

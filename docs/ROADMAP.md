@@ -31,7 +31,7 @@ Current maintainer priority: game-specific decompilation and gameplay integratio
 ## Next tasks
 
 ### Current gameplay focus
-- [ ] Bind the full system update schedule and event subscriptions around the tested live Projectile -> Move -> Collision passes and final Garbage pass; recover any missing interface/order gates before composing the complete frame.
+- [ ] Bind the full system update schedule and event subscriptions around the tested live Projectile -> Move -> Collision passes and final Garbage pass; the 26-system order and all NeedsUpdate gates are now ported/tested; initialization and missing bodies remain before composing the complete frame.
 - [ ] Complete entity registration/ID allocation, dynamic GetSubSet dedup/population and concrete effect/drop factories. All four gameplay passes now have live group implementations; a complete launch/landing and collision/expiration sequences pass integration tests.
 - [ ] Connect the existing damage/defeat/reward/progression chains to the integrated world and decoded save state, then add a desktop gameplay scenario.
 
@@ -59,7 +59,7 @@ Current maintainer priority: game-specific decompilation and gameplay integratio
 - [ ] Recover the enumeration order of `Dictionary<int, Entity>` and the entity id allocation/reuse policy (counter `+0x14`, writers of `entity+0x28`).
 - [ ] Port EntityManager registration/ID allocation and dynamic GetSubSet dedup/population on top of the ported EntitySubset; fixed collision/garbage groups already use real membership notifications.
 - [ ] Close `AnimationSystem.Update` (Seb selection by res/id, maxFrame comparison and modulo); port the loop on top of `animation_transitions`.
-- [ ] Map `World.GetSubSet` and the final IUpdateSystem/IPausable system list (which `NeedsUpdate` test `enabled`).
+- [ ] Bind World.GetSubSet and system initialization to the established IUpdateSystem/IPausable lists and tested update dispatcher.
 
 ### 5. Text and fonts
 - [ ] Reconstruct block generation in `_makeTextBlocks` for the tags the tables use (`br`, `co`, `/co`, `po`), including the scanner fallback for unmatched or too-long `<…>`.

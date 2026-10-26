@@ -111,5 +111,5 @@ game:0x06000a76	documented	docs/subsystems/combat.md	Center-first unique list an
 game:0x06000a77	documented	docs/subsystems/combat.md	Depth-first neighbor order coordinate wrap and duplicate recursion; bounded impact use ported
 game:0x06000fca	reimplemented	src/core/gameplay/boss_notification.cpp	Ordered key releases and both control lookups before event-9 deliveries; capture and failure contracts tested
 game:0x06000e0a	traced	docs/subsystems/combat.md	And filter requires Collision 32 and Position 0; initializes persistent pair list
-game:0x06000e0b	documented	docs/subsystems/combat.md	Returns enabled byte +0x18 ignoring pass
+game:0x06000e0b	reimplemented	src/core/ecs/update_scheduler.cpp	Ordered dispatch or concrete enabled/pass gate; contract test; runtime comparison pending.
 game:0x06000e0c	documented	docs/subsystems/combat.md	Visited reset ordered pair filters HP geometry and deferred event-29 delivery ported; live subset scheduler remain adapters

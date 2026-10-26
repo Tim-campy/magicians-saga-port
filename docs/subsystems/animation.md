@@ -54,7 +54,7 @@ EmitterSystem path to the particle (per enumerated entity with `Entity.get_emitt
 - `Systems.CreateSystems` puts `AnimationSystem` at array position **19** (after `ModifyAnimatinSystem` at 18, before `CellCullingSystem` 20 and `RenderSystem` 21), constructed then `set_enabled(true)`.
 - `SystemManager.Add` appends it to the IInitSystem and IUpdateSystem lists (interface offsets 13 and 14 in its vtable, start 58921) and to the IPausable list (offset 16). Its absolute index in the Update list is not known.
 - `AnimationSystem.Init` (`0x1141a58`): builds `Filter.And([2, 10])` (Seb + Animation), `World.GetSubSet` → stored at `this+0x20`; allocates an array of **24** ResourceManagers filled by `AppData.GetResourceManager(0..23)` (`this+0x28`).
-- `SystemManager.Update(pass)` → `AnimationSystem.NeedsUpdate` (`0x1141bb8`, always true, ignores pass) → `AnimationSystem.Update` (`0x1141bc0`). Reached from `QuestForm.Update`, which may run up to 3 ECS passes per form event (see [ecs.md](ecs.md)).
+- `SystemManager.Update(pass)` → `AnimationSystem.NeedsUpdate` (`0x1141bb8`, returns enabled byte +0x18, ignores pass) → `AnimationSystem.Update` (`0x1141bc0`). Reached from `QuestForm.Update`, which may run up to 3 ECS passes per form event (see [ecs.md](ecs.md)).
 
 ### AnimationSystem.Update (per pass)
 
@@ -65,7 +65,7 @@ The per-entity counter is separate from the SEB object's own frame; do not merge
 
 ### Pause
 
-`AnimationSystem.Pause(paused)` (`0x11420ac`, the IPausable implementation): if `enabled == (~paused & 1)` return; else write enabled, then call slot 5 (OnDisabled) when pausing or slot 4 (OnEnabled) when resuming. For AnimationSystem those slots are the empty `BaseSystem.OnEnabled/OnDisabled`. Because `SystemManager.Update` ignores `enabled` and `NeedsUpdate` is always true, this **does not stop** `AnimationSystem.Update`; whether animation actually freezes depends on whether the form keeps calling `World.Update`.
+`AnimationSystem.Pause(paused)` (`0x11420ac`, the IPausable implementation): if `enabled == (~paused & 1)` return; else write enabled, then call slot 5 (OnDisabled) when pausing or slot 4 (OnEnabled) when resuming. For AnimationSystem those slots are the empty `BaseSystem.OnEnabled/OnDisabled`. Although `SystemManager.Update` has no enabled guard, `AnimationSystem.NeedsUpdate` reads enabled, so pausing prevents its Update body from running. This corrects the earlier always-true interpretation: the bounded export at 0x1141bb8 loads byte +0x18 and returns it (local `research/exports/system-gates/AnimationSystem.asm`).
 
 ## Key methods
 
@@ -73,7 +73,7 @@ The per-entity counter is separate from the SEB object's own frame; do not merge
 |---|---|---|---|
 | `ecs.AnimationSystem..ctor` | game:0x06000dc4 | Constructor (called by CreateSystems) | medium |
 | `ecs.AnimationSystem.Init` | game:0x06000dba | Subset And(2,10), 24 ResourceManagers | high |
-| `ecs.AnimationSystem.NeedsUpdate` | game:0x06000dbb | Returns true | high |
+| `ecs.AnimationSystem.NeedsUpdate` | game:0x06000dbb | Returns enabled byte +0x18; ignores pass | high |
 | `ecs.AnimationSystem.Update` | game:0x06000dbc | SEB frame advance + per-entity counters + restore | medium |
 | `ecs.AnimationSystem.Pause` | game:0x06000dbe | IPausable.Pause: toggles enabled + hook | high |
 | `ecs.AnimationSystem.ChangeAnimation` | game:0x06000dbf | Set clip (+direction), optional frame reset | high |

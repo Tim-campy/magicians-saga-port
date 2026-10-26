@@ -1,3 +1,4 @@
+#include "core/ecs/update_scheduler.hpp"
 #include "core/gameplay/motion_pass.hpp"
 #include <array>
 #include <cstdlib>
@@ -34,7 +35,13 @@ struct World final:ProjectileMotionHost,ProjectileLaunchHost,ComponentObserver {
 };
 int main(){
     {World w;ProjectilePass pass;w.launch(0);check(w.projectiles.size()==1&&w.movers.size()==3);
-        for(int frame=0;frame<11;++frame){pass.update(w.projectiles,w);move_subset(w.movers);}
+        bool enabled=true;
+        GameplayUpdate projectile(10,enabled,[&](std::int32_t){pass.update(w.projectiles,w);});
+        GameplayUpdate movement(11,enabled,[&](std::int32_t){move_subset(w.movers);});
+        // This projection binds two real bodies; it is not the complete 26-system frame.
+        std::vector<UpdateSystem*> systems{&projectile,&movement};UpdateSchedule schedule{&systems,nullptr};
+        enabled=false;update_systems(schedule,1);check(w.links[0].frame==0&&w.positions[0].z==0);
+        enabled=true;for(int frame=0;frame<11;++frame)update_systems(schedule,1);
         check(w.impacts==std::vector<int>{0}&&w.projectiles.size()==0&&w.movers.size()==3);
         check(w.positions[0].z==40&&w.positions[0].y==0&&w.speeds[0].z==0);
         check(w.returned==std::vector<int>{15,27});}
