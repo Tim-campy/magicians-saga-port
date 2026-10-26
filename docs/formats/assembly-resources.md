@@ -22,6 +22,14 @@ The portable [CollationTables reader](../../src/assets/collation_tables.cpp) own
 
 ## Evidence
 
+### Extracted indexer configuration
+
+`--collation-indexers` includes the seven resource files and `collation/indexers.bin`; the latter has its own `collation_indexers` manifest entry (324 bytes). The port-defined envelope begins with ASCII `SCI1` and uint32 count 7. Each configuration is int32 range count, default index, default code point, followed by all int32 starts and all int32 exclusive ends. All words are little-endian. Order is ignorable/category/level1/level2/level3/CJK/CJK level2. Range counts are 3/6/6/4/4/3/3; defaults are -1 for ignorable/CJK, zero for category/levels. No original array contents are compiled into the port.
+
+The initializer at `0x1cd61e4` resolves ten metadata default-data offsets: 6160, 6808, 12096, 22232, 24720, 90032, 105168, 105184, 106664 and 113376. These map respectively from GOT entries `0x27437b8` through `0x2743800` in steps of 8. Ignorable starts come from a zero-initialized three-element array and MOVZ immediates at ELF `0x1cd62d8`/`0x1cd630c` (fixed-profile file offsets `0x1cd22d8`/`0x1cd230c`). The extractor validates metadata bounds and instruction shapes before serializing; the overall APK identity is checked first. Category and level1 reuse values but instantiate distinct indexers.
+
+`read_collation_indexers` in [collation_index.cpp](../../src/core/gameplay/collation_index.cpp) feeds all seven configurations through the recovered constructor. It checks the envelope and count bounds without sorting or normalizing ranges. Synthetic tests cover extraction bounds, instruction validation, manifest inventory and every truncated C++ input. Local integration confirms the original category/level1/level2/level3 indices remain in range for all 65536 UTF-16 units and each range total matches its corresponding table extent. This proves structural consistency, not the final comparison algorithm.
+
 Native descriptor production `0x100e5d4` reads count at +4, starts directory traversal at +8, and initializes payload offset from the first word +4. Its descriptor has assembly identity, name, payload offset and size; lookup at `0x100e900` compares name bytes and returns base + payload offset. The loader `0x100f018` combines the data path with `Resources` and the assembly name plus `-resources.dat`; literals are at ELF `0x64107c` and `0x62dbe9`. Bounded local exports: `research/exports/collation-descriptors/` and `collation-resource-native/`.
 
 MSCompatUnicodeTable..cctor (`0x1cd5748`) supplies the version checks and inner layouts. Its readiness flag is set after table installation, not merely after the version check. The inspector validates both actual resources against these extents; rebuilding the directory and concatenating the original payloads reproduces the entire container byte for byte. Confidence high for layouts; no runtime comparison is claimed.

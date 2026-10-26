@@ -43,3 +43,4 @@ culture-number-signs,Packed culture number-format sign fields (48-byte records a
 runtime-hashtable-primes,Runtime Hashtable prime initializer (72 little-endian int32),data,reimplemented
 assembly-resources,IL2CPP assembly resource directory and version-3 collation payloads,data,documented
 collation-core-tailoring,MSCompat version-3 core tables and tailoring payloads,data,reimplemented
+collation-indexers,SCI1 extracted collation interval configurations,data,reimplemented

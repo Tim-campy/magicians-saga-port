@@ -15,6 +15,8 @@ private:
     std::vector<CodePointRange> ranges_;
     std::int32_t default_index_,default_code_point_,total_count_=0;
 };
+// SCI1 extraction order: ignorable/category/level1/level2/level3/CJK/CJK level2.
+std::vector<CodePointIndexer> read_collation_indexers(std::string_view);
 // Category/Level1/Level2/Level3 share this indexed-byte access contract.
 std::uint8_t collation_weight(const assets::CollationTables&,assets::CollationTable,
                               const CodePointIndexer&,std::int32_t code_point);

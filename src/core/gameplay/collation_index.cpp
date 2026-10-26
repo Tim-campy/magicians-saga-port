@@ -7,7 +7,29 @@ std::int32_t signed32(std::uint32_t n){return n<=0x7fffffffU?static_cast<std::in
 std::int32_t add(std::int32_t a,std::int32_t b){return signed32(static_cast<std::uint32_t>(a)+static_cast<std::uint32_t>(b));}
 std::int32_t subtract(std::int32_t a,std::int32_t b){return signed32(static_cast<std::uint32_t>(a)-static_cast<std::uint32_t>(b));}
 }
-// CodePointIndexer..ctor 0x1cd3ea0. Preserve caller order, including malformed ranges.
+// Read the extracted MSCompatUnicodeTableUtil configuration without normalizing ranges.
+std::vector<CodePointIndexer> read_collation_indexers(std::string_view data){
+    if(data.size()<8||data.substr(0,4)!="SCI1")throw std::invalid_argument("collation indexer header");
+    std::size_t pos=4;
+    auto integer=[&](){
+        if(data.size()-pos<4)throw std::invalid_argument("truncated collation indexer");
+        std::uint32_t n=0;for(unsigned j=0;j<4;++j)n|=static_cast<std::uint32_t>(static_cast<unsigned char>(data[pos++]))<<(8*j);
+        return signed32(n);
+    };
+    if(integer()!=7)throw std::invalid_argument("collation indexer count");
+    std::vector<CodePointIndexer> result;result.reserve(7);
+    for(int i=0;i<7;++i){
+        const auto count=integer(),fallback=integer(),default_point=integer();
+        if(count<0||static_cast<std::size_t>(count)>(data.size()-pos)/8)throw std::invalid_argument("collation range count");
+        std::vector<std::int32_t> starts,ends;starts.reserve(count);ends.reserve(count);
+        for(int j=0;j<count;++j)starts.push_back(integer());
+        for(int j=0;j<count;++j)ends.push_back(integer());
+        result.emplace_back(starts,ends,fallback,default_point);
+    }
+    if(pos!=data.size())throw std::invalid_argument("trailing collation indexer data");
+    return result;
+}
+// CodePointIndexer..ctor 0x1cd3ea0.
 CodePointIndexer::CodePointIndexer(const std::vector<std::int32_t>& starts,const std::vector<std::int32_t>& ends,
                                  std::int32_t default_index,std::int32_t default_code_point)
     :default_index_(default_index),default_code_point_(default_code_point){

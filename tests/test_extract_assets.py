@@ -12,12 +12,40 @@ spec.loader.exec_module(extractor)
 
 
 class CollationTests(unittest.TestCase):
+    def test_indexer_initializers(self):
+        metadata=bytearray(256+113400)
+        struct.pack_into('<II',metadata,0,0xfab11baf,31)
+        struct.pack_into('<II',metadata,72,256,113400)
+        offsets={6160:3,113376:6,105184:6,22232:4,90032:4,106664:4,6808:3,24720:3,12096:3,105168:3}
+        for offset,count in offsets.items():
+            struct.pack_into('<'+'i'*count,metadata,256+offset,*range(offset,offset+count))
+        instructions=struct.pack('<II',0x52800009|(123<<5),0x52800008|(456<<5))
+        result=extractor.collation_indexer_payload(metadata,instructions)
+        self.assertEqual(len(result),324);self.assertEqual(result[:8],b'SCI1'+struct.pack('<I',7))
+        self.assertEqual(struct.unpack_from('<iii',result,20),(0,123,456))
+        self.assertEqual(struct.unpack_from('<iii',result,32),(6160,6161,6162))
+        for bad,code in [(metadata[:-1],instructions),(metadata,b''),(metadata,bytes(8)),(b'',instructions)]:
+            with self.assertRaises(ValueError):extractor.collation_indexer_payload(bad,code)
+
     def fixture(self):
         rows = [('collation.'+name+'.bin', b'\3'+bytes(size-1))
                 for name, size in extractor.COLLATION_SIZES.items()]
         directory = struct.pack('<i', len(rows)) + b''.join(
             struct.pack('<ii', len(data), len(name)) + name.encode('ascii') for name, data in rows)
         return struct.pack('<i', len(directory))+directory+b''.join(data for _, data in rows), rows
+
+    def test_indexer_manifest(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);(root/'collation').mkdir();data=bytes(324)
+            path=root/'collation/indexers.bin';path.write_bytes(data)
+            row={'output':'collation/indexers.bin','size':324,'sha256':extractor.digest(data)}
+            manifest={'apk_sha256':extractor.APK_SHA,'files':[row]*38,'members':[row]*1963}
+            def write(): (root/'manifest.json').write_text(json.dumps(manifest),encoding='utf8')
+            write()
+            with self.assertRaisesRegex(ValueError,'Collation indexers are required'):extractor.check(root,require_indexers=True)
+            manifest['collation_indexers']=[row];write();self.assertTrue(extractor.check(root,require_indexers=True))
+            manifest['collation_indexers']=[row,row];write()
+            with self.assertRaisesRegex(ValueError,'Unexpected collation indexer inventory'):extractor.check(root)
 
     def test_payloads_and_corruption(self):
         data, rows = self.fixture()

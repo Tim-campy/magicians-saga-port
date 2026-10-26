@@ -54,6 +54,8 @@ uv run tools/extract_assets.py game/MagiciansSaga-1.4.0.apk --out extracted/runt
 uv run tools/extract_assets.py --check --out extracted/runtime --runtime-tables
 uv run tools/extract_assets.py game/MagiciansSaga-1.4.0.apk --out extracted/collation --collation
 uv run tools/extract_assets.py --check --out extracted/collation --collation
+uv run tools/extract_assets.py game/MagiciansSaga-1.4.0.apk --out extracted/collation-indexers --collation-indexers
+uv run tools/extract_assets.py --check --out extracted/collation-indexers --collation-indexers
 uv run tools/extract_assets.py game/MagiciansSaga-1.4.0.apk --out extracted/full --unity-media
 ```
 
@@ -99,5 +101,7 @@ The Windows desktop build script uses code page 65001, requests VSLANG=1033 afte
 After the desktop build and a successful culture manifest check, exercise native loading/selection/parsing with `build/desktop/test_culture_data.exe extracted/culture-lower EN-US +42` (expected LCID/value: `1033 42`). The optional arguments use local data; ordinary CTest uses only synthetic inventories. `CultureDataHost` supplies the base-culture adapter; it does not select the OS locale or install live thread storage.
 
 After a successful collation manifest check, `build/desktop/test_collation_tables.exe extracted/collation/collation/collation.core.bin extracted/collation/collation/collation.tailoring.bin` exercises the portable reader against the extracted resources. Expected inventory: five core tables, 33 tailoring records, 3142 UTF-16 units. This validates decoding, not text-comparison behavior.
+
+`build/desktop/test_collation_index.exe extracted/collation-indexers/collation/indexers.bin extracted/collation-indexers/collation/collation.core.bin extracted/collation-indexers/collation/collation.tailoring.bin` checks the seven original configurations and every UTF-16 unit against category/weight table bounds. This is static integration validation, not an Android comparison.
 
 The runtime Hashtable table is loaded with `load_hashtable_primes(extracted_root)` and shared by `RuntimeCallContextHost`. After its manifest check, run `build/desktop/test_runtime_data.exe extracted/runtime` to exercise growth and full mutable-context copying with local data. The host requires an explicit correlation-value clone callback; scheduler/TLS state is not inferred. See [runtime table format](formats/runtime-hashtable-primes.md).

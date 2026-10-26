@@ -23,6 +23,7 @@ code and relocated metadata literals; the mapping is local data, not source code
 lowercase arrays from metadata default-data initializers.
 --runtime-tables exports the 288-byte Hashtable prime initializer from metadata.
 --collation exports seven version-3 resources from the mscorlib resource container.
+--collation-indexers adds the seven interval configurations derived from metadata/native initializers.
 Outputs and manifest stay local under extracted/; --check verifies all payloads and
 members. Names are retained in the manifest, output names have numeric prefixes
 to avoid Windows case collisions. No game content is embedded in the script.
@@ -82,6 +83,31 @@ def collation_payloads(container):
     if cursor != directory + 4 or body != len(container):
         raise ValueError('Assembly resource end mismatch')
     return outputs
+
+
+def collation_indexer_payload(metadata, instructions):
+    """MSCompatUnicodeTableUtil..cctor 0x1cd61e4; emit SCI1 plus seven indexers."""
+    if len(metadata) < 256 or struct.unpack_from('<II', metadata) != (0xfab11baf, 31):
+        raise ValueError('Expected v31 metadata for collation indexers')
+    base, size = struct.unpack_from('<II', metadata, 72)
+    if base < 256 or base+size > len(metadata) or len(instructions) != 8:
+        raise ValueError('Invalid collation initializer extent')
+    first, second = struct.unpack('<II', instructions)
+    if first & 0xffe0001f != 0x52800009 or second & 0xffe0001f != 0x52800008:
+        raise ValueError('Expected MOVZ W9/W8 collation range initializers')
+    immediate_starts = struct.pack('<iii', 0, (first >> 5) & 65535, (second >> 5) & 65535)
+    def values(offset, count):
+        if offset+4*count > size:
+            raise ValueError('Collation range initializer outside metadata')
+        return metadata[base+offset:base+offset+4*count]
+    layouts = [(None,6160,3,-1),(113376,105184,6,0),(113376,105184,6,0),
+               (22232,90032,4,0),(22232,106664,4,0),(6808,24720,3,-1),(12096,105168,3,-1)]
+    output = bytearray(b'SCI1'+struct.pack('<I', 7))
+    for start,end,count,default in layouts:
+        output += struct.pack('<iii',count,default,default)
+        output += immediate_starts if start is None else values(start,count)
+        output += values(end,count)
+    return bytes(output)
 
 
 def culture_lower_payloads(metadata):
@@ -323,7 +349,7 @@ def culture_sign_payloads(elf, include_names=False):
     return outputs
 
 
-def check(root, require_culture=False, require_names=False, require_neutral=False, require_lower=False, require_runtime=False, require_collation=False):
+def check(root, require_culture=False, require_names=False, require_neutral=False, require_lower=False, require_runtime=False, require_collation=False, require_indexers=False):
     manifest = json.loads((root / 'manifest.json').read_text(encoding='utf8'))
     if (manifest['apk_sha256'] != APK_SHA or len(manifest['files']) != 38
             or len(manifest['members']) != 1963):
@@ -358,7 +384,12 @@ def check(root, require_culture=False, require_names=False, require_neutral=Fals
         raise ValueError('Collation outputs are required; extract with --collation')
     if 'collation' in manifest and (len(collation) != 7 or {r['output']: r['size'] for r in collation} != expected_collation):
         raise ValueError('Unexpected collation inventory')
-    for row in manifest['files'] + manifest['members'] + manifest.get('unity_media', []) + manifest.get('culture_signs', []) + runtime + collation:
+    indexers = manifest.get('collation_indexers', [])
+    if require_indexers and not indexers:
+        raise ValueError('Collation indexers are required; extract with --collation-indexers')
+    if 'collation_indexers' in manifest and (len(indexers) != 1 or indexers[0]['output'] != 'collation/indexers.bin' or indexers[0]['size'] != 324):
+        raise ValueError('Unexpected collation indexer inventory')
+    for row in manifest['files'] + manifest['members'] + manifest.get('unity_media', []) + manifest.get('culture_signs', []) + runtime + collation + indexers:
         path = bounded(root, row['output'])
         if not path.is_file():
             print('missing:', row['output']); failed = True
@@ -432,7 +463,8 @@ def unity_media(obj, files, filename):
     return [('.fsb', content), ('.wav', wav)], facts
 
 
-def extract(apk, root, include_unity=False, include_culture=False, include_names=False, include_neutral=False, include_lower=False, include_runtime=False, include_collation=False):
+def extract(apk, root, include_unity=False, include_culture=False, include_names=False, include_neutral=False, include_lower=False, include_runtime=False, include_collation=False, include_indexers=False):
+    include_collation = include_collation or include_indexers
     include_neutral = include_neutral or include_lower
     include_names = include_names or include_neutral
     include_culture = include_culture or include_names
@@ -451,6 +483,12 @@ def extract(apk, root, include_unity=False, include_culture=False, include_names
         culture = culture_sign_payloads(archive.read('lib/arm64-v8a/libil2cpp.so'), include_names) if include_culture else {}
         collation = collation_payloads(archive.read(COLLATION_MEMBER)) if include_collation else {}
         metadata = archive.read(METADATA)
+        indexers = {}
+        if include_indexers:
+            native = archive.read('lib/arm64-v8a/libil2cpp.so')
+            # Fixed-profile file offsets for ELF VAs 0x1cd62d8 and 0x1cd630c.
+            instructions = native[0x1cd22d8:0x1cd22dc]+native[0x1cd230c:0x1cd2310]
+            indexers['collation/indexers.bin'] = collation_indexer_payload(metadata, instructions)
         runtime = runtime_payloads(metadata) if include_runtime else {}
         if include_lower:
             culture.update(culture_lower_payloads(metadata))
@@ -550,6 +588,9 @@ def extract(apk, root, include_unity=False, include_culture=False, include_names
     if include_collation:
         outputs.update(collation)
         manifest['collation'] = [{'output': name, 'size': len(data), 'sha256': digest(data)} for name, data in collation.items()]
+    if include_indexers:
+        outputs.update(indexers)
+        manifest['collation_indexers'] = [{'output': name, 'size': len(data), 'sha256': digest(data)} for name, data in indexers.items()]
     outputs['manifest.json'] = (json.dumps(manifest, ensure_ascii=False, indent=2)+'\n').encode('utf8')
     # Preflight all collisions before writes. Never replace differing user files.
     for relative, data in outputs.items():
@@ -571,6 +612,7 @@ def main():
     p.add_argument('apk', type=Path, nargs='?')
     p.add_argument('--out', type=Path, default=Path('extracted'))
     p.add_argument('--check', action='store_true')
+    p.add_argument('--collation-indexers', action='store_true', help='Include native indexer configurations and collation resources')
     p.add_argument('--collation', action='store_true', help='Include seven original version-3 collation resources')
     p.add_argument('--runtime-tables', action='store_true', help='Include the 72-entry runtime Hashtable prime table')
     p.add_argument('--culture-lower', action='store_true', help='Include nine invariant lowercase tables and all culture outputs')
@@ -583,11 +625,11 @@ def main():
         if args.check:
             if not check(args.out, args.culture_signs or args.culture_names or args.culture_neutral or args.culture_lower,
                          args.culture_names or args.culture_neutral or args.culture_lower,
-                         args.culture_neutral or args.culture_lower, args.culture_lower, args.runtime_tables, args.collation):
+                         args.culture_neutral or args.culture_lower, args.culture_lower, args.runtime_tables, args.collation or args.collation_indexers, args.collation_indexers):
                 raise SystemExit(1)
             print('All manifest files verified (TextAssets, members and optional media/culture/runtime/collation data).')
         elif args.apk:
-            extract(args.apk, args.out, args.unity_media, args.culture_signs, args.culture_names, args.culture_neutral, args.culture_lower, args.runtime_tables, args.collation)
+            extract(args.apk, args.out, args.unity_media, args.culture_signs, args.culture_names, args.culture_neutral, args.culture_lower, args.runtime_tables, args.collation, args.collation_indexers)
         else:
             p.error('Supply APK or --check')
     except (ValueError, OSError, KeyError, struct.error, zipfile.BadZipFile) as error:
