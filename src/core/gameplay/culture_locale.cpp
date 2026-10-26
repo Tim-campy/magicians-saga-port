@@ -77,4 +77,14 @@ bool construct_culture_from_name(std::u16string_view name,CultureNameLookup& loo
     }
     return false;
 }
+// CultureInfo.get_IsNeutralCulture 0x1e26ef4. Null territory, not empty text.
+bool is_neutral_culture(CultureIdentity& culture,CultureIdentityHost& host) {
+    const auto lcid=culture.lcid;
+    if(lcid==0x7f)return false;
+    if(!culture.constructed) {
+        host.populate(culture,lcid); // Native constructor result is discarded here.
+        culture.constructed=true;
+    }
+    return !culture.territory.has_value();
+}
 }

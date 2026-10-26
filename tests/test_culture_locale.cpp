@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <vector>
+#include <stdexcept>
 using namespace saga::core;
 void check(bool value){if(!value){std::cerr<<"culture locale contract failure\n";std::exit(1);}}
 struct Host:CultureLocaleHost {
@@ -17,7 +18,22 @@ struct Lookup:CultureNameLookup {
     std::optional<std::u16string> accepted;
     bool construct(std::u16string_view name) override {calls.emplace_back(name);return accepted && name==*accepted;}
 };
+struct IdentityHost:CultureIdentityHost {
+    int calls=0;
+    bool result=true,fail=false;
+    std::optional<std::u16string> territory;
+    bool populate(CultureIdentity& state,std::int32_t lcid) override {
+        ++calls;check(state.lcid==lcid);state.territory=territory;
+        if(fail)throw std::runtime_error("population failed");
+        return result;
+    }
+};
 int main(){
+    {CultureIdentity c{0x7f,false,std::nullopt};IdentityHost h;check(!is_neutral_culture(c,h));check(!c.constructed && h.calls==0);}
+    {CultureIdentity c{1,false,std::nullopt};IdentityHost h;h.result=false;check(is_neutral_culture(c,h));check(c.constructed && h.calls==1);check(is_neutral_culture(c,h) && h.calls==1);}
+    {CultureIdentity c{1,false,std::nullopt};IdentityHost h;h.territory=u"";check(!is_neutral_culture(c,h));check(c.constructed);}
+    {CultureIdentity c{1,true,u"XX"};IdentityHost h;check(!is_neutral_culture(c,h));check(h.calls==0);}
+    {CultureIdentity c{1,false,std::nullopt};IdentityHost h;h.fail=true;h.territory=u"YY";try{is_neutral_culture(c,h);check(false);}catch(const std::runtime_error&){}check(!c.constructed && c.territory==u"YY" && h.calls==1);}
     check(encode_culture_lookup_name(u"PT-br")=="PT-br");
     check(encode_culture_lookup_name(std::u16string(u"ab\0cd",5))=="ab");
     check(encode_culture_lookup_name(u"\u007f\u0080\u07ff\u0800\uffff\U00010000\U0010ffff")==std::string("\x7f\xc2\x80\xdf\xbf\xe0\xa0\x80\xef\xbf\xbf\xf0\x90\x80\x80\xf4\x8f\xbf\xbf"));

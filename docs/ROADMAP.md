@@ -29,7 +29,7 @@ The plan in one page. Agents take the first unblocked task of the current work p
 ## Next tasks
 
 ### 1. Events and scripts
-- [ ] Recover neutral-to-specific mapping and bind culture selection to the desktop host; name/culture extraction, lookup-key conversion and number-index lookup now pass local integration across all 339 entries. Trace culture setters and collation availability/backend before replacing prefix/sign providers.
+- [ ] Extract the 130-case neutral-to-specific switch as local data, recover LCID lookup/missing-id behavior and compose culture selection; the neutral predicate is ported, and switch/table coverage differences remain explicit. Trace culture setters and collation availability/backend before replacing prefix/sign providers.
 - [ ] Bind decoded billing-item/catalog providers and complete notification manager adapters, preserving task execution gates.
 - [ ] Port decor/town/capture callbacks, then bind update_select_form to a desktop host with orientation/image-dictionary storage, decoded saves, camera dimensions and form factories.
 - [ ] Find the consumer of `hour_ != -1`, the writer of `SubForm.delayEvent_` (`+0x1d0`) and the remaining effect opcodes of the 15-entry table at `0x627b6e`.

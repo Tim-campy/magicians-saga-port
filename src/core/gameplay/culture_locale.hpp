@@ -2,6 +2,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <cstdint>
 
 namespace saga::core {
 class CultureLocaleHost {
@@ -24,4 +25,15 @@ public:
     virtual bool construct(std::u16string_view name) = 0;
 };
 bool construct_culture_from_name(std::u16string_view name,CultureNameLookup&);
+struct CultureIdentity {
+    std::int32_t lcid=0;
+    bool constructed=false;
+    std::optional<std::u16string> territory;
+};
+class CultureIdentityHost {
+public:
+    virtual ~CultureIdentityHost() = default;
+    virtual bool populate(CultureIdentity&,std::int32_t lcid) = 0;
+};
+bool is_neutral_culture(CultureIdentity&,CultureIdentityHost&);
 }
