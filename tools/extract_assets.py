@@ -17,6 +17,8 @@ embedded in this script: it is read from the hash-verified user's metadata.
 shared-pool prefix containing all referenced signs, validated within ELF load bounds.
 --culture-names also includes the sorted name index/culture records and extends the
 pool prefix through all lookup names; it does not extract other culture strings.
+--culture-neutral also derives the 130 neutral-name/LCID leaves from bounded ARM64
+code and relocated metadata literals; the mapping is local data, not source code.
 Outputs and manifest stay local under extracted/; --check verifies all payloads and
 members. Names are retained in the manifest, output names have numeric prefixes
 to avoid Windows case collisions. No game content is embedded in the script.
@@ -97,6 +99,95 @@ def unpack_container(data):
     return members
 
 
+def decode_neutral_cases(code, base, literal, equality, join, failure):
+    """Decode the audited ARM64 equality leaves, not a general disassembler."""
+    if len(code) % 4:
+        raise ValueError('Unaligned neutral dispatch')
+    words = list(struct.unpack('<'+'I'*(len(code)//4), code))
+    def signed(value, bits):
+        return value-(1 << bits) if value & (1 << (bits-1)) else value
+    def branch(word, pc):
+        return pc+4*signed(word & 0x3ffffff, 26)
+    result = []
+    for i, word in enumerate(words):
+        pc = base+4*i
+        if word >> 26 != 0x25 or branch(word, pc) != equality:
+            continue
+        if i < 5 or i+2 >= len(words):
+            raise ValueError('Truncated neutral equality leaf')
+        page, load, arg0, arg2, arg1 = words[i-5:i]
+        guard, move = words[i+1:i+3]
+        if (page & 0x9f00001f != 0x90000008 or load & 0xffc003ff != 0xf9400108
+                or (arg0, arg2, arg1) != (0xaa1403e0, 0xaa1f03e2, 0xf9400101)
+                or guard & 0xfff8001f != 0x36000000 or move & 0xffe0001f != 0x52800013):
+            raise ValueError('Unsupported neutral equality leaf')
+        if pc+4+4*signed((guard >> 5) & 0x3fff, 14) != failure:
+            raise ValueError('Unexpected neutral failure branch')
+        after = pc+12
+        if after != join and (i+3 >= len(words) or words[i+3] >> 26 != 5 or branch(words[i+3], after) != join):
+            raise ValueError('Unexpected neutral constructor branch')
+        immediate = ((page >> 29) & 3) | (((page >> 5) & 0x7ffff) << 2)
+        got = ((pc-20) & ~0xfff)+4096*signed(immediate, 21)+8*((load >> 10) & 0xfff)
+        name = literal(got)
+        if any(row['name'] == name for row in result):
+            raise ValueError('Duplicate neutral culture key')
+        result.append({'name': name, 'lcid': (move >> 5) & 0xffff})
+    return result
+
+
+def neutral_culture_payload(elf, metadata):
+    """Derive local neutral-name/LCID data from the hash-verified shipped artifact."""
+    def unpack(fmt, offset):
+        if offset < 0 or offset+struct.calcsize(fmt) > len(elf):
+            raise ValueError('Neutral ELF read outside file')
+        return struct.unpack_from(fmt, elf, offset)
+    header = unpack('<16sHHIQQQIHHHHHH', 0)
+    if header[0][:7] != b'\x7fELF\x02\x01\x01' or header[1:3] != (3,183) or header[9] != 56 or header[11] != 64:
+        raise ValueError('Unsupported neutral ELF layout')
+    segments = [unpack('<IIQQQQQQ', header[5]+56*i) for i in range(header[10])]
+    def read(va, size):
+        matches = [p[2]+va-p[3] for p in segments if p[0] == 1 and p[3] <= va and va+size <= p[3]+p[5]]
+        if len(matches) != 1 or matches[0]+size > len(elf):
+            raise ValueError('Neutral address not uniquely file-backed')
+        return elf[matches[0]:matches[0]+size]
+    relocations = {}
+    for i in range(header[12]):
+        section = unpack('<IIQQQQIIQQ', header[6]+64*i)
+        if section[1] != 4:
+            continue
+        if section[9] != 24 or section[5] % 24:
+            raise ValueError('Invalid neutral RELA layout')
+        for pos in range(section[4], section[4]+section[5], 24):
+            target, info, addend = unpack('<QQq', pos)
+            if info == 1027:
+                if target in relocations:
+                    raise ValueError('Duplicate relative relocation')
+                relocations[target] = addend
+    if len(metadata) < 24 or struct.unpack_from('<II', metadata) != (0xfab11baf,31):
+        raise ValueError('Expected v31 metadata for neutral literals')
+    table, table_size, data, data_size = struct.unpack_from('<IIII', metadata, 8)
+    if table_size % 8 or table+table_size > len(metadata) or data+data_size > len(metadata):
+        raise ValueError('Neutral literal sections outside metadata')
+    def literal(got):
+        if got not in relocations:
+            raise ValueError('Neutral literal GOT lacks relative relocation')
+        usage, = struct.unpack('<Q', read(relocations[got],8))
+        if usage >> 29 != 5:
+            raise ValueError('Expected string-literal metadata usage')
+        index = (usage & 0x1fffffff) >> 1
+        if index >= table_size//8:
+            raise ValueError('Neutral literal index outside table')
+        length, offset = struct.unpack_from('<II', metadata, table+8*index)
+        if offset+length > data_size:
+            raise ValueError('Neutral literal outside data section')
+        return metadata[data+offset:data+offset+length].decode('utf8')
+    entries = decode_neutral_cases(read(0x1e27fc4,0x1e2a70c-0x1e27fc4), 0x1e27fc4,
+                                   literal, 0x1ce2124, 0x1e2a680, 0x1e2a6b4)
+    if len(entries) != 130:
+        raise ValueError('Unexpected neutral mapping coverage')
+    return (json.dumps({'schema':1, 'entries':entries},ensure_ascii=True,indent=2)+'\n').encode('utf8')
+
+
 def culture_sign_payloads(elf, include_names=False):
     """Copy 339 reached 48-byte records and the pool prefix needed by their signs.
 
@@ -162,7 +253,7 @@ def culture_sign_payloads(elf, include_names=False):
     return outputs
 
 
-def check(root, require_culture=False, require_names=False):
+def check(root, require_culture=False, require_names=False, require_neutral=False):
     manifest = json.loads((root / 'manifest.json').read_text(encoding='utf8'))
     if (manifest['apk_sha256'] != APK_SHA or len(manifest['files']) != 38
             or len(manifest['members']) != 1963):
@@ -174,11 +265,14 @@ def check(root, require_culture=False, require_names=False):
         raise ValueError('Culture sign outputs are required; extract with --culture-signs')
     basic = {'culture/number-records.bin', 'culture/sign-pool.bin'}
     full = basic | {'culture/name-index.bin', 'culture/culture-records.bin'}
+    neutral = full | {'culture/neutral-map.json'}
     rows = manifest.get('culture_signs', [])
     inventory = {r['output'] for r in rows}
-    if require_names and inventory != full:
+    if require_names and inventory not in (full, neutral):
         raise ValueError('Culture name outputs are required; extract with --culture-names')
-    if 'culture_signs' in manifest and (inventory not in (basic, full) or len(rows) != len(inventory)):
+    if require_neutral and inventory != neutral:
+        raise ValueError('Neutral culture outputs are required; extract with --culture-neutral')
+    if 'culture_signs' in manifest and (inventory not in (basic, full, neutral) or len(rows) != len(inventory)):
         raise ValueError('Unexpected culture sign inventory')
     for row in manifest['files'] + manifest['members'] + manifest.get('unity_media', []) + manifest.get('culture_signs', []):
         path = bounded(root, row['output'])
@@ -254,7 +348,8 @@ def unity_media(obj, files, filename):
     return [('.fsb', content), ('.wav', wav)], facts
 
 
-def extract(apk, root, include_unity=False, include_culture=False, include_names=False):
+def extract(apk, root, include_unity=False, include_culture=False, include_names=False, include_neutral=False):
+    include_names = include_names or include_neutral
     include_culture = include_culture or include_names
     if digest(apk.read_bytes()) != APK_SHA:
         raise ValueError('Expected original Magician\'s Saga 1.4.0 APK, SHA-256 ' + APK_SHA)
@@ -270,6 +365,8 @@ def extract(apk, root, include_unity=False, include_culture=False, include_names
     with zipfile.ZipFile(apk) as archive:
         culture = culture_sign_payloads(archive.read('lib/arm64-v8a/libil2cpp.so'), include_names) if include_culture else {}
         metadata = archive.read(METADATA)
+        if include_neutral:
+            culture['culture/neutral-map.json'] = neutral_culture_payload(archive.read('lib/arm64-v8a/libil2cpp.so'), metadata)
         key = metadata[4557992:4558036]
         if len(key) != 44 or digest(key) != KEY_SHA:
             raise ValueError('Metadata key initializer identity mismatch')
@@ -379,17 +476,18 @@ def main():
     p.add_argument('apk', type=Path, nargs='?')
     p.add_argument('--out', type=Path, default=Path('extracted'))
     p.add_argument('--check', action='store_true')
+    p.add_argument('--culture-neutral', action='store_true', help='Also derive the neutral-name to LCID mapping from native code')
     p.add_argument('--culture-names', action='store_true', help='Include name index and culture records with native number signs')
     p.add_argument('--culture-signs', action='store_true', help='Also export native number-format records and bounded sign pool')
     p.add_argument('--unity-media', action='store_true', help='Also export Unity textures, fonts and FSB/WAV audio')
     args = p.parse_args()
     try:
         if args.check:
-            if not check(args.out, args.culture_signs or args.culture_names, args.culture_names):
+            if not check(args.out, args.culture_signs or args.culture_names or args.culture_neutral, args.culture_names or args.culture_neutral, args.culture_neutral):
                 raise SystemExit(1)
             print('All manifest files verified (TextAssets, members and optional media/culture data).')
         elif args.apk:
-            extract(args.apk, args.out, args.unity_media, args.culture_signs, args.culture_names)
+            extract(args.apk, args.out, args.unity_media, args.culture_signs, args.culture_names, args.culture_neutral)
         else:
             p.error('Supply APK or --check')
     except (ValueError, OSError, KeyError, struct.error, zipfile.BadZipFile) as error:

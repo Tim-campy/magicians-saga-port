@@ -11,6 +11,48 @@ extractor = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(extractor)
 
 
+class NeutralMappingTests(unittest.TestCase):
+    def leaf(self, base=0x1000, lcid=0x1234):
+        def branch(pc, target, opcode):
+            return opcode | (((target-pc)//4) & 0x3ffffff)
+        words = [0x90000008, 0xf9400108 | (4 << 10), 0xaa1403e0, 0xaa1f03e2,
+                 0xf9400101, branch(base+20,0x4000,0x94000000),
+                 0x36000000 | ((((0x2000-(base+24))//4) & 0x3fff) << 5),
+                 0x52800013 | (lcid << 5), branch(base+32,0x3000,0x14000000)]
+        return struct.pack('<9I',*words)
+
+    def decode(self, code, literal=lambda got:'synthetic'):
+        return extractor.decode_neutral_cases(code,0x1000,literal,0x4000,0x3000,0x2000)
+
+    def test_leaf_address_and_lcid(self):
+        seen=[]
+        result=self.decode(self.leaf(),lambda got:seen.append(got) or 'synthetic')
+        self.assertEqual(seen,[0x1020])
+        self.assertEqual(result,[{'name':'synthetic','lcid':0x1234}])
+
+    def test_duplicate_key_rejected(self):
+        with self.assertRaisesRegex(ValueError,'Duplicate'):
+            self.decode(self.leaf()+self.leaf(0x1024))
+
+    def test_reject_damaged_registers_and_branch_targets(self):
+        for word in (0,1,2,3,4,6,7,8):
+            code=bytearray(self.leaf())
+            struct.pack_into('<I',code,word*4,0)
+            with self.assertRaises(ValueError):
+                self.decode(code)
+        for code in (self.leaf()[:-1],self.leaf()[:24]):
+            with self.assertRaises(ValueError):
+                self.decode(code)
+
+    def test_unrelated_calls_are_not_mapping_entries(self):
+        code=bytearray(self.leaf());struct.pack_into('<I',code,20,0x94000000)
+        self.assertEqual(self.decode(code),[])
+
+    def test_bad_elf_is_rejected(self):
+        with self.assertRaises(ValueError):
+            extractor.neutral_culture_payload(b'bad',b'bad')
+
+
 class CultureSignTests(unittest.TestCase):
     def sample(self):
         base, start = 0x880000, 0x100
@@ -82,6 +124,8 @@ class CultureSignTests(unittest.TestCase):
                 extractor.check(root, require_culture=True)
             with self.assertRaisesRegex(ValueError, 'Culture name outputs are required'):
                 extractor.check(root, require_names=True)
+            with self.assertRaisesRegex(ValueError, 'Neutral culture outputs are required'):
+                extractor.check(root, require_neutral=True)
 
     def test_reject_invalid_utf8(self):
         data, _, pool = self.sample()
