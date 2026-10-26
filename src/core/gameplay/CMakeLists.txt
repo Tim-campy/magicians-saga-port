@@ -90,3 +90,6 @@ target_link_libraries(hashtable_rehash PUBLIC hashtable_enumerator)
 
 saga_library(hashtable_capacity hashtable_capacity.cpp)
 target_link_libraries(hashtable_capacity PUBLIC hashtable_rehash)
+
+saga_library(hashtable_write hashtable_write.cpp)
+target_link_libraries(hashtable_write PUBLIC hashtable_capacity)
