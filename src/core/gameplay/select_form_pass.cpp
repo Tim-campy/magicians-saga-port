@@ -2,9 +2,11 @@
 namespace saga::core {
 SelectUpdatePrefixResult update_select_form_prefix(SelectPreludeState& prelude,SelectPreludeHost& prelude_host,
     SelectFormPassState& state,SelectFormPassHost& host,SelectCloudHost& clouds,SelectMarkerHost& markers,
-    EventDelayQueue& queue,EventExecutionHost& execution,EventConditionHost& conditions) {
+    EventDelayQueue& queue,EventExecutionHost& execution,EventConditionHost& conditions,
+    SelectTouchMoveState& movement,SelectTouchMoveHost& movement_host) {
     const auto snapshot=update_select_prelude(prelude,state.events.loop_counter,prelude_host);
     const auto pass=process_select_form_pass(state,host,clouds,markers,queue,execution,conditions);
+    if(pass==SelectPassResult::ContinueInput)update_select_touch_move(movement,movement_host);
     return {snapshot,pass};
 }
 // SelectForm.Update, ELF 0x11ebde8..0x11ec7e8, with returned-form Push at 0x11ecb30.

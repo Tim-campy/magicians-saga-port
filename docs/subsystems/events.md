@@ -206,7 +206,21 @@ State 0 executes counter advance, clouds, conditional markers, notifications, ba
 
 The composed pass then runs counted delays and selection. A selected form goes through `push_select_form`, preserving autoSave/evenCheck writes before manager access. `ReturnTrue` means the original returns true at this boundary. `ContinueInput` means resume at `0x11ec7ec`; it is deliberately not a successful whole-frame result. Notification, decoration, town, balance, capture and guide bodies remain required host methods with no default no-op implementation. The host also owns ChangeState's label updates and final state write. A desktop binding must preserve shared application/static flag ownership across forms, rather than create independent copies per form.
 
+### Touch movement and town-human contact
+
+Confidence high: Update ELF `0x11ec7ec`?`0x11ec944`, helper exports in `research/exports/select-camera/`. Metadata/field-offset mapping identifies touchMove_ (+0x14a), witchX_ (binary32 +0x124), witchDirection_ (int32 +0x128), touchDragDistance_ (binary32 +0x164), townHuman_ (+0x1d0) and collisionId_ (int32 +0x1ec). This block moves the witch, not camX_. It follows successful queue/selection continuation; a returned form bypasses it.
+
+When touchMove_ is false, no movement or collision query occurs. Otherwise compare x with target. For x<target set direction=1, compute binary32 step=Clamp(abs(target)+x/(-3),1,6), then min(x+step,abs(target)). For x>target set direction=2, compute step=Clamp(abs(target)+x/3,1,6), then max(x-step,target). Preserve each binary32 rounding point and the asymmetric absolute target in the first branch: x=-5,target=-4 advances to 0. Equal or unordered comparisons leave x and direction unchanged but still check contact. Clamp helpers (`0x1101820`, `0x1101884`, `0x1101878`) use ordered comparisons; NaNs are not replaced by a bound.
+
+After a movement branch, ARM64 FCVTZS converts toward zero with signed saturation (NaN becomes zero), then SCVTF returns binary32. An explicit +infinity check overrides that result to -2147483648. Finite positive overflow saturates to INT32_MAX, whose binary32 conversion rounds to 2147483648. The C++ kernel defines these cases without an out-of-range float-to-int cast.
+
+`CheckCollisionTownHuman` (`0x11eecdc`, `game:0x0600081f`) scans the live list in increasing index order, re-reading it between iterations. Each required int32[] row must have slot 8; value 2 skips the row. Otherwise convert row[1] to binary32, subtract the current witchX_, take absolute value, and return the first index with distance strictly less than 5. No match returns -1; null storage/rows and short rows fail. A newly encountered nonnegative index invokes `SetTalkFuki(index,false)` before assigning collisionId_; the same index does not repeat the call. Losing contact assigns -1. A failing bubble callback leaves the prior collisionId_ intact. The callback still owns text-table selection and the 120-tick bubble lifetime observed in SetTalkFuki (`0x11eedd8`); those bodies are not ported here.
+
+`update_select_form_prefix` now includes this block after `process_select_form_pass` returns ContinueInput. Its next continuation address is `0x11ec948` (the standalone pass still stops at `0x11ec7ec`). The remaining trigger/button paths and bubble data bindings remain open.
+
 ## Port
+
+- `src/core/gameplay/select_touch_move.{hpp,cpp}` ports binary32 witch movement, integer conversion and first-match town contact. Strict floating-point compiler options prevent contraction/reassociation. `tests/test_select_touch_move.cpp` covers direction, signed-target overshoot, bounds, repeated/new contact, callback failure and nonfinite values. `test_select_form_pass.cpp` verifies that dialog returns skip it and normal event continuation reaches it.
 
 - `src/core/gameplay/select_prelude.{hpp,cpp}` ports MyFormBase.Update with required orientation/view host callbacks, SelectForm prelude ordering/snapshots and ordered image-animation row operations. `tests/test_select_prelude.cpp` covers aliasing, wrap32, null/short-row partial writes, automatic-orientation arguments and save failure after counter mutation; the composed prefix is also covered in `test_select_form_pass.cpp`. Dictionary storage and EnableLandSpace/platform bodies remain external.
 
@@ -256,7 +270,7 @@ Fixture JSON schema (all keys optional; absence preserves missing state rather t
 
 For a synthetic money-only event with nonempty effects, a minimal auto fixture is `{"context_present": true, "context_character_count": 1, "sys_save_present": false}`. This is test state, not an inferred new-game state. PRINT is required when an empty script or failed identity lookup reaches its diagnostic gate; quest_data_count is required only for that lookup's fallback. Additional predicates require their corresponding catalogs/scalars. Tool collection lengths are limited to 100000; these are harness limits, not recovered game limits.
 
-- Last recorded build: Windows/MSVC, 30/30 CTest (29 C++ contracts plus native scenario integration).
+- Last recorded build: Windows/MSVC, 31/31 CTest (30 C++ contracts plus native scenario integration).
 - Missing: population of decoded default-args/diagnostic state from saves/configuration, SelectForm integration, remaining unit `CheckTerm` predicates, integration with save-loaded execution counters; hour-based delays; `SubForm.delayEvent_` path (slot 5); `SelectForm.Update` guards; opcodes other than the eight; `SecureLong`/`SecureInt` storage; billing item source for stamina; UI forms.
 
 ## Evidence
@@ -290,7 +304,7 @@ For a synthetic money-only event with nonempty effects, a minimal auto fixture i
 ## Open questions
 
 1. (blocking) Concrete context/catalog bindings for the 14 recovered table-used conditions; automatic selection is composed with the kernels but not yet called by a desktop form/frame loop. Populate the decoded host from data/save/ECS providers, including hero level and the Config.DEBUG/AppData.debugRescueNum initialization state. Other unit branches remain unresolved for scripts outside Event.txt.
-2. (blocking) Bind the composed select_form_pass to a desktop form host: recover the post-selection input continuation at 0x11ec7ec and implement its required notification/decor/town/guide/capture callbacks plus orientation and image-dictionary bindings for the recovered prelude. The guards, clouds, markers, counter, initial event loop and reached-pass scheduling are composed and tested.
+2. (blocking) Bind the composed select_form_pass to a desktop form host: recover the remaining post-movement triggers/buttons at 0x11ec948 and implement its required notification/decor/town/guide/capture callbacks plus orientation and image-dictionary bindings for the recovered prelude. The guards, clouds, markers, counter, initial event loop and reached-pass scheduling are composed and tested.
 3. (blocking) Initial/real values of `SYSSAVEI_YUGAMI`, the `ITEM_STAMINA_UP` item state, and the money/crystal/stamina slots from save/new game.
 4. Unit dispatcher opcodes other than 1/2/4/8/10/12/15/31 (jump table has 15 entries); scripts outside `Event.txt` (quests, built events) may use them.
 5. Consumer of `DelayEvent` entries with `hour_ != -1` (none in the extracted table).

@@ -4,6 +4,7 @@
 #include "select_markers.hpp"
 #include "select_event_pass.hpp"
 #include "select_prelude.hpp"
+#include "select_touch_move.hpp"
 namespace saga::core {
 struct SelectFormPassState {
     std::int32_t state;
@@ -38,7 +39,8 @@ enum class SelectPassResult { ReturnTrue, ContinueInput };
 SelectPassResult process_select_form_pass(SelectFormPassState&,SelectFormPassHost&,
     SelectCloudHost&,SelectMarkerHost&,EventDelayQueue&,EventExecutionHost&,EventConditionHost&);
 struct SelectUpdatePrefixResult {SelectPreludeSnapshot snapshot;SelectPassResult pass;};
+// Includes touch movement on ContinueInput; next original instruction is 0x11ec948.
 SelectUpdatePrefixResult update_select_form_prefix(SelectPreludeState&,SelectPreludeHost&,
     SelectFormPassState&,SelectFormPassHost&,SelectCloudHost&,SelectMarkerHost&,
-    EventDelayQueue&,EventExecutionHost&,EventConditionHost&);
+    EventDelayQueue&,EventExecutionHost&,EventConditionHost&,SelectTouchMoveState&,SelectTouchMoveHost&);
 }
