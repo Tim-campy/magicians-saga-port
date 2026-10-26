@@ -210,7 +210,7 @@ Evidence: `research/exports/enemy-rewards/`, `enemy-reward-readers/`, existing `
 ## Open questions
 
 1. (blocking) Concrete ECS/drop-creation bindings for the ported enemy reward suffix. EnemyData, TreasureData, CharaData.needExpRate_ and TableData.exp_ are decoded; the reward pipeline is ported with explicit ECS/storage hosts. Complete stage binding remains.
-2. (blocking) RNG backend for `Hits1000` drop rolls (see [rng.md](rng.md)).
+2. (blocking) Effective live RNG configuration/seed for Hits1000 drop rolls (see [rng.md](rng.md)); an explicit-seed, source-matched System.Random route and drop integration are now tested.
 3. Contracts of the AddMoney/AddCrystal value helpers (SecureLong-like? limits) and save persistence of money, records and high score.
 4. `TreasureData.get_isBossReward` semantics; `CreateDrop` types 1/2 and its other jump targets; who creates money/prisoner drops.
 5. Retry path of `OnGameOver`; the quest method in state 4; hero equipment update in state 3; concrete world/subset bindings for the ported cleanup.

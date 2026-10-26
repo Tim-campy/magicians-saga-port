@@ -130,6 +130,10 @@ Initial values: `MyConfig..cctor` stores **30** at static `+0x50` (`0x1174390`/`
 
 None. Needed: a `src/platform` host loop reproducing Update/OnGUI gate order, a TotalFrames counter separate from logic passes, the FPS request (default 30) and optional frame wait, pause/focus → form codes 4/3. Logic pass counting is in [ui.md](ui.md).
 
+### Replay RNG gate in Awake
+
+At `0x1b7ebe0..0x1b7ec80`, Awake sets JRandom.fix_ when Config.UNITY_EDITOR is true and either ActionReplay.CheckReplayFile succeeds or PlayerPrefs DEVCMD_REPLAY_RECORD equals "on" (default "off"). It does not reset the flag on the false path. The gate is ported/tested with explicit host inputs; [rng.md](rng.md#initialization-and-public-implementation-reuse) records the evidence and remaining live-configuration limits. This does not complete Awake's other startup responsibilities.
+
 ## Evidence
 
 - [../archive/reports/04-android-startup.md](../archive/reports/04-android-startup.md), [06-native-bootstrap.md](../archive/reports/06-native-bootstrap.md), [07-il2cpp-code-map.md](../archive/reports/07-il2cpp-code-map.md), [08-smali-validation.md](../archive/reports/08-smali-validation.md), [09-native-callbacks.md](../archive/reports/09-native-callbacks.md), [10-unity-assets.md](../archive/reports/10-unity-assets.md), [22-unity-lifecycle.md](../archive/reports/22-unity-lifecycle.md), [24-frame-conditions.md](../archive/reports/24-frame-conditions.md), [27-frame-policy.md](../archive/reports/27-frame-policy.md), [03-open-questions.md](../archive/reports/03-open-questions.md)

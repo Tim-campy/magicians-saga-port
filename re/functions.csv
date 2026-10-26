@@ -2613,10 +2613,10 @@ game:0x06000a97,game:0x06000a97,util,,144,0x1128c4c
 game:0x06000a98,game:0x06000a98,util,,8,0x1128cdc
 game:0x06000a99,kairo.unity.math.Random..cctor,util,traced,184,0x1128ce4
 game:0x06000a9a,kairo.unity.math.Random.Rand,util,documented,100,0x1128d9c
-game:0x06000a9b,kairo.unity.math.Random.Rand,util,documented,168,0x1128e00
-game:0x06000a9c,kairo.unity.math.Random.Rand,util,documented,140,0x1128ea8
+game:0x06000a9b,kairo.unity.math.Random.Rand,util,reimplemented,168,0x1128e00
+game:0x06000a9c,kairo.unity.math.Random.Rand,util,reimplemented,140,0x1128ea8
 game:0x06000a9d,kairo.unity.math.Random.Hits,util,documented,96,0x1128f34
-game:0x06000a9e,kairo.unity.math.Random.Hits1000,util,documented,96,0x1128f94
+game:0x06000a9e,kairo.unity.math.Random.Hits1000,util,reimplemented,96,0x1128f94
 game:0x06000a9f,kairo.unity.math.Random.Choose,util,traced,112,0x1128ff4
 game:0x06000aa1,kairo.unity.math.Random.Lot,util,traced,476,0x1129064
 game:0x06000aa2,game:0x06000aa2,util,,56,0x1129240
@@ -4659,8 +4659,8 @@ kairo:0x060000b6,java.util.JRandom.get_Logic,platform,documented,72,0x1b04af4
 kairo:0x060000b7,java.util.JRandom.set_Logic,platform,documented,76,0x1b04b3c
 kairo:0x060000b8,java.util.JRandom..ctor,platform,traced,32,0x1b04b88
 kairo:0x060000b9,java.util.JRandom..ctor,platform,documented,252,0x1b04ba8
-kairo:0x060000ba,java.util.JRandom.NextInt,platform,documented,132,0x1b04d9c
-kairo:0x060000bb,java.util.JRandom.NextInt,platform,documented,28,0x1b04e20
+kairo:0x060000ba,java.util.JRandom.NextInt,platform,reimplemented,132,0x1b04d9c
+kairo:0x060000bb,java.util.JRandom.NextInt,platform,reimplemented,28,0x1b04e20
 kairo:0x060000bc,java.util.JRandom.NextLong,platform,documented,20,0x1b04e3c
 kairo:0x060000bd,java.util.JRandom.SetSeed,platform,documented,240,0x1b04e50
 kairo:0x060000be,kairo:0x060000be,platform,,132,0x1b04f40

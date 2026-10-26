@@ -324,3 +324,8 @@ add_executable(test_enemy_rewards test_enemy_rewards.cpp)
 target_link_libraries(test_enemy_rewards PRIVATE enemy_rewards stage_rewards)
 project_warnings(test_enemy_rewards)
 add_test(NAME enemy_rewards_contract COMMAND test_enemy_rewards)
+
+add_executable(test_game_random test_game_random.cpp)
+target_link_libraries(test_game_random PRIVATE game_random enemy_rewards)
+project_warnings(test_game_random)
+add_test(NAME game_random_contract COMMAND test_game_random)

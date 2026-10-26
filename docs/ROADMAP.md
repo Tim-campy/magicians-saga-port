@@ -31,7 +31,7 @@ Current maintainer priority: game-specific decompilation and gameplay integratio
 ## Next tasks
 
 ### Current gameplay focus
-- [ ] Establish the game's RNG backend and seed initialization (JRandom.Logic/fix_ writers and constructor path) to bind combat/drop draws; consult matching public runtime sources before implementing any System.Random backend.
+- [ ] Compose EnemySystem.Damage with the existing numeric helpers and explicit RNG source, preserving hit/critical/variation draw order and parameter side effects; seeded System.Random/drop integration is tested, while live configuration and reseeding remain open.
 
 ### 1. Events and scripts
 - [ ] Bind decoded billing-item/catalog providers and complete notification manager adapters, preserving task execution gates.

@@ -1,6 +1,6 @@
 # Random number generation
 
-Gameplay randomness goes through the static wrapper `kairo.unity.math.Random` (Rand/Hits/Hits1000/Choose/Lot), which forwards to a static `java.util.JRandom` instance. JRandom owns three generator objects (System.Random, Random2018, Xorshift128) and picks one per call from a static `Logic` integer. The wrapper arithmetic is established from assembly; the selected backend, its algorithm and the seed are not. No generator is ported, and none may be substituted while claiming deterministic fidelity.
+Gameplay randomness goes through the static wrapper `kairo.unity.math.Random` (Rand/Hits/Hits1000/Choose/Lot), which forwards to a static `java.util.JRandom` instance. JRandom owns three generator objects (System.Random, Random2018, Xorshift128) and picks one per call from a static `Logic` integer. The wrapper arithmetic, default configuration and one replay seed gate are established. A compatible explicit-seed System.Random route is adapted from public .NET Core 3.1 source and tested through enemy drops; effective live selection, reseeding and Android comparison remain open. No alternative generator is silently substituted.
 
 ## Overview
 
@@ -15,7 +15,7 @@ Random.Hits(p) / Hits1000(p) / Choose / Lot
 ```
 
 - `Random..cctor` (0x1128ce4) allocates a 256-element array (meaning unknown) and constructs JRandom with `JSystem.CurrentTimeMillis()` as the seed argument. When this initializer actually runs is not pinned.
-- The seeded JRandom constructor (0x1b04ba8) constructs **all three** backends, not only the selected one: System.Random at `this+0x10`, Random2018 at `+0x18`, Xorshift128 at `+0x20`. A byte flag at static offset 0 forces the seed to zero when set; otherwise the low 32 bits of the argument are passed. Metadata names a static candidate `fix_` for this flag; nothing writing it has been traced. `SetSeed` (0x1b04e50) rebuilds the three objects the same way. The unseeded constructor (0x1b04b88) calls CurrentTimeMillis and delegates.
+- The seeded JRandom constructor (0x1b04ba8) constructs **all three** backends, not only the selected one: System.Random at `this+0x10`, Random2018 at `+0x18`, Xorshift128 at `+0x20`. A byte flag at static offset 0 forces the seed to zero when set; otherwise the low 32 bits of the argument are passed. Metadata names a static candidate `fix_` for this flag; a writer has now been traced in IApplication.Awake (see initialization below). `SetSeed` (0x1b04e50) rebuilds the three objects the same way. The unseeded constructor (0x1b04b88) calls CurrentTimeMillis and delegates.
 - Vtable slot 5 (vtable origin 0x138, stride 16, so `class+0x188`) resolves via metadata v31 to: System.Random (type 247) -> `System.Random.Next`; Xorshift128 (type 1728) -> `Xorshift128.Next`; Random2018 (type 1729) -> inherited `System.Random.Next`. Random2018 therefore has no own `Next`; its `Init` (0x1b050c8) alters inherited state through reflection (`Type.GetTypeFromHandle`, `FieldInfo.SetValue`), which rules out swapping in a standard library generator.
 
 ## Key methods
@@ -51,11 +51,29 @@ Random.Hits(p) / Hits1000(p) / Choose / Lot
 
 Known gameplay consumers (call order matters for determinism) are listed in [combat.md](combat.md#rng-consumption-order) and [rewards.md](rewards.md).
 
+## Initialization and public implementation reuse
+
+JRandom has five fields (random_, random2018_, randomXor_, fix_, Logic backing field) and eight methods; the metadata declares no static constructor. Managed field initialization therefore gives fix_=false and Logic=0 before any writes ([C# initialization specification](https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/classes#1555-field-initialization)). This establishes the initial state, not an immutable runtime policy. Logic 0 selects System.Random; any value other than 1/2 also selects it. The port reads Logic for each draw rather than caching it.
+
+A bounded ADRP/LDR scan of the unique frozen JRandom type-handle GOT (`0x272fed0`) followed by static-field store candidate analysis found the Logic setter's store at `0x1b04b78` and a fix_ write at `0x1b7ec80`. Candidate generation is not a whole-program proof: register propagation, indirect/reflection writes and computed aliases remain outside its coverage. The two selected store sites were checked in Ghidra.
+
+IApplication.Awake at `0x1b7ebe0..0x1b7ec80` checks Config.UNITY_EDITOR (static +0x30), then ActionReplay.CheckReplayFile (`0x1b42088`). If no replay exists, it queries PlayerPrefs.GetString with key DEVCMD_REPLAY_RECORD and default "off", comparing exactly to "on". If the editor flag and either replay condition hold, it writes fix_=true; the false path does not reset an existing true value. The query short-circuits, and the port preserves this. The live editor/config/replay inputs are still supplied by a host.
+
+Three distinct instances are established: gameplay Random..cctor (`0x1128ce4`) stores its JRandom at Random static +0x00; AppData..cctor creates an unseeded JRandom at `0x11199bc` and stores it at AppData static +0x370; Lib..cctor calls CurrentTimeMillis and the explicit-seed constructor at `0x1122f78`, storing Lib static +0x30. Do not merge their streams. JRandom constructors/reseed truncate the millisecond argument to int32 and force zero when fix_ is true, then construct all three backends; the current port exposes seed conversion and backend selection, not the entire three-backend construction lifecycle.
+
+Public source route: [.NET CoreCLR v3.1.0 Random.cs](https://raw.githubusercontent.com/dotnet/coreclr/v3.1.0/src/System.Private.CoreLib/shared/System/Random.cs), MIT ([retained license](../../third_party/licenses/dotnet-coreclr.txt)). Its _inext/_inextp/_seedArray/t_threadRandom/s_globalRandom fields match this APK's metadata. Bounded checks of the explicit-seed constructor (`0x1e72584`), InternalSample (`0x1e72754`) and Next (`0x1e72804`) corroborate the 56-slot initialization, seed constant, special INT_MIN handling, four mixing passes, indices 0/21, subtractive recurrence and Next forwarding. The adaptation includes only explicit-seed construction/Next; it does not copy platform entropy, locking, thread-local seeding or the unused Random API. This is a compatible algorithm source, not proof of the APK runtime's exact source revision.
+
+Seven public seed vectors (0, 1, -1, 42, 123456789, INT_MIN, INT_MAX) match the C++ implementation and a Windows System.Random reference run. With seed 42, the enemy drop test rejects threshold 500 on the first draw (remainder 710), accepts the next (119), and confirms the third value remains unconsumed. This compares public/static contracts, not the Android executable. Confidence high for the documented code paths and source match; effective gameplay configuration remains unverified.
+
 ## Port
 
-No generator is ported. `combat_rules.*` takes pre-resolved values; `enemy_rewards.cpp` now consumes an explicit Hits1000 provider in recovered row order. Thresholds are not pre-clamped and every visited row draws, preserving the future backend call sequence. Public runtime sources must be consulted before implementing a selected standard-library backend.
+`game_random.cpp` ports live backend selection, game Rand(bound)/Rand(min,max)/Hits1000 and JRandom.NextInt(bound) arithmetic. It preserves one draw per call, inclusive range wrapping, negative remainder behavior, INT_MIN negation and ARM64 division-by-zero/remainder behavior without C++ undefined operations. `legacy_system_random.cpp` adapts the public seeded backend; missing selected alternatives throw explicitly rather than silently using it. The replay gate and seed conversion are also tested. `enemy_rewards.cpp` now has a deterministic seeded-backend integration test.
+
+Tests in `test_game_random.cpp` cover public reference vectors, independent instances, gate query order/no-reset behavior, live backend switches, unsupported selections and wrapper edge cases. Full startup/SetSeed, Random2018/Xorshift128 and the effective runtime seed are not implemented/verified. Public runtime source should remain the first reference for those follow-ups.
 
 ## Evidence
+
+- Local `research/exports/rng-type-candidates.json`, `rng-static-store-candidates.json`, `rng-initialization/`, `rng-gates/` and `rng-public-match/`; `game-random-build.log`. These are bounded static observations, not runtime traces.
 
 - [17-random-selection.md](../archive/reports/17-random-selection.md)
 - [59-combat-hit-threshold.md](../archive/reports/59-combat-hit-threshold.md) (wrapper re-read)
@@ -65,8 +83,8 @@ No generator is ported. `combat_rules.*` takes pre-resolved values; `enemy_rewar
 ## Open questions
 
 1. (blocking) Effective value of `JRandom.Logic` at runtime and all writers of it (direct static stores, reflection).
-2. (blocking) Algorithms of `System.Random.Next` (IL2CPP mscorlib build), `Xorshift128.Next` and `Random2018.Init` state setup; can any backend return negative values?
-3. (blocking) Seed: when `Random..cctor` runs, whether `SetSeed` is called later (e.g. per stage/save), and writers of the `fix_` zero-seed flag.
+2. (blocking) Public-source matching for the alternative `Xorshift128.Next` / `Random2018.Init` paths if selected; explicit-seed System.Random.Next is now source-matched/ported. Can alternative backends return negatives?
+3. (blocking) Seed: when `Random..cctor` runs, whether `SetSeed` is called later (e.g. per stage/save), and further writers of the `fix_` zero-seed flag (editor/replay activation is now known).
 4. Purpose of the 256-element array created by `Random..cctor`.
 5. Bodies of `Random.Choose` and `Random.Lot` (only their direct callees are known).
 6. Controlled-seed differential test against the Android build.
