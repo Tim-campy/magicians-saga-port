@@ -4083,7 +4083,7 @@ game:0x060010c4,game:0x060010c4,data,,136,0x116e8c4
 game:0x060010c5,game:0x060010c5,data,,108,0x116e94c
 game:0x060010c6,game:0x060010c6,data,,8,0x116e9b8
 game:0x060010c7,data.EnemyData.GetExp,data,reimplemented,68,0x116e9c0
-game:0x060010c8,data.EnemyData.GetParamValue,data,documented,228,0x116ea04
+game:0x060010c8,data.EnemyData.GetParamValue,data,reimplemented,228,0x116ea04
 game:0x060010c9,game:0x060010c9,data,,12,0x116eae8
 game:0x060010ca,data.EnemyData.AddDefeatCount,data,documented,120,0x116eaf4
 game:0x060010cb,game:0x060010cb,data,,8,0x116eb6c
@@ -7151,7 +7151,7 @@ kairo:0x06000b54,kairo:0x06000b54,graphics,,8,0x1c5dce0
 kairo:0x06000b55,kairo:0x06000b55,graphics,,300,0x1c5dce8
 kairo:0x06000b56,kairo:0x06000b56,graphics,,288,0x1c5de14
 kairo:0x06000b57,kairo:0x06000b57,graphics,,104,0x1c5df34
-kairo:0x06000b58,kairo:0x06000b58,graphics,,224,0x1c5df9c
+kairo:0x06000b58,kairo.unity.graph.Graph.Easing,graphics,reimplemented,224,0x1c5df9c
 kairo:0x06000b59,kairo:0x06000b59,graphics,,224,0x1c5e07c
 kairo:0x06000b5a,kairo:0x06000b5a,graphics,,184,0x1c5e15c
 kairo:0x06000b60,kairo:0x06000b60,util,,44,0x1c5e214

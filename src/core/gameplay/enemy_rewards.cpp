@@ -4,6 +4,20 @@
 #include <stdexcept>
 
 namespace saga::core {
+std::int32_t enemy_parameter(const EnemyRecord& enemy,std::int32_t index,std::int32_t level,
+                             const std::array<std::int32_t,13>& maxima) {
+    // EnemyData.GetParamValue 0x116ea04. Endpoints are read before maximum level.
+    if(!enemy.parameters)throw std::invalid_argument("null enemy parameter array");
+    const auto& row=enemy.parameters->at(static_cast<std::size_t>(index));
+    if(!row)throw std::invalid_argument("null enemy parameter row");
+    const auto start=row->at(0),end=row->at(1);
+    const auto minus_one=[](std::int32_t value){
+        const auto bits=static_cast<std::uint32_t>(value)-1U;
+        return static_cast<std::int32_t>(bits<=0x7fffffffU?static_cast<std::int64_t>(bits):
+                                        static_cast<std::int64_t>(bits)-0x100000000LL);
+    };
+    return easing(start,end,minus_one(maxima.at(static_cast<std::size_t>(index))),minus_one(level),-50);
+}
 EnemyTable load_enemy_table(std::string_view text,bool normalize,const EventIntegerParser& parser){
     // EnemyData.Load 0x116ec2c; GetIntTripleArray 0x11271bc permits null only at outer level.
     return detail::load_table_records<EnemyRecord>(text,normalize,parser,[](detail::TableTokens& t){

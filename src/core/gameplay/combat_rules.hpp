@@ -3,6 +3,10 @@
 #include <array>
 
 namespace saga::core {
+// Graph.Easing: ordered binary32 arithmetic and binary64 degree-to-radian sine.
+// Host libm is used; bitwise agreement with Android libm awaits runtime comparison.
+std::int32_t easing(std::int32_t start,std::int32_t end,std::int32_t duration,
+                   std::int32_t progress,std::int32_t amplitude);
 // Graph.Easing zero-amplitude numeric path; binary32 rounds and wrapping endpoint difference.
 std::int32_t easing_zero_amplitude(std::int32_t start,std::int32_t end,
                                    std::int32_t duration,std::int32_t progress);

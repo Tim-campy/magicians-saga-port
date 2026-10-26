@@ -1,6 +1,7 @@
 #pragma once
 #include "event_catalog.hpp"
 #include <optional>
+#include <array>
 
 namespace saga::core {
 using EnemyTreasureGroups=std::vector<std::vector<EventIntegers>>;
@@ -15,6 +16,9 @@ struct EnemyRecord {
 using EnemyTable=std::vector<std::optional<EnemyRecord>>;
 EnemyTable load_enemy_table(std::string_view,bool normalize_crlf,const EventIntegerParser&);
 std::int32_t enemy_experience(const EnemyRecord&,std::int32_t level);
+// EnemyData.GetParamValue: maxima is live state, separate from the character array.
+std::int32_t enemy_parameter(const EnemyRecord&,std::int32_t index,std::int32_t level,
+                             const std::array<std::int32_t,13>& maximum_levels);
 class EnemyRewardHost {
 public:
     virtual ~EnemyRewardHost()=default;

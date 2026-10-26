@@ -7,14 +7,23 @@ def f32(value):
     return struct.unpack('<f', struct.pack('<f', value))[0]
 
 
-def original_numeric_model(start, end, duration, progress):
-    ratio = f32(progress / duration)
+def wrap32(value):
+    return (value + 2**31) % 2**32 - 2**31
+
+
+def original_numeric_model(start, end, duration, progress, amplitude=0):
+    if progress < 0:
+        return start
+    if progress >= duration:
+        return end
+    ratio = f32(f32(progress) / f32(duration))
     pi = f32(math.pi)
     angle = f32(f32(f32(ratio * pi) * 180.0) / pi)
     sine = f32(math.sin(angle * math.pi / 180.0))
-    assert math.isfinite(sine)
-    correction = f32(f32(0.0 / f32(314.1592712402344)) * sine)
-    return int(f32(f32(f32(ratio + correction) * (end - start)) + start))
+    correction = f32(f32(f32(amplitude) / f32(314.1592712402344)) * sine)
+    result = f32(f32(f32(ratio + correction) * f32(wrap32(end - start))) + f32(start))
+    converted = max(-2**31, min(2**31 - 1, int(result)))
+    return max(min(start, end), min(max(start, end), converted))
 
 
 def main():

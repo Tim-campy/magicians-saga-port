@@ -7,6 +7,18 @@ void check(bool ok, const char* why) {
     if (!ok) { std::cerr << why << '\n'; std::exit(1); }
 }
 int main() {
+    // Expected hash from tools/verify_combat_easing.py's struct-rounded Python model.
+    std::uint64_t curve_hash=14695981039346656037ULL;
+    for(const auto endpoints: {std::array<int,2>{100,1000},std::array<int,2>{1000,100},
+                              std::array<int,2>{-1000,50},std::array<int,2>{0,9999999}})
+        for(const int duration:{199,999})for(const int amplitude:{-80,-50,0,80})
+            for(int progress=-1;progress<=duration+1;++progress){
+                curve_hash^=static_cast<std::uint32_t>(saga::core::easing(endpoints[0],endpoints[1],duration,progress,amplitude));
+                curve_hash*=1099511628211ULL;
+            }
+    check(curve_hash==17971640406678543181ULL,"19264 general easing cases match independent static model");
+    check(saga::core::easing(0,1000,100,50,-50)==340,"negative amplitude differs from linear interpolation");
+    check(saga::core::easing(9,4,0,-1,-50)==9&&saga::core::easing(9,4,0,0,-50)==4,"general easing early guard order");
     // Exhaustive interior values. Integer expectations were independently
     // checked against the instruction-level binary32 model (report 64).
     for (int t = 0; t < 50; ++t)

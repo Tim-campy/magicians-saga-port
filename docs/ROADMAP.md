@@ -31,7 +31,7 @@ Current maintainer priority: game-specific decompilation and gameplay integratio
 ## Next tasks
 
 ### Current gameplay focus
-- [ ] Close the enemy growth curve (-50 amplitude), then bind decoded character/shop records and event-15 consumers. Initial maximum levels and live maximum/shop providers are ported alongside character growth; concrete ECS/data integration remains open.
+- [ ] Bind decoded character/shop records and enemy parameters to the concrete damage host, then event-15 consumers. Character/enemy growth, equipment totals and initial maxima are ported; live ECS/data integration remains open.
 
 ### 1. Events and scripts
 - [ ] Bind decoded billing-item/catalog providers and complete notification manager adapters, preserving task execution gates.
@@ -50,7 +50,6 @@ Current maintainer priority: game-specific decompilation and gameplay integratio
 - [ ] Name and bind parameter indices 0/1/2/6/7/8/9, equipment contributions and attribute bonus; resolve `MyConfig.FPS`/`DEBUG` for the composed damage host and attack timing.
 - [ ] Bind the ported enemy reward suffix and ShowQuestResult pipeline to ECS/drop creation/storage/UI; enemy, treasure, character-rate and level-cost records are decoded/tested.
 - [ ] Read `OnGameOver`'s retry path, resolve the state-4 quest method and event 1133.
-- [ ] Port `Graph.Easing` with amplitudes -50 and -80 against the binary32 model; -50 blocks enemy parameter growth as well as drop presentation.
 
 ### 4. ECS world and animation
 - [ ] Build the slot index → component type table (`ComponentFactory.Create`) and recover the payloads and Extra hooks of the remaining components (blocking for an entity reader).

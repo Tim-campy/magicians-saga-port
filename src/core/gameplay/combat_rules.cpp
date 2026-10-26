@@ -1,8 +1,33 @@
 #include "combat_rules.hpp"
 #include <algorithm>
 #include <limits>
+#include <cmath>
 
 namespace saga::core {
+std::int32_t easing(std::int32_t start,std::int32_t end,std::int32_t duration,
+                   std::int32_t progress,std::int32_t amplitude) {
+    if(amplitude==0)return easing_zero_amplitude(start,end,duration,progress);
+    if(progress<0)return start;
+    if(progress>=duration)return end;
+    const volatile float ratio=static_cast<float>(progress)/static_cast<float>(duration);
+    const volatile float angle_pi=ratio*0x1.921fb6p+1F;
+    const volatile float angle_degrees=angle_pi*180.0F;
+    const volatile float angle=angle_degrees/0x1.921fb6p+1F;
+    const volatile double radians_product=static_cast<double>(angle)*0x1.921fb54442d18p+1;
+    const volatile double radians=radians_product/180.0;
+    const volatile float sine=static_cast<float>(std::sin(radians));
+    const volatile float weight=static_cast<float>(amplitude)/314.159271240234375F;
+    const volatile float correction=weight*sine;
+    const volatile float curved=ratio+correction;
+    const auto bits=static_cast<std::uint32_t>(end)-static_cast<std::uint32_t>(start);
+    const auto difference=static_cast<std::int32_t>(bits<=0x7fffffffU?static_cast<std::int64_t>(bits):
+                                                  static_cast<std::int64_t>(bits)-0x100000000LL);
+    const volatile float product=curved*static_cast<float>(difference);
+    const volatile float result=product+static_cast<float>(start);
+    const auto converted=result>=2147483648.0F?std::numeric_limits<std::int32_t>::max():
+        result<=-2147483648.0F?std::numeric_limits<std::int32_t>::min():static_cast<std::int32_t>(result);
+    return std::clamp(converted,std::min(start,end),std::max(start,end));
+}
 // Separate volatile stores retain each
 // binary32 rounding and prevent contraction into an FMA.
 std::int32_t easing_zero_amplitude(std::int32_t start, std::int32_t end,

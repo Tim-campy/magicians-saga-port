@@ -21,6 +21,19 @@ struct Host final:EnemyRewardHost {
     void spawn_treasure_drop(std::int32_t id)override{calls.push_back("treasure");pending.push_back({3,id});}
 };
 int main(int argc,char** argv){
+    {
+        EnemyRecord e;e.parameters=std::make_shared<std::vector<EventInstruction>>();
+        e.parameters->push_back(std::make_shared<EventIntegers>(EventIntegers{100,1000}));
+        std::array<std::int32_t,13> maxima{};maxima.fill(1000);
+        check(enemy_parameter(e,0,1,maxima)==100&&enemy_parameter(e,0,1000,maxima)==1000);
+        check(enemy_parameter(e,0,501,maxima)==407); // Linear growth would yield 550.
+        check(enemy_parameter(e,0,0,maxima)==100&&enemy_parameter(e,0,(-2147483647-1),maxima)==1000);
+        maxima[0]=200;check(enemy_parameter(e,0,200,maxima)==1000); // Live table change.
+        e.parameters->at(0)=std::make_shared<EventIntegers>(EventIntegers{100});
+        try{enemy_parameter(e,0,1200,maxima);check(false);}catch(const std::out_of_range&){}
+        e.parameters->at(0)=nullptr;
+        try{enemy_parameter(e,0,1200,maxima);check(false);}catch(const std::invalid_argument&){}
+    }
     if(argc==2){
         std::ifstream f(argv[1],std::ios::binary);check(static_cast<bool>(f));
         std::string text{std::istreambuf_iterator<char>(f),std::istreambuf_iterator<char>()};

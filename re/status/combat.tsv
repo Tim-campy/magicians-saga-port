@@ -72,7 +72,7 @@ game:0x060000f3	reimplemented	src/core/gameplay/combat_parameters.cpp	Base maxim
 game:0x060010f0	reimplemented	src/core/gameplay/combat_parameters.cpp	Equipment row endpoints; level minus one; duration 99; shared tested kernel
 game:0x060010ac	reimplemented	src/core/gameplay/combat_parameters.cpp	Cloth row endpoints; level minus one; duration 99; shared tested kernel
 game:0x06001179	reimplemented	src/core/gameplay/combat_parameters.cpp	Hat row endpoints; level minus one; duration 99; shared tested kernel
-game:0x060010c8	documented	docs/subsystems/combat.md	Enemy endpoints and parameter maximum; easing amplitude -50; not linear
+game:0x060010c8	reimplemented	src/core/gameplay/enemy_rewards.cpp	Decoded enemy endpoints and live maximum table; tested -50 easing and malformed rows
 game:0x06001075	reimplemented	src/core/gameplay/combat_parameters.cpp	Character growth; extra 0.086 endpoint for indices 0/1 above maximum; explicit maximum provider
 game:0x06000f40	reimplemented	src/core/gameplay/combat_parameters.cpp	Explicit-level character growth then gated main-character shop bonus; provider order tested
 game:0x06000f3f	reimplemented	src/core/gameplay/combat_parameters.cpp	Stored-level character growth and shop bonus; explicit-level override tested
@@ -80,3 +80,4 @@ game:0x060011a0	reimplemented	src/core/gameplay/combat_parameters.cpp	Parameter 
 game:0x060011a3	reimplemented	src/core/gameplay/combat_parameters.cpp	Wrapping upValue times buyCount; negative counts preserved
 game:0x060010a4	traced	docs/subsystems/combat.md	Character PARAM_MAX_LEVELS initializer resolved; other static arrays not fully ported
 game:0x060010e7	traced	docs/subsystems/combat.md	Enemy PARAM_MAX_LEVELS initializer resolved; independent array with same metadata source as character
+kairo:0x06000b58	reimplemented	src/core/gameplay/combat_rules.cpp	General ordered binary32 easing with standard sine; 19264 static model cases; Android libm unverified
