@@ -29,7 +29,7 @@ The plan in one page. Agents take the first unblocked task of the current work p
 ## Next tasks
 
 ### 1. Events and scripts
-- [ ] Recover live locale/thread initialization and culture/number-format setters for the composed notification sign adapter. AOSP duplicate selection awaits device comparison. Trace culture setters and collation availability/backend before replacing prefix/sign providers.
+- [ ] Trace Thread.set_CurrentCulture (0x1ecd314), its async-context effects and game callers; bind live locale/thread initialization and native lazy population for the composed notification sign adapter. AOSP duplicate selection awaits device comparison. Trace culture setters and collation availability/backend before replacing prefix/sign providers.
 - [ ] Bind decoded billing-item/catalog providers and complete notification manager adapters, preserving task execution gates.
 - [ ] Port decor/town/capture callbacks, then bind update_select_form to a desktop host with orientation/image-dictionary storage, decoded saves, camera dimensions and form factories.
 - [ ] Find the consumer of `hour_ != -1`, the writer of `SubForm.delayEvent_` (`+0x1d0`) and the remaining effect opcodes of the 15-entry table at `0x627b6e`.

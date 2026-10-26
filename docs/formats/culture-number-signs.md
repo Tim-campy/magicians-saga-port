@@ -44,4 +44,4 @@ Native record expansion at 0x10367cc copies record +0x14 into scratch +0x28 and 
 ## Open questions
 
 - (blocking for gameplay integration) Recover live locale/thread initialization and setters; the notification sign adapter and exception scopes are composed.
-- Audit later culture/sign setters; the neutral-map loader and invariant integer-sign projection are implemented.
+- Trace actual game callers of culture/sign setters and bind lazy native population; sign/NumberFormat mutation contracts, neutral-map loading and invariant integer-sign projection are implemented.
