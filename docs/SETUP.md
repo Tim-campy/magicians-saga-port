@@ -71,3 +71,9 @@ cmake --build build/linux --parallel && ctest --test-dir build/linux --output-on
 ```
 
 Desktop executables: `build/desktop/asset_inspect.exe <container.bin>` (JSON index of a decoded container), `build/desktop/event_trace.exe` (event scenario; see `docs/subsystems/events.md`), `build/viewer/asset_viewer.exe <png|opt>` (technical viewer, Escape closes).
+
+After the desktop build, exercise the extracted number signs locally (optional; CI uses synthetic data):
+
+```powershell
+.\build\desktop\test_apply_culture.exe extracted/culture-enabled/culture/number-records.bin extracted/culture-enabled/culture/sign-pool.bin
+```
