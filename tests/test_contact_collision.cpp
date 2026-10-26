@@ -1,4 +1,5 @@
 #include "core/gameplay/combat_state.hpp"
+#include "core/gameplay/projectile_launch.hpp"
 #include <cstdlib>
 #include <functional>
 #include <limits>
@@ -6,7 +7,12 @@
 #include <string>
 using namespace saga::core;
 void check(bool value){if(!value)std::abort();}
-struct Host final:ContactCollisionHost,HumanStateHost {
+struct Host final:ContactCollisionHost,HumanStateHost,ProjectileLaunchHost,RandomSource {
+    ProjectileLink flying;ProjectileModification modification;
+    std::int32_t next()override{return 0;}
+    ProjectileLink& acquire_projectile()override{return flying;}
+    ProjectileModification& acquire_modification()override{return modification;}
+    void add_animation(ComponentSlots&,std::int32_t,std::int32_t)override{check(false);}
     std::vector<std::string> calls;
     bool lethal=false,blocked=false;int progress=0;
     ComponentSlots* hero_entity=nullptr;ComponentSlots* owner=nullptr;
@@ -24,8 +30,9 @@ struct Host final:ContactCollisionHost,HumanStateHost {
     void effect(std::int32_t a,std::int32_t id,std::int32_t b,float x,float y,float z)override{
         check(a==0&&b==0&&x==1&&y==12&&(id==2?z==112:z==20));calls.push_back("effect"+std::to_string(id));
     }
-    void fly_away(ComponentSlots&,std::int32_t a,std::int32_t b,std::int32_t c,std::int32_t d,bool enemy)override{
+    void fly_away(ComponentSlots& e,std::int32_t a,std::int32_t b,std::int32_t c,std::int32_t d,bool enemy)override{
         check(a==-100&&b==100&&c==(enemy?-100:50)&&d==(enemy?-50:100));calls.push_back(enemy?"flyEnemy":"flyHuman");
+        saga::core::fly_away(e,a,b,c,d,enemy,*this,*this);
     }
     bool playing_cut_in(ComponentSlots&)override{return false;}
     void change_animation(ComponentSlots&,std::int32_t clip,bool reset)override{check(clip==36&&reset);}

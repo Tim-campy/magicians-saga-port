@@ -129,6 +129,8 @@ Spawn values never come from component defaults: Human/MapChip/Nature/Effect/Pro
 
 ## Port
 
+- Fire/FlyAway projectile and ModifyAnimation payload creation is ported in `projectile_launch`; see [combat.md](combat.md#projectile-launch-payload). ModifyAnimation per-frame execution remains open.
+
 - `src/core/animation/animation_transitions.{hpp,cpp}` (library `animation_transitions`): plain structs `SpriteAnimation {resource, clip, frame}`, `AnimationPlayback {rate, return_clip}`, `EntityAnimation` with `std::optional` sprite/playback/direction and human/monster/enemy flags, no default initialisers. `change_animation`, `cut_in_animation`, `restore_animation` reproduce the three methods including the mutation order before a missing component (`MissingAnimationComponent` exception, not IL2CPP ABI) and 32-bit wrap without UB. Test: `tests/test_animation_transitions.cpp` (CTest `animation_transitions_contract`): plain change with/without reset, human/monster/enemy direction differences, repeated cut-in, single restore, missing components with preserved partial mutations, negative id alignment and wrap.
 - `src/core/animation/animation_payload.{hpp,cpp}`: component payload codecs, see [../formats/animation-payload.md](../formats/animation-payload.md). Test: `tests/test_animation_payload.cpp`.
 - Missing: `AnimationSystem.Update` loop (needs SEB maxFrame selection via ResourceManagers and Seb.Frame), Init/subset wiring, Pause, all spawn factories, emitter/projectile systems; no link to `component_slots`. Header comments in `src/core/animation/*.hpp` still cite the old `docs/30-…` report path.

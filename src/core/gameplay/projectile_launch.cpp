@@ -1,0 +1,61 @@
+#include "projectile_launch.hpp"
+#include <cmath>
+#include <limits>
+#include <stdexcept>
+
+namespace saga::core {
+namespace {
+std::int32_t bits(std::uint32_t value){return static_cast<std::int32_t>(value<=0x7fffffffU?static_cast<std::int64_t>(value):static_cast<std::int64_t>(value)-0x100000000LL);}
+// Fire explicitly maps positive infinity to INT_MIN after ARM FCVTZS.
+std::int32_t integer(float value){
+    if(std::isnan(value))return 0;
+    if(value==std::numeric_limits<float>::infinity()||value<=-2147483648.0F)return std::numeric_limits<std::int32_t>::min();
+    if(value>=2147483648.0F)return std::numeric_limits<std::int32_t>::max();
+    return static_cast<std::int32_t>(value);
+}
+ContactPosition& position(ComponentSlots& e){
+    auto* p=dynamic_cast<ContactPosition*>(e.get(contact_position_slot));
+    if(!p)throw std::invalid_argument("missing projectile position");
+    return *p;
+}
+void modify(ComponentSlots& e,std::int32_t type,std::int32_t max_frame,bool loop,ProjectileLaunchHost& host){
+    auto& p=host.acquire_modification();
+    p.type=type;p.x=0;p.y=0;p.z=0;p.scale_x=1;p.scale_y=1;
+    p.angle=0;p.frame=0;p.max_frame=max_frame;p.anchor=0;p.destroy=false;p.loop=loop;p.alpha=255;
+    e.add(modify_animation_slot,&p);
+}
+}
+std::int32_t launch_projectile(ComponentSlots& e,ProjectilePoint start,ProjectilePoint end,
+    std::int32_t speed,ComponentSlots* parent,bool animate,bool rotate,std::int32_t height_percent,
+    ProjectileLaunchHost& host){
+    const float x=end.x-start.x,y=end.y-start.y,z=end.z-start.z;
+    const float xx=x*x,yy=y*y,zz=z*z;
+    const float xy=xx+yy,sum=xy+zz;
+    const float distance=std::sqrt(sum);
+    const auto duration=integer(distance/static_cast<float>(speed));
+    const auto height=bits(static_cast<std::uint32_t>(integer(distance/3.0F))*static_cast<std::uint32_t>(height_percent))/100;
+    auto& p=host.acquire_projectile();p.start=start;p.end=end;p.speed=speed;
+    p.max_height=height;p.max_frame=duration;p.frame=0;p.parent=parent;
+    e.add(projectile_slot,&p);
+    if(rotate)modify(e,7,0,true,host);
+    if(animate)host.add_animation(e,1,-1);
+    return duration;
+}
+void fly_away(ComponentSlots& e,std::int32_t min_x,std::int32_t max_x,
+    std::int32_t min_z,std::int32_t max_z,bool modification,RandomSource& random,ProjectileLaunchHost& host){
+    const ProjectilePoint start{position(e).x,position(e).y,position(e).z};
+    const float x=position(e).x;
+    const auto dx=random_inclusive(random,min_x,max_x);
+    const float z=position(e).z;
+    const auto dz=random_inclusive(random,min_z,max_z);
+    const ProjectilePoint end{x+static_cast<float>(dx),0.0F,z+static_cast<float>(dz)};
+    launch_projectile(e,start,end,4,nullptr,false,false,200,host);
+    if(modification){
+        if(e.contains(modify_animation_slot)){
+            auto* old=e.get(modify_animation_slot);e.remove(modify_animation_slot);
+            host.return_component(modify_animation_slot,old);
+        }
+        modify(e,8,99,false,host);
+    }
+}
+}
