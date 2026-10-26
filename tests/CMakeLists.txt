@@ -101,3 +101,8 @@ add_executable(test_select_event_pass test_select_event_pass.cpp)
 target_link_libraries(test_select_event_pass PRIVATE select_event_pass)
 project_warnings(test_select_event_pass)
 add_test(NAME select_event_pass_contract COMMAND test_select_event_pass)
+
+add_executable(test_form_push test_form_push.cpp)
+target_link_libraries(test_form_push PRIVATE form_push)
+project_warnings(test_form_push)
+add_test(NAME form_push_contract COMMAND test_form_push)

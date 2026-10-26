@@ -1,6 +1,6 @@
 # UI forms
 
-The game's screens are forms (`kairo.unity.form.FormBase` → `LibraryFormBase` → `form.MyFormBase` → concrete forms such as `QuestForm`) run by a singleton `form.FormManager : FormManagerBase`. The manager dispatches six virtual form events through `DoMethod` (0 Init, 1 Update, 2 Draw, 3 Resume, 4 Suspend, 5 Finish), runs a per-frame number of Update passes derived from the form's requested rate and the manager's target FPS, and supplies the target FPS that `main.Main` hands to Unity. These contracts are established from bounded assembly; concrete form overrides, the form stack and the first form are not reconstructed, and no port exists.
+The game's screens are forms (`kairo.unity.form.FormBase` → `LibraryFormBase` → `form.MyFormBase` → concrete forms such as `QuestForm`) run by a singleton `form.FormManager : FormManagerBase`. The manager dispatches six virtual form events through `DoMethod` (0 Init, 1 Update, 2 Draw, 3 Resume, 4 Suspend, 5 Finish), runs a per-frame number of Update passes derived from the form's requested rate and the manager's target FPS, and supplies the target FPS that `main.Main` hands to Unity. These contracts are established from bounded assembly; concrete form overrides, the form stack and the first form are not reconstructed, and the portable port currently covers form-push wrappers and the SelectForm event block, not the manager/frame loop.
 
 ## Overview
 
@@ -33,6 +33,25 @@ The game's screens are forms (`kairo.unity.form.FormBase` → `LibraryFormBase` 
 | `form.FormManager.GetInstance` | `game:0x0600072d` | Singleton accessor used by Main.OnDraw/OnUpdate | medium |
 
 ## Behaviour
+
+### Form push and dialog markers
+
+`FormBase.Push` (`0x1bda598`, `kairo:0x060019e6`) reads the form's manager at +0x40. If non-null it calls `FormManagerBase.Push` (`0x1bdf670`) with parent=this, child=argument and option=false. It ignores the manager return and returns true. An absent manager also returns true. It does not reject a null child. Confidence high.
+
+`SelectForm.Push` (`0x11eec34`, `game:0x06000837`) writes halfword 0x0101 to static +0x30 before calling FormBase.Push. This sets both autoSave_ (+0x30, metadata field `0x04000b41`) and evenCheck_ (+0x31). Both changes survive an exception from the manager; there is no rollback. The two flags share storage with the previously recovered periodic event flag.
+
+The three MyFormBase.Push wrappers differ:
+
+| Method / registry id | Factory | Marker behavior |
+| --- | --- | --- |
+| `0x11d7498`, `game:0x06000758` | SubForm.MakeDialog(string), `0x11f609c` | Does not change dialog_; directly invokes FormBase.Push. |
+| `0x11d750c`, `game:0x06000759` | SubForm.MakeDialog(string,string), `0x11f5fb4` | Stores the factory result in dialog_ (+0xc0) before FormBase.Push. |
+| `0x11d758c`, `game:0x0600075a` | SubForm.MakeDialog(string,string,int), `0x11f6108` | Same marker write after successful factory return. |
+
+The three-argument factory first calls the two-string factory, requires a non-null result, and writes the int argument at +0x13c. These factory bodies are delegated to the UI host in the wrapper port; their dialog content/layout is not reconstructed here. The one-string factory obtains its second argument from literal GOT 0x272ee88. No default text is invented in the portable interface.
+
+A factory exception leaves the previous dialog marker untouched; a manager exception leaves the newly assigned marker in place. In SelectForm.Update (`0x11ebde8`), a non-null marker is cleared and causes an early true return after the earlier common updates. This is a one-shot update suppression, not a port of form dismissal. A scoped immediate-store scan found the two MyFormBase writers and the Update clear. The apparent +0xc0 store in SelectForm._Draw (`0x11f103c`) is stack-relative and is not a dialog_ write.
+
 
 SelectForm event scheduling is documented in [events.md](events.md): dialog/state/balance gates, loopCounter_ arithmetic, evenCheck_ initialization and periodic requests, and the portable reached queue/selection block. The complete form Update and Push behavior remain unported.
 
@@ -105,9 +124,13 @@ No range validation in SetFrameRate (24 bytes). FormManagerBase: `+0x28` current
 
 ## Port
 
+`src/core/gameplay/form_push.{hpp,cpp}` implements FormBase.Push, SelectForm.Push and the three MyFormBase dialog-push wrappers. `FormStackHost` owns manager behavior; `DialogFactory` owns dialog construction. Nullable shared text and form objects preserve null values and identity. `consume_dialog_update_gate` ports only the marker consumption block. `tests/test_form_push.cpp` covers absent managers, null children, factory argument forwarding, overload asymmetry, marker ordering, flag ordering and exceptions. The manager stack, dialog rendering and full form update remain open.
+
 None. A port needs: `FormManager` with DoMethod codes 0..5, GetTargetFps priority, the literal `_execute` pass formula with int32/float32 semantics and defined behaviour for zero divisors, and FormBase rate fields. ECS pause dispatch belongs to the ECS module.
 
 ## Evidence
+
+- Push-chain evidence: local bounded exports `research/exports/select-form-push/` and `research/exports/select-dialog/`; metadata parameter native kinds confirm string/string/int32 for the MyFormBase wrappers. SelectForm static fields use the native field-offset table at ELF 0x277ece8. Build evidence: `research/exports/form-push-build.log`.
 
 - [../archive/reports/09-native-callbacks.md](../archive/reports/09-native-callbacks.md), [24-frame-conditions.md](../archive/reports/24-frame-conditions.md), [27-frame-policy.md](../archive/reports/27-frame-policy.md), [28-form-events.md](../archive/reports/28-form-events.md), [32-ecs-animation-order.md](../archive/reports/32-ecs-animation-order.md) (QuestForm chain), [36-pause-hooks.md](../archive/reports/36-pause-hooks.md), [49-continue-game-preparation.md](../archive/reports/49-continue-game-preparation.md) (ChangeCurrentForm caller)
 - Local: `build/research/frame-policy-followup/M19675__execute.asm`, `build/research/form-events/M19739_DoMethod.asm`, `build/research/frame-policy/direct-references.json`, `build/research/pause-hooks/` (+`coverage.tsv`)

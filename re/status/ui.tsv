@@ -1,0 +1,6 @@
+id	status	evidence	note
+kairo:0x060019e6	reimplemented	src/core/gameplay/form_push.cpp	FormBase.Push: optional manager, false option, true return; tests/test_form_push.cpp
+game:0x06000837	reimplemented	src/core/gameplay/form_push.cpp	SelectForm.Push: autoSave_ and evenCheck_ set before base push; tests/test_form_push.cpp
+game:0x06000758	reimplemented	src/core/gameplay/form_push.cpp	text-only dialog wrapper leaves dialog_ untouched; tests/test_form_push.cpp
+game:0x06000759	reimplemented	src/core/gameplay/form_push.cpp	two-text dialog wrapper stores dialog_ before push; tests/test_form_push.cpp
+game:0x0600075a	reimplemented	src/core/gameplay/form_push.cpp	dialog wrapper with factory int argument stores dialog_ before push; tests/test_form_push.cpp
