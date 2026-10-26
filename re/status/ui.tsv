@@ -13,3 +13,10 @@ game:0x06000838	reimplemented	src/core/gameplay/town_bubble.cpp	CheckViewArea in
 game:0x06000846	reimplemented	src/core/gameplay/town_bubble.cpp	SetTalkFuki predicate requires nonnull VoiceData and type==4; tests/test_town_bubble.cpp
 game:0x0600083d	reimplemented	src/core/gameplay/select_navigation.cpp	Deferred room callback clears weaponNew before AppData access and SelectForm.Push; tests/test_select_navigation.cpp
 game:0x0600103c	reimplemented	src/core/gameplay/select_building.cpp	BuildingData.IsShop kinds 1..5,9,10; tests/test_select_building.cpp
+game:0x06000823	reimplemented	src/core/gameplay/select_camera.cpp	MoveCursor: binary32 inertia and integer early gate; tests/test_select_camera.cpp
+game:0x06000817	reimplemented	src/core/gameplay/select_camera.cpp	SetCameraPosition: ordered live dimension queries and partial stores; tests/test_select_camera.cpp
+game:0x0600014b	reimplemented	src/core/gameplay/select_camera.cpp	AppData.Clamp: upper before lower, including inverted bounds; tests/test_select_camera.cpp
+game:0x0600006c	documented	docs/subsystems/events.md	GameView width scaled binary32 arithmetic with +0.01 bias; arithmetic kernels tested; live fields binding pending
+game:0x0600006d	documented	docs/subsystems/events.md	GameView height scaled binary32 arithmetic with +0.01 bias; arithmetic kernels tested; live fields binding pending
+game:0x0600081d	documented	docs/subsystems/events.md	SelectForm width requires live view and int32 scale; wrapped multiply and SDIV; arithmetic kernels tested; live fields binding pending
+game:0x0600081e	documented	docs/subsystems/events.md	SelectForm height requires live view and int32 scale; wrapped multiply and SDIV; arithmetic kernels tested; live fields binding pending

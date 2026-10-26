@@ -305,7 +305,23 @@ The remaining native sequence begins with MoveCursor at `0x11ed520`, decrements 
 
 Evidence: local `research/exports/delay-resume/M35965.asm`, `research/exports/select-late/*.asm` and `research/exports/select-late-exceptions.json`. Export instruction addresses use the Ghidra image base +0x100000; all addresses above are ELF virtual addresses. `inspect_exception_callsites.py` now supports the required isolated Python invocation; its CLI import is regression-tested without game data.
 
+### Camera inertia, dimensions and position limits
+
+The camera cluster is ported in `select_camera.{hpp,cpp}`. Confidence high from local `research/exports/select-late/F11ef0dc.asm`, `research/exports/select-camera/F11f32b4.asm` and `research/exports/select-camera-helpers/`. Method ids: MoveCursor `game:0x06000823`, SetCameraPosition `game:0x06000817`, AppData.Clamp `game:0x0600014b`; dimension getters `game:0x0600006c`/`6d` and `game:0x0600081d`/`81e`.
+
+MoveCursor (`0x11ef0dc`) returns immediately while bool +0x148 is true. Otherwise it also returns when both binary32 velocities (+0x14c/+0x150) convert to int32 zero. This preserves sub-unit velocity indefinitely; the code does not decay it until either axis passes the gate. Conversion uses ARM64 FCVTZS (NaN to 0, signed saturation), except positive infinity explicitly becomes INT32_MIN. Each reached nonzero signed velocity is multiplied by binary32 0.9 (literal `0x6278bc`); a positive result <=0.25 or negative result >=-0.25 becomes positive zero. NaN and signed zero survive the decay comparisons. After both velocities are stored, convert them, add to camera x/y with int32 wrapping, and call SetCameraPosition. A later host failure does not undo the velocity changes.
+
+SetCameraPosition (`0x11f32b4`) captures the int32 field +0x16c before querying SelectForm.GetGameWidth, then queries GameView.GetGameWidth twice. The lower x bound is wrapped `form_width - captured_16c - first_view_width + second_view_width`; the upper bound is wrapped negation of the live field +0x168. Store clamped x before any height query. Query form height, view height, form height, view height in that order. Lower y is wrapped `first_form_height - first_view_height - 80`; upper y is wrapped `second_form_height - second_view_height + 50`. Store clamped y. Repeated getters are not algebraically cancelled; providers may change between calls. Missing current GameView faults at its getter boundary, potentially after x was written.
+
+AppData.Clamp (`0x110180c`) first replaces a value above the upper bound, then replaces the result below the lower bound. Inverted bounds therefore produce the lower bound, unlike a preconditioned standard clamp. There are no side effects.
+
+GameView.GetGameWidth/Height (`0x10f77b4`/`0x10f77f4`) read int32 dimension +0xbc/+0xc0 and binary32 scale +0xc4. Wrap dimension*100 in int32, convert to binary32, divide by scale, add binary32 **0.01** (literal `0x62798c`, not 0.5), then use the conversion above. SelectForm.GetGameWidth/Height (`0x11f3194`/`0x11f31c8`) first require the current view, call its getter, wrap that result*100, then signed-divide by the live int32 scale +0x170. ARM64 SDIV yields 0 for divisor zero and INT32_MIN for INT32_MIN/-1. The portable arithmetic kernels accept these decoded fields explicitly; the live GameView storage and scale bindings are still required.
+
+`SelectCameraState` binds x/y by reference to the existing prelude/building camera storage. `SelectCameraHost` supplies the repeated form/view queries rather than inventing screen dimensions. Tests exercise the stationary sub-unit gate, signed threshold, NaN/infinity, wrapped motion, changed getter results, captured versus live extent fields, reversed limits, unusual dimension rounding, division corner cases and partial writes after failure. The cluster is not yet called by the composed Update; the next integration point is immediately after guidance/save at `0x11ed520`.
+
 ## Port
+
+- `src/core/gameplay/select_camera.{hpp,cpp}` ports camera inertia, ordered position clamps and dimension arithmetic; `tests/test_select_camera.cpp` verifies their numeric and callback-order contracts.
 
 - `src/core/gameplay/select_guidance_save.{hpp,cpp}` composes guidance and the two save exception scopes after the town-button chain. `tests/test_select_guidance_save.cpp` checks special/invalid selections, live selection changes, pending autosave retention, save order, exception scope and failures at each offerwall step. The returned snapshot remains available for the later bubble pass.
 
@@ -369,7 +385,7 @@ Fixture JSON schema (all keys optional; absence preserves missing state rather t
 
 For a synthetic money-only event with nonempty effects, a minimal auto fixture is `{"context_present": true, "context_character_count": 1, "sys_save_present": false}`. This is test state, not an inferred new-game state. PRINT is required when an empty script or failed identity lookup reaches its diagnostic gate; quest_data_count is required only for that lookup's fallback. Additional predicates require their corresponding catalogs/scalars. Tool collection lengths are limited to 100000; these are harness limits, not recovered game limits.
 
-- Last recorded build: Windows/MSVC, 37/37 CTest (36 C++ contracts plus native scenario integration).
+- Last recorded build: Windows/MSVC, 38/38 CTest (37 C++ contracts plus native scenario integration).
 - Missing: population of decoded default-args/diagnostic state from saves/configuration, SelectForm integration, remaining unit `CheckTerm` predicates, integration with save-loaded execution counters; hour-based delays; `SubForm.delayEvent_` path (slot 5); `SelectForm.Update` guards; opcodes other than the eight; `SecureLong`/`SecureInt` storage; billing item source for stamina; UI forms.
 
 ## Evidence
@@ -403,7 +419,7 @@ For a synthetic money-only event with nonempty effects, a minimal auto fixture i
 ## Open questions
 
 1. (blocking) Concrete context/catalog bindings for the 14 recovered table-used conditions; automatic selection is composed with the kernels but not yet called by a desktop form/frame loop. Populate the decoded host from data/save/ECS providers, including hero level and the Config.DEBUG/AppData.debugRescueNum initialization state. Other unit branches remain unresolved for scripts outside Event.txt.
-2. (blocking) Bind the composed select_form_pass to a desktop form host: port remaining late updates at 0x11ed520, including MoveCursor, the town_bubble lifetime call, review gates and BGM; guidance/autosave and their local exception scopes are now composed, and implement its required notification/decor/town/guide/capture callbacks plus orientation and image-dictionary bindings for the recovered prelude. The guards, clouds, markers, counter, initial event loop and reached-pass scheduling are composed and tested.
+2. (blocking) Bind the composed select_form_pass to a desktop form host: port remaining late updates at 0x11ed520, including integration of the recovered MoveCursor kernel, the town_bubble lifetime call, review gates and BGM; guidance/autosave and their local exception scopes are now composed, and implement its required notification/decor/town/guide/capture callbacks plus orientation and image-dictionary bindings for the recovered prelude. The guards, clouds, markers, counter, initial event loop and reached-pass scheduling are composed and tested.
 3. (blocking) Initial/real values of `SYSSAVEI_YUGAMI`, the `ITEM_STAMINA_UP` item state, and the money/crystal/stamina slots from save/new game.
 4. Unit dispatcher opcodes other than 1/2/4/8/10/12/15/31 (jump table has 15 entries); scripts outside `Event.txt` (quests, built events) may use them.
 5. Consumer of `DelayEvent` entries with `hour_ != -1` (none in the extracted table).
