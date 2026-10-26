@@ -6,10 +6,15 @@ struct HashtableBucket {
     AsyncValue key, value;
     // Projection of key == the containing native bucket-array object.
     bool tombstone = false;
+    std::uint32_t hash_collision = 0; // native record +0x10
 };
 struct HashtableState {
     std::shared_ptr<std::vector<HashtableBucket>> buckets;
     std::uint32_t version = 0;
+    std::uint32_t occupancy = 0;
+    std::int32_t count = 0, load_size = 0;
+    float load_factor = 0.0F; // Caller supplies the recovered constructor state.
+    bool writer_in_progress = false;
 };
 struct HashtableEntry { AsyncValue key, value; };
 class HashtableEnumerator : public CallDataEnumerator {

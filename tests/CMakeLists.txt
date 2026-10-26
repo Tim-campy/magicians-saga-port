@@ -234,3 +234,8 @@ add_executable(test_hashtable_enumerator test_hashtable_enumerator.cpp)
 target_link_libraries(test_hashtable_enumerator PRIVATE hashtable_enumerator)
 project_warnings(test_hashtable_enumerator)
 add_test(NAME hashtable_enumerator_contract COMMAND test_hashtable_enumerator)
+
+add_executable(test_hashtable_rehash test_hashtable_rehash.cpp)
+target_link_libraries(test_hashtable_rehash PRIVATE hashtable_rehash)
+project_warnings(test_hashtable_rehash)
+add_test(NAME hashtable_rehash_contract COMMAND test_hashtable_rehash)

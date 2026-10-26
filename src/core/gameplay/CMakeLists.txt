@@ -84,3 +84,6 @@ target_link_libraries(call_context PUBLIC execution_context)
 
 saga_library(hashtable_enumerator hashtable_enumerator.cpp)
 target_link_libraries(hashtable_enumerator PUBLIC call_context)
+
+saga_library(hashtable_rehash hashtable_rehash.cpp)
+target_link_libraries(hashtable_rehash PUBLIC hashtable_enumerator)
