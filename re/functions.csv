@@ -2845,7 +2845,7 @@ game:0x06000bac,game:0x06000bac,ecs,,48,0x1131a50
 game:0x06000bad,game:0x06000bad,ecs,,8,0x1131a80
 game:0x06000bae,game:0x06000bae,ecs,,16,0x1131a88
 game:0x06000baf,game:0x06000baf,ecs,,8,0x1131a98
-game:0x06000bb1,kairo.unity.ecs.Entity.Destroy,ecs,traced,60,0x1131aa0
+game:0x06000bb1,kairo.unity.ecs.Entity.Destroy,ecs,reimplemented,60,0x1131aa0
 game:0x06000bb2,kairo.unity.ecs.Entity.DisposeEvents,ecs,documented,12,0x1131adc
 game:0x06000bb3,game:0x06000bb3,ecs,,12,0x1131ae8
 game:0x06000bb8,game:0x06000bb8,ecs,,32,0x1131af4
@@ -3679,7 +3679,7 @@ game:0x06000f30,game:0x06000f30,ecs,,8,0x115c1e4
 game:0x06000f31,game:0x06000f31,ecs,,244,0x115c1ec
 game:0x06000f32,game:0x06000f32,ecs,,188,0x115c2e0
 game:0x06000f33,game:0x06000f33,ecs,,3068,0x115c4a0
-game:0x06000f34,ecs.MemberSystem.OnFinish,ecs,documented,756,0x115d618
+game:0x06000f34,ecs.MemberSystem.OnFinish,ecs,reimplemented,756,0x115d618
 game:0x06000f35,game:0x06000f35,ecs,,348,0x115d0a4
 game:0x06000f36,game:0x06000f36,ecs,,108,0x115d90c
 game:0x06000f37,game:0x06000f37,ecs,,1048,0x115d200
@@ -3804,9 +3804,9 @@ game:0x06000fad,game:0x06000fad,ecs,,356,0x11661c0
 game:0x06000fae,game:0x06000fae,ecs,,192,0x1166324
 game:0x06000faf,game:0x06000faf,ecs,,180,0x1164378
 game:0x06000fb0,game:0x06000fb0,ecs,,12,0x116372c
-game:0x06000fb1,ecs.StageSystem.ReturnTown,ecs,documented,244,0x1162dc4
+game:0x06000fb1,ecs.StageSystem.ReturnTown,ecs,reimplemented,244,0x1162dc4
 game:0x06000fb2,ecs.StageSystem.UpdateQuestRecord,ecs,reimplemented,156,0x1165728
-game:0x06000fb3,game:0x06000fb3,ecs,,476,0x11654b8
+game:0x06000fb3,ecs.StageSystem.CleanUp,ecs,traced,476,0x11654b8
 game:0x06000fb4,game:0x06000fb4,ecs,,464,0x11641a8
 game:0x06000fb5,game:0x06000fb5,ecs,,304,0x11663e4
 game:0x06000fb6,ecs.StageSystem.OnHumanDead,ecs,documented,80,0x1166514
@@ -3845,7 +3845,7 @@ game:0x06000fd6,game:0x06000fd6,unassigned,,92,0x11683e0
 game:0x06000fd7,game:0x06000fd7,unassigned,,8,0x116843c
 game:0x06000fd8,game:0x06000fd8,unassigned,,48,0x1168444
 game:0x06000fd9,game:0x06000fd9,unassigned,,8,0x1168474
-game:0x06000fda,<>c__DisplayClass75_0.<ReturnTown>b__0,unassigned,documented,216,0x116847c
+game:0x06000fda,<>c__DisplayClass75_0.<ReturnTown>b__0,unassigned,reimplemented,216,0x116847c
 game:0x06000fdb,game:0x06000fdb,ecs,,4,0x1168554
 game:0x06000fdc,game:0x06000fdc,ecs,,8,0x1168558
 game:0x06000fdd,game:0x06000fdd,ecs,,100,0x1168560
@@ -3991,7 +3991,7 @@ game:0x06001068,game:0x06001068,data,,12,0x116abdc
 game:0x06001069,game:0x06001069,data,,16,0x116abe8
 game:0x0600106a,game:0x0600106a,data,,16,0x116d59c
 game:0x0600106b,data.CharaData.get_level,data,documented,8,0x116d5ac
-game:0x0600106c,data.CharaData.set_level,data,documented,116,0x116d5b4
+game:0x0600106c,data.CharaData.set_level,data,reimplemented,116,0x116d5b4
 game:0x0600106d,data.CharaData.NewGame,data,traced,304,0x116d628
 game:0x0600106e,game:0x0600106e,data,,8,0x116d758
 game:0x0600106f,game:0x0600106f,data,,8,0x116d760

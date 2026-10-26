@@ -1,6 +1,6 @@
 # Rewards, quest result and town return
 
-Enemy defeat spawns drop entities (EXP orb, treasure); collecting a drop credits a per-stage accumulator (`StageSystem.drop_`); only the boss-cleared path through `StageSystem.ShowQuestResult` turns that accumulator into money, crystals, prisoners, character EXP/levels and item unlocks. Every exit goes through `StageSystem.ReturnTown`, which records the quest, writes member levels/EXP back to `CharaData`, and sends event 31 (`game.QuestResult`) to `TownSystem.OnReturnFromQuest`. The port composes treasure totals, item grants, recruitment, currency adapters, rescued prisoners, quest records and the ordered member EXP/result cluster. Decoded treasure/progression tables feed this pipeline. Full reward presentation, ECS binding and original secure currency storage remain open.
+Enemy defeat spawns drop entities (EXP orb, treasure); collecting a drop credits a per-stage accumulator (`StageSystem.drop_`); only the boss-cleared path through `StageSystem.ShowQuestResult` turns that accumulator into money, crystals, prisoners, character EXP/levels and item unlocks. Every exit goes through `StageSystem.ReturnTown`, which records the quest, writes member levels/EXP back to `CharaData`, and sends event 31 (`game.QuestResult`) to `TownSystem.OnReturnFromQuest`. The port composes treasure totals, item grants, recruitment, currency adapters, rescued prisoners, quest records and the ordered member EXP/result cluster. Decoded treasure/progression tables feed this pipeline. Return-to-town progression writeback and deferred event ordering are also ported. Full reward presentation, ECS binding, stage cleanup and original secure currency storage remain open.
 
 ## Overview
 
@@ -145,6 +145,18 @@ After treasure enumeration, money and crystal adapters run in order even for zer
 
 `update_quest_record` also accepts nonzero result codes for future ReturnTown binding. It increments challengeCount before reading defeatedEnemiesNum; adds that count; nonzero result returns here. For a clear it updates signed best EXP/money, increments clearCount, reads/credits the live prisoner count and updates signed best damage. Counters wrap int32. Failures during defeated/prisoner retrieval preserve earlier stores. Evidence: `0x1165728..0x11657c4`, bounded instructions in `research/exports/quest-reward-pipeline/`. Confidence high. Host accessors preserve unresolved storage/world contracts rather than inventing currency limits or rebuilding runtime libraries.
 
+### Member finalization and deferred town return
+
+`finish_quest_members` ports OnFinish (`0x115d618`, 756 bytes). For each members_ entry, it fetches the human and resolves its CharaData, fetches the human again for the level, checks the captured CharaData for null, stores Clamp(level,1,1200), then fetches the human a third time for the plain exp_ assignment. The CharaData target stays captured across all three lookups. A failure on the third lookup leaves the level updated and the old EXP intact. There is no eligibility check, new EXP grant or file write here; duplicate members are processed repeatedly in order.
+
+Only after the first enumeration succeeds does it enumerate subMembers_, invoking Entity.Destroy(true). The wrapper at `0x1131aa0` returns for destroyed byte `+0x2c` already set; otherwise it calls EntityManager.DeleteEntity (`0x1137950`) before setting that byte. A manager failure leaves the byte unset. The host retains ownership while the wrapper holds the state reference. After successful destruction enumeration, members_ is cleared before subMembers_. Failed writeback/destruction prevents both clears; failure clearing the second list leaves the first cleared. Cursor lifetime, version checking and the manager's full callback semantics stay with the ECS adapter.
+
+`return_to_town` ports the orchestration at `0x1162dc4`: nonzero result codes update the quest record with EXP/money zero; then CleanUp, OnFinish, and MakeTransition(1, callback, true, 0xff000000). Result 0 does not count the completed quest again. Stage cleanup is an explicit host operation, not a no-op implementation.
+
+The callback (`0x116847c`, 216 bytes) captures the result code and StageSystem reference. When invoked, it reads the **current** area id (`StageSystem+0x28` -> `+0x18`) and stage (`StageSystem+0x38`), then switches to the town form with false, then sends event 31 carrying result/area/stage. Thus changes before callback execution affect its payload, but changes during the form switch do not. The host must outlive the deferred callback. Failure before transition scheduling leaves no scheduled callback; a form-switch failure prevents the event.
+
+Evidence: existing `research/exports/member-finish/` and `member-finish-helpers/`; bounded ReturnTown/CleanUp/callback exports in `research/exports/quest-return/` (callback interpretation ends at `0x1168554`). Confidence high for the ported sequence. CleanUp (`0x11654b8`) traverses five component-filter groups from an initialized data blob, passes each subset collection through helper 0x12baca8 before World.DestroyEntities, destroys/nulls optional StageSystem+0xa0, then clears collectingDrops_ (+0x98); the five slot values, collection-copy helper contract and complete host binding remain to be established. Cleanup interpretation remains partial (confidence medium).
+
 ## Port
 
 - `src/core/gameplay/stage_rewards.hpp/.cpp`: `StageRewards{experience, money, prisoners, treasure_ids}` + `record_collected_drop(rewards, type, value)` (only the OnCollectedDrop accumulator switch, no effects/cleanup); `ItemStock{discovery_state, is_new, stock}` + `add_item_stock(item, amount)` (AddStock with its Find hook).
@@ -152,7 +164,8 @@ After treasure enumeration, money and crystal adapters run in order even for zer
 - [experience_progression.cpp](../../src/core/gameplay/experience_progression.cpp) implements the three data accessors and the per-member level-up loop with a live table/cost host. [Tests](../../tests/test_experience_progression.cpp) cover eligibility, full rewards, multiple levels, cap/cursor separation, zero/negative costs, overflow, table gaps and partial mutation on failure.
 - [quest_experience.cpp](../../src/core/gameplay/quest_experience.cpp) composes ordered member grants and result records through an explicit ECS cursor/component host. [Tests](../../tests/test_quest_experience.cpp) exercise the decoded-table adapter, full rewards, duplicate order, ineligible display records, snapshot-before-eligibility order, repeated component lookup, wrapping display arithmetic and failure boundaries. The caller must bind the cursor and invoke this cluster after money/crystal/prisoner/quest-record grants.
 - [quest_rewards.cpp](../../src/core/gameplay/quest_rewards.cpp) composes the reward pipeline, reads TreasureData, ports recruitment and QuestRecord mutation. [Tests](../../tests/test_quest_rewards.cpp) check exact cross-subsystem order, duplicate grants, stock caps, full member EXP, live versus snapshot prisoners, skipped/invalid ids, overflow, non-clear records and partial effects at failure boundaries. The generic framing/indexing code is shared with the progression readers.
-- Missing: Defeat, CreateDrop, collection cadence, ECS/storage binding and presentation for ShowQuestResult, AddMoney/AddCrystal storage helpers, ReturnTown/OnFinish, event 31, high score.
+- [quest_return.cpp](../../src/core/gameplay/quest_return.cpp) ports OnFinish, the destroyed-flag wrapper, saved-level clamp and ReturnTown scheduling/callback order. [Tests](../../tests/test_quest_return.cpp) cover duplicate/order behavior, repeat human lookups, delayed null checks, clamped levels/unclamped EXP, manager/clear failures, live callback payload and event ordering. The reward test additionally runs grant -> member finalization and confirms EXP is copied without being granted twice.
+- Missing: Defeat, CreateDrop, collection cadence, ECS/storage binding and presentation for ShowQuestResult, AddMoney/AddCrystal storage helpers, stage cleanup/transition implementation, event-31 consumers and high score.
 
 ## Evidence
 
@@ -174,7 +187,7 @@ After treasure enumeration, money and crystal adapters run in order even for zer
 2. (blocking) RNG backend for `Hits1000` drop rolls (see [rng.md](rng.md)).
 3. Contracts of the AddMoney/AddCrystal value helpers (SecureLong-like? limits) and save persistence of money, records and high score.
 4. `TreasureData.get_isBossReward` semantics; `CreateDrop` types 1/2 and its other jump targets; who creates money/prisoner drops.
-5. Retry path of `OnGameOver`; the quest method in state 4; hero equipment update in state 3; `CleanUp` body.
+5. Retry path of `OnGameOver`; the quest method in state 4; hero equipment update in state 3; resolve CleanUp's five component slots and destruction bindings.
 6. Event 1133 content, `SelectForm` return-flag consumers, other event-31/event-15 subscribers.
 7. Meaning of EnemyData flag bit 1 and EnemyComponent flag bit 1 (boss/minion?), and guards preventing double Defeat.
 8. Scheduler cadence of `StageSystem.Update` (31-tick collection, remainingTime_ units).

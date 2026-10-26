@@ -122,7 +122,7 @@ Call chain from the form layer (see [ui.md](ui.md)): form event 1 → `QuestForm
 | `kairo.unity.ecs.Entity.OnRemoveComponent` | game:0x06000bc3 | Invoke delegate +0x18 | high |
 | `kairo.unity.ecs.Entity.OnChangeComponent` | game:0x06000bc4 | Invoke delegate +0x20 | high |
 | `kairo.unity.ecs.Entity.DisposeEvents` | game:0x06000bb2 | Nulls the three delegates | high |
-| `kairo.unity.ecs.Entity.Destroy` | game:0x06000bb1 | Wrapper used by DestroyEntities (body not followed) | low |
+| `kairo.unity.ecs.Entity.Destroy` | game:0x06000bb1 | Idempotent destroyed guard; manager deletion before flag store | high |
 | `kairo.unity.ecs.Entity.Serialize` | game:0x06000bbe | WriteInt ID, WriteBoolean flag | high |
 | `kairo.unity.ecs.Entity.Deserialize` | game:0x06000bbf | ReadInt ID, ReadBoolean flag | high |
 | `ecs.ComponentFactory.Create` | game:0x06000db8 | Component instance by slot index | medium |
@@ -219,9 +219,9 @@ Call chain from the form layer (see [ui.md](ui.md)): form event 1 → `QuestForm
 1. (blocking) Entity ID allocation: writers of `entity+0x28` besides Deserialize, use of the counter `+0x14`, free-ID policy and limit; whether IDs are stable for an entity's lifetime (they are the HashSet hash).
 2. HashSet capacity policy (Initialize/IncreaseCapacity sizes) and Clear. Growth does not reorder slots, so order is reproducible without it, but bucket/limit equivalence needs it.
 3. (blocking) Dictionary<int, Entity> (instance 399) enumeration order used by Serialize and DestroyAllEntities.
-4. Full slot-index → component type table (`ComponentFactory.Create`), and `Entity.Destroy` body/indirect mutations.
+4. Full slot-index → component type table (`ComponentFactory.Create`), and EntityManager deletion callbacks/indirect mutations (`Entity.Destroy` wrapper is now ported; see [rewards.md](rewards.md#member-finalization-and-deferred-town-return)).
 5. `World.GetSubSet` contract (dedup of equal filters, initial population of a new subset from existing entities), Filter hash/equality.
 6. `Subset.get_entity` helper (`0x12af8d4`), `entitiesCache_`/`dirty_` usage, and delegate disposal of subsets.
-7. Meaning of `entity+0x2c` and `World.byte+0x38` names; who subscribes OnSystemEnabled/Disabled.
+7. Meaning of `World.byte+0x38`; entity+0x2c is the destroyed guard, set after successful manager deletion; who subscribes OnSystemEnabled/Disabled.
 8. Which systems implement IUpdateSystem/IPausable and the final Update list order; which `NeedsUpdate` overrides check `enabled`.
 9. Remaining SystemManager collections (`+0x38,+0x40,+0x50,+0x58,+0x60`) and BaseSystem ctor / SetWorld initial state.

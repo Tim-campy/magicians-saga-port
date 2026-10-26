@@ -1,4 +1,5 @@
 #include "core/gameplay/quest_rewards.hpp"
+#include "core/gameplay/quest_return.hpp"
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
@@ -7,7 +8,19 @@
 #include <stdexcept>
 using namespace saga::core;
 void check(bool value){if(!value)std::abort();}
-struct Host final:QuestRewardHost,QuestExperienceHost {
+struct Host final:QuestRewardHost,QuestExperienceHost,MemberFinishHost {
+    SavedCharacterProgression saved;bool finish_seen=false,main_cleared=false,sub_cleared=false;
+    std::optional<QuestMemberId> next_finish_member(FinishMemberList list)override{
+        if(list==FinishMemberList::sub_members||finish_seen)return std::nullopt;
+        finish_seen=true;return 42;
+    }
+    MemberExperience& finish_human(QuestMemberId id)override{check(id==42);return member;}
+    SavedCharacterProgression* saved_character(MemberExperience& value)override{check(&value==&member);return &saved;}
+    QuestEntityLifetime& entity_lifetime(QuestMemberId)override{throw std::runtime_error("no sub-members");}
+    void delete_from_manager(QuestMemberId,bool)override{throw std::runtime_error("no sub-members");}
+    void clear_finish_members(FinishMemberList list)override{
+        if(list==FinishMemberList::members)main_cleared=true;else sub_cleared=true;
+    }
     StageRewards drop{5,7,2,{1,1}};
     TreasureTable treasures=load_treasure_table("1\tChest\tres\t3\t10\t20\t30\t0\t0\t0\t0\t4",false,parse_event_decimal);
     std::array<ItemStock,3> items{{{0,false,0},{1,false,0},{2,false,-1}}};
@@ -48,6 +61,11 @@ struct Host final:QuestRewardHost,QuestExperienceHost {
     std::int32_t next_experience(MemberExperience&,std::int32_t index)override{return index*10;}
 };
 int main(int argc,char** argv){
+    // Reward -> result -> in-memory character progression, without granting EXP twice.
+    {Host h;auto result=grant_quest_rewards(h);finish_quest_members(h);
+        check(result.members[0].added_experience==25&&h.saved.level==2&&h.saved.experience==15);
+        check(h.record.challenges==1&&h.main_cleared&&h.sub_cleared);}
+
     if(argc==2){
         std::ifstream file(argv[1],std::ios::binary);check(static_cast<bool>(file));
         std::string text{std::istreambuf_iterator<char>(file),std::istreambuf_iterator<char>()};

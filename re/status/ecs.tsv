@@ -90,7 +90,7 @@ game:0x06000bfb	traced	docs/subsystems/ecs.md
 game:0x06000c02	traced	docs/subsystems/ecs.md	
 game:0x06000c46	traced	docs/subsystems/ecs.md	
 game:0x06000c47	traced	docs/subsystems/ecs.md	
-game:0x06000bb1	traced	docs/subsystems/ecs.md	
+game:0x06000bb1	reimplemented	src/core/gameplay/quest_return.cpp	Destroyed guard and manager-before-flag ordering tested, including duplicate destruction and failure
 game:0x06000db8	traced	docs/subsystems/ecs.md	
 game:0x06000c78	traced	docs/subsystems/ecs.md	
 game:0x06000fea	traced	docs/subsystems/ecs.md	
