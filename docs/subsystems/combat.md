@@ -39,6 +39,7 @@ Equipment getters and attribute bonuses now have portable contracts. Human base 
 | ecs.EnemySystem.CreateImpactEffect | game:0x06000e80 | Ordered central effect, neighboring damage areas and projectile cleanup | high |
 | kairo.unity.math.CellUtil.GetRange | game:0x06000a76 | Center-first depth-first unique cell list | high |
 | kairo.unity.math.CellUtil.Visit4Cells | game:0x06000a77 | Ordered neighbor recursion, including already-seen cells | high |
+| ecs.HumanSystem.OnCollide | game:0x06000ed0 | Human contact guards, displacement, animation and state 3 | high |
 | ecs.EnemySystem.OnCollide | game:0x06000e7d | Contact hit, two Damage call sites and recoil | high |
 | ecs.EnemySystem.ChangeState | game:0x06000e71 | State store and frame reset | high |
 | ecs.HumanSystem.ChangeState | game:0x06000ec6 | Ordered pre/store/reset/post transition | high |
@@ -278,6 +279,26 @@ Evidence: `research/exports/projectile-update/Update.asm` stores completed refer
 - Character growth and main-character shop additions now live in `combat_parameters.cpp` too. `character_parameter`, `member_base_parameter` and `member_base_parameter_at_level` preserve endpoint/max/provider order and the extra growth term. `CharacterParameterHost` supplies live maximum levels and shop records, and `member_base_parameter` can back the existing member-total provider. Tests cover levels 1/100/650/1200, explicit-level override, extra growth restricted to indices 0/1, negative endpoints, truncation before easing, main/nonmain/unmapped shop gates, mapping, wrapped purchases and malformed rows. Static combat table loading is implemented in combat_tables; live ECS binding and saved-state restoration remain pending.
 - Missing: concrete parameter resolution (GetTotalParamValue, EnemyData), attack timing, effective live RNG configuration/seeding, effect selection/animation/diagnostics, event-15 dispatch and concrete world/drop creation. Defeat orchestration is now integrated with the numeric damage host in tests. `Damage` remains **documented**, because this port covers its numeric/state composition with explicit services rather than the entire method.
 
+### Human contact reaction
+
+`HumanSystem.OnCollide` (game:0x06000ed0, 0x1157be0, 708 bytes) selects the first Human-bearing entity, otherwise the second. The first entity is required. It then rejects Damage slot 33 on either input (first short-circuits the second), a null/destroyed selected Human, and Human states 4 or 5. Only then does it select the first Enemy-bearing entity, otherwise the second; no Enemy returns. It requires EnemyData and returns when its flags include mask 1. It does not inspect HP, invincibility, enemy destroyed state, Cell, Projectile or Bullet presence; no damage is applied by this receiver.
+
+Displacement is binary32 +10 when EnemyComponent.flags +0x14 includes mask 1. Otherwise it requires the human's character record and uses +3, except a sub-character (record flags mask 4) whose Z is strictly greater than the hero's Z uses +0.5. Equality and unordered/NaN comparison use +3. Human Z is captured before MemberSystem.hero is resolved; the current human Position is fetched again for the store afterward. The component flag and record flag are different fields: record flag 1 skips the whole reaction; component flag 1 selects +10 and bypasses the character/hero lookup.
+
+Side effects, in order:
+
+1. Add displacement to live Position.z, then assign Speed.z to displacement; x/y velocity stay unchanged.
+2. Call CutInAnimation(entity,4,36).
+3. Require Direction and set locked=true; this is not conditional on Direction presence.
+4. Read live Position x/y/z and create effect (0,2,0) at (x,y+10,z-12).
+5. Invoke the ported HumanSystem.ChangeState(entity,3), including its live pre/post hooks and frame reset.
+
+Callbacks can replace Position or change the state seen by ChangeState. Late failures preserve earlier stores: a missing Direction faults after movement and CutInAnimation; an effect failure prevents the state change. There is no rollback or post-callback destroyed guard.
+
+Port: `human_contact.hpp/.cpp` calls the existing state-transition module and leaves hero lookup, cut-in animation, effect creation and live destroyed state as explicit host services. Contract tests cover both input orders, all displacement choices, NaN/equality, Damage/dead/data guards, missing components, position replacement, captured-vs-live position reads, state callback changes and partial failure. EventManager delivery and integration with EnemySystem.OnCollide remain separate; no artificial handler ordering is imposed.
+
+Evidence: local `research/exports/combat-subscriptions/ecs_HumanSystem_OnCollide.asm` and `research/exports/human-contact-guards/`. HumanComponent.isDead at 0x1140054 uses `(state & 0xfffffffe) == 4`; CharaData.isSub at 0x116abdc reads flag bit 2. EnemyComponent.Check at 0x113f05c uses component flags, while BaseData.Check receives the EnemyData record. Confidence high for this receiver; no Android comparison.
+
 ### Combat event registration and remaining receivers
 
 SystemManager.Init visits factory order. The inspected Init bodies register these handlers (registration order, not yet proof of EventManager delivery semantics):
@@ -289,7 +310,7 @@ SystemManager.Init visits factory order. The inspected Init bodies register thes
 | 5 / game:0x06000e67 | 23, then 29, then 30 | EnemySystem.OnProjectileImpact, EnemySystem.OnCollide, EnemySystem.OnHumanDead |
 | 10 / game:0x06000f7c | 23 | ProjectileSystem.OnProjectileImpact |
 
-Stage Init also registers events 9 and 15; this table is limited to the three combat events. Enemy Init requests And({24}); Human Init requests And({14}); Projectile Init requests And({27,0,1}). Delegate targets are resolved through metadata usage pointers, not guessed from the event numbers. The event-29 Human callback is distinct from the already ported Enemy contact handler and remains to be ported. Do not substitute one for the other or assume event delivery order from registration alone.
+Stage Init also registers events 9 and 15; this table is limited to the three combat events. Enemy Init requests And({24}); Human Init requests And({14}); Projectile Init requests And({27,0,1}). Delegate targets are resolved through metadata usage pointers, not guessed from the event numbers. The event-29 Human callback is distinct from the Enemy contact handler; both bodies are now ported. Do not substitute one for the other or assume event delivery order from registration alone.
 
 `ProjectileSystem.OnProjectileImpact` (game:0x06000f80, 0x1160bd8, 104 bytes) requires its entity, tests Emitter slot 31 and calls Entity.Destroy(true) when present, **before** checking destroyed state. It then returns if destroyed or missing Cell slot 5. Otherwise it requires Projectile slot 27 and returns without reading the payload. There is no generic removal of Projectile here and no enabled gate. Cleanup may change what the enclosing Projectile completion pass sees; the precise runtime destruction/pooling path remains relevant.
 

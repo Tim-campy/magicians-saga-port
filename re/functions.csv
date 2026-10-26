@@ -3579,7 +3579,7 @@ game:0x06000ecc,game:0x06000ecc,ecs,,8,0x1157510
 game:0x06000ecd,game:0x06000ecd,ecs,,1332,0x1157518
 game:0x06000ece,game:0x06000ece,ecs,,4,0x1157a4c
 game:0x06000ecf,ecs.HumanSystem.OnProjectileImpact,ecs,reimplemented,400,0x1157a50
-game:0x06000ed0,game:0x06000ed0,ecs,,708,0x1157be0
+game:0x06000ed0,ecs.HumanSystem.OnCollide,ecs,reimplemented,708,0x1157be0
 game:0x06000ed1,game:0x06000ed1,ecs,,736,0x1157ea4
 game:0x06000ed2,game:0x06000ed2,ecs,,232,0x1158184
 game:0x06000ed3,game:0x06000ed3,ecs,,244,0x115826c

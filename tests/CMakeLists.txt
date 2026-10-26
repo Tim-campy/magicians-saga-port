@@ -454,3 +454,8 @@ add_executable(test_combat_event_receivers test_combat_event_receivers.cpp)
 target_link_libraries(test_combat_event_receivers PRIVATE combat_event_receivers)
 project_warnings(test_combat_event_receivers)
 add_test(NAME combat_event_receivers_contract COMMAND test_combat_event_receivers)
+
+add_executable(test_human_contact test_human_contact.cpp)
+target_link_libraries(test_human_contact PRIVATE human_contact)
+project_warnings(test_human_contact)
+add_test(NAME human_contact_contract COMMAND test_human_contact)

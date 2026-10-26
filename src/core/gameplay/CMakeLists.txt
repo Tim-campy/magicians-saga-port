@@ -197,3 +197,11 @@ endif()
 
 saga_library(combat_event_receivers combat_event_receivers.cpp)
 target_link_libraries(combat_event_receivers PUBLIC combat_records entity_subset)
+
+saga_library(human_contact human_contact.cpp)
+target_link_libraries(human_contact PUBLIC combat_state)
+if(MSVC)
+  target_compile_options(human_contact PRIVATE /fp:strict)
+else()
+  target_compile_options(human_contact PRIVATE -ffp-contract=off)
+endif()

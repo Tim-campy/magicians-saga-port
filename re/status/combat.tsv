@@ -116,3 +116,4 @@ game:0x06000e0c	documented	docs/subsystems/combat.md	Visited reset ordered pair 
 game:0x06000e7f	reimplemented	src/core/gameplay/combat_event_receivers.cpp	Live enemy retargeting after human death; SearchTarget remains explicit.
 game:0x06000e67	traced	docs/subsystems/combat.md	Enemy group and event 23/29/30 delegate targets resolved; complete Init not ported.
 game:0x06000ebb	traced	docs/subsystems/combat.md	Human group and event 23/29 delegate targets resolved; complete Init not ported.
+game:0x06000ed0	reimplemented	src/core/gameplay/human_contact.cpp	Complete human contact receiver composed with real state transitions; guards displacement callbacks and failures tested.
