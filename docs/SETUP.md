@@ -87,3 +87,5 @@ To include name-to-number lookup in that local integration check:
 ```powershell
 .\build\desktop\test_apply_culture.exe extracted/culture-lookup/culture/number-records.bin extracted/culture-lookup/culture/sign-pool.bin extracted/culture-lookup/culture/name-index.bin extracted/culture-lookup/culture/culture-records.bin
 ```
+
+The Windows desktop build script uses code page 65001, requests VSLANG=1033 after vcvars, and refreshes CMake configuration with --fresh (CMake 3.24+; supported by the installed Visual Studio CMake). Installed localized compiler resources may still emit Portuguese: UTF-8 keeps CMake's detected /showIncludes prefix consistent with Ninja's input. When migrating an old build with a corrupt localized prefix, remove its generated CMakeFiles/<cmake-version>/CMakeCXXCompiler.cmake and clean Ninja outputs once before rebuilding; reconfiguration alone cannot repair already stale objects or the persisted compiler detection.
