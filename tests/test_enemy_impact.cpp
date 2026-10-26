@@ -1,4 +1,5 @@
 #include "core/gameplay/enemy_impact.hpp"
+#include "core/gameplay/boss_notification.hpp"
 #include <array>
 #include <cstdlib>
 #include <functional>
@@ -13,6 +14,7 @@ struct Host final:EnemyImpactHost,RandomSource,ComponentObserver {
     int emitted=0,acquired=0,draws=0;bool dead=false,hit=true,null_effect=false,null_emitter=false;
     ComponentSlots* hit_target=nullptr;Component* returned=nullptr;
     std::function<void()> on_emitter,on_draw,on_check,on_bullet,on_modification;
+    std::function<void(ComponentSlots&)> on_boss;
     Host(){effect_entity.add(0,&effect_pos);}
     bool destroyed(ComponentSlots&)override{calls.push_back("guard");return dead;}
     void read_bullet_data(ComponentSlots&)override{calls.push_back("bulletData");}
@@ -26,7 +28,7 @@ struct Host final:EnemyImpactHost,RandomSource,ComponentObserver {
     ComponentSlots* create_emitter(std::int32_t x,std::int32_t y,std::int32_t z,std::int32_t u,std::int32_t v,ProjectilePoint)override{
         check(x==0&&y==1&&z==1&&u==-1&&v==0);calls.push_back("emitter");
         auto* result=emitters.at(static_cast<std::size_t>(emitted++));if(on_emitter)on_emitter();return null_emitter?nullptr:result;}
-    void boss_defeated(ComponentSlots&)override{calls.push_back("boss");}
+    void boss_defeated(ComponentSlots& e)override{calls.push_back("boss");if(on_boss)on_boss(e);}
     ProjectileLink& acquire_projectile()override{calls.push_back("launch");return projectiles.at(static_cast<std::size_t>(acquired++));}
     ProjectileModification& acquire_modification()override{calls.push_back("modification");if(on_modification)on_modification();return modification;}
     void add_animation(ComponentSlots&,std::int32_t rate,std::int32_t backup)override{check(rate==1&&backup==-1);calls.push_back("animation");}
@@ -49,6 +51,20 @@ struct Fixture {
     void run(){enemy_projectile_impact(&e,tables,host,host);}
 };
 int main(){
+    {struct Notifications final:BossNotificationHost,VictoryFormStack {
+        VictoryForm form;std::vector<int> keys;int pushes=0;
+        void key_up(std::int32_t key)override{keys.push_back(key);}
+        VictoryFormStack* form_stack()override{return this;}
+        VictoryForm* make_victory(std::int32_t id,bool completed)override{check(id==42&&completed);return &form;}
+        void push(VictoryForm* p)override{check(p==&form);++pushes;}
+        MovementControl* movement_control(std::int32_t,std::int32_t)override{return nullptr;}
+        void send_touch_release(MovementControl&,std::int32_t,std::int32_t)override{check(false);}
+    } notifications;
+        Fixture f;f.enemies.emplace_back(EnemyRecord{});f.enemies[0]->id=42;
+        QuestConditionState quest{2,false,std::nullopt};BossStageState stage{false,0,&quest};
+        f.host.on_boss=[&](ComponentSlots& e){notify_boss_defeat(stage,&e,f.tables,notifications);};f.run();
+        check(f.host.draws==12&&f.host.emitted==3&&stage.boss_defeated&&stage.max_z_rate==100&&notifications.pushes==1);
+        check(notifications.keys==std::vector<int>{0x80000,0x20000,0x80000});}
     {Fixture f;enemy_projectile_impact(nullptr,f.tables,f.host,f.host);check(f.host.calls.empty());}
     {Fixture f;f.host.dead=true;f.run();check(f.host.calls==std::vector<std::string>{"guard"});}
     {Fixture f;f.e.remove(5);f.run();check(f.host.calls==std::vector<std::string>{"guard"});}

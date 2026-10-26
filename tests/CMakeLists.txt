@@ -396,7 +396,7 @@ project_warnings(test_human_impact)
 add_test(NAME human_impact_contract COMMAND test_human_impact)
 
 add_executable(test_enemy_impact test_enemy_impact.cpp)
-target_link_libraries(test_enemy_impact PRIVATE enemy_impact)
+target_link_libraries(test_enemy_impact PRIVATE enemy_impact boss_notification)
 project_warnings(test_enemy_impact)
 add_test(NAME enemy_impact_contract COMMAND test_enemy_impact)
 
@@ -414,3 +414,8 @@ add_executable(test_impact_effect test_impact_effect.cpp)
 target_link_libraries(test_impact_effect PRIVATE impact_effect)
 project_warnings(test_impact_effect)
 add_test(NAME impact_effect_contract COMMAND test_impact_effect)
+
+add_executable(test_boss_notification test_boss_notification.cpp)
+target_link_libraries(test_boss_notification PRIVATE boss_notification)
+project_warnings(test_boss_notification)
+add_test(NAME boss_notification_contract COMMAND test_boss_notification)

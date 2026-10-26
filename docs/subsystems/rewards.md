@@ -22,6 +22,8 @@ ReturnTown(code) ── [code!=0] UpdateQuestRecord(code,0,0) ── CleanUp ─
 | data.TreasureData.Load | game:0x06001235 | Twelve-field treasure record reader | high |
 | data.EnemyData.GetExp | game:0x060010c7 | Easing(exp_[0], exp_[1], 999, level-1, 0) | high |
 | kairo.unity.ecs.World.CreateDrop | game:0x06000bf9 | Drop entity; type 3 forces scale 100 | medium |
+| ecs.StageSystem.OnBossDefeat | game:0x06000fb5 | Boss state, victory form and movement release | high |
+| ecs.StageSystem.ReleaseMoveKeys | game:0x06000fca | Ordered key release and captured-control touch events | high |
 | ecs.StageSystem.CollectDrop | game:0x06000fa4 | Start collection / boss reward pickup | high |
 | ecs.StageSystem.UpdateCollectingDrops | game:0x06000fa5 | 31-tick fly-to-hero, then credit | high |
 | ecs.StageSystem.OnCollectedDrop | game:0x06000fb9 | Accumulator mutation + effects/SE | high |
@@ -181,7 +183,17 @@ The host retains original drop positioning, Easing scale, depth and entity-creat
 
 Evidence: `research/exports/enemy-rewards/`, `enemy-reward-readers/`, existing `gameplay-combat/M37632_EnemySystem_Defeat.asm` and `defeat-helpers/`. Static artifact audit: 83 enemy records x 1200 levels = 99600 C++ queries per language, matching an independent Python binary32 model (result hash 985714270517449481 for both languages, local `enemy-experience-model.json`). This is static-model agreement, not Android verification. Confidence high for the decoded schema, arithmetic and observed suffix ordering; the full Defeat orchestration is now ported with explicit save-counter and drop-factory providers.
 
+### Boss defeat notification and movement release
+
+StageSystem.OnBossDefeat (0x11663e4, 304 bytes) takes a nullable enemy entity. It first sets isBossDefeated_ (+0x85) true and maxZRate (+0xac) to 100; the metadata identifies this field as maxZRate, not a timer. It calls the current Canvas.KeyUp(0x80000). For a nonnull enemy it captures the current form manager before resolving EnemyComponent.data and requiring the current StageSystem.questData_ (+0x30). It captures EnemyData.id and evaluates QuestData.isCompleted: flags mask 2, or completed byte +0xa4 nonzero. QuestRecord.clearCount is not used. It calls SubForm.MakeVictory(id,completed), then requires the captured manager and Pushes the returned form. The null-manager check occurs after construction; the returned form itself has no extra null guard in this caller. A null enemy skips this entire form branch, including quest access.
+
+Both paths then call ReleaseMoveKeys (0x1163fa0, 464 bytes), which releases keys 0x20000 and 0x80000 in that order. It resolves surface components (group 35,id 0x10011), then (group 35,id 0x10013), capturing both results before any event delivery. For each nonnull result, first then second, it captures the current world, constructs TouchEvent(type 1,component) and sends World event 9. Each canvas/surface/world access resolves the current service independently; a callback replacing a service can affect the next lookup. Changing the second control during the first event does not replace the already-captured second reference. TouchEvent initialization and concrete form/event dispatch remain host services, not a reconstruction of the UI framework.
+
+There is no already-defeated guard, HP check, reward grant, stage-state transition or rollback here. A failure retains the initial stage stores and all earlier side effects; a victory-factory/Push failure prevents movement release. This notification does not by itself finish the quest: the existing reward-box pickup gate still applies.
+
 ## Port
+
+- `boss_notification.hpp/.cpp` ports boss-state/victory orchestration and movement-release ordering over narrow presentation interfaces. `test_boss_notification` checks completion flags, null enemy/quest/catalog/manager, captured references, repeated notifications and failure boundaries. `test_enemy_impact` composes the actual three-emitter impact path with this notifier, checking 12 RNG draws, stage writes, victory presentation and the three key releases. The host owns UI objects and must retain captured controls/managers through callbacks.
 
 - `enemy_defeat.hpp/.cpp` now composes the entire EnemySystem.Defeat call order: captured Speed zeroing, existing FlyAway/state transition, Color slot 6 raw int32 pattern, saved defeat counter, system counters and the existing reward suffix. The saved per-record counter is an explicit mutable host reference because catalog decoding does not restore save state. Data flags and component flags are re-read at their respective gates; they must not be collapsed into one boss boolean. Defeated-count increment wraps; remaining-count decrement wraps before applying floor 0/1. AddDefeatCount wraps and clamps at zero (INT_MAX+1 becomes zero).
 - The reward adapter captures the initial enemy record before reading level, then uses fresh record lookups for later treasure queries. EXP drops receive `(x-5,y,z-10)` and `Easing(25,50,500,exp,-50)`; treasure drops receive `(x,0,z)` and scale argument 25. Both require returned Depth slot 4 and write extra +0x14 = -10. World.CreateDrop's internal treasure scale override and entity construction remain host responsibilities. A created drop survives a missing Depth error; counters/state changes survive later malformed reward data.
@@ -202,6 +214,8 @@ Evidence: `research/exports/enemy-rewards/`, `enemy-reward-readers/`, existing `
 - Missing: concrete CreateDrop/entity construction and saved defeat-counter restoration, collection cadence, ECS/storage binding and presentation for ShowQuestResult, AddMoney/AddCrystal storage helpers, transition timing, event-31 consumers and high score.
 
 ## Evidence
+
+- Boss notification: local `research/exports/enemy-impact-helpers/BossDefeat.asm`, `boss-notification/ReleaseMoveKeys.asm`, `QuestCompleted.asm` and `TouchEventCtor.asm`. Metadata field offsets identify StageSystem.questData_ +0x30, isBossDefeated_ +0x85 and maxZRate +0xac. TouchEvent ctor (0x1c4fbbc) runs its initializer before storing type +0x10 and component +0x40; the initializer is deliberately left to the UI adapter. Confidence high for gameplay ordering and payload arguments; runtime comparison absent.
 
 - Defeat composition: existing `research/exports/gameplay-combat/M37632_EnemySystem_Defeat.asm` (0x1150b98) and `defeat-helpers/M38215_EnemyData_AddDefeatCount.asm` (0x116eaf4); local `defeat-components/Color.asm` and `Depth.asm` confirm slots 6 and 4. Stores are Color +0x10..+0x1c and Depth.extra +0x14. The complete caller order, two independent flag gates and re-read points are statically established with high confidence; Android comparison remains absent.
 

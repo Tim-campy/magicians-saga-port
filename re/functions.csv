@@ -3808,7 +3808,7 @@ game:0x06000fb1,ecs.StageSystem.ReturnTown,ecs,reimplemented,244,0x1162dc4
 game:0x06000fb2,ecs.StageSystem.UpdateQuestRecord,ecs,reimplemented,156,0x1165728
 game:0x06000fb3,ecs.StageSystem.CleanUp,ecs,reimplemented,476,0x11654b8
 game:0x06000fb4,game:0x06000fb4,ecs,,464,0x11641a8
-game:0x06000fb5,ecs.StageSystem.OnBossDefeat,ecs,traced,304,0x11663e4
+game:0x06000fb5,ecs.StageSystem.OnBossDefeat,ecs,reimplemented,304,0x11663e4
 game:0x06000fb6,ecs.StageSystem.OnHumanDead,ecs,reimplemented,80,0x1166514
 game:0x06000fb7,ecs.StageSystem.OnGameOver,ecs,traced,284,0x116442c
 game:0x06000fb8,game:0x06000fb8,ecs,,280,0x1163614
@@ -3829,7 +3829,7 @@ game:0x06000fc6,game:0x06000fc6,ecs,,456,0x1167fc4
 game:0x06000fc7,game:0x06000fc7,ecs,,236,0x1167914
 game:0x06000fc8,game:0x06000fc8,ecs,,780,0x1167ba8
 game:0x06000fc9,ecs.StageSystem.GetBestTotalGaveDamage,ecs,documented,180,0x116818c
-game:0x06000fca,game:0x06000fca,ecs,,464,0x1163fa0
+game:0x06000fca,ecs.StageSystem.ReleaseMoveKeys,ecs,reimplemented,464,0x1163fa0
 game:0x06000fcb,game:0x06000fcb,ecs,,108,0x1168240
 game:0x06000fcc,game:0x06000fcc,ecs,,8,0x11682ac
 game:0x06000fcd,game:0x06000fcd,ecs,,8,0x11682b4
