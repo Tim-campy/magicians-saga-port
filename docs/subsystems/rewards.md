@@ -183,6 +183,8 @@ Evidence: `research/exports/enemy-rewards/`, `enemy-reward-readers/`, existing `
 
 ## Port
 
+- `human_impact.cpp::stage_human_dead` resolves the current human record and invokes game-over reason 1 only for isMain. Its event-30 producer and a launch-to-landing integration scenario are ported/tested; see [human landing](combat.md#human-landing-and-death-notification). The retry dialog and OnGameOver state policy remain pending.
+
 - `combat_host.cpp::record_stage_damage` implements `StageSystem.OnDamage`; the resolved combat host sends effects then event 15 then gated diagnostics before the death predicate. `tests/test_combat_host.cpp` verifies overkill/DEBUG accounting, dual human+enemy presence, wrapping and null failure. The listener is available to a real event dispatcher; full registration and other listeners remain pending.
 
 - `src/core/gameplay/stage_rewards.hpp/.cpp`: `StageRewards{experience, money, prisoners, treasure_ids}` + `record_collected_drop(rewards, type, value)` (only the OnCollectedDrop accumulator switch, no effects/cleanup); `ItemStock{discovery_state, is_new, stock}` + `add_item_stock(item, amount)` (AddStock with its Find hook).

@@ -3495,7 +3495,7 @@ game:0x06000e78,game:0x06000e78,ecs,,156,0x114c5f0
 game:0x06000e79,game:0x06000e79,ecs,,8,0x114e1cc
 game:0x06000e7a,game:0x06000e7a,ecs,,732,0x114e1d4
 game:0x06000e7b,game:0x06000e7b,ecs,,772,0x114e4b0
-game:0x06000e7c,game:0x06000e7c,ecs,,1232,0x114e7b4
+game:0x06000e7c,ecs.EnemySystem.OnProjectileImpact,ecs,traced,1232,0x114e7b4
 game:0x06000e7d,ecs.EnemySystem.OnCollide,ecs,reimplemented,1600,0x114f604
 game:0x06000e7e,ecs.EnemySystem.OnBulletHit,ecs,reimplemented,344,0x114f4ac
 game:0x06000e7f,game:0x06000e7f,ecs,,440,0x11511cc
@@ -3578,7 +3578,7 @@ game:0x06000ecb,game:0x06000ecb,ecs,,184,0x1155fbc
 game:0x06000ecc,game:0x06000ecc,ecs,,8,0x1157510
 game:0x06000ecd,game:0x06000ecd,ecs,,1332,0x1157518
 game:0x06000ece,game:0x06000ece,ecs,,4,0x1157a4c
-game:0x06000ecf,game:0x06000ecf,ecs,,400,0x1157a50
+game:0x06000ecf,ecs.HumanSystem.OnProjectileImpact,ecs,reimplemented,400,0x1157a50
 game:0x06000ed0,game:0x06000ed0,ecs,,708,0x1157be0
 game:0x06000ed1,game:0x06000ed1,ecs,,736,0x1157ea4
 game:0x06000ed2,game:0x06000ed2,ecs,,232,0x1158184
@@ -3809,7 +3809,7 @@ game:0x06000fb2,ecs.StageSystem.UpdateQuestRecord,ecs,reimplemented,156,0x116572
 game:0x06000fb3,ecs.StageSystem.CleanUp,ecs,reimplemented,476,0x11654b8
 game:0x06000fb4,game:0x06000fb4,ecs,,464,0x11641a8
 game:0x06000fb5,game:0x06000fb5,ecs,,304,0x11663e4
-game:0x06000fb6,ecs.StageSystem.OnHumanDead,ecs,documented,80,0x1166514
+game:0x06000fb6,ecs.StageSystem.OnHumanDead,ecs,reimplemented,80,0x1166514
 game:0x06000fb7,ecs.StageSystem.OnGameOver,ecs,traced,284,0x116442c
 game:0x06000fb8,game:0x06000fb8,ecs,,280,0x1163614
 game:0x06000fb9,ecs.StageSystem.OnCollectedDrop,ecs,documented,740,0x1165988

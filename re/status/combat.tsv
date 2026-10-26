@@ -43,7 +43,7 @@ game:0x06000fa0	documented	docs/subsystems/rewards.md	Reward pipeline composed a
 game:0x06000fb1	reimplemented	src/core/gameplay/quest_return.cpp	Non-clear records, cleanup interface, member finalization and transition scheduling tested
 game:0x06000fda	reimplemented	src/core/gameplay/quest_return.cpp	Deferred live area/stage snapshot, form switch then event 31 tested
 game:0x06000fb7	traced	docs/subsystems/rewards.md	retry flag and code -> state 5/6 or dialog; retry path unread
-game:0x06000fb6	documented	docs/subsystems/rewards.md	isMain -> OnGameOver(1)
+game:0x06000fb6	reimplemented	src/core/gameplay/human_impact.cpp	Live human record isMain mask 2 invokes game-over reason 1; landing integration tested
 game:0x06000f9b	traced	docs/subsystems/rewards.md	subscribes OnDamage to event 15; rest of Init not read
 game:0x06000f9e	traced	docs/subsystems/rewards.md	zeroes totalGaveDamage_; rest of Start not read
 game:0x06000fbb	reimplemented	src/core/gameplay/combat_host.cpp	Enemy presence adds offered damage with wrap; null receiver faults; overkill and DEBUG integration tests
@@ -102,3 +102,5 @@ game:0x06000e84	reimplemented	src/core/gameplay/projectile_launch.cpp	Ordered po
 game:0x06000f7e	documented	docs/subsystems/combat.md	Per-entity motion and impact removal ported; live group enumerators and exception disposal pending
 game:0x06000f7c	traced	docs/subsystems/combat.md	Required subset slots 27 0 1 and event-23 subscription
 game:0x06000f80	traced	docs/subsystems/combat.md	Emitter destroy then destroyed Cell and Projectile checks; other event-23 subscribers open
+game:0x06000ecf	reimplemented	src/core/gameplay/human_impact.cpp	Cell Human state-4 guards; animation effect state-5 then event 30; callbacks and failures tested
+game:0x06000e7c	traced	docs/subsystems/combat.md	Bullet-parent checks and enemy effect plus three emitter launches; effect and collision services pending
