@@ -4,7 +4,8 @@ namespace saga::core {
 // Thread.InitializeCultureValues 0x1ecd198: first store survives a later UI failure.
 void initialize_thread_cultures(ThreadCultureWriteHost& thread,CurrentCultureState& state,CurrentCultureHost& current){
     thread.write_thread_culture(construct_current_culture(state,current));
-    thread.write_thread_ui_culture(thread.construct_user_ui_culture());
+    // ConstructCurrentUICulture 0x1e24dd0 delegates to ConstructCurrentCulture.
+    thread.write_thread_ui_culture(construct_current_culture(state,current));
 }
 // Thread.set_CurrentCulture 0x1ecd314. No local exception handler or read-only conversion.
 void set_thread_culture(std::shared_ptr<CultureInstance> value,ThreadCultureWriteHost& thread,

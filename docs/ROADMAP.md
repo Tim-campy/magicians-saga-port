@@ -29,7 +29,7 @@ The plan in one page. Agents take the first unblocked task of the current work p
 ## Next tasks
 
 ### 1. Events and scripts
-- [ ] Recover ExecutionContext.SetLocalValue (0x1eca504), AppContextSwitches static +1 initialization and ConstructCurrentUICulture (0x1e24dd0) to bind the ported thread-culture setter; resolve live entry state and native lazy culture population. AOSP duplicate selection awaits device comparison. Trace culture setters and collation availability/backend before replacing prefix/sign providers.
+- [ ] Recover mutable execution-context copy (0x1ecb0a4), capture/switch notification and AppContextSwitches static +1 initialization to bind the composed async culture path; resolve live entry state and native lazy culture population. AOSP duplicate selection awaits device comparison. Trace culture setters and collation availability/backend before replacing prefix/sign providers.
 - [ ] Bind decoded billing-item/catalog providers and complete notification manager adapters, preserving task execution gates.
 - [ ] Port decor/town/capture callbacks, then bind update_select_form to a desktop host with orientation/image-dictionary storage, decoded saves, camera dimensions and form factories.
 - [ ] Find the consumer of `hour_ != -1`, the writer of `SubForm.delayEvent_` (`+0x1d0`) and the remaining effect opcodes of the 15-entry table at `0x627b6e`.
