@@ -50,7 +50,7 @@ uv run tools/extract_assets.py game/MagiciansSaga-1.4.0.apk --out extracted/full
 & C:/Ghidra/support/analyzeHeadless.bat ghidra wizard_il2cpp_fde -process libil2cpp.so -noanalysis -scriptPath tools/ghidra -postScript ExportBoundedInstructions.java research/exports/<name>.tsv research/exports/<name> -max-cpu 1
 ```
 
-`ExportBoundedInstructions.java` exports the instructions of the method ranges listed in the input TSV (`start, end, label`, ELF VAs); `InspectSelectedMethods.java`, `InspectJniTable.java`, `InspectBootstrap.java` and `DefineUnwindFunctions.java` cover the other cases (see each script's header). ELF addresses equal Ghidra addresses (load bias 0). Ghidra rejects project and script paths that contain a `.`-prefixed directory: from a worktree under `.claude/`, copy the scripts to a temporary directory first.
+`ExportBoundedInstructions.java` exports the instructions of the method ranges listed in the input TSV (`start, end, label`, ELF VAs); `InspectSelectedMethods.java`, `InspectJniTable.java`, `InspectBootstrap.java` and `DefineUnwindFunctions.java` cover the other cases (see each script's header). Check the export coverage header: the current `wizard_il2cpp_fde` exports report image base `0x100000`. `ExportBoundedInstructions` adds that base to input ELF VAs, so subtract `0x100000` from its displayed instruction addresses when citing ELF VAs. Ghidra rejects project and script paths that contain a `.`-prefixed directory: from a worktree under `.claude/`, copy the scripts to a temporary directory first.
 
 ## Building and testing
 

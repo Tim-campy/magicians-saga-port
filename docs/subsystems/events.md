@@ -1,6 +1,6 @@
 # Events
 
-The gameplay event/script system is statically recovered from the event table (`Event.txt` → `Data.eventData`) through condition checks, the matrix script executor, the `DelayEvent` continuation queue and the unit dispatcher, down to the numeric effects of the eight opcodes present in the extracted table (money, crystals, area/quest discovery, stamina, talk/event form requests, delay). The port implements the executor, counted continuation queue, argument substitution, the numeric effects and the stamina formula as isolated, tested C++ kernels, plus a native trace tool (`event_trace`) that replays one injected script from the local table. Not ported: the table loader, condition evaluation and automatic selection, `GetDelayId`/`GetDelayScript` against a real `Data.eventData`, the hour-based delay path, `SubForm.delayEvent_` resumption and the forms themselves. Nothing has been compared with the running original.
+The gameplay event/script system is statically recovered from the event table (`Event.txt` → `Data.eventData`) through condition checks, the matrix script executor, the `DelayEvent` continuation queue and the unit dispatcher, down to the numeric effects of the eight opcodes present in the extracted table (money, crystals, area/quest discovery, stamina, talk/event form requests, delay). The port implements the executor, counted continuation queue, argument substitution, the numeric effects and the stamina formula as isolated, tested C++ kernels, plus a native trace tool (`event_trace`) that replays one injected script from the local table. Condition evaluation now includes the record and matrix guards, the comparator and five unit predicates (4/15/16/20/22). Not ported: the table loader, remaining condition predicates and automatic selection, `GetDelayId`/`GetDelayScript` against a real `Data.eventData`, the hour-based delay path, `SubForm.delayEvent_` resumption and the forms themselves. Nothing has been compared with the running original.
 
 ## Overview
 
@@ -28,7 +28,7 @@ Pipeline (ELF VAs, load bias 0):
 | `main.AppData.Push` (`0x110d3b8`) | `game:0x060001d1` | Push created form onto current form | high |
 | `main.AppData.CheckTerm` (`0x110b3e0`) | `game:0x060001c0` | Per-record eligibility guard | high |
 | `main.AppData.CheckTerm` (`0x110b534`) | `game:0x060001c1` | AND-aggregation of a condition matrix | high |
-| `main.AppData.CheckTerm` (`0x110b5f8`) | `game:0x060001c3` | Unit condition evaluator (32-entry jump table) | medium (dispatch only) |
+| `main.AppData.CheckTerm` (`0x110b5f8`) | `game:0x060001c3` | Unit condition evaluator (32-entry jump table) | high (4/15/16/20/22), unknown (remaining predicates) |
 | `main.AppData.Compare` (`0x110c1d4`) | `game:0x060001c2` | Signed 64-bit comparator, 6 codes | high |
 | `main.AppData.AddMoney` (`0x110946c`) | `game:0x060001a1` | Money credit | high |
 | `main.AppData.SubMoney` (`0x11096e0`) | `game:0x060001a3` | Money debit, floor 0 | high |
@@ -60,7 +60,21 @@ Related, documented here but owned elsewhere: `form.SelectForm.Update` `game:0x0
 - `CheckTerm(index)` `0x110b3e0`: `Lib.CheckLength` (shared body `0x12d3b4c`) → false for null array, negative index, empty array, index ≥ length. Then false for null record or `isExecuted`. `get_isExecuted` (`0x116f9f8`) is `execNum_ > 0` (negative counters pass). Then evaluates `termsScript_`.
 - `CheckTerm(matrix)` `0x110b534`: `IListExtension.IsNullOrEmpty` (shared `0x12cd9b8`) true → **false** (empty conditions are *not* vacuously true). Otherwise evaluates rows in order, stops at first false; true only if all pass. Null rows are passed to the unit evaluator, not skipped.
 - `Compare` `0x110c1d4`: signed 64-bit operands; jump table at `0x627b68` = `[0,5,8,11,14,17]` relative to `0x110c1f8`, scale 4. Codes: 0 `>`, 1 `>=`, 2 `<=`, 3 `<`, 4 `==`, 5 `!=`; any other (including negative) → false. Some evaluator branches compare inline instead.
-- Unit evaluator `0x110b5f8`: jump table at `0x627ae0`, 32 uint16 entries. Condition opcode semantics not recovered; targets in [../formats/event-table.md](../formats/event-table.md).
+- Unit evaluator `0x110b5f8`: jump table at `0x627ae0`, 32 uint16 entries; targets in [../formats/event-table.md](../formats/event-table.md). Its common prologue requires the AppData singleton and non-null, nonempty `characters_` storage at +0x1b0 before reading the opcode; it does not read element 0. Null/empty condition rows fault after this context check.
+
+Recovered predicates (confidence high, addresses are ELF VAs):
+
+| Opcode / row | Contract | Basis |
+| --- | --- | --- |
+| 15, quest id | True if quest flags byte +0x1c has bit 1 set, otherwise boolean +0xa4; invalid id or null quest faults. | Handler `0x110bad4`, quest getter call `0x110baf0`, tail call `0x110bb3c` to `QuestData.get_isCompleted` `0x116c3b4` (`game:0x060011ec`). |
+| 16, threshold, comparison | Sum the lengths of each non-null quest's challenge array (+0xa8); null challenge array faults. Sum wraps int32 before signed comparison with the threshold. | Handler `0x110bb40` calls `SumAllQuestsChallengeCount` `0x110c284` (`game:0x060001c4`); comparison table `0x627b20`. |
+| 4, area id | True exactly when the area's int32 state (+0x10) equals 1; invalid id or null area faults. | Handler `0x110b8c4`, getter `0x117012c`, tail call `0x110b92c` to `BaseData.get_isFound` `0x116c3a4`. |
+| 22, threshold, comparison | Count non-null characters whose int32 sub (+0x50) is nonzero and flags byte (+0x1c) has bit 2 set; signed int32 comparison. | Handler `0x110bf48`; predicate `0x117c598` (`game:0x06000265`) calls `CharaData.get_isSub` `0x116d59c` then `get_isRecruit` `0x116abdc`; comparison table `0x627b3e`. |
+| 20, building type | Count all building rows whose element 1 equals condition element 1; true if count > 0. Null or short building rows fault, including after an earlier match. | Handler `0x110bd28` calls `TownSystem.GetBuildingList` `0x1169c44`, then LINQ Where/Count with predicate `0x117c60c` (`game:0x06000269`); count test `0x110bdf8`. |
+
+For 16 and 22, comparison codes are the same six as `Compare`, but operands are int32. Collection queries and counting precede condition argument checks. For 15 and 4, the catalog getter precedes the id argument read. For 20, each predicate reads building element 1 before condition element 1; an empty building collection therefore returns false even if the condition lacks its type argument. This is full enumeration, not an early-exit existence query.
+
+`TownSystem.GetBuildingList` returns cached array +0x30 when present; otherwise it builds id-indexed three-int rows from its source list +0x20. The condition port receives this result through its host interface; it does not implement cache construction. Quest challenge lengths and catalog sizes must be valid managed-array lengths (0..INT32_MAX).
 - Consequence: a record with empty `terms` (113 of 228 in the extracted table, including id 10) is never selected automatically.
 
 ### Matrix executor — `ExecuteScript` `0x110c8ec`
@@ -127,6 +141,8 @@ Fields: `delayId_`+0x10, `line_`+0x14, `wait_`+0x18, `hour_`+0x1c, `talkChara_`+
 
 ## Port
 
+- `src/core/gameplay/event_conditions.{hpp,cpp}` ? `check_event_eligibility`, `check_event_conditions`, `compare_event_values`, and five branches of `check_event_condition`. `EventConditionHost` supplies context checks, decoded catalogs and the building list. Unrecovered opcodes are delegated explicitly; the test host rejects them. The eligibility boundary accepts one stable catalog per call, preserving null gaps and script references; original repeated singleton/catalog retrieval is not reproduced. `tests/test_event_conditions.cpp` (`event_conditions_contract`) covers empty-false, AND short-circuit, negative versus positive execution counts, all comparison codes, completion flags, wrapped challenge totals, recruitment filters, lookup order and building enumeration after a match. Invalid input uses C++ exceptions rather than managed exception objects. The unit method remains `traced` in the registry because its other handlers are unresolved.
+
 - `src/core/gameplay/event_flow.{hpp,cpp}` — `execute_event_script` (= `0x110c8ec`, including opcode 10 / `DelayEvent` capture with `argi` clone) and `process_counted_event_delays` (= the `SelectForm.Update` queue block; one call = one reached pass). `EventFlowHost` must supply unit dispatch, `identify_script` (by reference), `resolve_script`, talk-character read/restore. Test `tests/test_event_flow.cpp` (CTest `event_flow_contract`): effect/delay/resume/re-delay chain, callback order, identity, null vs empty, explicit hour untouched, wait 0/negative, `INT_MIN` wrap, adjacent removals, row errors, resolve failure after removal, caller reference replacement, queue mutation by callback.
 - `src/core/gameplay/event_progression.{hpp,cpp}` — `resolve_event_arguments` (sentinel substitution) and `apply_event_progression` (opcodes 1/2/4/15 on decoded `EventProgression`; `crystal_subtraction_mode` must be supplied, no default). Test `tests/test_event_progression.cpp` (`event_progression_contract`).
 - `src/core/gameplay/event_dispatch.{hpp,cpp}` — `stamina_limit_from_item_state`, `event_stamina_balance`, `dispatch_known_event_instruction` (opcodes 1/2/4/8/10/12/15/31; 10 is a no-op; others return `handled=false`). `EventEffectsHost` supplies progression state, stamina read/write/limit, form creation and push. Test `tests/test_event_dispatch.cpp` (`event_dispatch_contract`); `tests/test_presentation_forms.cpp` also drives the dispatcher.
@@ -137,10 +153,12 @@ Fields: `delayId_`+0x10, `line_`+0x14, `wait_`+0x18, `hour_`+0x1c, `talkChara_`+
   python tools/run_event_scenario.py data/extracted/members/06_xls/0007_English.lproj_Event.txt --exe build/desktop/event_trace.exe --index 10 --passes 50 --money 7 --crystals 11 --crystal-mode 10000 --stamina 3 --item-state 0 --talk-character 2 --output build/research/event-scenario-en.json
   ```
   Result for record 10 (wait 50, talk 39, event 21, crystal/money credits): initial money 7 / crystals 11 / queue 1 / wait 50; after pass 49 wait 1; after pass 50 money 8007, crystals 1011, queue empty; stamina stays 3; resume order restore talk 2 → talk 39 + push → event 21 + push. Japanese table is byte-identical (same SHA-256), so its identical trace is not independent.
-- Last recorded build: Windows/MSVC 14.51, 20/20 CTest (report 109).
-- Missing: table loader in C++ (id-indexed `eventData`, `execNum_`); `ExecEvent` (both), `CheckTerm` (all), `Compare`; real `GetDelayId`/`GetDelayScript` (the harness resolves by catalog position, which diverges from id-indexing after the gap at id 180); hour-based delays; `SubForm.delayEvent_` path (slot 5); `SelectForm.Update` guards; opcodes other than the eight; `SecureLong`/`SecureInt` storage; billing item source for stamina; UI forms.
+- Last recorded build: Windows/MSVC, 21/21 CTest, including `event_conditions_contract`.
+- Missing: table loader in C++ (id-indexed `eventData`, `execNum_`); `ExecEvent` (both), remaining unit `CheckTerm` predicates and concrete condition host; real `GetDelayId`/`GetDelayScript` (the harness resolves by catalog position, which diverges from id-indexing after the gap at id 180); hour-based delays; `SubForm.delayEvent_` path (slot 5); `SelectForm.Update` guards; opcodes other than the eight; `SecureLong`/`SecureInt` storage; billing item source for stamina; UI forms.
 
 ## Evidence
+
+- Local bounded ARM64 exports: `research/exports/condition-data/` (quest completion, area discovery, data getters, building list, both LINQ predicates), `condition-character/` (sub/recruit getters), and `event-conditions/` (three CheckTerm overloads, comparator, challenge sum). Metadata/code map resolves the method ids and field offsets above. ELF SHA-256: `17a6cf3a3cef9bd7b387c4b9627df113a8b214f0deb07e1778585dac1143526f`. These exports report Ghidra image base `0x100000`; subtract it from their instruction addresses to obtain the ELF VAs used here.
 
 - [../archive/reports/72-return-event-dispatch-and-data-gap.md](../archive/reports/72-return-event-dispatch-and-data-gap.md) — `ExecEvent` guard/counter, `EventData` fields, event 1133
 - [../archive/reports/76-event-table-tokenization.md](../archive/reports/76-event-table-tokenization.md) — tokenizer, record layout
@@ -154,11 +172,11 @@ Fields: `delayId_`+0x10, `line_`+0x14, `wait_`+0x18, `hour_`+0x1c, `talkChara_`+
 - [../archive/reports/109-native-event-table-scenario.md](../archive/reports/109-native-event-table-scenario.md) — `event_trace` scenario
 - [../archive/reports/110-automatic-event-selection.md](../archive/reports/110-automatic-event-selection.md) — selection, conditions, `Compare`
 - Related: [71](../archive/reports/71-town-return-handler.md) (1133 caller), [73](../archive/reports/73-game-data-id-indexing.md) (id indexing, size 229, gap 180)
-- Local (`build/research/`): `return-event/`, `event-data/`, `event-loading/`, `event-tokenizer/`, `event-int/`, `event-executor/`, `event-opcode-usage.json`, `delay-resume/` (incl. `M35965.asm`), `delay-script-callers.json`, `delay-attach/`, `delay-attach-more/`, `delay-origin/`, `subform-store-candidates.json`, `subform-pair-address-candidates.json`, `event-delay-usage.json`, `progression-effects/`, `event-conditions/` (incl. `direct-callers.json`), `event-condition-helpers/`, `event-scenario-en.json`, `event-scenario-ja.json`, build logs `event-flow-build.log`, `event-progression-build.log`, `event-dispatch-build.log`, `event-trace-build.log`
+- Local (`research/exports/`, migrated from `build/research/`): `return-event/`, `event-data/`, `event-loading/`, `event-tokenizer/`, `event-int/`, `event-executor/`, `event-opcode-usage.json`, `delay-resume/` (incl. `M35965.asm`), `delay-script-callers.json`, `delay-attach/`, `delay-attach-more/`, `delay-origin/`, `subform-store-candidates.json`, `subform-pair-address-candidates.json`, `event-delay-usage.json`, `progression-effects/`, `event-conditions/` (incl. `direct-callers.json`), `event-condition-helpers/`, `event-scenario-en.json`, `event-scenario-ja.json`, build logs `event-flow-build.log`, `event-progression-build.log`, `event-dispatch-build.log`, `event-trace-build.log`
 
 ## Open questions
 
-1. (blocking) Semantics of the 14 condition opcodes used by `terms` (most used: 15, 16) and the evaluator's dependencies; without them automatic selection cannot be ported.
+1. (blocking) Semantics of the nine remaining condition opcodes used by `terms` (4/15/16/20/22 are recovered), plus concrete context/catalog bindings; automatic selection is not yet integrated.
 2. (blocking) Gate flag `SelectForm+0x31` (producers) and the full set of `SelectForm.Update` guards (+0xc0, +0xf8 states, `AcquireBalance` +0x5c source) that decide when selection and queue passes run.
 3. (blocking) Initial/real values of `SYSSAVEI_YUGAMI`, the `ITEM_STAMINA_UP` item state, and the money/crystal/stamina slots from save/new game.
 4. Unit dispatcher opcodes other than 1/2/4/8/10/12/15/31 (jump table has 15 entries); scripts outside `Event.txt` (quests, built events) may use them.
