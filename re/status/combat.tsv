@@ -103,4 +103,5 @@ game:0x06000f7e	documented	docs/subsystems/combat.md	Per-entity motion and impac
 game:0x06000f7c	traced	docs/subsystems/combat.md	Required subset slots 27 0 1 and event-23 subscription
 game:0x06000f80	traced	docs/subsystems/combat.md	Emitter destroy then destroyed Cell and Projectile checks; other event-23 subscribers open
 game:0x06000ecf	reimplemented	src/core/gameplay/human_impact.cpp	Cell Human state-4 guards; animation effect state-5 then event 30; callbacks and failures tested
-game:0x06000e7c	traced	docs/subsystems/combat.md	Bullet-parent checks and enemy effect plus three emitter launches; effect and collision services pending
+game:0x06000e7c	reimplemented	src/core/gameplay/enemy_impact.cpp	Ordered bullet-parent checks emitter launches 12 RNG draws modification replacement and boss notification; host services explicit
+game:0x06000fb5	traced	docs/subsystems/combat.md	Boss flag delay key release victory form and ReleaseMoveKeys sequence; UI/input services pending

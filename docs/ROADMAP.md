@@ -31,7 +31,7 @@ Current maintainer priority: game-specific decompilation and gameplay integratio
 ## Next tasks
 
 ### Current gameplay focus
-- [ ] Implement EnemySystem impact effects/emitter launches and bullet-hit filters, then complete Defeat; human landing -> event 30 -> protagonist game-over decision is ported/tested; bind live subsets around the tested Projectile -> Move sequence; FlyAway/Fire launch and modification payloads are ported; human/enemy state transitions are ported and tested in the contact-collision chain; projectile-hit control flow is integrated with EcsDamageHost; per-call slot/ID/catalog/saved-level resolution is connected, while component construction and save restoration remain open. Connected stat/damage/event-15 accounting tests now pass; effect selection and the full event subscriber set remain open.
+- [ ] Complete EnemySystem.Defeat and bind CheckHit/CreateImpactEffect plus boss-notification services; enemy-impact emitter launch orchestration is ported/tested; human landing -> event 30 -> protagonist game-over decision is ported/tested; bind live subsets around the tested Projectile -> Move sequence; FlyAway/Fire launch and modification payloads are ported; human/enemy state transitions are ported and tested in the contact-collision chain; projectile-hit control flow is integrated with EcsDamageHost; per-call slot/ID/catalog/saved-level resolution is connected, while component construction and save restoration remain open. Connected stat/damage/event-15 accounting tests now pass; effect selection and the full event subscriber set remain open.
 
 ### 1. Events and scripts
 - [ ] Bind decoded billing-item/catalog providers and complete notification manager adapters, preserving task execution gates.

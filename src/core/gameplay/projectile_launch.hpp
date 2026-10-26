@@ -20,6 +20,9 @@ public:
     virtual void return_component(std::int32_t,Component*)=0;
     virtual void add_animation(ComponentSlots&,std::int32_t rate,std::int32_t backup)=0;
 };
+// Shared generated ModifyAnimation payload initialization; add preserves slot semantics.
+void add_projectile_modification(ComponentSlots&,std::int32_t type,std::int32_t max_frame,
+    bool destroy,bool loop,ProjectileLaunchHost&);
 // ProjectileSystem.Fire 0x1157230. Configures components; no per-frame motion here.
 std::int32_t launch_projectile(ComponentSlots&,ProjectilePoint start,ProjectilePoint end,
     std::int32_t speed,ComponentSlots* parent,bool animate,bool rotate,std::int32_t height_percent,

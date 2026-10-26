@@ -18,12 +18,12 @@ ContactPosition& position(ComponentSlots& e){
     if(!p)throw std::invalid_argument("missing projectile position");
     return *p;
 }
-void modify(ComponentSlots& e,std::int32_t type,std::int32_t max_frame,bool loop,ProjectileLaunchHost& host){
+}
+void add_projectile_modification(ComponentSlots& e,std::int32_t type,std::int32_t max_frame,bool destroy,bool loop,ProjectileLaunchHost& host){
     auto& p=host.acquire_modification();
     p.type=type;p.x=0;p.y=0;p.z=0;p.scale_x=1;p.scale_y=1;
-    p.angle=0;p.frame=0;p.max_frame=max_frame;p.anchor=0;p.destroy=false;p.loop=loop;p.alpha=255;
+    p.angle=0;p.frame=0;p.max_frame=max_frame;p.anchor=0;p.destroy=destroy;p.loop=loop;p.alpha=255;
     e.add(modify_animation_slot,&p);
-}
 }
 std::int32_t launch_projectile(ComponentSlots& e,ProjectilePoint start,ProjectilePoint end,
     std::int32_t speed,ComponentSlots* parent,bool animate,bool rotate,std::int32_t height_percent,
@@ -37,7 +37,7 @@ std::int32_t launch_projectile(ComponentSlots& e,ProjectilePoint start,Projectil
     auto& p=host.acquire_projectile();p.start=start;p.end=end;p.speed=speed;
     p.max_height=height;p.max_frame=duration;p.frame=0;p.parent=parent;
     e.add(projectile_slot,&p);
-    if(rotate)modify(e,7,0,true,host);
+    if(rotate)add_projectile_modification(e,7,0,false,true,host);
     if(animate)host.add_animation(e,1,-1);
     return duration;
 }
@@ -55,7 +55,7 @@ void fly_away(ComponentSlots& e,std::int32_t min_x,std::int32_t max_x,
             auto* old=e.get(modify_animation_slot);e.remove(modify_animation_slot);
             host.return_component(modify_animation_slot,old);
         }
-        modify(e,8,99,false,host);
+        add_projectile_modification(e,8,99,false,false,host);
     }
 }
 }

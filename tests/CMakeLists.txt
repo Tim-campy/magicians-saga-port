@@ -394,3 +394,8 @@ add_executable(test_human_impact test_human_impact.cpp)
 target_link_libraries(test_human_impact PRIVATE human_impact projectile_motion movement)
 project_warnings(test_human_impact)
 add_test(NAME human_impact_contract COMMAND test_human_impact)
+
+add_executable(test_enemy_impact test_enemy_impact.cpp)
+target_link_libraries(test_enemy_impact PRIVATE enemy_impact)
+project_warnings(test_enemy_impact)
+add_test(NAME enemy_impact_contract COMMAND test_enemy_impact)
