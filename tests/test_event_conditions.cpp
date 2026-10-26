@@ -112,4 +112,31 @@ int main() {
     h.calls.clear();fails([&]{check_event_condition(row({15}),h);});
     check(h.calls==std::vector<int>({0,15}),"quest getter precedes missing id failure");
     fails([&]{check_event_condition(row({999}),h);});
+    DecodedEventConditionState state;
+    DecodedEventConditionHost decoded(state);
+    fails([&]{check_event_condition(row({1,0,4}),decoded);});
+    state.context_present=true;state.context_character_count=0;
+    fails([&]{check_event_condition(row({1,0,4}),decoded);});
+    state.context_character_count=1;
+    fails([&]{check_event_condition(row({1,0,4}),decoded);}); // Missing balance, not zero.
+    state.money=42;state.crystals=7;state.hero_level=3;state.stamina=0xffffffffLL;state.high_score=99;
+    for (auto condition: {row({1,42,4}),row({2,7,4}),row({5,3,4}),row({31,-1,4}),row({32,99,4})})
+        check(check_event_condition(condition,decoded),"decoded scalar binding");
+    state.quests=std::make_shared<ConditionCatalog<QuestConditionState>>();
+    state.quests->push_back(std::make_shared<QuestConditionState>(QuestConditionState{0,false,QuestConditionRecord{4,2,3}}));
+    fails([&]{check_event_condition(row({7,3,4}),decoded);}); // Debug flag absent.
+    state.debug_enabled=false;
+    check(check_event_condition(row({7,3,4}),decoded),"disabled debug does not require rescue bonus");
+    state.debug_enabled=true;
+    fails([&]{check_event_condition(row({7,3,4}),decoded);});
+    state.debug_rescue_count=-1;
+    check(check_event_condition(row({7,2,4}),decoded),"debug rescue adjustment");
+    state.area_states=std::make_shared<ConditionCatalog<std::int32_t>>();
+    state.area_states->push_back(std::make_shared<std::int32_t>(0));
+    *terms={row({1,42,4}),row({4,0})};
+    check(!check_event_conditions(terms,decoded),"live decoded state before discovery");
+    *state.area_states->at(0)=1;
+    check(check_event_conditions(terms,decoded),"live decoded state after discovery");
+    fails([&]{check_event_condition(row({999}),decoded);});
+
 }

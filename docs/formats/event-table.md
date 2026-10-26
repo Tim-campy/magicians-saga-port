@@ -63,8 +63,8 @@ Jump table `0x627ae0`: 32 uint16 entries. Matrix semantics: null/empty → false
 | 1 | 3 | `0x110b7e0` | int64 money comparison |
 | 2 | 2 | `0x110b848` | int64 crystal comparison |
 | 4 | 8 | `0x110b8c4` | area state == 1 |
-| 5 | 1 | `0x110b930` | hero CharaData +0x40 int32 comparison |
-| 7 | 1 | `0x110b9b8` | rescued count plus conditional static adjustment |
+| 5 | 1 | `0x110b930` | hero level int32 comparison |
+| 7 | 1 | `0x110b9b8` | rescued count plus DEBUG-gated debugRescueNum |
 | 15 | 75 | `0x110bad4` | quest completion bit or boolean |
 | 16 | 29 | `0x110bb40` | sum quest challengeCount |
 | 18 | 1 | `0x110bc98` | sum quest clearCount |

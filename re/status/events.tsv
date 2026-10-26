@@ -26,9 +26,10 @@ game:0x060001c4	documented	docs/subsystems/events.md	QuestRecord challengeCount 
 game:0x060011ec	documented	docs/subsystems/events.md	quest completion flags bit 1 or boolean +0xa4; caller condition 15
 game:0x06000265	documented	docs/subsystems/events.md	character non-null, sub nonzero and recruited bit; caller condition 22 LINQ
 game:0x06000269	documented	docs/subsystems/events.md	building row[1] == condition[1]; full count; caller condition 20 LINQ
-game:0x060001af	documented	docs/subsystems/events.md	GetTotalRescueCount: null quest faults; int32 sum + conditional static bonus; condition 7
+game:0x060001af	documented	docs/subsystems/events.md	GetTotalRescueCount: null quest faults; int32 sum + Config.DEBUG-gated AppData.debugRescueNum; decoded host tested
 game:0x060001c5	documented	docs/subsystems/events.md	SumAllQuestsClearCount: null quest skip and wrap32; condition 18
 game:0x060001c6	documented	docs/subsystems/events.md	SumAllQuestsLoseCount: challenges minus clears, wrap32; condition 19
 game:0x06000223	documented	docs/subsystems/events.md	GetStamina: SecureLong slot 1; condition 31 compares low int32
 game:0x06000266	documented	docs/subsystems/events.md	town LINQ predicate: null faults; BaseData.Check(1); condition 21
 game:0x06001039	documented	docs/subsystems/events.md	BaseData.Check: flags +0x1c bitmask nonzero; called by condition 21
+game:0x0600106b	documented	docs/subsystems/events.md	CharaData.get_level returns int32 +0x40; condition 5 reads the same field directly

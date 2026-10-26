@@ -3990,7 +3990,7 @@ game:0x06001067,game:0x06001067,data,,12,0x116d590
 game:0x06001068,game:0x06001068,data,,12,0x116abdc
 game:0x06001069,game:0x06001069,data,,16,0x116abe8
 game:0x0600106a,game:0x0600106a,data,,16,0x116d59c
-game:0x0600106b,game:0x0600106b,data,,8,0x116d5ac
+game:0x0600106b,data.CharaData.get_level,data,documented,8,0x116d5ac
 game:0x0600106c,data.CharaData.set_level,data,documented,116,0x116d5b4
 game:0x0600106d,data.CharaData.NewGame,data,traced,304,0x116d628
 game:0x0600106e,game:0x0600106e,data,,8,0x116d758

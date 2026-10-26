@@ -35,7 +35,7 @@ bool check_event_condition(const EventInstruction& instruction, EventConditionHo
     case 1: case 2: case 5: case 31: case 32: {
         const auto opcode=row[0];
         const auto kind=opcode==1 ? ConditionScalar::Money : opcode==2 ? ConditionScalar::Crystals :
-            opcode==5 ? ConditionScalar::HeroField40 : opcode==31 ? ConditionScalar::Stamina : ConditionScalar::HighScore;
+            opcode==5 ? ConditionScalar::HeroLevel : opcode==31 ? ConditionScalar::Stamina : ConditionScalar::HighScore;
         const auto raw=host.scalar(kind); // Query precedes argument checks.
         const auto value=(opcode==5 || opcode==31) ? signed32(static_cast<std::uint32_t>(raw)) : raw;
         const auto threshold=row.at(1);
@@ -121,4 +121,35 @@ bool check_event_eligibility(const ConditionCatalog<EventConditionRecord>* recor
     if (!record || record->execution_count>0) return false;
     return check_event_conditions(record->terms,host);
 }
+// AppData.CheckTerm context guard, 0x110b760..0x110b7b4.
+void DecodedEventConditionHost::require_condition_context() {
+    if (!state_.context_present || !state_.context_character_count)
+        throw std::invalid_argument("missing AppData condition context");
+    if (*state_.context_character_count==0)
+        throw std::out_of_range("empty AppData characters storage");
+}
+const ConditionCatalog<QuestConditionState>* DecodedEventConditionHost::quests() { return state_.quests.get(); }
+const ConditionCatalog<std::int32_t>* DecodedEventConditionHost::area_states() { return state_.area_states.get(); }
+const ConditionCatalog<CharacterConditionState>* DecodedEventConditionHost::characters() { return state_.characters.get(); }
+const ConditionCatalog<std::uint32_t>* DecodedEventConditionHost::town_flags() { return state_.town_flags.get(); }
+EventScript DecodedEventConditionHost::buildings() { return state_.buildings; }
+std::int32_t DecodedEventConditionHost::town_capacity() { return state_.town_capacity.value(); }
+std::int64_t DecodedEventConditionHost::scalar(ConditionScalar kind) {
+    switch (kind) {
+    case ConditionScalar::Money: return state_.money.value();
+    case ConditionScalar::Crystals: return state_.crystals.value();
+    case ConditionScalar::HeroLevel: return state_.hero_level.value();
+    case ConditionScalar::Stamina: return state_.stamina.value();
+    case ConditionScalar::HighScore: return state_.high_score.value();
+    }
+    throw std::invalid_argument("unknown condition scalar");
+}
+// GetTotalRescueCount, 0x1109fe8: Config.DEBUG gates AppData.debugRescueNum.
+std::int32_t DecodedEventConditionHost::rescue_adjustment() {
+    return state_.debug_enabled.value() ? state_.debug_rescue_count.value() : 0;
+}
+bool DecodedEventConditionHost::evaluate_other_condition(const EventInstruction&) {
+    throw std::logic_error("condition opcode not recovered");
+}
+
 }

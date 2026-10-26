@@ -22,7 +22,7 @@ struct EventConditionRecord {
     std::int32_t execution_count;
     EventScript terms;
 };
-enum class ConditionScalar { Money, Crystals, HeroField40, Stamina, HighScore };
+enum class ConditionScalar { Money, Crystals, HeroLevel, Stamina, HighScore };
 class EventConditionHost {
 public:
     virtual ~EventConditionHost() = default;
@@ -50,4 +50,36 @@ bool check_event_condition(const EventInstruction&, EventConditionHost&);
 bool check_event_conditions(const EventScript&, EventConditionHost&);
 bool check_event_eligibility(const ConditionCatalog<EventConditionRecord>*,
                              std::int32_t index, EventConditionHost&);
+
+// Decoded inputs from the data/save and ECS layers. Missing values stay absent;
+// the table/save loaders and hero component lookup are not implemented here.
+struct DecodedEventConditionState {
+    bool context_present=false;
+    std::optional<std::size_t> context_character_count;
+    std::shared_ptr<ConditionCatalog<QuestConditionState>> quests;
+    std::shared_ptr<ConditionCatalog<std::int32_t>> area_states;
+    std::shared_ptr<ConditionCatalog<CharacterConditionState>> characters;
+    std::shared_ptr<ConditionCatalog<std::uint32_t>> town_flags;
+    EventScript buildings;
+    std::optional<std::int64_t> money, crystals, stamina, high_score;
+    std::optional<std::int32_t> hero_level, town_capacity;
+    std::optional<bool> debug_enabled;
+    std::optional<std::int32_t> debug_rescue_count;
+};
+class DecodedEventConditionHost final : public EventConditionHost {
+public:
+    explicit DecodedEventConditionHost(DecodedEventConditionState& state) : state_(state) {}
+    void require_condition_context() override;
+    const ConditionCatalog<QuestConditionState>* quests() override;
+    std::int64_t scalar(ConditionScalar) override;
+    std::int32_t rescue_adjustment() override;
+    const ConditionCatalog<std::uint32_t>* town_flags() override;
+    std::int32_t town_capacity() override;
+    const ConditionCatalog<std::int32_t>* area_states() override;
+    const ConditionCatalog<CharacterConditionState>* characters() override;
+    EventScript buildings() override;
+    bool evaluate_other_condition(const EventInstruction&) override;
+private:
+    DecodedEventConditionState& state_;
+};
 }
