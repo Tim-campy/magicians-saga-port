@@ -1,4 +1,5 @@
 #include "core/gameplay/thread_culture_set.hpp"
+#include "core/gameplay/context_switch.hpp"
 #include "core/gameplay/async_local_values.hpp"
 #include "core/gameplay/culture_setters.hpp"
 #include <cstdlib>
@@ -32,6 +33,7 @@ struct Host:ThreadCultureWriteHost,CurrentCultureHost,AsyncExecutionHost {
     std::shared_ptr<CultureInstance> create_specific(const std::u16string&)override{calls.push_back("specific");return user;}
     std::shared_ptr<CultureInstance> invariant_culture()override{calls.push_back("invariant");if(++invariant_calls==2)throw CultureManagedException("second invariant query");return user;}
 };
+struct NoFailure:ContextNotificationFailureHost{void fail_fast(std::exception_ptr)override{check(false);}};
 int main(){
     auto incoming=std::make_shared<CultureInstance>();
     {Host h;CurrentCultureState s;h.thread=h.user;h.disable=false;h.real=true;
@@ -40,6 +42,16 @@ int main(){
         auto saved=h.execution->values;auto before=h.calls.size();
         h.real_slot->set(incoming);check(h.calls.size()==before && h.execution->values==saved);
         h.real_slot->set(nullptr);check(!h.thread && (*saved)[0].value==incoming);}
+    {Host h;CurrentCultureState s;NoFailure failure;h.thread=h.user;h.disable=false;h.real=true;
+        set_thread_culture(incoming,h,s,h);
+        ThreadExecutionState execution{h.execution,true};
+        auto next=std::make_shared<AsyncExecutionState>(*h.execution);
+        next->values=std::make_shared<AsyncLocalValues>(*h.execution->values);
+        (*next->values)[0].value=h.user;
+        auto saved=set_execution_context(execution,next,false,failure);
+        check(h.thread==h.user && execution.context==next);
+        undo_execution_context(saved,failure);
+        check(h.thread==incoming && execution.context==h.execution && execution.belongs_to_outer_scope);}
     {Host h;CurrentCultureState s;try{set_thread_culture(nullptr,h,s,h);check(false);}catch(const CultureMutationError& e){check(e.kind==CultureMutationFailure::NullValue);}check(h.calls.empty());}
     {Host h;CurrentCultureState s;set_thread_culture(incoming,h,s,h);
         check((h.calls==std::vector<std::string>{"thread","ui","mode","name","specific","write","write_ui","switch","write"}));
