@@ -3814,7 +3814,7 @@ game:0x06000fb7,ecs.StageSystem.OnGameOver,ecs,traced,284,0x116442c
 game:0x06000fb8,game:0x06000fb8,ecs,,280,0x1163614
 game:0x06000fb9,ecs.StageSystem.OnCollectedDrop,ecs,documented,740,0x1165988
 game:0x06000fba,game:0x06000fba,ecs,,404,0x1166564
-game:0x06000fbb,ecs.StageSystem.OnDamage,ecs,documented,64,0x11666f8
+game:0x06000fbb,ecs.StageSystem.OnDamage,ecs,reimplemented,64,0x11666f8
 game:0x06000fbc,game:0x06000fbc,ecs,,8,0x1166738
 game:0x06000fbd,game:0x06000fbd,ecs,,1336,0x1166740
 game:0x06000fbe,game:0x06000fbe,ecs,,8,0x1167fb8

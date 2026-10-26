@@ -339,3 +339,8 @@ add_executable(test_combat_parameters test_combat_parameters.cpp)
 target_link_libraries(test_combat_parameters PRIVATE combat_parameters)
 project_warnings(test_combat_parameters)
 add_test(NAME combat_parameters_contract COMMAND test_combat_parameters)
+
+add_executable(test_combat_host test_combat_host.cpp)
+target_link_libraries(test_combat_host PRIVATE combat_host)
+project_warnings(test_combat_host)
+add_test(NAME combat_host_contract COMMAND test_combat_host)

@@ -46,7 +46,7 @@ game:0x06000fb7	traced	docs/subsystems/rewards.md	retry flag and code -> state 5
 game:0x06000fb6	documented	docs/subsystems/rewards.md	isMain -> OnGameOver(1)
 game:0x06000f9b	traced	docs/subsystems/rewards.md	subscribes OnDamage to event 15; rest of Init not read
 game:0x06000f9e	traced	docs/subsystems/rewards.md	zeroes totalGaveDamage_; rest of Start not read
-game:0x06000fbb	documented	docs/subsystems/rewards.md	totalGaveDamage_ += D for enemy receivers
+game:0x06000fbb	reimplemented	src/core/gameplay/combat_host.cpp	Enemy presence adds offered damage with wrap; null receiver faults; overkill and DEBUG integration tests
 game:0x06000fb2	reimplemented	src/core/gameplay/quest_rewards.cpp	Counters and signed bests ported with ordered live host reads and partial-failure tests
 game:0x06000fc9	documented	docs/subsystems/rewards.md	signed max of bestTotalGaveDamage over questData
 game:0x060011f1	documented	docs/subsystems/rewards.md	QuestData+0xa0 += n (32-bit)

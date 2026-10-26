@@ -31,7 +31,7 @@ Current maintainer priority: game-specific decompilation and gameplay integratio
 ## Next tasks
 
 ### Current gameplay focus
-- [ ] Bind decoded character/shop records and enemy parameters to the concrete damage host, then event-15 consumers. Character/enemy growth, equipment totals and initial maxima are ported; live ECS/data integration remains open.
+- [ ] Load character/shop/equipment combat records and resolve them from ECS entities; then bind the resolved damage host to projectile/contact entry points. Connected stat/damage/event-15 accounting tests now pass; effect selection and the full event subscriber set remain open.
 
 ### 1. Events and scripts
 - [ ] Bind decoded billing-item/catalog providers and complete notification manager adapters, preserving task execution gates.

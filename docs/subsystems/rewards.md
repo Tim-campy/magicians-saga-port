@@ -104,7 +104,7 @@ Jump table 0x645c36 relative to 0x1162718 (×4): 0 wait for external condition -
 
 ### Quest record
 
-- `StageSystem.Init` (0x1162298) subscribes `StageSystem.OnDamage` to event 15 (GOT 0x2731a18, AddEventHandler instantiation 2565). `OnDamage` (0x11666f8): entity non-null and `Entity.get_hasEnemy` -> `totalGaveDamage_` (+0x88) += D (wrap32, no clamp, overkill and DEBUG-skipped damage still count). `StageSystem.Start` zeroes it (site 0x116526c).
+- `StageSystem.Init` (0x1162298) subscribes `StageSystem.OnDamage` to event 15 (GOT 0x2731a18, AddEventHandler instantiation 2565). `OnDamage` (0x11666f8): null entity faults; otherwise `Entity.get_hasEnemy` -> `totalGaveDamage_` (+0x88) += D (wrap32, no clamp, overkill and DEBUG-skipped damage still count). `StageSystem.Start` zeroes it (site 0x116526c).
 - `UpdateQuestRecord(w1, exp, money)` (0x1165728) on `QuestData+0xa8` (QuestRecord): always challengeCount += 1 and defeatedCount += EnemySystem+0x34; return if w1 != 0; else bestExp/bestMoney = max, clearCount += 1, rescuedCount += drop_.prisonersNum, bestTotalGaveDamage = max(totalGaveDamage_). Note ReturnTown(0) after a clear does not call it again (code 0), so a clear counts one challenge.
 - QuestRecord layout: bestExp +0x10, bestMoney +0x14, challengeCount +0x18, clearCount +0x1c, defeatedCount +0x20, rescuedCount +0x24, bestTotalGaveDamage +0x28.
 - `GetBestTotalGaveDamage` (0x116818c): signed max over all `Data.questData` records starting at 0; null elements reach the error helper.
@@ -182,6 +182,8 @@ The host retains original drop positioning, Easing scale, depth and entity-creat
 Evidence: `research/exports/enemy-rewards/`, `enemy-reward-readers/`, existing `gameplay-combat/M37632_EnemySystem_Defeat.asm` and `defeat-helpers/`. Static artifact audit: 83 enemy records x 1200 levels = 99600 C++ queries per language, matching an independent Python binary32 model (result hash 985714270517449481 for both languages, local `enemy-experience-model.json`). This is static-model agreement, not Android verification. Confidence high for the decoded schema, arithmetic and observed suffix ordering; full Defeat remains partial.
 
 ## Port
+
+- `combat_host.cpp::record_stage_damage` implements `StageSystem.OnDamage`; the resolved combat host sends effects then event 15 then gated diagnostics before the death predicate. `tests/test_combat_host.cpp` verifies overkill/DEBUG accounting, dual human+enemy presence, wrapping and null failure. The listener is available to a real event dispatcher; full registration and other listeners remain pending.
 
 - `src/core/gameplay/stage_rewards.hpp/.cpp`: `StageRewards{experience, money, prisoners, treasure_ids}` + `record_collected_drop(rewards, type, value)` (only the OnCollectedDrop accumulator switch, no effects/cleanup); `ItemStock{discovery_state, is_new, stock}` + `add_item_stock(item, amount)` (AddStock with its Find hook).
 - Test `tests/test_stage_rewards.cpp` (CTest `stage_rewards_contract`): mixed sequence, separate totals, prisoner payload ignored, duplicate/negative ids, unknown types, overflow of the three sums; first grant, duplicate cap, state != 1, negative amount, overflow both ways.
