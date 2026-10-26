@@ -366,7 +366,7 @@ project_warnings(test_projectile_hit)
 add_test(NAME projectile_hit_contract COMMAND test_projectile_hit)
 
 add_executable(test_contact_collision test_contact_collision.cpp)
-target_link_libraries(test_contact_collision PRIVATE combat_state projectile_launch human_contact entity_events)
+target_link_libraries(test_contact_collision PRIVATE combat_state projectile_launch human_contact entity_events subset_cursors collision_pass update_scheduler)
 project_warnings(test_contact_collision)
 add_test(NAME contact_collision_contract COMMAND test_contact_collision)
 

@@ -319,6 +319,35 @@ The contact integration test now delivers event 29 to both real Human and Enemy 
 
 Evidence: local `research/exports/combat-event-bus/` with exact FDE bounds from `il2cpp-unwind.json`; code-map resolution of Delegate.Combine and metadata usage resolution of Dictionary ContainsKey/get_Item/set_Item and IDictionaryExtension.GetValue. Confidence high for the dispatch contract and selected registration order. Removal matching and the complete subscriber inventory remain open; Android comparison absent.
 
+### Factory initialization subscription audit
+
+All 32 factory types have their own Init entry. Bounded exports were checked for direct calls to the World registration wrappers and metadata-resolved delegate targets. They contain 23 registration calls across 14 systems:
+
+| Factory index | System | Event -> receiver, in Init call order |
+| --- | --- | --- |
+| 0 | InputSystem | 9 -> OnTouchEvent (0x115b4d4) |
+| 3 | StageSystem | 30 -> OnHumanDead (0x1162540); 9 -> OnTouchEvent (0x1162570); 15 -> OnDamage (0x11625c8) |
+| 4 | HumanSystem | 23 -> OnProjectileImpact (0x11550b8); 29 -> OnCollide (0x1155100) |
+| 5 | EnemySystem | 23 -> OnProjectileImpact (0x114c4f0); 29 -> OnCollide (0x114c528); 30 -> OnHumanDead (0x114c578) |
+| 7 | TownSystem | 31 -> OnReturnFromQuest (0x116961c) |
+| 9 | ExpSystem | 21 -> OnGetExp (0x1151b30) |
+| 10 | ProjectileSystem | 23 -> OnProjectileImpact (0x1160004) |
+| 14 | ParameterSystem | 16 -> OnDropoff (0x115fe2c) |
+| 20 | CellCullingSystem | 14 -> OnCellChange (0x1144b9c) |
+| 24 | CursorRenderSystem | 2 -> OnCameraTouchDown (0x1147428); 4 -> OnCameraTouchClick (0x1147468) |
+| 25 | InfoSystem | 4 -> OnCameraTouchClick (0x1159550); 11 -> OnButtonTouch (0x1159580); 28 -> OnTownAttack (0x11595c4) |
+| 26 | ButtonSystem | 9 -> OnTouchEvent (0x1142878) |
+| 27 | SubMenuSystem | 11 -> OnButtonTouch (0x11686d4) |
+| 28 | MenuSystem | 11 -> OnButtonTouch (0x115e838); 27 -> OnScreenOrientate (0x115e878) |
+
+The remaining 18 Init entries do not directly register World events. CellCulling additionally subscribes to subset entity-added/removed notifications; these are not World events. StatusRenderSystem.Init is a single return. This is a subscription audit, not a claim that all initialization bodies are documented or ported.
+
+For combat, the factory subscription lists are now bounded: event 23 = Human -> Enemy -> Projectile; event 29 = Human -> Enemy; event 30 = Stage -> Enemy. An executable-segment B/BL scan of the reference-payload Add wrappers, instance forwarding bodies and EventManager Add bodies found no additional direct registration caller for these events. The only extra non-Init caller is MenuSystem.OnEnabled at 0x115e9e0, whose registration call 0x115eab8 uses event 11. No absence claim is made for indirect/reflection-driven registration or custom future system sets.
+
+Evidence: local `research/exports/system-initializers/` contains all 32 bounded Init exports, metadata-resolved `subscriptions.json`, whole-executable immediate-call scan `incoming-add.json`, and MenuOnEnabled. Metadata resolution follows each delegate constructor's method usage, not the handler's name. Confidence high for direct registration sites and order; complete execution paths and Android comparison remain separate.
+
+The collision integration now uses GameplayUpdate index 12 -> CollisionPass -> a live And({32,0}) EntitySubset -> EntityEvents event 29 -> the real Human and Enemy contact handlers. A disabled gate produces no movement or callbacks; enabling it causes detection and ordered contact displacement/damage-host/recoil. This remains one integrated system, not the full 26-system frame; actual damage arithmetic is covered separately and this scenario uses an explicit nonlethal damage host.
+
 ## Evidence
 
 - Temporary lifetime: local `research/exports/garbage-lifetime/{Init,NeedsUpdate,Update,AddGarbage}.asm`. Init writes filter value 0x16; AddGarbage writes +0x10 and passes slot 0x16; Update stores the decremented counter at 0x11532e0, then queues on signed <= 0, and calls Entity.Destroy(true) at 0x1153384 only after the first enumeration finishes. Confidence high for arithmetic and call order; Android comparison absent.

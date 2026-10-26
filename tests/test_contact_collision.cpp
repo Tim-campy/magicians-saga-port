@@ -1,3 +1,5 @@
+#include "core/gameplay/subset_cursors.hpp"
+#include "core/ecs/update_scheduler.hpp"
 #include "core/gameplay/human_contact.hpp"
 #include "core/ecs/entity_events.hpp"
 #include "core/gameplay/combat_state.hpp"
@@ -9,8 +11,11 @@
 #include <string>
 using namespace saga::core;
 void check(bool value){if(!value)std::abort();}
-struct Host final:ContactCollisionHost,HumanContactHost,ProjectileLaunchHost,RandomSource {
+struct Host final:ContactCollisionHost,HumanContactHost,ProjectileLaunchHost,RandomSource,CollisionPassHost {
     ProjectileLink flying;ProjectileModification modification;
+    EntitySubset* contact_subset=nullptr;EntityEvents* events=nullptr;
+    std::unique_ptr<CollisionCursor> open_collision_cursor()override{return open_collision_subset(*contact_subset);}
+    void send_collision(std::int32_t id,ComponentSlots& a,ComponentSlots& b)override{check(id==29);events->send(id,&a,&b);}
     std::int32_t next()override{return 0;}
     ProjectileLink& acquire_projectile()override{return flying;}
     ProjectileModification& acquire_modification()override{return modification;}
@@ -78,7 +83,17 @@ int main(){
             check(f.human_link.state==3&&f.hp.z==23);
             on_contact_collision(a,b,f.tables,f.maxima,f.host);
         }));
-        events.send(29,&f.enemy,&f.human);
+        // Real live group -> collision pair selection -> event delivery -> both real receivers.
+        std::vector<std::int32_t> required{32,0};SubsetFilter filter{&required};
+        EntitySubset contacts(filter,[&](const ComponentSlots& e){return &e==&f.enemy?1:2;});
+        ProjectileCollision enemy_collision,human_collision;enemy_collision.radius=100;human_collision.radius=100;
+        f.enemy.add(32,&enemy_collision);f.human.add(32,&human_collision);
+        contacts.add(&f.enemy);contacts.add(&f.human);f.host.contact_subset=&contacts;f.host.events=&events;
+        CollisionPass pass;bool enabled=false;
+        GameplayUpdate collision_system(12,enabled,[&](std::int32_t){pass.update(f.host);});
+        std::vector<UpdateSystem*> systems{&collision_system};UpdateSchedule schedule{&systems,nullptr};
+        update_systems(schedule,1);check(f.host.calls.empty()&&f.hp.z==20);
+        enabled=true;update_systems(schedule,1);
         check(f.host.calls==std::vector<std::string>{"cut","humanEffect","cut","effect2","damage","progress","enemy3","sound"});
         check(f.hp.z==23&&human_speed.z==3&&f.ep.z==90&&f.speed.z==-10);
     }

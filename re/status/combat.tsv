@@ -112,7 +112,7 @@ game:0x06000a77	documented	docs/subsystems/combat.md	Depth-first neighbor order 
 game:0x06000fca	reimplemented	src/core/gameplay/boss_notification.cpp	Ordered key releases and both control lookups before event-9 deliveries; capture and failure contracts tested
 game:0x06000e0a	traced	docs/subsystems/combat.md	And filter requires Collision 32 and Position 0; initializes persistent pair list
 game:0x06000e0b	reimplemented	src/core/ecs/update_scheduler.cpp	Ordered dispatch or concrete enabled/pass gate; contract test; runtime comparison pending.
-game:0x06000e0c	documented	docs/subsystems/combat.md	Visited reset ordered pair filters HP geometry and deferred event-29 delivery ported; live subset scheduler remain adapters
+game:0x06000e0c	reimplemented	src/core/gameplay/collision_pass.cpp	Complete pair selection and deferred delivery; live subset gated scheduler and both real contact receivers composed in tests
 game:0x06000e7f	reimplemented	src/core/gameplay/combat_event_receivers.cpp	Live enemy retargeting after human death; SearchTarget remains explicit.
 game:0x06000e67	traced	docs/subsystems/combat.md	Enemy group and event 23/29/30 targets resolved; registration slice bound with ordered delivery; complete Init not ported.
 game:0x06000ebb	traced	docs/subsystems/combat.md	Human group and event 23/29 targets resolved; real Human and Enemy contact delivery composed; complete Init not ported.
