@@ -17,7 +17,9 @@ EquipmentCombatTable load_equipment_combat_table(std::string_view text,Equipment
             // EquipmentData.Load 0x116f428, status_ +0x88; attribute is fixed token 9.
             for(int i=0;i<4;++i)t.integer();
             t.take();t.integer();t.integer();r.attribute=t.integer();
-            for(int i=0;i<11;++i)t.integer();
+            for(int i=0;i<7;++i)t.integer();
+            r.range=t.integer(); // EquipmentData.range +0x78, fixed token 17.
+            for(int i=0;i<3;++i)t.integer();
         } else {
             // ClothData.Load 0x116e704 and HatData.Load 0x1171734 share token framing.
             t.integer();t.take();for(int i=0;i<5;++i)t.integer();

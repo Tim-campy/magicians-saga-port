@@ -409,3 +409,8 @@ add_executable(test_collision_check test_collision_check.cpp)
 target_link_libraries(test_collision_check PRIVATE collision_check)
 project_warnings(test_collision_check)
 add_test(NAME collision_check_contract COMMAND test_collision_check)
+
+add_executable(test_impact_effect test_impact_effect.cpp)
+target_link_libraries(test_impact_effect PRIVATE impact_effect)
+project_warnings(test_impact_effect)
+add_test(NAME impact_effect_contract COMMAND test_impact_effect)

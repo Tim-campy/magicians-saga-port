@@ -5,7 +5,7 @@
 namespace saga::core {
 // Combat projections: all tokens are consumed, presentation/economy fields are not retained.
 struct MagicShopCombatRecord {std::int32_t id=0,category=0,value_per_purchase=0,flags=0;};
-struct EquipmentCombatRecord {std::int32_t id=0,attribute=0,flags=0;EventScript parameters;};
+struct EquipmentCombatRecord {std::int32_t id=0,attribute=0,flags=0;EventScript parameters;std::int32_t range=0;};
 using MagicShopCombatTable=std::vector<std::optional<MagicShopCombatRecord>>;
 using EquipmentCombatTable=std::vector<std::optional<EquipmentCombatRecord>>;
 enum class EquipmentTableKind { weapon_or_shield,cloth_or_hat };

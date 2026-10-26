@@ -51,6 +51,11 @@ int main(int argc,char** argv){
     const std::string gear="3\tBlade\t1\t2\t3\t4\tRes\t5\t6\t2\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t"+endpoints()+"\tD\t4";
     auto weapons=load_equipment_combat_table(gear,EquipmentTableKind::weapon_or_shield,false,parse_event_decimal);
     auto e=bind_equipment_parameters(*weapons[3],100);check(e.attribute==2&&equipment_parameter(e.parameters,0)==1000);
+    std::string ranged=gear;std::size_t at=0;
+    for(int token=0;token<17;++token)at=ranged.find('\t',at)+1;
+    ranged.replace(at,ranged.find('\t',at)-at,"-7");
+    const auto ranged_weapons=load_equipment_combat_table(ranged,EquipmentTableKind::weapon_or_shield,false,parse_event_decimal);
+    check(ranged_weapons[3]->range==-7&&ranged_weapons[3]->parameters->at(12)->at(1)==1000);
     const std::string clothing="1\tHat\t7\tRes\t8\t9\t10\t11\t12\t"+endpoints()+"\tD\t6";
     auto hats=load_equipment_combat_table(clothing,EquipmentTableKind::cloth_or_hat,false,parse_event_decimal);
     check(hats[1]->flags==6&&hats[1]->parameters->at(12)->at(0)==100);

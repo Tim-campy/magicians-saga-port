@@ -2576,8 +2576,8 @@ game:0x06000a6d,game:0x06000a6d,util,,304,0x112761c
 game:0x06000a73,game:0x06000a73,util,,496,0x112774c
 game:0x06000a74,game:0x06000a74,util,,36,0x112793c
 game:0x06000a75,game:0x06000a75,util,,164,0x1127960
-game:0x06000a76,game:0x06000a76,util,,520,0x1127a38
-game:0x06000a77,game:0x06000a77,util,,912,0x1127c40
+game:0x06000a76,kairo.unity.math.CellUtil.GetRange,util,documented,520,0x1127a38
+game:0x06000a77,kairo.unity.math.CellUtil.Visit4Cells,util,documented,912,0x1127c40
 game:0x06000a78,game:0x06000a78,util,,140,0x1127fd8
 game:0x06000a79,game:0x06000a79,util,,128,0x1128064
 game:0x06000a7a,game:0x06000a7a,unassigned,,8,0x1127fd0
@@ -3499,7 +3499,7 @@ game:0x06000e7c,ecs.EnemySystem.OnProjectileImpact,ecs,reimplemented,1232,0x114e
 game:0x06000e7d,ecs.EnemySystem.OnCollide,ecs,reimplemented,1600,0x114f604
 game:0x06000e7e,ecs.EnemySystem.OnBulletHit,ecs,reimplemented,344,0x114f4ac
 game:0x06000e7f,game:0x06000e7f,ecs,,440,0x11511cc
-game:0x06000e80,game:0x06000e80,ecs,,2088,0x114ec84
+game:0x06000e80,ecs.EnemySystem.CreateImpactEffect,ecs,reimplemented,2088,0x114ec84
 game:0x06000e81,game:0x06000e81,ecs,,980,0x1151384
 game:0x06000e82,ecs.EnemySystem.Damage,ecs,documented,3924,0x114fc44
 game:0x06000e83,ecs.EnemySystem.Defeat,ecs,reimplemented,1040,0x1150b98
