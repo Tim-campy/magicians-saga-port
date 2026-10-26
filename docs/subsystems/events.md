@@ -244,7 +244,31 @@ The lifetime block is later in Update, ELF `0x11ed538`?`0x11ed660`; it must not 
 
 Evidence: `research/exports/select-camera/F11eedd8.asm`, `select-bubble/` (voice getter, predicates), `select-bubble-lifetime/` (FirstOrDefault and view helpers), and the Update export. Field identities use native field offsets and metadata. GOT 0x2734278 maps to the type-4 predicate; GOT 0x272ee88 maps to string literal 0, whose metadata length is zero. Confidence high for these static contracts; no Android comparison yet.
 
+### Room/shop navigation and remaining button priority
+
+The button chain begins at ELF `0x11eca28`, after the progression triggers. `process_select_navigation` ports its first two branches and the deferred room callback; it is called only after prefix ContinueInput. Confidence high from the Update export and `research/exports/select-buttons/`.
+
+1. Input mask 0x04000000 wins first. Play RESSOUND_SE_BUTTON (AppData static +0x250), construct a delegate bound to this SelectForm, compute Graphics.GetColorOfRGB(48,48,48), and invoke TransitionSystem.MakeTransition(3,delegate,true,color), then return true. The color is 0xff303030: `0x1b62c34` clamps each integer channel to 0..255 and ORs alpha 0xff (local `select-button-color/`). This branch does not clear weaponNew_ or push the room immediately.
+2. Only if that input is false, query mask 0x01000000. A true result calls ShopForm.MakeShopForm(11) (`0x1209b6c`, allocation then constructor with type 11), then SelectForm.Push and returns. There is no button-sound call in this branch. A null factory result is still passed through Push.
+
+The deferred `<Update>b__117_0` (`0x11f5a2c`, `game:0x0600083d`) clears weaponNew_ (+0x208) first, then requires AppData and reads frmRoom_ (+0xc0), then uses SelectForm.Push. Thus missing AppData leaves the marker cleared without setting Push flags; a manager failure occurs after autoSave/evenCheck are set. The portable callback retains shared ownership of the original form and host until the transition completes or is cancelled. The transition host must release its retained callback at that point; scheduling does not imply immediate invocation. TransitionSystem.MakeTransition creates a transition form with type +0xf0, callback +0x100, bool +0xf4, color +0xf8 and zero counter +0xfc, then inserts it through FormManager. Its animation/callback timing remains an explicit host responsibility, not an assumed duration.
+
+If both initial buttons are false, continuation is `0x11ecb5c`. The subsequent priority established by branch addresses is:
+
+| Mask / start | Observed action; remaining work |
+| --- | --- |
+| 0x08000000 / 0x11ecb5c | Selected building: sound, building-list validation, save position, dispatch by building id/type. Invalid selection can fall through to the next button. Full branch pending. |
+| 0x10000000 / 0x11ecdcc | Sound; write normal-save slots 11,12,10,8 from camX_, camY_, integer-converted touchDragDistance_ and selected area; clear selected area; Push AppData.frmSelectStage_ (+0xa8). Pending port. |
+| 0x20000000 / 0x11ecf94 | Clear two selection-message fields, sound, MakeObstacle(selected building), Push, clear selected building. Pending port. |
+| 0x40000000 / 0x11ed038 | MakeStoreInvite then Push; update first town row with state 1 to state 2, save a system value and reset bubble fields. Pending complete bindings. |
+| 0x02000000 / 0x11ed0d4 | Find first town row with state 3, clear its state, apply reward, build/push message form, SetTalkFuki; returns even when no matching row. Pending complete bindings. |
+| no button / 0x11ed144 | Selected-building guidance, then conditional autosave and later common updates before bubble lifetime. Pending port. |
+
+These are input masks passed to the original input helper, not desktop key assignments. No later branch is treated as implemented by the first-two-button kernel.
+
 ## Port
+
+- `src/core/gameplay/select_navigation.{hpp,cpp}` ports room-transition and type-11 shop button priority plus the room callback. `tests/test_select_navigation.cpp` verifies deferred marker/Push effects, callback ownership, null child handling, failure ordering and continuation when neither button is pressed. `update_select_through_navigation` composes it with the existing prefix through SelectUpdateBindings and stops before building buttons; the integration test also verifies dialog bypass and deferred room Push.
 
 - `src/core/gameplay/town_bubble.{hpp,cpp}` implements ordered normal/recruitment text selection, view bounds and the late lifetime kernel; `TownBubbleTouchHost` connects contact detection to text selection. `tests/test_town_bubble.cpp` covers repeated catalog access, signed remainder, nullable text, partial failure, first voice selection, visible countdown, offscreen clearing and movement composition. The late lifetime call still awaits the intervening button-path integration.
 
@@ -300,7 +324,7 @@ Fixture JSON schema (all keys optional; absence preserves missing state rather t
 
 For a synthetic money-only event with nonempty effects, a minimal auto fixture is `{"context_present": true, "context_character_count": 1, "sys_save_present": false}`. This is test state, not an inferred new-game state. PRINT is required when an empty script or failed identity lookup reaches its diagnostic gate; quest_data_count is required only for that lookup's fallback. Additional predicates require their corresponding catalogs/scalars. Tool collection lengths are limited to 100000; these are harness limits, not recovered game limits.
 
-- Last recorded build: Windows/MSVC, 33/33 CTest (32 C++ contracts plus native scenario integration).
+- Last recorded build: Windows/MSVC, 34/34 CTest (33 C++ contracts plus native scenario integration).
 - Missing: population of decoded default-args/diagnostic state from saves/configuration, SelectForm integration, remaining unit `CheckTerm` predicates, integration with save-loaded execution counters; hour-based delays; `SubForm.delayEvent_` path (slot 5); `SelectForm.Update` guards; opcodes other than the eight; `SecureLong`/`SecureInt` storage; billing item source for stamina; UI forms.
 
 ## Evidence
@@ -334,7 +358,7 @@ For a synthetic money-only event with nonempty effects, a minimal auto fixture i
 ## Open questions
 
 1. (blocking) Concrete context/catalog bindings for the 14 recovered table-used conditions; automatic selection is composed with the kernels but not yet called by a desktop form/frame loop. Populate the decoded host from data/save/ECS providers, including hero level and the Config.DEBUG/AppData.debugRescueNum initialization state. Other unit branches remain unresolved for scripts outside Event.txt.
-2. (blocking) Bind the composed select_form_pass to a desktop form host: recover the remaining buttons at 0x11eca28 and implement its required notification/decor/town/guide/capture callbacks plus orientation and image-dictionary bindings for the recovered prelude. The guards, clouds, markers, counter, initial event loop and reached-pass scheduling are composed and tested.
+2. (blocking) Bind the composed select_form_pass to a desktop form host: recover the remaining building/area/resident buttons at 0x11ecb5c and implement its required notification/decor/town/guide/capture callbacks plus orientation and image-dictionary bindings for the recovered prelude. The guards, clouds, markers, counter, initial event loop and reached-pass scheduling are composed and tested.
 3. (blocking) Initial/real values of `SYSSAVEI_YUGAMI`, the `ITEM_STAMINA_UP` item state, and the money/crystal/stamina slots from save/new game.
 4. Unit dispatcher opcodes other than 1/2/4/8/10/12/15/31 (jump table has 15 entries); scripts outside `Event.txt` (quests, built events) may use them.
 5. Consumer of `DelayEvent` entries with `hour_ != -1` (none in the extracted table).

@@ -1,10 +1,11 @@
 #include "core/gameplay/select_form_pass.hpp"
+#include "core/gameplay/select_navigation.hpp"
 #include <cstdlib>
 #include <iostream>
 #include <stdexcept>
 using namespace saga::core;
 void check(bool v,const char* message) {if(!v){std::cerr<<message<<'\n';std::exit(1);}}
-struct Host:SelectFormPassHost,SelectCloudHost,SelectMarkerHost,EventExecutionHost,FormStackHost,SelectPreludeHost,SelectTouchMoveHost,SelectTriggerHost {
+struct Host:SelectFormPassHost,SelectCloudHost,SelectMarkerHost,EventExecutionHost,FormStackHost,SelectPreludeHost,SelectTouchMoveHost,SelectTriggerHost,SelectNavigationHost {
     SelectFormPassState state{0,false,false,{nullptr,this,nullptr},{false,false,nullptr},{0,false}};
     EventDelayQueue queue;
     DecodedEventConditionState decoded;
@@ -16,6 +17,12 @@ struct Host:SelectFormPassHost,SelectCloudHost,SelectMarkerHost,EventExecutionHo
     std::shared_ptr<SelectClouds> cloud_list=std::make_shared<SelectClouds>();
     std::shared_ptr<EventCatalog> catalog=std::make_shared<EventCatalog>(2);
     Host() {decoded.context_present=true;decoded.context_character_count=1;decoded.money=0;}
+    std::function<void()> pending;
+    bool pressed(std::uint32_t mask) override {log.push_back("button");return mask==0x04000000U;}
+    void play_button_sound() override {log.push_back("sound");}
+    void make_transition(std::int32_t,bool,std::uint32_t,std::function<void()> action) override {log.push_back("transition");pending=std::move(action);}
+    EventObject room_form() override {return child;}
+    EventObject make_shop(std::int32_t) override {return child;}
     std::int64_t stamina() override {log.push_back("stamina");return 0;}
     std::uint32_t system_flags() override {log.push_back("sysflags");return 0;}
     std::shared_ptr<EventIntegers> save_integers() override {throw std::logic_error("unexpected save");}
@@ -79,6 +86,18 @@ struct Host:SelectFormPassHost,SelectCloudHost,SelectMarkerHost,EventExecutionHo
     }
 };
 int main() {
+    {
+        auto h=std::make_shared<Host>();SelectPreludeState prelude{0,0,0,0};SelectTouchMoveState movement{false,0,0,0,-1};
+        auto owner=std::shared_ptr<SelectFormPassState>(h,&h->state);
+        SelectUpdateBindings bindings{prelude,*h,owner,*h,*h,*h,h->queue,*h,h->conditions,movement,*h,*h,h};
+        h->state.form.dialog=h->child;
+        check(update_select_through_navigation(bindings).result==SelectNavigationResult::ReturnTrue && !h->pending,"dialog bypasses navigation");
+        h->state.events.loop_counter=2;h->log.clear();
+        check(update_select_through_navigation(bindings).result==SelectNavigationResult::ReturnTrue && bool(h->pending),"composed update schedules room");
+        check(!h->state.auto_save && h->log.back()=="transition","room push stays deferred");
+        auto action=std::move(h->pending);h->pending={};action();
+        check(h->state.auto_save && h->state.events.event_check_requested,"deferred callback reaches existing Push");
+    }
     {
         Host h;SelectPreludeState prelude{0,0,0,20};h.state.form.dialog=h.child;
         SelectTouchMoveState movement{true,0,10,0,-1};

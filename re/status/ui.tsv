@@ -11,3 +11,4 @@ game:0x06000845	reimplemented	src/core/gameplay/select_markers.cpp	cloth marker 
 game:0x06000811	reimplemented	src/core/gameplay/town_bubble.cpp	SetTalkFuki ordered normal/type4 text selection and index/text/frame writes; tests/test_town_bubble.cpp
 game:0x06000838	reimplemented	src/core/gameplay/town_bubble.cpp	CheckViewArea inclusive wrapped bounds and short-circuit dimension queries; tests/test_town_bubble.cpp
 game:0x06000846	reimplemented	src/core/gameplay/town_bubble.cpp	SetTalkFuki predicate requires nonnull VoiceData and type==4; tests/test_town_bubble.cpp
+game:0x0600083d	reimplemented	src/core/gameplay/select_navigation.cpp	Deferred room callback clears weaponNew before AppData access and SelectForm.Push; tests/test_select_navigation.cpp
