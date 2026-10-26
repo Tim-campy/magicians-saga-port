@@ -424,3 +424,8 @@ add_executable(test_garbage_lifetime test_garbage_lifetime.cpp)
 target_link_libraries(test_garbage_lifetime PRIVATE garbage_lifetime stage_cleanup)
 project_warnings(test_garbage_lifetime)
 add_test(NAME garbage_lifetime_contract COMMAND test_garbage_lifetime)
+
+add_executable(test_collision_pass test_collision_pass.cpp)
+target_link_libraries(test_collision_pass PRIVATE collision_pass)
+project_warnings(test_collision_pass)
+add_test(NAME collision_pass_contract COMMAND test_collision_pass)

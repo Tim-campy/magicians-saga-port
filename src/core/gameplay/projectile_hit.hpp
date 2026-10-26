@@ -14,7 +14,7 @@ struct ProjectileDamage final:Component {std::int32_t value=0,attribute=0;Compon
 struct ProjectileSpeed final:Component {float x=0,y=0,z=0;}; // +0x10/+0x14/+0x18.
 struct ProjectileCollision final:Component {
     std::int32_t radius=0,offset_x=0,offset_y=0,offset_z=0; // +0x10/+0x14/+0x18/+0x1c.
-    // visited +0x20 belongs to the collision-system traversal, not CheckHit.
+    bool visited=false; // +0x20; reset/marked by CollisionSystem, ignored by CheckHit.
 };
 class ProjectileHitHost {
 public:

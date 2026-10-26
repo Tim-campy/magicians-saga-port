@@ -63,7 +63,7 @@ void create_impact_effect(ComponentSlots* bullet,ComponentSlots* owner,const Com
             auto& area=require(host.create_entity(0));
             auto& p=host.acquire_position();p.x=at.x;p.y=y+5.0F;p.z=at.z;
             p.offset_x=p.offset_y=p.offset_z=0;p.parent=nullptr;area.add(contact_position_slot,&p);
-            auto& c=host.acquire_collision();c.radius=18;c.offset_x=c.offset_y=c.offset_z=0;
+            auto& c=host.acquire_collision();c.radius=18;c.offset_x=c.offset_y=c.offset_z=0;c.visited=false;
             area.add(projectile_collision_slot,&c);
             const auto damage=component<ProjectileDamage>(e,projectile_damage_slot).value;
             const auto damage_attribute=component<ProjectileDamage>(e,projectile_damage_slot).attribute;

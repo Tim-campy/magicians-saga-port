@@ -3381,9 +3381,9 @@ game:0x06000e06,game:0x06000e06,ecs,,1012,0x1145a18
 game:0x06000e07,game:0x06000e07,ecs,,4,0x1145e0c
 game:0x06000e08,game:0x06000e08,ecs,,4,0x1145e10
 game:0x06000e09,game:0x06000e09,ecs,,84,0x1145e14
-game:0x06000e0a,game:0x06000e0a,ecs,,208,0x1145e68
-game:0x06000e0b,game:0x06000e0b,ecs,,8,0x1145f38
-game:0x06000e0c,game:0x06000e0c,ecs,,2628,0x1145f40
+game:0x06000e0a,ecs.CollisionSystem.Init,ecs,traced,208,0x1145e68
+game:0x06000e0b,ecs.CollisionSystem.NeedsUpdate,ecs,documented,8,0x1145f38
+game:0x06000e0c,ecs.CollisionSystem.Update,ecs,documented,2628,0x1145f40
 game:0x06000e0d,ecs.CollisionSystem.CheckHit,ecs,reimplemented,524,0x114698c
 game:0x06000e0e,game:0x06000e0e,ecs,,4,0x1146b98
 game:0x06000e0f,game:0x06000e0f,ecs,,4,0x1146b9c

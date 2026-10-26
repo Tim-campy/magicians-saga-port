@@ -235,6 +235,8 @@ Entity.AddGarbage (0x112eccc) pops from the Garbage pool if available, otherwise
 
 ## Port
 
+- Collision slot 32 now includes the visited byte (+0x20). `collision_pass` resets and marks it while traversing fresh And({32,0}) cursors; pairs are delivered only after detection finishes. See [combat traversal](combat.md#collision-candidate-traversal-and-deferred-delivery). The cursor adapter still owns live HashSet storage/order/version checks.
+
 - `garbage_lifetime.hpp/.cpp` implements AddGarbage, the wrapping countdown and two-phase expiration orchestration, reusing Entity.Destroy and the existing deletion sequence. Tests cover overflow, callback mutations, deferred deletion, enumeration/deletion failure, destroyed guards and reentrant passes. Cursor ownership preserves disposal before deletion and during exceptions; live HashSet order/version checks remain a host obligation, so GarbageSystem.Update stays documented, not wholly reimplemented. Scratch capacity is reused between successful passes without sharing the active queue across callbacks.
 
 - `src/core/gameplay/movement.hpp/.cpp` implements the complete per-entity MoveSystem body over borrowed Position/Speed components, including parent overrides. `tests/test_movement.cpp` covers three-axis integration, missing parent Position, self-parent, partial failure, binary32 precision and order-sensitive parent/child updates. `test_projectile_motion` now composes Fire, Projectile's motion/completion pass and Move for a full trajectory. Live subset enumeration and exception-disposal remain outside this kernel, so MoveSystem.Update stays documented rather than reimplemented as a whole.
