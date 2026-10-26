@@ -15,6 +15,8 @@ public:
 };
 std::string select_native_locale(CultureLocaleHost&);
 std::string normalize_culture_locale(std::string_view);
+// Native UTF-16 name -> NUL-terminated UTF-8 lookup key; no case folding.
+std::string encode_culture_lookup_name(std::u16string_view);
 class CultureNameLookup {
 public:
     virtual ~CultureNameLookup() = default;

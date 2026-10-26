@@ -1,4 +1,5 @@
 #include "culture_locale.hpp"
+#include <cstdint>
 
 namespace saga::core {
 namespace {
@@ -28,6 +29,38 @@ std::string normalize_culture_locale(std::string_view value) {
     const auto underscore=result.find('_');
     if(underscore!=result.npos)result[underscore]='-';
     for(auto& c:result)if(c>='A' && c<='Z')c=static_cast<char>(c+('a'-'A'));
+    return result;
+}
+// Native helpers 0xfe91a0/0xfe91a8/0xfe923c: malformed high-surrogate pairs
+// consume both code units, rather than retrying the second one.
+std::string encode_culture_lookup_name(std::u16string_view name) {
+    name=name.substr(0,name.find(u'\0'));
+    std::string result;
+    for(std::size_t i=0;i<name.size();) {
+        std::uint32_t scalar=name[i++];
+        if(scalar>=0xd800 && scalar<=0xdbff) {
+            if(i==name.size())scalar=0xfffd;
+            else {
+                const std::uint32_t next=name[i++];
+                scalar=next>=0xdc00 && next<=0xdfff
+                    ? 0x10000+((scalar-0xd800)<<10)+(next-0xdc00) : 0xfffd;
+            }
+        } else if(scalar>=0xdc00 && scalar<=0xdfff)scalar=0xfffd;
+        if(scalar<0x80)result.push_back(static_cast<char>(scalar));
+        else if(scalar<0x800) {
+            result.push_back(static_cast<char>(0xc0|(scalar>>6)));
+            result.push_back(static_cast<char>(0x80|(scalar&0x3f)));
+        } else if(scalar<0x10000) {
+            result.push_back(static_cast<char>(0xe0|(scalar>>12)));
+            result.push_back(static_cast<char>(0x80|((scalar>>6)&0x3f)));
+            result.push_back(static_cast<char>(0x80|(scalar&0x3f)));
+        } else {
+            result.push_back(static_cast<char>(0xf0|(scalar>>18)));
+            result.push_back(static_cast<char>(0x80|((scalar>>12)&0x3f)));
+            result.push_back(static_cast<char>(0x80|((scalar>>6)&0x3f)));
+            result.push_back(static_cast<char>(0x80|(scalar&0x3f)));
+        }
+    }
     return result;
 }
 // CultureInfo.ConstructLocaleFromName 0x1e27ab8. Caller rejects null names.

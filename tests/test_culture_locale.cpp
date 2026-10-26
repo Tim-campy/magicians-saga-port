@@ -18,6 +18,15 @@ struct Lookup:CultureNameLookup {
     bool construct(std::u16string_view name) override {calls.emplace_back(name);return accepted && name==*accepted;}
 };
 int main(){
+    check(encode_culture_lookup_name(u"PT-br")=="PT-br");
+    check(encode_culture_lookup_name(std::u16string(u"ab\0cd",5))=="ab");
+    check(encode_culture_lookup_name(u"\u007f\u0080\u07ff\u0800\uffff\U00010000\U0010ffff")==std::string("\x7f\xc2\x80\xdf\xbf\xe0\xa0\x80\xef\xbf\xbf\xf0\x90\x80\x80\xf4\x8f\xbf\xbf"));
+    const std::string replacement="\xef\xbf\xbd";
+    check(encode_culture_lookup_name(std::u16string{0xd800})==replacement);
+    check(encode_culture_lookup_name(std::u16string{0xdc00,u'x'})==replacement+"x");
+    check(encode_culture_lookup_name(std::u16string{0xd800,u'x',u'y'})==replacement+"y");
+    check(encode_culture_lookup_name(std::u16string{0xd800,0xd800,0xdc00})==replacement+replacement);
+    check(encode_culture_lookup_name(std::u16string{0xd800,0,u'x'})==replacement);
     {Lookup l;l.accepted=u"zh-Hant";check(construct_culture_from_name(u"zh-Hant-XX",l));check((l.calls==std::vector<std::u16string>{u"zh-Hant-XX",u"zh-Hant"}));}
     {Lookup l;check(!construct_culture_from_name(u"a-b-c",l));check((l.calls==std::vector<std::u16string>{u"a-b-c",u"a-b",u"a"}));}
     {Lookup l;l.accepted=u"x-y";check(construct_culture_from_name(u"x-y",l));check(l.calls.size()==1);}
