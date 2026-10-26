@@ -6,8 +6,8 @@ game:0x060001cc	reimplemented	src/core/gameplay/event_flow.cpp	matrix executor +
 game:0x060001cd	traced	docs/subsystems/events.md	8-byte forwarder to unit dispatcher
 game:0x060001ce	documented	docs/subsystems/events.md	unit dispatcher; opcodes 1/2/4/8/10/12/15/31 ported in event_dispatch.cpp, others unknown
 game:0x060001d1	documented	docs/subsystems/events.md	AppData.Push -> FormManager current form Push
-game:0x060001d2	documented	docs/subsystems/events.md	GetDelayScript; >999 null, id%1000; host-side only
-game:0x060001d3	documented	docs/subsystems/events.md	GetDelayId by reference identity; -1 fallback
+game:0x060001d2	reimplemented	src/core/gameplay/event_catalog.cpp	GetDelayScript on supplied id-indexed catalog; tests/test_event_catalog.cpp
+game:0x060001d3	documented	docs/subsystems/events.md	identity path ported in event_catalog.cpp; fallback requires explicit host callback
 game:0x060001c0	reimplemented	src/core/gameplay/event_conditions.cpp	record eligibility on supplied catalog; tests/test_event_conditions.cpp
 game:0x060001c1	reimplemented	src/core/gameplay/event_conditions.cpp	matrix AND; empty false and short-circuit; tests/test_event_conditions.cpp
 game:0x060001c3	traced	docs/subsystems/events.md	unit evaluator: 14 Event.txt predicates ported behind data host; other handlers unresolved
@@ -18,7 +18,7 @@ game:0x060001a7	reimplemented	src/core/gameplay/event_progression.cpp	decoded-va
 game:0x060001a8	reimplemented	src/core/gameplay/event_progression.cpp	SYSSAVEI_YUGAMI mode supplied by caller
 game:0x06000224	documented	docs/subsystems/events.md	10/20 decision ported as stamina_limit_from_item_state; billing lookup not ported
 game:0x060011f0	reimplemented	src/core/gameplay/event_progression.cpp	quest discovery only state 0 -> 1
-game:0x0600112d	documented	docs/formats/event-table.md	record layout; research reader tools/inspect_event_table.py, no C++ loader
+game:0x0600112d	reimplemented	src/core/gameplay/event_catalog.cpp	EventData record reader with injected integer parser; tests/test_event_catalog.cpp
 game:0x06001123	documented	docs/subsystems/events.md	execNum_ > 0
 game:0x0600062e	reimplemented	src/core/gameplay/event_flow.cpp	DelayEvent capture inside execute_event_script; argi cloned
 game:0x0600053a	traced	docs/subsystems/events.md	early-return guard in SelectForm.Update; +0x5c source unknown

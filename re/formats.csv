@@ -23,7 +23,7 @@ save-delay-event,DelayEvent save block (selector 2),save,documented
 save-string,StreamUtil save string,save,documented
 script-payload,AppData script-row payload,save,reimplemented
 game-table-text,LoadData text tables (UTF-8/LF/id index),data,documented
-event-table,Event.txt (EventData records + terms/execs script matrices),events,documented
+event-table,Event.txt (EventData records + terms/execs script matrices),events,reimplemented
 event-script-opcodes,Event effect/condition opcode encoding,events,documented
 delay-event,DelayEvent continuation record (runtime fields),events,documented
 parameter,parameter.Parameter (value_/maxValue_/extraValue_/extraMaxValue_),combat,reimplemented

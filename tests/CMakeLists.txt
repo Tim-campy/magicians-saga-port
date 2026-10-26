@@ -83,3 +83,8 @@ add_executable(test_seb test_seb.cpp)
 target_link_libraries(test_seb PRIVATE seb)
 project_warnings(test_seb)
 add_test(NAME seb_contract COMMAND test_seb)
+
+add_executable(test_event_catalog test_event_catalog.cpp)
+target_link_libraries(test_event_catalog PRIVATE event_catalog)
+project_warnings(test_event_catalog)
+add_test(NAME event_catalog_contract COMMAND test_event_catalog)

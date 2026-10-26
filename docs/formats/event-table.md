@@ -85,6 +85,10 @@ Condition and effect opcode numbers are separate spaces (e.g. condition 15 ≠ e
 - No C++ loader yet.
 - Outputs (`build/research/english-events-parsed.json`, `japanese-events-parsed.json`, `event-opcode-usage.json`, `event-delay-usage.json`) contain proprietary data and stay local.
 
+## Port
+
+`src/core/gameplay/event_catalog.cpp` reads records into `EventConditionRecord` (including zero-initialized execution count), preserves null versus empty matrices, and indexes by id with null gaps and last-duplicate-wins semantics. Script identity is retained for delays. The integer parser is injected; `parse_event_decimal` is the observed ASCII decimal/whitespace subset, not a full culture-sensitive Int32.Parse implementation. The reader consumes decoded valid UTF-8 supplied by the host, ignores unused trailing fields and takes the Unity-version CRLF gate explicitly. C++ exception types/allocation-failure timing are not claimed to match managed exceptions. `tests/test_event_catalog.cpp` covers indexing, matrix states, identity, CRLF gates, signed boundaries and malformed input; the native trace also reproduces the existing record-10 fixture.
+
 ## Evidence
 
 - [../archive/reports/72-return-event-dispatch-and-data-gap.md](../archive/reports/72-return-event-dispatch-and-data-gap.md), [76-event-table-tokenization.md](../archive/reports/76-event-table-tokenization.md), [77-event-opcodes-and-delay.md](../archive/reports/77-event-opcodes-and-delay.md), [81-delay-origin-and-script-identity.md](../archive/reports/81-delay-origin-and-script-identity.md), [83-event-progression-effects.md](../archive/reports/83-event-progression-effects.md), [84-stamina-and-event-dispatch.md](../archive/reports/84-stamina-and-event-dispatch.md), [110-automatic-event-selection.md](../archive/reports/110-automatic-event-selection.md)

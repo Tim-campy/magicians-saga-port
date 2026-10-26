@@ -8,39 +8,32 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
-from inspect_event_table import parse_row
 
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('table', type=Path)
     p.add_argument('--exe', type=Path, required=True)
-    p.add_argument('--index', type=int, required=True, help='catalog position, not record ID')
+    p.add_argument('--id', type=int, required=True, help='event record ID, not file position')
     p.add_argument('--passes', type=int, required=True, help='reached delay queue passes, not frames')
     for name in ('money', 'crystals', 'crystal-mode', 'stamina', 'item-state', 'talk-character'):
         p.add_argument('--' + name, type=int, required=True)
     p.add_argument('--output', type=Path, required=True)
     a = p.parse_args()
     raw = a.table.read_bytes()
-    records = [parse_row(line)[0] for line in raw.decode('utf-8-sig').split('\n') if line]
-    if not 0 <= a.index < len(records) or not 0 <= a.passes <= 100000:
-        p.error('invalid index or pass count')
+    raw.decode('utf-8-sig')  # Strict validation at the tool boundary.
+    if not 0 <= a.id <= 999 or not 0 <= a.passes <= 100000:
+        p.error('invalid id or pass count')
     initial = dict(money=a.money, crystals=a.crystals, crystal_mode=a.crystal_mode,
                    stamina=a.stamina, item_state=a.item_state, talk_character=a.talk_character)
-    tokens = ['SAGA_EVENT_TRACE_1', str(a.index), str(a.passes)]
+    tokens = ['SAGA_EVENT_TRACE_2', str(a.id), str(a.passes)]
     tokens += [str(v) for v in initial.values()]
-    tokens.append(str(len(records)))
-    for record in records:
-        script = record['execs']
-        tokens.append(str(-1 if script is None else len(script)))
-        for row in script or []:
-            tokens.append(str(len(row)))
-            tokens.extend(map(str, row))
+    tokens.append(raw.hex())  # Preserve bytes through text-mode stdin on Windows.
     result = subprocess.run([str(a.exe.resolve())], input=' '.join(tokens), text=True,
                             capture_output=True, timeout=60)
     report = {'table_sha256': hashlib.sha256(raw).hexdigest(),
               'native_exe_sha256': hashlib.sha256(a.exe.read_bytes()).hexdigest(),
-              'catalog_index': a.index, 'record_id': records[a.index]['id'],
+              'record_id': a.id, 'native_table_loader': True,
               'initial_fixture': initial, 'requested_queue_passes': a.passes,
               'conditions_evaluated': False, 'ui_executed': False,
               'original_apk_executed': False, 'exit_code': result.returncode,

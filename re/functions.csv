@@ -444,7 +444,7 @@ game:0x060001ce,main.AppData.ExecuteScript,boot,documented,1892,0x110cc4c
 game:0x060001cf,game:0x060001cf,boot,,436,0x110d488
 game:0x060001d0,game:0x060001d0,boot,,160,0x110d63c
 game:0x060001d1,main.AppData.Push,boot,documented,68,0x110d3b8
-game:0x060001d2,main.AppData.GetDelayScript,boot,documented,176,0x110d6dc
+game:0x060001d2,main.AppData.GetDelayScript,boot,reimplemented,176,0x110d6dc
 game:0x060001d3,main.AppData.GetDelayId,boot,documented,428,0x110caa0
 game:0x060001d4,game:0x060001d4,boot,,248,0x110d78c
 game:0x060001d5,game:0x060001d5,boot,,308,0x110d884
@@ -4184,7 +4184,7 @@ game:0x06001129,game:0x06001129,data,,8,0x116fa2c
 game:0x0600112a,game:0x0600112a,data,,8,0x116fa34
 game:0x0600112b,game:0x0600112b,data,,8,0x116fa3c
 game:0x0600112c,game:0x0600112c,data,,8,0x116fa44
-game:0x0600112d,data.EventData.Load,data,documented,200,0x116fa4c
+game:0x0600112d,data.EventData.Load,data,reimplemented,200,0x116fa4c
 game:0x0600112e,game:0x0600112e,data,,120,0x116fb14
 game:0x0600112f,game:0x0600112f,data,,120,0x116fb8c
 game:0x06001130,game:0x06001130,data,,108,0x116fc04

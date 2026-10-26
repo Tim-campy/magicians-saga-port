@@ -1,6 +1,7 @@
 #pragma once
 #include "event_flow.hpp"
 #include <optional>
+#include <string>
 
 namespace saga::core {
 struct QuestConditionRecord {
@@ -21,6 +22,10 @@ template<class T> using ConditionCatalog = std::vector<std::shared_ptr<T>>;
 struct EventConditionRecord {
     std::int32_t execution_count;
     EventScript terms;
+    std::int32_t id=0;
+    std::string name;
+    std::int32_t timing=0;
+    EventScript effects;
 };
 enum class ConditionScalar { Money, Crystals, HeroLevel, Stamina, HighScore };
 class EventConditionHost {

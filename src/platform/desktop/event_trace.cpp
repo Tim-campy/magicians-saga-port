@@ -1,4 +1,5 @@
 #include "core/gameplay/event_dispatch.hpp"
+#include "core/gameplay/event_catalog.hpp"
 #include <iostream>
 #include <limits>
 #include <stdexcept>
@@ -18,7 +19,7 @@ std::int32_t count() {
 }
 struct Host : EventFlowHost, EventEffectsHost {
     EventProgression state{};
-    std::vector<EventScript> scripts;
+    EventCatalog catalog;
     EventDelayQueue queue;
     std::int64_t stamina = 0;
     std::int32_t item_state = 0, talk = 0;
@@ -45,13 +46,12 @@ struct Host : EventFlowHost, EventEffectsHost {
         return result.value;
     }
     std::int32_t identify_script(const EventScript& script) override {
-        for (std::size_t i=0; i<scripts.size(); ++i)
-            if (scripts[i]==script) return static_cast<std::int32_t>(i);
-        throw std::runtime_error("script outside supplied catalog");
+        return identify_event_script(catalog,script,[]{
+            throw std::runtime_error("GetDelayId fallback context not supplied");
+        });
     }
     EventScript resolve_script(std::int32_t id) override {
-        if (id<0) throw std::out_of_range("negative scenario catalog index");
-        return scripts.at(static_cast<std::size_t>(id));
+        return resolve_event_script(catalog,id);
     }
     std::int32_t read_talk_character() override { return talk; }
     void restore_talk_character(std::size_t slot, std::int32_t value) override {
@@ -74,27 +74,25 @@ struct Host : EventFlowHost, EventEffectsHost {
 };
 int main() {
     try {
-        if (read<std::string>()!="SAGA_EVENT_TRACE_1") throw std::runtime_error("protocol version");
+        if (read<std::string>()!="SAGA_EVENT_TRACE_2") throw std::runtime_error("protocol version");
         Host host;
         const auto selected=count(), passes=count();
         host.state.money=read<std::int64_t>(); host.state.crystals=read<std::int64_t>();
         host.state.crystal_subtraction_mode=read<std::int32_t>();
         host.stamina=read<std::int64_t>(); host.item_state=read<std::int32_t>();
         host.talk=read<std::int32_t>();
-        const auto records=count();
-        for (std::int32_t i=0;i<records;++i) {
-            const auto rows=read<std::int32_t>();
-            if (rows==-1) { host.scripts.push_back(nullptr); continue; }
-            if (rows<0 || rows>100000) throw std::runtime_error("invalid script count");
-            auto script=std::make_shared<std::vector<EventInstruction>>();
-            for (std::int32_t r=0;r<rows;++r) {
-                const auto cells=count();
-                auto row=std::make_shared<EventIntegers>();
-                for (std::int32_t c=0;c<cells;++c) row->push_back(read<std::int32_t>());
-                script->push_back(row);
-            }
-            host.scripts.push_back(script);
-        }
+        const auto encoded=read<std::string>();
+        if (encoded.size()%2) throw std::invalid_argument("odd table hex length");
+        auto nibble=[](char c) -> unsigned {
+            if (c>='0' && c<='9') return static_cast<unsigned>(c-'0');
+            if (c>='a' && c<='f') return static_cast<unsigned>(c-'a'+10);
+            throw std::invalid_argument("invalid table hex");
+        };
+        std::string table;
+        for (std::size_t i=0;i<encoded.size();i+=2)
+            table.push_back(static_cast<char>((nibble(encoded[i])<<4U)|nibble(encoded[i+1])));
+        // The shipped table is valid UTF-8 and uses the no-CRLF-normalization branch.
+        host.catalog=load_event_catalog(table,false,parse_event_decimal);
         std::string extra;
         if (std::cin >> extra) throw std::runtime_error("trailing scenario input");
         execute_event_script(host.resolve_script(selected),0,{},host.queue,host);
