@@ -44,6 +44,8 @@ uv run tools/extract_assets.py --check --out extracted
 # Use a fresh destination: differing manifests are never overwritten.
 uv run tools/extract_assets.py game/MagiciansSaga-1.4.0.apk --out extracted/culture-enabled --culture-signs
 uv run tools/extract_assets.py --check --out extracted/culture-enabled --culture-signs
+uv run tools/extract_assets.py game/MagiciansSaga-1.4.0.apk --out extracted/culture-lookup --culture-names
+uv run tools/extract_assets.py --check --out extracted/culture-lookup --culture-names
 uv run tools/extract_assets.py game/MagiciansSaga-1.4.0.apk --out extracted/full --unity-media
 ```
 
@@ -76,4 +78,10 @@ After the desktop build, exercise the extracted number signs locally (optional; 
 
 ```powershell
 .\build\desktop\test_apply_culture.exe extracted/culture-enabled/culture/number-records.bin extracted/culture-enabled/culture/sign-pool.bin
+```
+
+To include name-to-number lookup in that local integration check:
+
+```powershell
+.\build\desktop\test_apply_culture.exe extracted/culture-lookup/culture/number-records.bin extracted/culture-lookup/culture/sign-pool.bin extracted/culture-lookup/culture/name-index.bin extracted/culture-lookup/culture/culture-records.bin
 ```

@@ -35,6 +35,38 @@ class CultureSignTests(unittest.TestCase):
         positive, = struct.unpack_from('<H', outputs['culture/number-records.bin'], 0x16)
         self.assertEqual(outputs['culture/sign-pool.bin'][positive:].split(b'\0')[0], b'\xe2\x80\x8e+')
 
+    def named_sample(self):
+        data, _, pool = self.sample()
+        names, cultures = 0x100+0x18b4, 0x100+0x1e00
+        for i in range(339):
+            offset = 4096+i*5
+            data[pool+offset:pool+offset+5] = f'x{i:03d}'.encode()+b'\0'
+            struct.pack_into('<Hh', data, names+i*4, offset, 338-i)
+            struct.pack_into('<h', data, cultures+(338-i)*56+0x20, i)
+        return data, names, cultures, pool
+
+    def test_name_tables_preserved_and_pool_extended(self):
+        data, names, cultures, pool = self.named_sample()
+        out = extractor.culture_sign_payloads(bytes(data), include_names=True)
+        self.assertEqual(out['culture/name-index.bin'], data[names:names+339*4])
+        self.assertEqual(out['culture/culture-records.bin'], data[cultures:cultures+339*56])
+        self.assertEqual(out['culture/sign-pool.bin'], data[pool:pool+4096+339*5])
+
+    def test_reject_bad_name_indices_and_order(self):
+        for field, value in ((2,-1),(2,339)):
+            data, names, _, _ = self.named_sample()
+            struct.pack_into('<h', data, names+field, value)
+            with self.assertRaises(ValueError):
+                extractor.culture_sign_payloads(bytes(data), include_names=True)
+        data, _, cultures, _ = self.named_sample()
+        struct.pack_into('<h', data, cultures+0x20, -1)
+        with self.assertRaises(ValueError):
+            extractor.culture_sign_payloads(bytes(data), include_names=True)
+        data, names, _, _ = self.named_sample()
+        data[names+4:names+6] = data[names:names+2]
+        with self.assertRaisesRegex(ValueError, 'sorted and unique'):
+            extractor.culture_sign_payloads(bytes(data), include_names=True)
+
     def test_reject_wrong_elf_and_truncated_segment(self):
         data, _, _ = self.sample()
         for bad in (b'', bytes(data[:-1]), b'BAD!'+bytes(data[4:])):
@@ -48,6 +80,8 @@ class CultureSignTests(unittest.TestCase):
             (root/'manifest.json').write_text(json.dumps(manifest), encoding='utf8')
             with self.assertRaisesRegex(ValueError, 'Culture sign outputs are required'):
                 extractor.check(root, require_culture=True)
+            with self.assertRaisesRegex(ValueError, 'Culture name outputs are required'):
+                extractor.check(root, require_names=True)
 
     def test_reject_invalid_utf8(self):
         data, _, pool = self.sample()

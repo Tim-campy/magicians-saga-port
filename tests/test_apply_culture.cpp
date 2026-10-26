@@ -1,4 +1,5 @@
 #include "core/gameplay/apply_culture.hpp"
+#include "assets/culture_signs.hpp"
 #include <cstdlib>
 #include <iostream>
 #include <fstream>
@@ -38,7 +39,7 @@ int main(int argc,char** argv){
     check(state.provision_value==0); // Original Init catches this format failure.
     // Optional local-only integration run; CI uses the synthetic cases above.
     if(argc!=1) {
-        check(argc==3);
+        check(argc==3 || argc==5);
         const auto read=[](const char* path){
             std::ifstream file(path,std::ios::binary);check(file.good());
             return std::string(std::istreambuf_iterator<char>(file),{});
@@ -51,5 +52,21 @@ int main(int argc,char** argv){
             check(parse_apply_integer(decoded.negative+u"123",decoded)==-123);
         }
         std::cout<<"339 extracted records decoded and parsed\n";
+        if(argc==5) {
+            const auto names=read(argv[3]),cultures=read(argv[4]);
+            check(names.size()==339*4 && cultures.size()==339*56);
+            const auto u16=[](const std::string& data,std::size_t at){return static_cast<std::size_t>(static_cast<unsigned char>(data.at(at)))+256U*static_cast<unsigned char>(data.at(at+1));};
+            for(std::size_t i=0;i<339;++i) {
+                const auto offset=u16(names,i*4),culture=u16(names,i*4+2);
+                check(offset<pool.size() && culture<339);
+                const auto end=pool.find('\0',offset);check(end!=pool.npos);
+                const auto number=saga::assets::find_culture_number_index(pool.substr(offset,end-offset),names,cultures,pool);
+                check(number && *number==u16(cultures,culture*56+0x20));
+                const auto decoded=read_apply_number_signs(records,pool,*number);
+                check(parse_apply_integer(decoded.positive+u"123",decoded)==123);
+                check(parse_apply_integer(decoded.negative+u"123",decoded)==-123);
+            }
+            std::cout<<"339 culture names resolved to matching number records\n";
+        }
     }
 }

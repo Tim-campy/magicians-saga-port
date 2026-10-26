@@ -36,7 +36,7 @@ Python 3 (standard library unless noted) and C++17 with CMake. Each tool has tes
 | [`tools/inspect_apk.py`](tools/inspect_apk.py) | Read-only APK inventory. |
 | [`tools/inspect_il2cpp_metadata.py`](tools/inspect_il2cpp_metadata.py) | Read the IL2CPP v31 metadata catalogue. |
 | [`tools/map_il2cpp_methods.py`](tools/map_il2cpp_methods.py) | Map metadata method tokens to ARM64 code addresses. |
-| [`tools/extract_assets.py`](tools/extract_assets.py) | Extract and verify the TextAsset containers and, with `--unity-media`, textures, audio and fonts; `--culture-signs` adds native number-format signs. |
+| [`tools/extract_assets.py`](tools/extract_assets.py) | Extract and verify the TextAsset containers and, with `--unity-media`, textures, audio and fonts; `--culture-signs` adds native number-format signs and `--culture-names` adds name lookup records. |
 | [`tools/inspect_seb.py`](tools/inspect_seb.py), [`tools/inspect_opt.py`](tools/inspect_opt.py) | Read and rebuild SEB sprites/animations and OPT texture grids. |
 | [`tools/inspect_unity_assets.py`](tools/inspect_unity_assets.py) | Catalogue the Unity serialized resources. |
 | [`tools/inspect_event_table.py`](tools/inspect_event_table.py), [`tools/run_event_scenario.py`](tools/run_event_scenario.py) | Read Event.txt; run the native event kernels on it. |
@@ -54,7 +54,7 @@ tools\build-desktop.cmd            # Windows (Visual Studio C++ tools): build an
 python -I tools/run_tests.py       # Python tests
 ```
 
-Native culture signs can be extracted from the same hash-verified Magician's Saga 1.4.0 APK using `uv run tools/extract_assets.py game/MagiciansSaga-1.4.0.apk --out extracted/culture-enabled --culture-signs`. Check all output sizes and hashes with `uv run tools/extract_assets.py --check --out extracted/culture-enabled --culture-signs`; this also requires the culture inventory to be present. Use a fresh output directory when enabling new options. See [setup](docs/SETUP.md) and [format](docs/formats/culture-number-signs.md).
+Native culture signs can be extracted from the same hash-verified Magician's Saga 1.4.0 APK using `uv run tools/extract_assets.py game/MagiciansSaga-1.4.0.apk --out extracted/culture-enabled --culture-signs`. Check all output sizes and hashes with `uv run tools/extract_assets.py --check --out extracted/culture-enabled --culture-signs`; this also requires the culture inventory to be present. Use `--culture-names` instead to include the name/culture index and extend the pool for name lookup; use the same flag with `--check` to require those files. Use a fresh output directory when enabling new options. See [setup](docs/SETUP.md) and [format](docs/formats/culture-number-signs.md).
 
 Linux: `cmake -S . -B build/linux -DBUILD_TESTING=ON && cmake --build build/linux && ctest --test-dir build/linux`. Extraction and the local layout are described in [SETUP](docs/SETUP.md).
 
