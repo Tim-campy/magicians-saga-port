@@ -3484,7 +3484,7 @@ game:0x06000e6d,game:0x06000e6d,ecs,,4,0x114d600
 game:0x06000e6e,game:0x06000e6e,ecs,,572,0x114d604
 game:0x06000e6f,game:0x06000e6f,ecs,,4,0x114d840
 game:0x06000e70,game:0x06000e70,ecs,,44,0x114d844
-game:0x06000e71,game:0x06000e71,ecs,,72,0x114d934
+game:0x06000e71,ecs.EnemySystem.ChangeState,ecs,reimplemented,72,0x114d934
 game:0x06000e72,ecs.EnemySystem.IsAttackTiming,ecs,documented,256,0x114d97c
 game:0x06000e73,game:0x06000e73,ecs,,760,0x114da7c
 game:0x06000e74,game:0x06000e74,ecs,,988,0x114cfd4
@@ -3503,7 +3503,7 @@ game:0x06000e80,game:0x06000e80,ecs,,2088,0x114ec84
 game:0x06000e81,game:0x06000e81,ecs,,980,0x1151384
 game:0x06000e82,ecs.EnemySystem.Damage,ecs,documented,3924,0x114fc44
 game:0x06000e83,ecs.EnemySystem.Defeat,ecs,documented,1040,0x1150b98
-game:0x06000e84,game:0x06000e84,ecs,,548,0x1150fa8
+game:0x06000e84,ecs.EnemySystem.FlyAway,ecs,traced,548,0x1150fa8
 game:0x06000e85,game:0x06000e85,ecs,,196,0x114d870
 game:0x06000e86,game:0x06000e86,ecs,,52,0x1151758
 game:0x06000e87,game:0x06000e87,ecs,,4,0x115178c
@@ -3569,9 +3569,9 @@ game:0x06000ec2,game:0x06000ec2,ecs,,4,0x1155de0
 game:0x06000ec3,game:0x06000ec3,ecs,,4,0x1155de4
 game:0x06000ec4,game:0x06000ec4,ecs,,288,0x1155de8
 game:0x06000ec5,ecs.HumanSystem.SearchAndAttack,ecs,traced,376,0x1156074
-game:0x06000ec6,game:0x06000ec6,ecs,,140,0x11562e4
-game:0x06000ec7,game:0x06000ec7,ecs,,84,0x1157080
-game:0x06000ec8,game:0x06000ec8,ecs,,240,0x11570d4
+game:0x06000ec6,ecs.HumanSystem.ChangeState,ecs,reimplemented,140,0x11562e4
+game:0x06000ec7,ecs.HumanSystem.PreChangeState,ecs,reimplemented,84,0x1157080
+game:0x06000ec8,ecs.HumanSystem.ChangedState,ecs,reimplemented,240,0x11570d4
 game:0x06000ec9,game:0x06000ec9,ecs,,1836,0x1156638
 game:0x06000eca,game:0x06000eca,ecs,,176,0x1156e48
 game:0x06000ecb,game:0x06000ecb,ecs,,184,0x1155fbc

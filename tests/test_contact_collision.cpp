@@ -1,4 +1,4 @@
-#include "core/gameplay/contact_collision.hpp"
+#include "core/gameplay/combat_state.hpp"
 #include <cstdlib>
 #include <functional>
 #include <limits>
@@ -6,7 +6,7 @@
 #include <string>
 using namespace saga::core;
 void check(bool value){if(!value)std::abort();}
-struct Host final:ContactCollisionHost {
+struct Host final:ContactCollisionHost,HumanStateHost {
     std::vector<std::string> calls;
     bool lethal=false,blocked=false;int progress=0;
     ComponentSlots* hero_entity=nullptr;ComponentSlots* owner=nullptr;
@@ -27,8 +27,11 @@ struct Host final:ContactCollisionHost {
     void fly_away(ComponentSlots&,std::int32_t a,std::int32_t b,std::int32_t c,std::int32_t d,bool enemy)override{
         check(a==-100&&b==100&&c==(enemy?-100:50)&&d==(enemy?-50:100));calls.push_back(enemy?"flyEnemy":"flyHuman");
     }
-    void human_state(ComponentSlots&,std::int32_t state)override{check(state==4);calls.push_back("human4");}
-    void enemy_state(ComponentSlots&,std::int32_t state)override{calls.push_back("enemy"+std::to_string(state));}
+    bool playing_cut_in(ComponentSlots&)override{return false;}
+    void change_animation(ComponentSlots&,std::int32_t clip,bool reset)override{check(clip==36&&reset);}
+    std::int32_t attack_interval(ComponentSlots&)override{return 10;}
+    void human_state(ComponentSlots& e,std::int32_t state)override{check(state==4);calls.push_back("human4");change_human_state(e,state,*this);}
+    void enemy_state(ComponentSlots& e,std::int32_t state)override{calls.push_back("enemy"+std::to_string(state));change_enemy_state(e,state);}
     std::int32_t progress_rate(float depth)override{check(depth==100);calls.push_back("progress");return progress;}
     ComponentSlots& hero()override{calls.push_back("hero");return *hero_entity;}
     void contact_sound()override{calls.push_back("sound");}
@@ -56,8 +59,10 @@ int main(){
     {Fixture f;f.run();check(f.host.calls==std::vector<std::string>{"cut","effect2","damage","progress","enemy3","sound"});
         check(f.host.owner==&f.enemy&&f.host.amount==123&&f.host.attribute==2);
         check(f.host.animation==52&&f.host.frame==30&&f.direction.locked&&f.ep.z==90&&f.speed.z==-10&&f.speed.x==4&&f.speed.y==5);}
-    {Fixture f;f.host.lethal=true;on_contact_collision(&f.human,&f.enemy,f.tables,f.maxima,f.host);
-        check(f.host.calls==std::vector<std::string>{"cut","effect2","damage","flyHuman","animate","effect24","human4","progress","enemy3","sound"});}
+    {Fixture f;f.host.lethal=true;f.human_link.state=2;f.human_link.attack_frame=11;f.human_link.frame=99;f.enemy_link.frame=7;
+        on_contact_collision(&f.human,&f.enemy,f.tables,f.maxima,f.host);
+        check(f.host.calls==std::vector<std::string>{"cut","effect2","damage","flyHuman","animate","effect24","human4","progress","enemy3","sound"});
+        check(f.human_link.state==4&&f.human_link.frame==0&&f.human_link.attack_frame==0&&f.enemy_link.state==3&&f.enemy_link.frame==0);}
     for(int state:{4,5}){Fixture f;f.human_link.state=state;f.run();check(f.host.calls==std::vector<std::string>{"cut","effect2"}&&f.ep.z==100);}
     {Fixture f;f.enemies[0]->flags=1;f.run();check(f.host.calls==std::vector<std::string>{"cut","effect2","flyEnemy","enemy4","sound"}&&f.speed.z==6);}
     {Fixture f;f.human_link.invincible_time=1;f.run();check(f.host.calls==std::vector<std::string>{"cut","effect2","progress","enemy3","sound"}&&f.ep.z==90);}

@@ -19,7 +19,7 @@ All addresses are ELF VAs (load bias 0; Ghidra exports add `0x100000`). Numbers 
 
 ### Contact collision projections
 
-Position uses slot 0 with binary32 x/y/z at +0x10/+0x14/+0x18; Bullet presence uses slot 29. Human slot 14 contributes int32 state +0x24 and invincibleTime +0x70; Enemy slot 24 contributes level +0x10 and flags +0x14. Direction slot 12 has its locked byte at +0x14. These are borrowed portable projections in `contact_collision.hpp` and `combat_records.hpp`, not complete serialization layouts. Evidence: OnCollide at 0x114f604, local `contact-guards/` exports and metadata field offsets; see [combat.md](combat.md#contact-collision-orchestration).
+Position uses slot 0 with binary32 x/y/z at +0x10/+0x14/+0x18; Bullet presence uses slot 29. Human slot 14 contributes int32 state +0x24 and invincibleTime +0x70; Enemy slot 24 contributes level +0x10, flags +0x14, state +0x18 and frame +0x1c. Human attackFrame +0x30 and frame +0x68 are distinct counters reset by the state-transition chain. Direction slot 12 has its locked byte at +0x14. These are borrowed portable projections in `contact_collision.hpp` and `combat_records.hpp`, not complete serialization layouts. Evidence: OnCollide at 0x114f604, local `contact-guards/` exports and metadata field offsets; see [combat.md](combat.md#contact-collision-orchestration).
 
 ### Projectile hit components
 

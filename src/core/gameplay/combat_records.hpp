@@ -4,8 +4,14 @@
 
 namespace saga::core {
 // Portable component projections, not binary layouts. Only recovered fields are included.
-struct HumanRecordLink final:Component {std::int32_t character_id=0,state=0,invincible_time=0;}; // +0x18/+0x24/+0x70.
-struct EnemyRecordLink final:Component {std::int32_t enemy_id=0,level=0,flags=0;}; // +0x20/+0x10/+0x14.
+struct HumanRecordLink final:Component {
+    std::int32_t character_id=0,state=0,invincible_time=0; // +0x18/+0x24/+0x70.
+    std::int32_t attack_frame=0,frame=0; // +0x30/+0x68.
+};
+struct EnemyRecordLink final:Component {
+    std::int32_t enemy_id=0,level=0,flags=0; // +0x20/+0x10/+0x14.
+    std::int32_t state=0,frame=0; // +0x18/+0x1c.
+};
 struct EquipmentRecordLinks final:Component {EventInstruction ids;}; // EquipComponent +0x10, nullable.
 inline constexpr std::int32_t combat_equipment_slot=8,combat_human_slot=14,
     combat_parameter_slot=23,combat_enemy_slot=24;

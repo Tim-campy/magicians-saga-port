@@ -31,7 +31,7 @@ Current maintainer priority: game-specific decompilation and gameplay integratio
 ## Next tasks
 
 ### Current gameplay focus
-- [ ] Complete the defeat/impact and collision state services (FlyAway, human/enemy ChangeState), then bind the ported contact-collision orchestration; projectile-hit control flow is integrated with EcsDamageHost; per-call slot/ID/catalog/saved-level resolution is connected, while component construction and save restoration remain open. Connected stat/damage/event-15 accounting tests now pass; effect selection and the full event subscriber set remain open.
+- [ ] Complete defeat/impact and FlyAway through ProjectileSystem.Fire and ModifyAnimation; human/enemy state transitions are ported and tested in the contact-collision chain; projectile-hit control flow is integrated with EcsDamageHost; per-call slot/ID/catalog/saved-level resolution is connected, while component construction and save restoration remain open. Connected stat/damage/event-15 accounting tests now pass; effect selection and the full event subscriber set remain open.
 
 ### 1. Events and scripts
 - [ ] Bind decoded billing-item/catalog providers and complete notification manager adapters, preserving task execution gates.

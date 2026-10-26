@@ -94,3 +94,8 @@ game:0x06000d51	reimplemented	src/core/gameplay/combat_records.cpp	Equipment ID 
 game:0x06000d53	reimplemented	src/core/gameplay/combat_records.cpp	Integer weapon setter writes ID without record validation or component notification
 game:0x06000d55	reimplemented	src/core/gameplay/combat_records.cpp	Integer shield setter shares checked ID-array store contract
 game:0x06000109	reimplemented	src/core/gameplay/ecs_combat.cpp	ParamSet keyed lookup via standard map; missing key faults, null values preserved, sparse-key and capture tests
+game:0x06000e71	reimplemented	src/core/gameplay/combat_state.cpp	Enemy state store then frame reset; same-state contract tested
+game:0x06000ec6	reimplemented	src/core/gameplay/combat_state.cpp	Human pre/store/reset/post order with component replacement and failure tests
+game:0x06000ec7	reimplemented	src/core/gameplay/combat_state.cpp	1-to-2 direction and animation before state mutation
+game:0x06000ec8	reimplemented	src/core/gameplay/combat_state.cpp	Ordered speed idle-animation and strict attack-counter reset
+game:0x06000e84	traced	docs/subsystems/combat.md	FlyAway captures start and draws target x/z before Fire; ModifyAnimation integration pending
