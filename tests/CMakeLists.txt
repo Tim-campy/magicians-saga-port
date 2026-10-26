@@ -224,3 +224,8 @@ add_executable(test_execution_context test_execution_context.cpp)
 target_link_libraries(test_execution_context PRIVATE execution_context)
 project_warnings(test_execution_context)
 add_test(NAME execution_context_contract COMMAND test_execution_context)
+
+add_executable(test_call_context test_call_context.cpp)
+target_link_libraries(test_call_context PRIVATE call_context)
+project_warnings(test_call_context)
+add_test(NAME call_context_contract COMMAND test_call_context)

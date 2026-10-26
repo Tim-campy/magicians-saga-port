@@ -78,3 +78,6 @@ if(MSVC)
 else()
   target_compile_options(select_touch_move PRIVATE -fno-fast-math -ffp-contract=off)
 endif()
+
+saga_library(call_context call_context.cpp)
+target_link_libraries(call_context PUBLIC execution_context)
