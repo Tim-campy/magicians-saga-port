@@ -90,6 +90,8 @@ The runtime culture sign fields are documented in [culture number signs](../form
 
 The runtime Hashtable capacity initializer is documented in [runtime prime table](../formats/runtime-hashtable-primes.md); extraction and desktop loading are implemented.
 
+The [assembly resource container](../formats/assembly-resources.md) holds the located version-3 collation resources; bounded inspection is implemented.
+
 ## Open questions
 
 1. (blocking) Is all gameplay data in the APK? Absence of OBB/URLs is not proof; needs load/download chains and a controlled run.

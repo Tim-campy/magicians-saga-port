@@ -41,3 +41,4 @@ font-texture-size,getFontTextureSize payload (two big-endian float32),fonts,docu
 language-pack-directive,@language directive in language-pack CSV,fonts,traced
 culture-number-signs,Packed culture number-format sign fields (48-byte records and UTF-8 pool),data,reimplemented
 runtime-hashtable-primes,Runtime Hashtable prime initializer (72 little-endian int32),data,reimplemented
+assembly-resources,IL2CPP assembly resource directory and version-3 collation payloads,data,documented
