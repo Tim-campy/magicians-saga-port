@@ -1,5 +1,6 @@
 #include "core/gameplay/ecs_combat.hpp"
 #include "core/gameplay/projectile_hit.hpp"
+#include "core/gameplay/enemy_defeat.hpp"
 #include <cstdlib>
 #include <functional>
 #include <stdexcept>
@@ -48,14 +49,29 @@ struct Fixture {
         receiver.add(combat_enemy_slot,&enemy).add(combat_parameter_slot,&receive_parameters);
     }
 };
-struct HitHost final:ProjectileHitHost {
+struct HitHost final:ProjectileHitHost,EnemyDefeatHost {
     Fixture& fixture;Draws random;int defeats=0,impacts=0,pools=0;
-    explicit HitHost(Fixture& f):fixture(f){}
+    ContactPosition position;ProjectileSpeed speed;DefeatColor color;
+    ProjectileLink launched;ProjectileModification modification;EnemyDefeatCounters counters{0,2};std::int32_t saved_count=0;
+    ComponentSlots exp_drop{35},treasure_drop{35};DropDepth exp_depth,treasure_depth;std::vector<std::int32_t> drops;
+    explicit HitHost(Fixture& f):fixture(f){
+        random.values.insert(random.values.end(),{0,0,0});
+        f.receiver.add(0,&position).add(1,&speed).add(6,&color);
+        f.enemies[0]->experience=EventIntegers{10,10};f.enemies[0]->treasures=EnemyTreasureGroups{{{7,1000}}};
+        exp_drop.add(4,&exp_depth);treasure_drop.add(4,&treasure_depth);
+    }
+    ProjectileLink& acquire_projectile()override{return launched;}
+    ProjectileModification& acquire_modification()override{return modification;}
+    void add_animation(ComponentSlots&,std::int32_t,std::int32_t)override{check(false);}
+    std::int32_t& saved_defeat_count(const EnemyRecord&)override{return saved_count;}
+    ComponentSlots* create_drop(std::int32_t type,std::int32_t value,ProjectilePoint,std::int32_t)override{
+        drops.push_back(value);return type==0?&exp_drop:&treasure_drop;
+    }
     bool damage(ComponentSlots* attacker,ComponentSlots& target,std::int32_t value,std::int32_t attribute) override {
         check(attacker==&fixture.attacker && &target==&fixture.receiver);
         return apply_combat_damage(value,attribute,random,fixture.host);
     }
-    void defeat(ComponentSlots&) override{++defeats;}
+    void defeat(ComponentSlots& e) override{++defeats;defeat_enemy(e,fixture.records,counters,random,*this);}
     void impact(ComponentSlots&,ComponentSlots*) override{++impacts;}
     void return_component(std::int32_t,Component*) override{++pools;}
 };
@@ -67,6 +83,8 @@ int main(){
               .add(projectile_collision_slot,&collision).add(projectile_speed_slot,&speed);
         on_projectile_hit(&bullet,&f.receiver,host);
         check(f.hp.value==0&&f.presentation.total==44&&host.defeats==1&&host.impacts==1&&host.pools==2&&speed.x==0);
+        check(f.enemy.state==4&&f.receiver.contains(27)&&host.saved_count==1&&host.counters.defeated_enemies==1&&host.counters.remaining_enemies==1);
+        check(host.drops==std::vector<std::int32_t>{10,7}&&host.exp_depth.extra==-10&&host.treasure_depth.extra==-10&&host.random.cursor==7);
     }
     {Fixture f;Draws r;check(!apply_combat_damage(100,0,r,f.host));check(f.hp.value==156&&f.presentation.total==44&&r.cursor==4);}
     {Fixture f;set_combat_equipment(f.attacker,EquipmentSlot::weapon,1);f.gear_levels[1]=100;

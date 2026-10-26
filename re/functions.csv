@@ -3502,7 +3502,7 @@ game:0x06000e7f,game:0x06000e7f,ecs,,440,0x11511cc
 game:0x06000e80,game:0x06000e80,ecs,,2088,0x114ec84
 game:0x06000e81,game:0x06000e81,ecs,,980,0x1151384
 game:0x06000e82,ecs.EnemySystem.Damage,ecs,documented,3924,0x114fc44
-game:0x06000e83,ecs.EnemySystem.Defeat,ecs,documented,1040,0x1150b98
+game:0x06000e83,ecs.EnemySystem.Defeat,ecs,reimplemented,1040,0x1150b98
 game:0x06000e84,ecs.EnemySystem.FlyAway,ecs,reimplemented,548,0x1150fa8
 game:0x06000e85,game:0x06000e85,ecs,,196,0x114d870
 game:0x06000e86,game:0x06000e86,ecs,,52,0x1151758
@@ -4085,7 +4085,7 @@ game:0x060010c6,game:0x060010c6,data,,8,0x116e9b8
 game:0x060010c7,data.EnemyData.GetExp,data,reimplemented,68,0x116e9c0
 game:0x060010c8,data.EnemyData.GetParamValue,data,reimplemented,228,0x116ea04
 game:0x060010c9,game:0x060010c9,data,,12,0x116eae8
-game:0x060010ca,data.EnemyData.AddDefeatCount,data,documented,120,0x116eaf4
+game:0x060010ca,data.EnemyData.AddDefeatCount,data,reimplemented,120,0x116eaf4
 game:0x060010cb,game:0x060010cb,data,,8,0x116eb6c
 game:0x060010cc,game:0x060010cc,data,,8,0x116eb74
 game:0x060010cd,game:0x060010cd,data,,8,0x116eb7c

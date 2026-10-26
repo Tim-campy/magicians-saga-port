@@ -29,9 +29,9 @@ game:0x0600025d	reimplemented	src/core/gameplay/combat_rules.cpp	attribute_affin
 game:0x06000e82	documented	docs/subsystems/combat.md	numeric/state path ported with RNG and explicit host; attacker rate owner resolved; effects/ECS remain partial
 game:0x06000e7e	reimplemented	src/core/gameplay/projectile_hit.cpp	Projectile guards; damage/defeat/impact order; owner reread; pool return and speed zeroing; ECS integration test
 game:0x06000e7d	reimplemented	src/core/gameplay/contact_collision.cpp	Full contact orchestration with explicit state/presentation services; tested guards, payloads, callback order and recoil
-game:0x06000e83	documented	docs/subsystems/rewards.md	Reward suffix ported with ordered live data queries and pending drop/RNG interfaces; motion counters and full binding pending
+game:0x06000e83	reimplemented	src/core/gameplay/enemy_defeat.cpp	Complete motion state color counter and pending reward sequence; shared-RNG ECS damage integration tested
 game:0x06000d47	traced	docs/subsystems/rewards.md	flag +0x14 via BitUtil.Check; bit meaning unknown
-game:0x060010ca	documented	docs/subsystems/rewards.md	wrap32 add then Clamp(0,INT_MAX)
+game:0x060010ca	reimplemented	src/core/gameplay/enemy_defeat.cpp	Wrapping int32 addition then clamp at zero; overflow and negative increment tests
 game:0x060010c7	reimplemented	src/core/gameplay/enemy_rewards.cpp	Binary32 zero-amplitude interpolation with wrapped progress/difference; synthetic edges and full local table audit
 game:0x06000bf9	traced	docs/subsystems/rewards.md	drop entity; jump table; type 3 overrides scale to 100
 game:0x06000fa4	documented	docs/subsystems/rewards.md	start collection / boss reward pickup

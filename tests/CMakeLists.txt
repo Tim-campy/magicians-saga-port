@@ -356,7 +356,7 @@ project_warnings(test_combat_records)
 add_test(NAME combat_records_contract COMMAND test_combat_records)
 
 add_executable(test_ecs_combat test_ecs_combat.cpp)
-target_link_libraries(test_ecs_combat PRIVATE ecs_combat projectile_hit)
+target_link_libraries(test_ecs_combat PRIVATE ecs_combat projectile_hit enemy_defeat)
 project_warnings(test_ecs_combat)
 add_test(NAME ecs_combat_contract COMMAND test_ecs_combat)
 
@@ -399,3 +399,8 @@ add_executable(test_enemy_impact test_enemy_impact.cpp)
 target_link_libraries(test_enemy_impact PRIVATE enemy_impact)
 project_warnings(test_enemy_impact)
 add_test(NAME enemy_impact_contract COMMAND test_enemy_impact)
+
+add_executable(test_enemy_defeat test_enemy_defeat.cpp)
+target_link_libraries(test_enemy_defeat PRIVATE enemy_defeat)
+project_warnings(test_enemy_defeat)
+add_test(NAME enemy_defeat_contract COMMAND test_enemy_defeat)
