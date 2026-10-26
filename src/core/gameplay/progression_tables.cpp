@@ -19,16 +19,17 @@ LevelTable load_level_table(std::string_view text, bool normalize, const EventIn
 }
 CharacterProgressionTable load_character_progression_table(std::string_view text, bool normalize,
                                                           const EventIntegerParser& parser) {
-    // CharaData.Load 0x116dcc4. Consume the entire schema, retaining only progression inputs.
+    // CharaData.Load 0x116dcc4. Consume the entire schema, retaining progression and combat inputs.
     return detail::load_table_records<CharacterProgressionRecord>(text,normalize,parser,[](detail::TableTokens& t){
         CharacterProgressionRecord r;
         r.id=t.integer();t.take();t.integer();t.take();t.integer();t.take();
-        for(int i=0;i<5;++i) t.integer(); // weapon, recruit type/cost, initial level, rank
+        r.weapon_id=t.integer();t.integer();t.integer();
+        r.initial_level=t.integer();t.integer(); // rank
         r.required_experience_rate=t.integer();
-        t.script(); // parameters_: count-prefixed int32[][], same framing as event scripts
+        r.parameters=t.script(); // Same framing as event scripts.
         t.integer();t.integer();t.integer(); // voice, town, area
         t.script(); // residentTerm_
-        t.integer();t.integer(); // appearRate, BaseData flag
+        t.integer();r.flags=t.integer(); // appearRate, BaseData flag
         return r;
     });
 }

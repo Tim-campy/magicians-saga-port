@@ -120,6 +120,25 @@ See [../formats/game-tables.md](../formats/game-tables.md): `LoadStringArray` â†
 
 Confidence: high for read/store order from bounded ARM64 instructions and metadata field offsets. Calls are GetInt `0x1126e4c`, GetString `0x1126dcc`, GetIntDoubleArray `0x112708c`. These game record mappings require no new Mono/runtime implementation.
 
+### Combat table projections
+
+The existing character reader now retains weaponId, initLevel, parameters and the inherited int32 flags as well as the experience rate. It still consumes the full CharaData schema once; it does not duplicate the parser. `bind_character_parameters(record,saved_level)` shares the parameter array, uses the explicitly supplied saved level, and exposes the low flags byte used by `get_isMain`. initLevel is not substituted for saved level.
+
+Additional loaders in `combat_tables.cpp` consume these schemas (int32 unless marked string or array):
+
+| Original method | ELF VA / bytes | Sequential reads |
+|---|---|---|
+| MagicShopData.Load (game:0x0600119c) | 0x1171f2c / 232 | id, name string, category, basePrice, upValue, explain string, inherited flag |
+| EquipmentData.Load (game:0x0600111e) | 0x116f428 / 504 | id, name string, four integers (+0x38..+0x44), resource string, two integers (+0x50/+0x54), attribute (+0x58), eleven integers (+0x5c..+0x84), status int32[][], explain string, inherited flag |
+| ClothData.Load (game:0x060010c2) | 0x116e704 / 312 | id, name string, integer (+0x30), resource string, five integers (+0x40..+0x50), parameters int32[][], explain string, inherited flag |
+| HatData.Load (game:0x06001171) | 0x1171734 / 312 | same token framing as cloth, different object offsets (+0x28, +0x38..+0x48, parameters +0x50) |
+
+Each Load takes a line, mutates and returns its receiver, initially bypasses empty-string input, and stores immediately after each read. Its caller is the per-type data-loader route. Combat projections retain only id, parameter endpoints, attribute where present, flags, and shop category/upValue; unrelated presentation/economy tokens are still parsed so malformed required numeric tokens fail. The fresh-record port does not reproduce observable partial mutation of a pre-existing receiver. Therefore these original Load methods remain documented, not fully reimplemented.
+
+Shop buyCount and equipment level are mutable state absent from these records. Binding functions require explicit values; they neither assign a new-game state nor fabricate save progress. The loaders reuse `TableTokens` and `load_table_records`, preserving null outer arrays, id gaps and last duplicate wins.
+
+Local shipped-table validation via `test_combat_tables` read both English and Japanese Chara/MagicShop/Equipment/Cloth/Hat files: each language has 67 populated character records, 8 shop records and 269 equipment records across the three equipment tables. Across selected levels and all 13 parameter indices, 17,467 numeric queries per language produced the same FNV-style hash 13925746254597776912. Shop arithmetic uses explicit synthetic purchase counts (0 for character queries, 3 for standalone shop queries), not recovered saves. This is data/contract integration, not original-runtime verification. Evidence: `research/exports/combat-loaders/` bounded exports and `game-progression-tables/F116dcc4.asm`; all game tables remain local.
+
 ### Treasure records
 
 `TreasureData.Load` (`game:0x06001235`, `0x11737a4`, 312 bytes) consumes twelve logical fields: id, name (string), res (string), img, exp, money, crystal, weaponId, charaId, clothId, hatId, inherited flag. Numeric fields are int32. Stores target `+0x18`, `+0x20`, `+0x28`, `+0x30`, `+0x34`, `+0x38`, `+0x3c`, `+0x40`, `+0x44`, `+0x48`, `+0x4c`, `+0x1c`, respectively. It returns the receiver; the initial guard bypasses parsing, reads/stores are sequential and extra fields are ignored. Its data-loading caller and partial-mutation caveat are the same as the progression readers above.

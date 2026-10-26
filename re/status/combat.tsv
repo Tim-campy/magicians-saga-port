@@ -81,3 +81,7 @@ game:0x060011a3	reimplemented	src/core/gameplay/combat_parameters.cpp	Wrapping u
 game:0x060010a4	traced	docs/subsystems/combat.md	Character PARAM_MAX_LEVELS initializer resolved; other static arrays not fully ported
 game:0x060010e7	traced	docs/subsystems/combat.md	Enemy PARAM_MAX_LEVELS initializer resolved; independent array with same metadata source as character
 kairo:0x06000b58	reimplemented	src/core/gameplay/combat_rules.cpp	General ordered binary32 easing with standard sine; 19264 static model cases; Android libm unverified
+game:0x0600119c	documented	docs/subsystems/data.md	Shop schema and combat projection tested against both languages; purchase count not loaded
+game:0x0600111e	documented	docs/subsystems/data.md	Equipment full token framing; retained attribute/status combat projection; mutable level separate
+game:0x060010c2	documented	docs/subsystems/data.md	Cloth token framing and parameter projection; shares reader shape with Hat
+game:0x06001171	documented	docs/subsystems/data.md	Hat token framing and parameter projection; shares reader shape with Cloth

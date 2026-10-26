@@ -10,7 +10,11 @@ struct LevelTableRecord {
     std::int32_t unlock_money=0, unlock_crystal=0, unlock_web_page=0, unlock_rescue=0;
 };
 // Projection of CharaData.Load, not its mutable save state.
-struct CharacterProgressionRecord { std::int32_t id=0, required_experience_rate=0; };
+struct CharacterProgressionRecord {
+    std::int32_t id=0, required_experience_rate=0;
+    std::int32_t weapon_id=0,initial_level=0,flags=0;
+    EventScript parameters;
+};
 using LevelTable = std::vector<std::optional<LevelTableRecord>>;
 using CharacterProgressionTable = std::vector<std::optional<CharacterProgressionRecord>>;
 LevelTable load_level_table(std::string_view, bool normalize_crlf, const EventIntegerParser&);
