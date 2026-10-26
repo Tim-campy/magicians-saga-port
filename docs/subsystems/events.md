@@ -258,10 +258,10 @@ If both initial buttons are false, continuation is `0x11ecb5c`. The subsequent p
 | Mask / start | Observed action; remaining work |
 | --- | --- |
 | 0x08000000 / 0x11ecb5c | Selected building: sound, building-list validation, save position, dispatch by building id/type. Invalid selection can fall through to the next button. Ported below; data and form factories remain host bindings. |
-| 0x10000000 / 0x11ecdcc | Sound; write normal-save slots 11,12,10,8 from camX_, camY_, integer-converted touchDragDistance_ and selected area; clear selected area; Push AppData.frmSelectStage_ (+0xa8). Pending port. |
-| 0x20000000 / 0x11ecf94 | Clear two selection-message fields, sound, MakeObstacle(selected building), Push, clear selected building. Pending port. |
-| 0x40000000 / 0x11ed038 | MakeStoreInvite then Push; update first town row with state 1 to state 2, save a system value and reset bubble fields. Pending complete bindings. |
-| 0x02000000 / 0x11ed0d4 | Find first town row with state 3, clear its state, apply reward, build/push message form, SetTalkFuki; returns even when no matching row. Pending complete bindings. |
+| 0x10000000 / 0x11ecdcc | Sound; write normal-save slots 11,12,10,8 from camX_, camY_, integer-converted touchDragDistance_ and selected area; clear selected area; Push AppData.frmSelectStage_ (+0xa8). Ported in the town-button chain below. |
+| 0x20000000 / 0x11ecf94 | Clear two selection-message fields, sound, MakeObstacle(selected building), Push, clear selected building. Ported in the town-button chain below. |
+| 0x40000000 / 0x11ed038 | MakeStoreInvite then Push; update first town row with state 1 to state 2, save a system value and reset bubble fields. Control flow ported below; decoded data/form bindings remain explicit. |
+| 0x02000000 / 0x11ed0d4 | Find first town row with state 3, clear its state, apply reward, build/push message form, SetTalkFuki; returns even when no matching row. Control flow ported below; decoded data/form bindings remain explicit. |
 | no button / 0x11ed144 | Selected-building guidance, then conditional autosave and later common updates before bubble lifetime. Pending port. |
 
 These are input masks passed to the original input helper, not desktop key assignments. No later branch is treated as implemented by the first-two-button kernel.
@@ -278,7 +278,22 @@ All handled valid-slot paths clear selectChip_ to -1 only after any Push returns
 
 Factory boundaries are explicit: MakeBuildList allocates SubForm type 12 and stores the chip at +0x174; MakeHumanHouse allocates type 16 and stores the member at +0x128 and chip at +0x174 (the observed option is false); MakeShareWindow allocates type 27 and stores the argument at +0x170. Full form constructors/content, GetBuildingList and GetLivingSubMemberArray remain host bindings. Evidence: `research/exports/select-building/` plus Update `0x11ecb5c`?`0x11ecdcc`, `0x11ed260`?`0x11ed310`, `0x11ed5b4`?`0x11ed61c`, `0x11ed834`?`0x11ed93c`. Confidence high for the dispatch and mutation contracts; runtime behavior remains unverified.
 
+### Area, obstacle, invitation and present buttons
+
+After the selected-building action falls through, `process_select_town_buttons` handles the remaining four buttons in native order. Confidence high from Update `0x11ecdcc`?`0x11ed144`, invitation continuation `0x11ed16c`?`0x11ed25c` and present continuation `0x11ed314`?`0x11ed3dc`. All handled branches return before the later bubble-lifetime pass.
+
+- **Area (0x10000000):** play button sound; write normal-save slots 11,12,10 through the shared position helper; capture a fresh normal-save integer array and store live selArea_ (+0x120) into slot 8; set selArea_=-1; require AppData and obtain nullable frmSelectStage_ (+0xa8); Push it. Failure obtaining the form leaves the save/selection changes in place. This does not clear selectChip_.
+- **Obstacle (0x20000000):** set dispUnLockInfoNumber_/Frame_ both -1 before playing sound; MakeObstacle(live selectChip_) then Push; clear selectChip_ only after Push returns. No bounds guard is added to the selected index.
+- **Store invitation (0x40000000):** MakeStoreInvite and Push first, without a button-sound call here. Scan the live town-human list in increasing order for the first row[8]==1. Re-fetch its row and write row[8]=2; no match still continues. Call SumAllQuestsChallengeCount, capture sysSave_.intArray, resolve SYSSAVEI_STORE_KAIRO_LIMIT (AppData static +0x300), and store the int32 sum. Finally set townTalkIndex_=-1, townTalkFrame_=0, townTalkText_ to the empty string. This is distinct from offscreen cancellation's frame=-1. Push failure occurs before any row mutation; a later save failure preserves both Push and row changes but leaves the bubble unchanged.
+- **Resident present (0x02000000):** scan the live list for first row[8]==3. No match still returns true. Re-fetch the row and write state 0, then AddMoney with residentPresentValue_ (int32 SelectForm+0x1f0). Re-read that field after credit, format it with the original literal, MakePopUpContens with type 3, original title, formatted value and option 0, then Push. Only after Push succeeds call SetTalkFuki(index,false). Thus a formatting/Push/bubble failure does not roll back credit or resident state. The factory and localized literals remain explicit host inputs; no game text is embedded in the port.
+
+Each scan requires list storage and non-null rows with slot 8, visits only until its first match and queries the live list between iterations. The mutation deliberately re-fetches the matched row. The sum/system-save slot and decoded catalogs remain required host providers; their missing values are not substituted. Invitation/present handling does not decrement the bubble timer in the same returned path.
+
+`update_select_through_town_buttons` composes these branches after the building/navigation/prefix chain. When no button consumes the update it returns the preserved camera/view snapshot and continues at `0x11ed144`: selected-chip guidance, autosave, soft-label processing and then the late lifetime block are still pending.
+
 ## Port
+
+- `src/core/gameplay/select_town_buttons.{hpp,cpp}` ports the remaining area/obstacle/resident button chain and composes it after building actions. `tests/test_select_town_buttons.cpp` verifies button priority, separate save stores, first-resident-only mutation, mutation-before-failure behavior, post-credit value re-read, concrete money progression and bubble selection.
 
 - `src/core/gameplay/select_building.{hpp,cpp}` ports the complete selected-building dispatch, position writes and IsShop predicate. Tests in `test_select_building.cpp` cover all routes, invalid/empty slots, live catalog replacement, null housing-shop failure, nonfinite position conversion, partial save writes and Push failure. The composed entry now reaches the area-button boundary.
 
@@ -338,7 +353,7 @@ Fixture JSON schema (all keys optional; absence preserves missing state rather t
 
 For a synthetic money-only event with nonempty effects, a minimal auto fixture is `{"context_present": true, "context_character_count": 1, "sys_save_present": false}`. This is test state, not an inferred new-game state. PRINT is required when an empty script or failed identity lookup reaches its diagnostic gate; quest_data_count is required only for that lookup's fallback. Additional predicates require their corresponding catalogs/scalars. Tool collection lengths are limited to 100000; these are harness limits, not recovered game limits.
 
-- Last recorded build: Windows/MSVC, 35/35 CTest (34 C++ contracts plus native scenario integration).
+- Last recorded build: Windows/MSVC, 36/36 CTest (35 C++ contracts plus native scenario integration).
 - Missing: population of decoded default-args/diagnostic state from saves/configuration, SelectForm integration, remaining unit `CheckTerm` predicates, integration with save-loaded execution counters; hour-based delays; `SubForm.delayEvent_` path (slot 5); `SelectForm.Update` guards; opcodes other than the eight; `SecureLong`/`SecureInt` storage; billing item source for stamina; UI forms.
 
 ## Evidence
@@ -372,7 +387,7 @@ For a synthetic money-only event with nonempty effects, a minimal auto fixture i
 ## Open questions
 
 1. (blocking) Concrete context/catalog bindings for the 14 recovered table-used conditions; automatic selection is composed with the kernels but not yet called by a desktop form/frame loop. Populate the decoded host from data/save/ECS providers, including hero level and the Config.DEBUG/AppData.debugRescueNum initialization state. Other unit branches remain unresolved for scripts outside Event.txt.
-2. (blocking) Bind the composed select_form_pass to a desktop form host: recover the remaining area/resident buttons at 0x11ecdcc and implement its required notification/decor/town/guide/capture callbacks plus orientation and image-dictionary bindings for the recovered prelude. The guards, clouds, markers, counter, initial event loop and reached-pass scheduling are composed and tested.
+2. (blocking) Bind the composed select_form_pass to a desktop form host: recover selected-chip guidance/autosave and remaining late updates at 0x11ed144, including the town_bubble lifetime call and outer Update exception handlers, and implement its required notification/decor/town/guide/capture callbacks plus orientation and image-dictionary bindings for the recovered prelude. The guards, clouds, markers, counter, initial event loop and reached-pass scheduling are composed and tested.
 3. (blocking) Initial/real values of `SYSSAVEI_YUGAMI`, the `ITEM_STAMINA_UP` item state, and the money/crystal/stamina slots from save/new game.
 4. Unit dispatcher opcodes other than 1/2/4/8/10/12/15/31 (jump table has 15 entries); scripts outside `Event.txt` (quests, built events) may use them.
 5. Consumer of `DelayEvent` entries with `hour_ != -1` (none in the extracted table).
