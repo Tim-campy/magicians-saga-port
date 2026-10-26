@@ -2004,7 +2004,7 @@ game:0x060007fe,game:0x060007fe,ui,,492,0x11e9a3c
 game:0x060007ff,form.SelectForm.Init,ui,traced,5644,0x11e9c28
 game:0x06000800,form.SelectForm.Update,ui,traced,8068,0x11ebb94
 game:0x06000801,game:0x06000801,ui,,2704,0x11ef380
-game:0x06000802,game:0x06000802,ui,,744,0x11edb18
+game:0x06000802,form.SelectForm.UpdateNotifyValue,ui,traced,744,0x11edb18
 game:0x06000803,game:0x06000803,ui,,384,0x11f0594
 game:0x06000804,game:0x06000804,ui,,60,0x11f3158
 game:0x06000805,game:0x06000805,ui,,208,0x11efeb4
@@ -2027,7 +2027,7 @@ game:0x06000815,game:0x06000815,ui,,60,0x11f44dc
 game:0x06000816,game:0x06000816,ui,,1164,0x11f4518
 game:0x06000817,form.SelectForm.SetCameraPosition,ui,reimplemented,320,0x11f32b4
 game:0x06000818,game:0x06000818,ui,,12,0x11eb40c
-game:0x06000819,game:0x06000819,ui,,472,0x11eb234
+game:0x06000819,form.SelectForm.SetActiveX,ui,reimplemented,472,0x11eb234
 game:0x0600081a,game:0x0600081a,ui,,480,0x11eb714
 game:0x0600081b,game:0x0600081b,ui,,24,0x11f49a4
 game:0x0600081c,game:0x0600081c,ui,,280,0x11f49bc

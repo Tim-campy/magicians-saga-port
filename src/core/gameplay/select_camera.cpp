@@ -1,8 +1,19 @@
 #include "select_camera.hpp"
 #include <cmath>
 #include <limits>
+#include <stdexcept>
 namespace saga::core {
 namespace {
+template<class T> T& required(const std::shared_ptr<T>& value) {
+    if(!value)throw std::invalid_argument("missing active-area data");
+    return *value;
+}
+std::int32_t area_count(const std::shared_ptr<CameraAreas>& areas) {
+    const auto size=required(areas).size();
+    if(size>static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max()))
+        throw std::length_error("area count exceeds int32");
+    return static_cast<std::int32_t>(size);
+}
 std::int32_t wrap(std::int64_t value) {
     const auto bits=static_cast<std::uint32_t>(value);
     return bits<=0x7fffffffU?static_cast<std::int32_t>(bits):
@@ -25,6 +36,30 @@ std::int32_t camera_clamp(std::int32_t value,std::int32_t minimum,std::int32_t m
     if(value>maximum)value=maximum;
     if(value<minimum)value=minimum;
     return value;
+}
+// SelectForm.SetActiveX 0x11eb234. The first extent write survives later failures.
+void set_select_active_x(SelectCameraState& state,SelectActiveAreaHost& host) {
+    const auto capacity=required(host.normal_save_integers()).at(19);
+    const auto first_width=host.view_width();
+    state.right_extent=wrap(static_cast<std::int64_t>(capacity)*90+first_width);
+    auto remaining=area_count(host.camera_areas());
+    std::int32_t left_base=-129;
+    while(remaining>0) {
+        const auto index=static_cast<std::size_t>(remaining-1);
+        const auto candidate=required(host.camera_areas()).at(index);
+        if(candidate) {
+            const auto fresh=required(host.camera_areas()).at(index);
+            if(required(fresh).state==1) {
+                const auto maximum=wrap(static_cast<std::int64_t>(area_count(host.camera_areas()))-1);
+                const auto selected=camera_clamp(remaining,1,maximum);
+                left_base=wrap(-static_cast<std::int64_t>(selected)*129);
+                break;
+            }
+        }
+        --remaining;
+    }
+    const auto final_width=host.view_width();
+    state.left_extent=wrap(static_cast<std::int64_t>(left_base)-final_width);
 }
 std::int32_t scaled_view_dimension(std::int32_t pixels,float scale) {
     const auto numerator=static_cast<float>(wrap(static_cast<std::int64_t>(pixels)*100));

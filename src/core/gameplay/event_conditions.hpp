@@ -42,7 +42,7 @@ public:
     // Host must preserve the original enable flag and optional bonus read.
     virtual std::int32_t rescue_adjustment() = 0;
     virtual const ConditionCatalog<std::uint32_t>* town_flags() = 0;
-    virtual std::int32_t town_capacity() = 0; // sysSave SecureInt slot 19
+    virtual std::int32_t town_capacity() = 0; // Normal save_ SecureInt slot 19 (AppData+0x198).
     virtual const ConditionCatalog<std::int32_t>* area_states() = 0;
     virtual const ConditionCatalog<CharacterConditionState>* characters() = 0;
     // TownSystem.GetBuildingList output, including null gaps and row identity.

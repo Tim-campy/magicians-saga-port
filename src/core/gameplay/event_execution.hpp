@@ -6,8 +6,8 @@ public:
     // Re-read on every original Data.get_eventData access. Managed array sizes
     // are fixed and <= INT32_MAX; replacement is observable between accesses.
     virtual std::shared_ptr<EventCatalog> events() = 0;
-    // Called only when args is null: absent sysSave => null; otherwise decode
-    // SecureString slot 0 of sysSave+0x30. Missing array/slot must fail.
+    // Called only when args is null: absent normal save_ => null; otherwise decode
+    // SecureString slot 0 of save_+0x30. Missing array/slot must fail.
     virtual EventObject default_event_args() = 0;
     // Implements the Config diagnostic gate for null/empty effects.
     virtual void empty_event_diagnostic(std::int32_t id) = 0;
@@ -19,9 +19,9 @@ EventObject select_and_execute_events(EventDelayQueue&, EventExecutionHost&,
 enum class EventDiagnostic { EmptyScript, UnknownScript };
 struct DecodedEventExecutionState {
     std::shared_ptr<EventCatalog> catalog;
-    std::optional<bool> sys_save_present;
+    std::optional<bool> normal_save_present;
     // Values after SecureString conversion; a null slot converts to null.
-    std::shared_ptr<std::vector<EventObject>> sys_save_strings;
+    std::shared_ptr<std::vector<EventObject>> normal_save_strings;
     std::optional<std::size_t> quest_data_count; // AppData.questData_ +0x1e8
     std::optional<bool> print_enabled; // Config.PRINT +0x17
     std::function<void(EventDiagnostic,std::int32_t)> diagnostic;

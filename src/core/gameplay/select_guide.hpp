@@ -1,5 +1,6 @@
 #pragma once
 #include "select_building.hpp"
+#include "select_camera.hpp"
 namespace saga::core {
 struct GuideTownRecord {std::int32_t flags,id;}; // BaseData+0x1c and town record+0x20.
 using GuideTowns=std::vector<std::shared_ptr<GuideTownRecord>>;
@@ -17,7 +18,7 @@ bool guide_active_town(const std::shared_ptr<GuideTownRecord>&);
 bool guide_occupied_slot(const std::shared_ptr<EventIntegers>&);
 void check_select_guide(SelectGuideState&,bool force,SelectGuideHost&);
 // Bind the recovered guide callback while retaining the other required pass services.
-class SelectGuidePassHost final:public SelectFormPassHost {
+class SelectGuidePassHost:public SelectFormPassHost {
 public:
     SelectGuidePassHost(SelectFormPassHost& pass,SelectGuideState& state,SelectGuideHost& guide)
         :pass_(pass),state_(state),guide_(guide) {}
@@ -37,5 +38,14 @@ public:
     void check_guide_arrow(bool force) override {check_select_guide(state_,force,guide_);}
 private:
     SelectFormPassHost& pass_;SelectGuideState& state_;SelectGuideHost& guide_;
+};
+class SelectActiveAreaPassHost final:public SelectGuidePassHost {
+public:
+    SelectActiveAreaPassHost(SelectFormPassHost& pass,SelectGuideState& guide_state,SelectGuideHost& guide,
+        SelectCameraState& camera,SelectActiveAreaHost& areas)
+        :SelectGuidePassHost(pass,guide_state,guide),camera_(camera),areas_(areas) {}
+    void set_active_x() override {set_select_active_x(camera_,areas_);}
+private:
+    SelectCameraState& camera_;SelectActiveAreaHost& areas_;
 };
 }

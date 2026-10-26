@@ -27,3 +27,5 @@ game:0x0600082c	reimplemented	src/core/gameplay/select_guide.cpp	CheckGuidArrow 
 game:0x0600083e	reimplemented	src/core/gameplay/select_guide.cpp	Guide available slot predicate: null false, row1 -1 then CheckEnable(row0); tests/test_select_guide.cpp
 game:0x06000847	reimplemented	src/core/gameplay/select_guide.cpp	Guide active town predicate: non-null, flag bit0 and id != -1; tests/test_select_guide.cpp
 game:0x06000848	reimplemented	src/core/gameplay/select_guide.cpp	Guide occupied slot predicate: non-null and row1 != -1; tests/test_select_guide.cpp
+game:0x06000819	reimplemented	src/core/gameplay/select_camera.cpp	SetActiveX: normal-save capacity, descending live areas, ordered extent writes; test_select_camera and test_select_form_pass
+game:0x06000802	traced	docs/subsystems/events.md	UpdateNotifyValue reverse queue routing into validated ApplyTask and offer forms; removal-before-final-save; payload predicates unresolved

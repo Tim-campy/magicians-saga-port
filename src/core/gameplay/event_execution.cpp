@@ -56,9 +56,9 @@ EventObject select_and_execute_events(EventDelayQueue& queue, EventExecutionHost
 }
 std::shared_ptr<EventCatalog> DecodedEventExecutionHost::events() { return state_.catalog; }
 EventObject DecodedEventExecutionHost::default_event_args() {
-    if (!state_.sys_save_present.value()) return nullptr;
-    if (!state_.sys_save_strings) throw std::invalid_argument("null sysSave string array");
-    return state_.sys_save_strings->at(0);
+    if (!state_.normal_save_present.value()) return nullptr;
+    if (!state_.normal_save_strings) throw std::invalid_argument("null normal save string array");
+    return state_.normal_save_strings->at(0);
 }
 void DecodedEventExecutionHost::diagnose(EventDiagnostic kind,std::int32_t id) {
     if (state_.print_enabled.value()) state_.diagnostic(kind,id);

@@ -12,7 +12,7 @@ EXE = Path(sys.argv.pop(1)).resolve() if len(sys.argv) > 1 else None
 class FixtureTests(unittest.TestCase):
     def test_absence_and_types(self):
         self.assertEqual(fixture_tokens({}), ['end'])
-        self.assertEqual(fixture_tokens({'sys_save_strings': [None, '']}), ['sys_save_strings', '2', 'null', 'x', 'end'])
+        self.assertEqual(fixture_tokens({'normal_save_strings': [None, '']}), ['normal_save_strings', '2', 'null', 'x', 'end'])
         for fixture in ({'typo': 1}, {'print_enabled': 0}, {'hero_level': True}, {'quests': [[0, False]]}):
             with self.assertRaises(ValueError):
                 fixture_tokens(fixture)
@@ -29,7 +29,7 @@ class NativeTests(unittest.TestCase):
                  '2\tb\t0\t2\t2\t4\t0\t3\t1\t5\t4\t2\t2\t10\t1\t2\t1\t7\n'
                  '3\tc\t0\t0\t0')
         state = {'context_present': True, 'context_character_count': 1,
-                 'sys_save_present': False, 'areas': [[0, False]]}
+                 'normal_save_present': False, 'areas': [[0, False]]}
         result, trace = self.run_scenario(table, state, 1)
         self.assertEqual(result.returncode, 0, result.stderr)
         before = next(x for x in trace if x.get('pass') == 0)
@@ -49,7 +49,7 @@ class NativeTests(unittest.TestCase):
                  '1\tb\t0\t1\t3\t1\t0\t4\t1\t2\t8\t7\n'
                  '2\tc\t0\t1\t3\t1\t0\t4\t1\t2\t1\t99')
         result, trace = self.run_scenario(table, {'context_present': True, 'context_character_count': 1,
-            'sys_save_present': True, 'sys_save_strings': ['example'], 'execution_counts': [[0, 1]]})
+            'normal_save_present': True, 'normal_save_strings': ['example'], 'execution_counts': [[0, 1]]})
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn({'selection_returned_form': True}, trace)
         self.assertEqual(trace[-1]['money'], 0)

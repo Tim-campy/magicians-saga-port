@@ -29,7 +29,7 @@ public:
     virtual void set_active_x() = 0;
     virtual void update_decorations() = 0;
     virtual void update_town_humans() = 0;
-    // Fresh SecureInt conversion of sysSave integer slot 19, each loop test.
+    // Fresh SecureInt conversion of normal save_ integer slot 19, each loop test (AppData+0x198).
     virtual std::int32_t town_enable_count() = 0;
     virtual bool update_town_enable(std::int32_t index) = 0;
     virtual void check_guide_arrow(bool force) = 0;

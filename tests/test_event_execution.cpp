@@ -82,15 +82,15 @@ int main() {
     DecodedEventExecutionState state;
     DecodedEventExecutionHost adapter(state,h);
     fails([&]{adapter.default_event_args();}); // Unknown save-presence state.
-    state.sys_save_present=false;
+    state.normal_save_present=false;
     check(!adapter.default_event_args(),"absent sysSave gives null args");
-    state.sys_save_present=true;
+    state.normal_save_present=true;
     fails([&]{adapter.default_event_args();});
-    state.sys_save_strings=std::make_shared<std::vector<EventObject>>();
+    state.normal_save_strings=std::make_shared<std::vector<EventObject>>();
     fails([&]{adapter.default_event_args();});
-    state.sys_save_strings->push_back(nullptr);
+    state.normal_save_strings->push_back(nullptr);
     check(!adapter.default_event_args(),"null SecureString slot converts to null");
-    state.sys_save_strings->at(0)=args;
+    state.normal_save_strings->at(0)=args;
     check(adapter.default_event_args()==args,"decoded default args identity");
     state.catalog=first;
     check(adapter.identify_script(first->at(0)->effects)==0,"successful lookup skips absent fallback state");

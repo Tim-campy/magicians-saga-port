@@ -87,8 +87,10 @@ struct Host:SelectFormPassHost,SelectCloudHost,SelectMarkerHost,EventExecutionHo
         catalog->at(1)=record;
     }
 };
-struct LateBindings final:SelectBuildingHost,SelectTownButtonsHost,SelectGuidanceSaveHost,SelectCameraHost,SelectReviewHost,SelectGuideHost {
+struct LateBindings final:SelectBuildingHost,SelectTownButtonsHost,SelectGuidanceSaveHost,SelectCameraHost,SelectReviewHost,SelectGuideHost,SelectActiveAreaHost {
     int save_calls=0,platform_calls=0,guide_sums=0;
+    std::shared_ptr<EventIntegers> normal_save_integers() override {return std::make_shared<EventIntegers>(20,0);}
+    std::shared_ptr<CameraAreas> camera_areas() override {return std::make_shared<CameraAreas>();}
     bool pressed(std::uint32_t) override {return false;}
     void play_button_sound() override {throw std::logic_error("unexpected sound");}
     std::shared_ptr<BuildingSlots> building_slots() override {return std::make_shared<BuildingSlots>();}
@@ -140,19 +142,19 @@ int main() {
         auto h=std::make_shared<Host>();h->room_button=false;h->state.events.loop_counter=0;
         SelectPreludeState prelude{0,0,0,-10};SelectTouchMoveState movement{false,0,0,0,-1};
         auto owner=std::shared_ptr<SelectFormPassState>(h,&h->state);
-        LateBindings late;SelectGuideState guide_state;SelectGuidePassHost guide_pass{*h,guide_state,late};
-        SelectUpdateBindings bindings{prelude,*h,owner,guide_pass,*h,*h,h->queue,*h,h->conditions,movement,*h,*h,h};
         SelectBuildingState building{-1,prelude.camera_x,0,movement.drag_distance,-1,3};
-        SelectTownButtonsState town{-1,0};TownBubbleState bubble{-1,nullptr,3};
         SelectCameraState camera{false,2,0,prelude.camera_x,building.camera_y,0,1000};
+        LateBindings late;SelectGuideState guide_state;SelectActiveAreaPassHost guide_pass{*h,guide_state,late,camera,late};
+        SelectUpdateBindings bindings{prelude,*h,owner,guide_pass,*h,*h,h->queue,*h,h->conditions,movement,*h,*h,h};
+        SelectTownButtonsState town{-1,0};TownBubbleState bubble{-1,nullptr,3};
         h->state.auto_save=true;
         check(update_select_form(bindings,building,late,town,bubble,late,late,camera,late,late),"full Update return");
-        check(prelude.camera_x==-9 && building.unlock_info_frames==2 && bubble.frames==2,"full update reaches movement and lifetimes");
+        check(prelude.camera_x==0 && camera.left_extent==-449 && camera.right_extent==320 && building.unlock_info_frames==2 && bubble.frames==2,"full update reaches movement and lifetimes");
         check(late.save_calls==1 && late.platform_calls==1 && !h->state.auto_save,"full update saves before late gates");
         check(late.guide_sums==2 && guide_state.flags->at(0)==1 && guide_state.flags->at(1)==0 && h->log.back()=="bgm","forced and late recovered guide calls before BGM");
         h->state.form.dialog=h->child;h->state.auto_save=true;h->log.clear();
         update_select_form(bindings,building,late,town,bubble,late,late,camera,late,late);
-        check(late.save_calls==1 && late.platform_calls==1 && bubble.frames==2 && prelude.camera_x==-9,"dialog skips the entire late continuation");
+        check(late.save_calls==1 && late.platform_calls==1 && bubble.frames==2 && prelude.camera_x==0,"dialog skips the entire late continuation");
         h->room_button=true;
         update_select_form(bindings,building,late,town,bubble,late,late,camera,late,late);
         check(bool(h->pending) && late.save_calls==1 && bubble.frames==2,"button return skips guidance and late continuation");

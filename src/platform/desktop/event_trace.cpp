@@ -106,7 +106,7 @@ void fixture(Host& h) {
         auto& c=h.conditions;auto& e=h.execution;
         if (key=="context_present") c.context_present=boolean();
         else if (key=="context_character_count") c.context_character_count=count();
-        else if (key=="sys_save_present") e.sys_save_present=boolean();
+        else if (key=="normal_save_present") e.normal_save_present=boolean();
         else if (key=="print_enabled") e.print_enabled=boolean();
         else if (key=="debug_enabled") c.debug_enabled=boolean();
         else if (key=="debug_rescue_count") c.debug_rescue_count=read<std::int32_t>();
@@ -121,12 +121,12 @@ void fixture(Host& h) {
                 if (!record) throw std::invalid_argument("counter for null event");
                 record->execution_count=value;
             }
-        } else if (key=="sys_save_strings") {
-            e.sys_save_strings=std::make_shared<std::vector<EventObject>>();
+        } else if (key=="normal_save_strings") {
+            e.normal_save_strings=std::make_shared<std::vector<EventObject>>();
             for (auto n=count();n>0;--n) {
                 const auto token=read<std::string>();
-                if (token=="null") e.sys_save_strings->push_back(nullptr);
-                else if (token.front()=='x') e.sys_save_strings->push_back(std::make_shared<std::string>(unhex(token.substr(1))));
+                if (token=="null") e.normal_save_strings->push_back(nullptr);
+                else if (token.front()=='x') e.normal_save_strings->push_back(std::make_shared<std::string>(unhex(token.substr(1))));
                 else throw std::invalid_argument("invalid string fixture");
             }
         } else if (key=="areas") {

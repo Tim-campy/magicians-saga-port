@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include "event_flow.hpp"
 namespace saga::core {
 struct SelectCameraState {
     bool dragging; // SelectForm+0x148.
@@ -16,6 +17,16 @@ public:
     virtual std::int32_t view_width() = 0; // Requires the current GameView, each call.
     virtual std::int32_t view_height() = 0;
 };
+struct CameraAreaRecord {std::int32_t state;};
+using CameraAreas=std::vector<std::shared_ptr<CameraAreaRecord>>;
+class SelectActiveAreaHost {
+public:
+    virtual ~SelectActiveAreaHost() = default;
+    virtual std::shared_ptr<EventIntegers> normal_save_integers() = 0; // AppData.save_ +0x198.
+    virtual std::int32_t view_width() = 0;
+    virtual std::shared_ptr<CameraAreas> camera_areas() = 0; // Fresh Data.areaData each call.
+};
+void set_select_active_x(SelectCameraState&,SelectActiveAreaHost&);
 std::int32_t camera_clamp(std::int32_t value,std::int32_t minimum,std::int32_t maximum);
 // GameView.GetGameWidth/Height; scaling uses wrapped int32 multiplication then binary32.
 std::int32_t scaled_view_dimension(std::int32_t pixels,float scale);

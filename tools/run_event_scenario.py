@@ -15,7 +15,7 @@ def fixture_tokens(state):
     if not isinstance(state, dict):
         raise ValueError('state must be an object')
     result = []
-    booleans = {'context_present', 'sys_save_present', 'print_enabled', 'debug_enabled'}
+    booleans = {'context_present', 'normal_save_present', 'print_enabled', 'debug_enabled'}
     scalars = {'context_character_count', 'debug_rescue_count', 'hero_level',
                'high_score', 'town_capacity', 'quest_data_count'}
     def number(value):
@@ -32,12 +32,12 @@ def fixture_tokens(state):
             result.append(flag(value))
         elif key in scalars:
             result.append(number(value))
-        elif key in {'areas', 'quests', 'characters', 'town_flags', 'buildings', 'sys_save_strings', 'execution_counts'}:
+        elif key in {'areas', 'quests', 'characters', 'town_flags', 'buildings', 'normal_save_strings', 'execution_counts'}:
             if not isinstance(value, list):
                 raise ValueError(f'{key} must be an array')
             result.append(str(len(value)))
             for entry in value:
-                if key == 'sys_save_strings':
+                if key == 'normal_save_strings':
                     if entry is not None and not isinstance(entry, str):
                         raise ValueError('expected string or null')
                     result.append('null' if entry is None else 'x' + entry.encode('utf-8').hex())
