@@ -29,7 +29,7 @@ The plan in one page. Agents take the first unblocked task of the current work p
 ## Next tasks
 
 ### 1. Events and scripts
-- [ ] Compose culture selection with the outer exception filter using the locally extracted 130-case neutral map; LCID lookup and constructor failure are recovered, with AOSP duplicate selection explicitly awaiting device comparison. Trace culture setters and collation availability/backend before replacing prefix/sign providers.
+- [ ] Bind CreateSpecificCulture/LCID construction and invariant data to the recovered current-culture cache/fallback using the extracted tables and 130-case neutral map; then compose thread/default-culture precedence. AOSP duplicate selection awaits device comparison. Trace culture setters and collation availability/backend before replacing prefix/sign providers.
 - [ ] Bind decoded billing-item/catalog providers and complete notification manager adapters, preserving task execution gates.
 - [ ] Port decor/town/capture callbacks, then bind update_select_form to a desktop host with orientation/image-dictionary storage, decoded saves, camera dimensions and form factories.
 - [ ] Find the consumer of `hour_ != -1`, the writer of `SubForm.delayEvent_` (`+0x1d0`) and the remaining effect opcodes of the 15-entry table at `0x627b6e`.
