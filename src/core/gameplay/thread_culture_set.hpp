@@ -12,7 +12,8 @@ public:
     virtual std::shared_ptr<CultureInstance> thread_ui_culture() = 0;
     virtual void write_thread_culture(std::shared_ptr<CultureInstance>) = 0;
     virtual void write_thread_ui_culture(std::shared_ptr<CultureInstance>) = 0;
-    virtual bool disable_async_culture_flow() = 0;
+    // AppContextSwitches.NoAsyncCurrentCulture: static readonly bool with no initializer.
+    virtual bool disable_async_culture_flow() { return false; }
     virtual std::shared_ptr<AsyncCultureSlot> async_culture_slot() = 0;
     // Construct with AsyncLocalSetCurrentCulture notification callback.
     virtual std::shared_ptr<AsyncCultureSlot> make_async_culture_slot() = 0;

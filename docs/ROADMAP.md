@@ -29,7 +29,7 @@ The plan in one page. Agents take the first unblocked task of the current work p
 ## Next tasks
 
 ### 1. Events and scripts
-- [ ] Recover GetThreadLocalContext backend at 0x1ecbce0 and AppContextSwitches static +1 initialization; bind live entry state and native lazy culture population (synchronization slot selection/setter, public Run/capture/copies/switch/culture rollback composed). AOSP duplicate selection awaits device comparison. Trace collation availability/backend before replacing prefix providers; recover further Hashtable mutations only if reached.
+- [ ] Recover native lazy culture population and bind live entry state (native null synchronization fallback and initial async-culture switch resolved; synchronization selection/setter, public Run/capture/copies/switch/culture rollback composed). AOSP duplicate selection awaits device comparison. Trace collation availability/backend before replacing prefix providers; recover further Hashtable mutations only if reached.
 - [ ] Bind decoded billing-item/catalog providers and complete notification manager adapters, preserving task execution gates.
 - [ ] Port decor/town/capture callbacks, then bind update_select_form to a desktop host with orientation/image-dictionary storage, decoded saves, camera dimensions and form factories.
 - [ ] Find the consumer of `hour_ != -1`, the writer of `SubForm.delayEvent_` (`+0x1d0`) and the remaining effect opcodes of the 15-entry table at `0x627b6e`.

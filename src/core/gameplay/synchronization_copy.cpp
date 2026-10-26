@@ -21,6 +21,8 @@ AsyncValue copy_synchronization_context(AsyncValue value){
     if(!value)throw CultureManagedException("null synchronization context");
     return std::static_pointer_cast<SynchronizationContext>(value)->create_copy();
 }
+// GetThreadLocalContext -> 0x1ecbce0 -> native 0xfcf1ac returns null in this APK.
+AsyncValue native_synchronization_fallback(){return nullptr;}
 // SynchronizationContext.Current 0x1ec3658; CurrentExplicit 0x1ecbe8c aliases it.
 AsyncValue current_synchronization_context(const ThreadExecutionState& thread,const SynchronizationFallback& fallback){
     if(thread.context&&thread.context->synchronization)return thread.context->synchronization;

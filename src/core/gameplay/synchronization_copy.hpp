@@ -30,9 +30,10 @@ public:
 };
 // Erased values must have been stored through a SynchronizationContext base pointer.
 AsyncValue copy_synchronization_context(AsyncValue);
-// GetThreadLocalContext remains a host boundary, invoked only for an absent slot.
+// Shipped Android native fallback returns null; an explicit host override remains possible.
 using SynchronizationFallback = std::function<AsyncValue()>;
-AsyncValue current_synchronization_context(const ThreadExecutionState&,const SynchronizationFallback&);
-AsyncValue current_no_flow_synchronization_context(const ThreadExecutionState&,const SynchronizationFallback&);
+AsyncValue native_synchronization_fallback();
+AsyncValue current_synchronization_context(const ThreadExecutionState&,const SynchronizationFallback& = native_synchronization_fallback);
+AsyncValue current_no_flow_synchronization_context(const ThreadExecutionState&,const SynchronizationFallback& = native_synchronization_fallback);
 void set_synchronization_context(ThreadExecutionState&,AsyncValue,ExecutionContextCopyHost&);
 }

@@ -17,6 +17,8 @@ struct Copy:ExecutionContextCopyHost{
 };
 int main(){
     Copy copy;ThreadExecutionState selected;int fallback_calls=0;
+    check(!current_synchronization_context(selected)&&!current_no_flow_synchronization_context(selected));
+    check(!selected.context);
     auto fallback_value=std::make_shared<int>(42);
     SynchronizationFallback fallback=[&](){++fallback_calls;return fallback_value;};
     check(current_synchronization_context(selected,fallback)==fallback_value);
@@ -24,6 +26,7 @@ int main(){
     check(!selected.context&&fallback_calls==2);
     auto installed=std::make_shared<int>(7);
     set_synchronization_context(selected,installed,copy);
+    check(current_synchronization_context(selected)==installed&&current_no_flow_synchronization_context(selected)==installed);
     check(current_synchronization_context(selected,fallback)==installed);
     check(current_no_flow_synchronization_context(selected,fallback)==installed&&fallback_calls==2);
     selected.context->synchronization.reset();
@@ -38,6 +41,7 @@ int main(){
     copy.fail=false;set_synchronization_context(selected,nullptr,copy);
     check(selected.context!=outer&&!selected.belongs_to_outer_scope&&copy.calls==2);
     check(!selected.context->synchronization&&!selected.context->synchronization_no_flow&&outer->synchronization==installed);
+    check(!current_synchronization_context(selected)&&!current_no_flow_synchronization_context(selected));
     check(current_synchronization_context(selected,[]()->AsyncValue{return nullptr;})==nullptr);
     try{current_synchronization_context(selected,[]()->AsyncValue{throw CultureManagedException("fallback failure");});check(false);}catch(const CultureManagedException&){}
     auto base=std::make_shared<SynchronizationContext>();base->properties=7;

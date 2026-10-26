@@ -34,8 +34,16 @@ struct Host:ThreadCultureWriteHost,CurrentCultureHost,AsyncExecutionHost {
     std::shared_ptr<CultureInstance> invariant_culture()override{calls.push_back("invariant");if(++invariant_calls==2)throw CultureManagedException("second invariant query");return user;}
 };
 struct NoFailure:ContextNotificationFailureHost{void fail_fast(std::exception_ptr)override{check(false);}};
+struct DefaultFlowHost:Host {
+    bool disable_async_culture_flow()override{return ThreadCultureWriteHost::disable_async_culture_flow();}
+};
 int main(){
     auto incoming=std::make_shared<CultureInstance>();
+    {DefaultFlowHost h;CurrentCultureState s;h.thread=h.user;h.real=true;
+        check(!h.disable_async_culture_flow());
+        set_thread_culture(incoming,h,s,h);
+        check(h.thread==incoming&&h.real_slot&&h.execution->values->size()==1);
+        check(h.execution->notifications->keys.size()==1);}
     {Host h;CurrentCultureState s;h.thread=h.user;h.disable=false;h.real=true;
         set_thread_culture(incoming,h,s,h);
         check(h.thread==incoming && h.execution->values->size()==1 && h.execution->notifications->keys.size()==1);
