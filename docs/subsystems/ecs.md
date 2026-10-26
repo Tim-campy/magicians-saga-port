@@ -17,6 +17,10 @@ All addresses are ELF VAs (load bias 0; Ghidra exports add `0x100000`). Numbers 
 - `SystemManager`: `+0x10` OnSystemEnabled delegate, `+0x18` OnSystemDisabled delegate, `+0x20` all systems, `+0x28` IInitSystem list, `+0x30` IUpdateSystem list, `+0x48` IPausable list, `+0x70` byte isPause; further collections at `+0x38,+0x40,+0x50,+0x58,+0x60` (draw/other lists, contracts not reconstructed).
 - `BaseSystem`: `+0x10` manager reference (used by `BasePauseSystem` hooks), `+0x18` byte enabled. Vtable slots: 4 OnEnabled, 5 OnDisabled, 6 OnPause, 7 Serialize, 8 Deserialize, 9 SerializeExtra, 10 DeserializeExtra, 11 OnBeforeSerialize, 12 OnDeserialized.
 
+### Contact collision projections
+
+Position uses slot 0 with binary32 x/y/z at +0x10/+0x14/+0x18; Bullet presence uses slot 29. Human slot 14 contributes int32 state +0x24 and invincibleTime +0x70; Enemy slot 24 contributes level +0x10 and flags +0x14. Direction slot 12 has its locked byte at +0x14. These are borrowed portable projections in `contact_collision.hpp` and `combat_records.hpp`, not complete serialization layouts. Evidence: OnCollide at 0x114f604, local `contact-guards/` exports and metadata field offsets; see [combat.md](combat.md#contact-collision-orchestration).
+
 ### Projectile hit components
 
 The generated getters confirm Speed slot 1, Projectile slot 27, Collision slot 32 and Damage slot 33. Projectile.parent (+0x38) supplies the attacker; Damage.value/attribute (+0x10/+0x14) supply numeric attack inputs. OnBulletHit removes Projectile and Collision after impact, then stores zero in Speed.vx/vy/vz (+0x10/+0x14/+0x18). Generated removers notify through entity removal before returning the captured object to ComponentFactory stacks. Portable component projections and the handler live in `projectile_hit`; unobserved shape/motion fields are not invented. See [combat.md](combat.md#damage-callers) for guards and callback-sensitive ordering.

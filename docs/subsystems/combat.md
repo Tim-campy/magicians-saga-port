@@ -1,6 +1,6 @@
 # Combat
 
-Combat is driven by ECS systems: `HumanSystem` (party targeting and attack interval), `EnemySystem` (enemy attack timing, `Damage`, `Defeat`) and the collision/projectile handlers that call `Damage`. The hit test, damage arithmetic up to the HP subtraction, the attribute-affinity tables, the two Easing factors and the defeat trigger are established from static ARM64 analysis. The port composes hit testing, damage arithmetic, parameter subtraction and the post-callback death predicate with an explicit RNG source and host interface. A seeded public System.Random backend is available. A resolved-record host now connects character/equipment/enemy parameters and event callbacks; ECS entity-to-record lookup, effects and playable combat remain open.
+Combat is driven by ECS systems: `HumanSystem` (party targeting and attack interval), `EnemySystem` (enemy attack timing, `Damage`, `Defeat`) and the collision/projectile handlers that call `Damage`. The hit test, damage arithmetic up to the HP subtraction, the attribute-affinity tables, the two Easing factors and the defeat trigger are established from static ARM64 analysis. The port composes hit testing, damage arithmetic, parameter subtraction and the post-callback death predicate with an explicit RNG source and host interface. A seeded public System.Random backend is available. A resolved-record host now connects character/equipment/enemy parameters and event callbacks; ECS entity-to-record lookup and projectile/contact entry orchestration are ported; concrete effects, state services and playable combat remain open.
 
 ## Overview
 
@@ -34,7 +34,7 @@ Equipment getters and attribute bonuses now have portable contracts. Human base 
 | main.AppData.GetAttributesAffinity | game:0x0600025d | Affinity selector 0..3 | high |
 | ecs.EnemySystem.Damage | game:0x06000e82 | Hit test, damage, Sub, effects, event 15, death flag | medium |
 | ecs.EnemySystem.OnBulletHit | game:0x06000e7e | Projectile hit -> Damage -> Defeat | medium |
-| ecs.EnemySystem.OnCollide | game:0x06000e7d | Contact hit, two Damage call sites | medium |
+| ecs.EnemySystem.OnCollide | game:0x06000e7d | Contact hit, two Damage call sites and recoil | high |
 | ecs.EnemySystem.Defeat | game:0x06000e83 | Death sequence and drop selection (see rewards.md) | high |
 | ecs.EnemyComponent.Check | game:0x06000d47 | Flag test on +0x14 via BitUtil.Check | medium |
 
@@ -136,7 +136,19 @@ After Damage, true calls Defeat(receiver); either outcome then re-reads Projecti
 
 Generated removers capture the old component, call entity removal (including notifications), then push the captured object onto its ComponentFactory pool stack. Projectile uses static +0xe8; Collision uses +0x30. The port keeps return-to-pool explicit and after ComponentSlots.remove, so a late failure does not roll back removal or earlier damage. Complete pool initialization and collision geometry remain outside this handler. Only direct BL/B callers were searched.
 
+### Contact collision orchestration
+
+`EnemySystem.OnCollide` (0x114f604, 1600 bytes) selects the first Enemy entity, otherwise the second. Bullet slot 29 on either input delegates to `OnBulletHit`, preferring the first bullet. Without bullets, Damage slot 33 on either input selects the first such source. That route returns if there is no Enemy or its destroyed byte +0x2c is nonzero; otherwise it passes Damage.parent +0x18, value +0x10 and attribute +0x14 to Damage, calls Defeat on a true result, then continues the common reaction even after Defeat. Without a Damage component, a missing Enemy faults.
+
+The common reaction re-resolves EnemyData, calls CutInAnimation with wrapping int32 `(enemySeb << 2) + 24` and `(enemySeb << 2) | 2`, locks Direction if present and creates effect `(0,2,0)` at `(x,y+10,z+12)`. It then selects the first Human, otherwise the second; no Human or human state 4/5 returns after this effect. EnemyData is resolved again. Data flags bit 0 selects FlyAway(enemy,-100,100,-100,-50,true), enemy state 4 and contact sound, bypassing damage and recoil.
+
+Otherwise enemy P3 at the current EnemyComponent level is evaluated before reading human invincibleTime. Values greater than zero skip Damage but still recoil. Damage receives the enemy as attacker, human as receiver, P3 and the captured EnemyData attribute. A lethal result calls FlyAway(human,-100,100,50,100,false), ChangeAnimation(16,1), effect `(0,24,0)` at `(x,y+10,z)`, then human state 4. It does not call EnemySystem.Defeat for the human.
+
+Recoil queries stage progress at the enemy's current z. Distance is binary32 3 when signed progress is greater than 79 or EnemyComponent flags bit 0 is set. Otherwise distance is 10, raised to 16 only when CharacterData flags bit 2 (isSub) is set and human z is strictly greater than the member hero's z. Equal/unordered comparisons retain 10. The current enemy z is reduced by distance, speed.z becomes negative distance, enemy state becomes 3, and contact sound is played last. Human invincibility and a nonlethal/missed Damage result do not bypass recoil. Data and component flag fields are distinct.
+
 ## Port
+
+- `contact_collision.hpp/.cpp` implements the complete OnCollide orchestration over existing component slots, record resolution, enemy parameters and projectile handling. `ContactCollisionHost` leaves concrete Damage/Defeat, FlyAway, animation/effects, state transitions, stage progress, hero lookup and sound explicit. `tests/test_contact_collision.cpp` checks route precedence, callback-driven record changes, lethal ordering, state/invincibility guards, all recoil choices, NaN comparison and partial mutation on late failure. No runtime equivalence is claimed.
 
 - `projectile_hit.hpp/.cpp::on_projectile_hit` ports the complete entry-point ordering over ComponentSlots. ProjectileHitHost supplies damage, defeat, impact and component-pool return; these are explicit game services, not silently omitted effects. `tests/test_projectile_hit.cpp` covers guards, owner reread, removal notifications before pool return, miss/nonlethal cleanup, callbacks removing components and late speed failures. `tests/test_ecs_combat.cpp` connects the handler to EcsDamageHost and verifies lethal damage, stage accounting, defeat invocation, impact and cleanup in one scenario. Defeat animation/spawn behavior, impact visuals and collision detection remain external.
 
@@ -163,9 +175,11 @@ Generated removers capture the old component, call entity removal (including not
 - `tests/test_combat_damage.cpp` (CTest `combat_damage_contract`) covers read/draw order, miss short circuit, critical exclusivity, attribute matching, human/enemy/sentinel floors, DEBUG, extra values, callback-driven death/resurrection, captured identity, overflow, malformed affinity/parameter failures and a seeded backend vector (seed 42: damage 47, four draws). These are static-contract tests, not Android observations.
 - `src/core/gameplay/combat_parameters.hpp/.cpp` implements the three equipment getters with one shared function, entity total and elemental-bonus aggregation, and `Parameter.get_rate`. `EquipmentParameters` uses the existing nullable jagged int32 representation; it is a projection, not a complete equipment-table loader. `MemberParameterHost` keeps base growth/shop data and live equipment resolution explicit. Tests cover provider order, wrapped totals, malformed rows, level boundaries, extra maxima and ARM division edges; a damage integration fixture uses defence 36, bonus 30 and rate 25 to produce damage 58 from attack 100 at 100% variation. This establishes arithmetic integration, not live ECS/data loading.
 - Character growth and main-character shop additions now live in `combat_parameters.cpp` too. `character_parameter`, `member_base_parameter` and `member_base_parameter_at_level` preserve endpoint/max/provider order and the extra growth term. `CharacterParameterHost` supplies live maximum levels and shop records, and `member_base_parameter` can back the existing member-total provider. Tests cover levels 1/100/650/1200, explicit-level override, extra growth restricted to indices 0/1, negative endpoints, truncation before easing, main/nonmain/unmapped shop gates, mapping, wrapped purchases and malformed rows. Static combat table loading is implemented in combat_tables; live ECS binding and saved-state restoration remain pending.
-- Missing: concrete parameter resolution (GetTotalParamValue, EnemyData), attack timing, effective live RNG configuration/seeding, effect selection/animation/diagnostics, event-15 dispatch, collision guards and full Defeat integration. `Damage` remains **documented**, because this port covers its numeric/state composition with explicit services rather than the entire method.
+- Missing: concrete parameter resolution (GetTotalParamValue, EnemyData), attack timing, effective live RNG configuration/seeding, effect selection/animation/diagnostics, event-15 dispatch and full Defeat integration. `Damage` remains **documented**, because this port covers its numeric/state composition with explicit services rather than the entire method.
 
 ## Evidence
+
+- Contact flow: local `research/exports/damage-consumers/M37626_OnCollide.asm`, ELF 0x114f604. Helper exports in `research/exports/contact-guards/` establish Bullet slot 29, Position slot 0, BaseData.Check bit intersection and CharacterData.isSub bit 2. Metadata identifies Human state +0x24/invincibleTime +0x70 and Enemy flags +0x14. Confidence high for branching, payloads and ordering; host services remain separately scoped.
 
 - Projectile entry: local `research/exports/damage-consumers/M37627_OnBulletHit.asm` (0x114f4ac, 344 bytes); slots/removers in `research/exports/projectile-hit/`. Metadata offsets identify Damage.value/attribute, Projectile.parent and Speed.vx/vy/vz. Pool method usages at GOT 0x2730a48 and 0x27307a0 resolve to public `Stack<T>.Push`; no stack implementation was reverse engineered. Confidence high for guards, reads, calls and write ordering.
 
@@ -201,7 +215,7 @@ Generated removers capture the old component, call entity removal (including not
 2. (blocking) Effective live RNG selection and seeding (see [rng.md](rng.md)); explicit-seed System.Random damage sequences are now reproducible in contract tests.
 3. (blocking) Value of `MyConfig.FPS` and `MyConfig.DEBUG` in release; scheduler cadence consuming the attack interval; writers of `enemy+0x1c`.
 4. Effect tables +0x450/+0x458 and the effect/animation side of `Damage`; other event-15 subscribers.
-5. Full guards of `OnCollide` and `SearchAndAttack` filters; state numbers 2 and 4; indirect callers of `Damage`. OnBulletHit guards and payload are now ported.
+5. `SearchAndAttack` filters; state numbers 2 and 4 and their transition implementations; indirect callers of `Damage`. OnBulletHit and OnCollide guards, payloads and call ordering are now ported; FlyAway, stage progress and contact presentation/state services still need concrete bindings.
 6. (blocking) Resolve character/shop/equipment records from live ECS entities and restore saved levels/purchases. Static combat table projections, maximum-table initial values and the maximum/shop provider are ported. Character growth and main-character shop-upgrade arithmetic are ported. Equipment interpolation, total ordering and elemental-bonus selection are established above.
 7. Whether the affinity/rate statics are modified after `AppData..cctor`.
 8. Runtime comparison of host libm versus Android libm for the sine path; the general easing arithmetic and enemy parameter consumer are ported and statically tested. No bitwise runtime equivalence is claimed.

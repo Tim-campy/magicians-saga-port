@@ -5,7 +5,7 @@ namespace saga::core {
 inline constexpr std::int32_t projectile_speed_slot=1,projectile_slot=27,
     projectile_collision_slot=32,projectile_damage_slot=33;
 struct ProjectileLink final:Component {ComponentSlots* parent=nullptr;}; // +0x38.
-struct ProjectileDamage final:Component {std::int32_t value=0,attribute=0;}; // +0x10/+0x14.
+struct ProjectileDamage final:Component {std::int32_t value=0,attribute=0;ComponentSlots* parent=nullptr;}; // +0x10/+0x14/+0x18.
 struct ProjectileSpeed final:Component {float x=0,y=0,z=0;}; // +0x10/+0x14/+0x18.
 struct ProjectileCollision final:Component {}; // Presence only; collision shape remains external.
 class ProjectileHitHost {

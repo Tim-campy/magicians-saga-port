@@ -364,3 +364,8 @@ add_executable(test_projectile_hit test_projectile_hit.cpp)
 target_link_libraries(test_projectile_hit PRIVATE projectile_hit)
 project_warnings(test_projectile_hit)
 add_test(NAME projectile_hit_contract COMMAND test_projectile_hit)
+
+add_executable(test_contact_collision test_contact_collision.cpp)
+target_link_libraries(test_contact_collision PRIVATE contact_collision)
+project_warnings(test_contact_collision)
+add_test(NAME contact_collision_contract COMMAND test_contact_collision)
