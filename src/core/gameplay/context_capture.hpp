@@ -17,4 +17,7 @@ std::shared_ptr<AsyncExecutionState> capture_execution_context(ThreadExecutionSt
 void run_execution_context(ThreadExecutionState&,std::shared_ptr<AsyncExecutionState>,
     const std::function<void(AsyncValue)>& callback,AsyncValue state,bool preserve_synchronization,
     ContextNotificationFailureHost&);
+// Public three-argument Run: requires a new capture or the reusable default sentinel.
+void run_captured_execution_context(ThreadExecutionState&,std::shared_ptr<AsyncExecutionState>,
+    const std::function<void(AsyncValue)>& callback,AsyncValue state,ContextNotificationFailureHost&);
 }

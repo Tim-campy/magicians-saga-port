@@ -52,6 +52,13 @@ std::shared_ptr<AsyncExecutionState> capture_execution_context(ThreadExecutionSt
     result->values=values;result->notifications=notifications;result->flags=1;
     return result;
 }
+// ExecutionContext.Run 0x1ec6f6c.
+void run_captured_execution_context(ThreadExecutionState& thread,std::shared_ptr<AsyncExecutionState> target,
+    const std::function<void(AsyncValue)>& callback,AsyncValue state,ContextNotificationFailureHost& failure){
+    if(!target)throw CultureManagedException("null execution context capture");
+    if(!(target->flags&5U))throw CultureManagedException("execution context capture already consumed");
+    run_execution_context(thread,target,callback,state,false,failure);
+}
 // ExecutionContext.RunInternal 0x1eca9d0 (four-argument Run 0x1eca954 delegates here).
 void run_execution_context(ThreadExecutionState& thread,std::shared_ptr<AsyncExecutionState> target,
     const std::function<void(AsyncValue)>& callback,AsyncValue state,bool preserve_synchronization,

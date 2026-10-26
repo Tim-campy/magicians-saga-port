@@ -269,3 +269,8 @@ add_executable(test_context_capture test_context_capture.cpp)
 target_link_libraries(test_context_capture PRIVATE context_capture)
 project_warnings(test_context_capture)
 add_test(NAME context_capture_contract COMMAND test_context_capture)
+
+add_executable(test_synchronization_copy test_synchronization_copy.cpp)
+target_link_libraries(test_synchronization_copy PRIVATE synchronization_copy context_capture)
+project_warnings(test_synchronization_copy)
+add_test(NAME synchronization_copy_contract COMMAND test_synchronization_copy)
