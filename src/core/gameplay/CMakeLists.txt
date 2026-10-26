@@ -109,3 +109,4 @@ target_link_libraries(synchronization_copy PUBLIC async_local_values execution_c
 saga_library(collation_selection collation_selection.cpp)
 saga_library(collation_index collation_index.cpp)
 target_link_libraries(collation_index PUBLIC collation_tables)
+saga_library(experience_progression experience_progression.cpp)

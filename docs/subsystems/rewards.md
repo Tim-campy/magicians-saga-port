@@ -1,6 +1,6 @@
 # Rewards, quest result and town return
 
-Enemy defeat spawns drop entities (EXP orb, treasure); collecting a drop credits a per-stage accumulator (`StageSystem.drop_`); only the boss-cleared path through `StageSystem.ShowQuestResult` turns that accumulator into money, crystals, prisoners, character EXP/levels and item unlocks. Every exit goes through `StageSystem.ReturnTown`, which records the quest, writes member levels/EXP back to `CharaData`, and sends event 31 (`game.QuestResult`) to `TownSystem.OnReturnFromQuest`. The order and arithmetic are established statically; the port has the accumulator mutation and the item-stock rule only.
+Enemy defeat spawns drop entities (EXP orb, treasure); collecting a drop credits a per-stage accumulator (`StageSystem.drop_`); only the boss-cleared path through `StageSystem.ShowQuestResult` turns that accumulator into money, crystals, prisoners, character EXP/levels and item unlocks. Every exit goes through `StageSystem.ReturnTown`, which records the quest, writes member levels/EXP back to `CharaData`, and sends event 31 (`game.QuestResult`) to `TownSystem.OnReturnFromQuest`. The port implements accumulator mutation, item-stock rules, experience cost accessors and the per-member quest-result experience/level mutation. Full reward presentation and stage integration remain open.
 
 ## Overview
 
@@ -39,6 +39,8 @@ ReturnTown(code) ── [code!=0] UpdateQuestRecord(code,0,0) ── CleanUp ─
 | main.AppData.AddMoney | game:0x060001a1 | Money += int32 via 64-bit add | medium |
 | main.AppData.AddCrystal | game:0x060001a7 | Crystal += int32 via 64-bit add | medium |
 | data.QuestData.AddRescuedPrisoner | game:0x060011f1 | QuestData+0xa0 += n (32-bit) | high |
+| data.CharaData.GetExp | game:0x06001079 | witchExp_[0], distinct from saved exp_ | high |
+| data.TableData.GetExp | game:0x0600120b | wrap32(exp_ * rate) / 100, truncation toward zero | high |
 | data.CharaData.GetNextExp | game:0x06001078 | Level cost from tableData | high |
 | data.CharaData.set_level | game:0x0600106c | Clamp(1,1200) -> level_ +0x40 | high |
 | data.CharaData.Recruit | game:0x0600107b | recruit_=1, Find(true) | high |
@@ -87,8 +89,8 @@ Jump table 0x645c36 relative to 0x1162718 (×4): 0 wait for external condition -
 
 1. Start from drop_ totals; for each treasure id in order (duplicates processed again): TreasureData exp_ +0x34, money_ +0x38, crystal_ +0x3c added (32-bit) to local totals; then weaponId +0x40, charaId +0x44, clothId +0x48, hatId +0x4c in that order, -1 skipped, others bounds-checked indices. For each object: if `get_isUnfound` -> virtual slot 8 (class+0x1b8 = `BaseData.Find`, no override in the four types) with true; equipment/cloth/hat -> `AddStock(1)`; character -> `Recruit()`; then a pair `[id, 1]` is appended to result-display lists (display only).
 2. `AppData.AddMoney(totalMoney)` 0x1164c04; `AddCrystal(totalCrystal)` 0x1164c20; `QuestData.AddRescuedPrisoner(drop.prisonersNum)` 0x1164c3c; `UpdateQuestRecord(0, totalExp, totalMoney)` 0x1164c50.
-3. EXP: enumerates `MemberSystem.members_` (+0x28; `World.GetSystem<MemberSystem>` resolved). For each member with `ParameterComponent[0].value >= 1`: HumanComponent exp (+0x20) += totalExp (wrap32, full total per member, no split). Level-up loop from the previous level_ (+0x1c): cost = `GetNextExp(idx)`; stop if wrap32(exp - cost) < 0; else exp -= cost, level_ = Clamp(level_+1, 1, 1200), idx++; also bounded by the entry count of `Data.tableData`.
-4. `GetNextExp` (0x116d9e4): idx clamped to [1,1200]; `trunc(wrap32(tableData[idx]+0x24 * CharaData+0x9c) / 100)`. Field names and values not recovered.
+3. EXP: enumerates `MemberSystem.members_` (+0x28; `World.GetSystem<MemberSystem>` resolved). For each member with `ParameterComponent[0].value >= 1`: HumanComponent exp (+0x20) += totalExp (wrap32, full total per member, no split). Level-up loop from the previous level_ (+0x1c): cost = `GetNextExp(idx)`; stop if signed exp < cost (ARM64 SUBS/B.LT uses overflow-aware signed comparison); else exp -= cost, level_ = Clamp(level_+1, 1, 1200), idx++; also bounded by the entry count of `Data.tableData`.
+4. `GetNextExp` (0x116d9e4): idx clamped to [1,1200]; `trunc(wrap32(tableData[idx]+0x24 * CharaData+0x9c) / 100)`. Metadata identifies these fields as TableData.exp_ and CharaData.needExpRate_; loaded values remain to be bound.
 - `AddMoney`/`AddCrystal`: distinct slots of the array at AppData+0x198 -> +0x28; read via helper, sign-extended int32 added with a 64-bit ADD, written back via helper. No clamp in the body; helper limits unknown.
 
 ### Return to town
@@ -109,11 +111,22 @@ Jump table 0x645c36 relative to 0x1162718 (×4): 0 wait for external condition -
 
 `AddStock(n)` for EquipmentData (stock_ +0x2c), ClothData (+0x24), HatData (+0x64): if state_ != 1 -> `Find(true)`; stock = `ClampMax(wrap32(stock + n), 1)` (no lower bound). So stock never exceeds 1, a found item does not get new_ again, negatives and INT_MAX+1 -> INT_MIN pass through. `Recruit` (0x116db84): recruit_ (+0x50) = 1 and `Find(true)` unconditionally (re-marks new_); no gameplay entity created.
 
+### Experience progression cluster
+
+CharaData.GetExp (`0x116db54`) returns index 0 of witchExp_ (+0x20); it does not read saved exp_ (+0x44). A missing/empty array faults. TableData.GetExp (`0x116db30`) and CharaData.GetNextExp (`0x116d9e4`) use the same wrapping int32 product followed by signed division by 100, truncating toward zero. GetNextExp first clamps its level argument to [1,1200], indexes Data.tableData without removing gaps, and multiplies that row's exp_ (+0x24) by CharaData.needExpRate_ (+0x9c). A missing row or out-of-range table faults rather than supplying a cost.
+
+The per-member mutation inside ShowQuestResult (`0x1164d30..0x1164dd0`) runs only for parameter slot 0 value >=1. It grants the entire total EXP to each eligible member using wrap32 addition; it does not divide the reward among members. Its loop cursor starts at the entry level, checks the current table count on every pass, resolves the current character cost, and compares the live experience against that cost as signed int32. Only a successful comparison stores the wrapping subtraction and clamps wrap32(level+1) to [1,1200]. The separate cursor increments even at the level cap. Zero/negative costs are not rejected, and a later data failure does not undo earlier grants or level changes.
+
+Correction to the earlier description: testing the wrapped difference for negativity is not equivalent to ARM64 SUBS/B.LT. For example, INT_MAX experience and cost -1 accept the level-up and store INT_MIN; INT_MIN experience and cost 1 reject it. Tests preserve both edge cases. No claim is made that these extreme values occur during ordinary play.
+
+Evidence: local `research/exports/game-experience/`, bounded ARM64 exports for the three data methods and complete ShowQuestResult. Relocation-aware field offsets resolve the game metadata backing fields; their stored names are not inferred from the arithmetic. Confidence high for these contracts. Limits: live character/table loading, member enumeration, reward UI and Android comparison remain open.
+
 ## Port
 
 - `src/core/gameplay/stage_rewards.hpp/.cpp`: `StageRewards{experience, money, prisoners, treasure_ids}` + `record_collected_drop(rewards, type, value)` (only the OnCollectedDrop accumulator switch, no effects/cleanup); `ItemStock{discovery_state, is_new, stock}` + `add_item_stock(item, amount)` (AddStock with its Find hook).
 - Test `tests/test_stage_rewards.cpp` (CTest `stage_rewards_contract`): mixed sequence, separate totals, prisoner payload ignored, duplicate/negative ids, unknown types, overflow of the three sums; first grant, duplicate cap, state != 1, negative amount, overflow both ways.
-- Missing: Defeat, CreateDrop, collection cadence, ShowQuestResult composition, AddMoney/AddCrystal helpers, level-up loop and GetNextExp table, QuestRecord update, ReturnTown/OnFinish, event 31, high score.
+- [experience_progression.cpp](../../src/core/gameplay/experience_progression.cpp) implements the three data accessors and the per-member level-up loop with a live table/cost host. [Tests](../../tests/test_experience_progression.cpp) cover eligibility, full rewards, multiple levels, cap/cursor separation, zero/negative costs, overflow, table gaps and partial mutation on failure.
+- Missing: Defeat, CreateDrop, collection cadence, full ShowQuestResult composition, AddMoney/AddCrystal helpers, loaded experience table/rates, QuestRecord update, ReturnTown/OnFinish, event 31, high score.
 
 ## Evidence
 
@@ -129,7 +142,7 @@ Jump table 0x645c36 relative to 0x1162718 (×4): 0 wait for external condition -
 
 ## Open questions
 
-1. (blocking) Loaded data for EnemyData exp_/treasureDrop_, TreasureData, CharaData+0x9c and tableData+0x24 (needs the data loaders).
+1. (blocking) Loaded data for EnemyData exp_/treasureDrop_, TreasureData, CharaData.needExpRate_ (+0x9c) and TableData.exp_ (+0x24) (needs the data loaders).
 2. (blocking) RNG backend for `Hits1000` drop rolls (see [rng.md](rng.md)).
 3. Contracts of the AddMoney/AddCrystal value helpers (SecureLong-like? limits) and save persistence of money, records and high score.
 4. `TreasureData.get_isBossReward` semantics; `CreateDrop` types 1/2 and its other jump targets; who creates money/prisoner drops.

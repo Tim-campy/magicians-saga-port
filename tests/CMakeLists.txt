@@ -289,3 +289,8 @@ add_executable(test_collation_index test_collation_index.cpp)
 target_link_libraries(test_collation_index PRIVATE collation_index)
 project_warnings(test_collation_index)
 add_test(NAME collation_index_contract COMMAND test_collation_index)
+
+add_executable(test_experience_progression test_experience_progression.cpp)
+target_link_libraries(test_experience_progression PRIVATE experience_progression)
+project_warnings(test_experience_progression)
+add_test(NAME experience_progression_contract COMMAND test_experience_progression)

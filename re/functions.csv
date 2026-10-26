@@ -4003,8 +4003,8 @@ game:0x06001074,game:0x06001074,data,,8,0x116d808
 game:0x06001075,game:0x06001075,data,,328,0x116d810
 game:0x06001076,game:0x06001076,data,,12,0x116d958
 game:0x06001077,game:0x06001077,data,,128,0x116d964
-game:0x06001078,data.CharaData.GetNextExp,data,documented,232,0x116d9e4
-game:0x06001079,game:0x06001079,data,,40,0x116db54
+game:0x06001078,data.CharaData.GetNextExp,data,reimplemented,232,0x116d9e4
+game:0x06001079,data.CharaData.GetExp,data,reimplemented,40,0x116db54
 game:0x0600107a,game:0x0600107a,data,,8,0x116db7c
 game:0x0600107b,data.CharaData.Recruit,data,documented,24,0x116db84
 game:0x0600107c,game:0x0600107c,data,,12,0x116db9c
@@ -4401,7 +4401,7 @@ game:0x06001207,game:0x06001207,data,,8,0x11732b8
 game:0x06001208,game:0x06001208,data,,8,0x11732c0
 game:0x06001209,game:0x06001209,data,,8,0x11732c8
 game:0x0600120a,game:0x0600120a,data,,280,0x11732d0
-game:0x0600120b,game:0x0600120b,data,,36,0x116db30
+game:0x0600120b,data.TableData.GetExp,data,reimplemented,36,0x116db30
 game:0x0600120c,game:0x0600120c,data,,4,0x11733e8
 game:0x0600120d,game:0x0600120d,data,,4,0x11733ec
 game:0x0600120e,game:0x0600120e,data,,108,0x11733f0
