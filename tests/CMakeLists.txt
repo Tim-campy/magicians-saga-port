@@ -356,6 +356,11 @@ project_warnings(test_combat_records)
 add_test(NAME combat_records_contract COMMAND test_combat_records)
 
 add_executable(test_ecs_combat test_ecs_combat.cpp)
-target_link_libraries(test_ecs_combat PRIVATE ecs_combat)
+target_link_libraries(test_ecs_combat PRIVATE ecs_combat projectile_hit)
 project_warnings(test_ecs_combat)
 add_test(NAME ecs_combat_contract COMMAND test_ecs_combat)
+
+add_executable(test_projectile_hit test_projectile_hit.cpp)
+target_link_libraries(test_projectile_hit PRIVATE projectile_hit)
+project_warnings(test_projectile_hit)
+add_test(NAME projectile_hit_contract COMMAND test_projectile_hit)

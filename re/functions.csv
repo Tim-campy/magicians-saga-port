@@ -3497,7 +3497,7 @@ game:0x06000e7a,game:0x06000e7a,ecs,,732,0x114e1d4
 game:0x06000e7b,game:0x06000e7b,ecs,,772,0x114e4b0
 game:0x06000e7c,game:0x06000e7c,ecs,,1232,0x114e7b4
 game:0x06000e7d,ecs.EnemySystem.OnCollide,ecs,traced,1600,0x114f604
-game:0x06000e7e,ecs.EnemySystem.OnBulletHit,ecs,traced,344,0x114f4ac
+game:0x06000e7e,ecs.EnemySystem.OnBulletHit,ecs,reimplemented,344,0x114f4ac
 game:0x06000e7f,game:0x06000e7f,ecs,,440,0x11511cc
 game:0x06000e80,game:0x06000e80,ecs,,2088,0x114ec84
 game:0x06000e81,game:0x06000e81,ecs,,980,0x1151384

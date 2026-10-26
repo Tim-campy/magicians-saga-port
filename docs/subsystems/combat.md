@@ -130,9 +130,15 @@ Per `Damage` call: `Hits(threshold)` [1 draw, always] -> on hit: `Rand(95,105)` 
 | OnCollide branch 1 | 0x114f948 | FlyAway, animation, effect, `HumanSystem.ChangeState(4)`; no Defeat here |
 | OnCollide branch 2 | 0x114fc28 | Defeat at 0x114fc38 |
 
-OnBulletHit requires an Enemy component on the receiver, reads attack/attackAttribute from a projectile component, and passes as attacker the entity referenced at +0x38 of another component (not the projectile). Only direct BL/B callers were searched.
+`OnBulletHit(projectile,receiver)` (0x114f4ac) requires receiver nonnull before testing Enemy presence. A non-enemy receiver returns without inspecting projectile. Otherwise projectile must be nonnull, have Projectile slot 27 and Collision slot 32; absent slots return without damage. It then reads Damage slot 33 twice for value +0x10 and attribute +0x14, and Projectile.parent +0x38 for the attacker. DamageComponent.parent +0x18 is not used here. The parent may be null; it is passed through to Damage, whose own parameter-access/failure order applies.
+
+After Damage, true calls Defeat(receiver); either outcome then re-reads Projectile.parent and calls CreateImpactEffect(projectile,currentParent) at 0x114f578. A callback that removed Projectile makes that reread fault. After impact, it conditionally removes Projectile then Collision based on their current presence, and re-resolves Speed slot 1 for each store of +0 to vx/vy/vz. A damage miss still reaches impact/removal/zeroing. The entity itself and Damage component are not destroyed by this routine.
+
+Generated removers capture the old component, call entity removal (including notifications), then push the captured object onto its ComponentFactory pool stack. Projectile uses static +0xe8; Collision uses +0x30. The port keeps return-to-pool explicit and after ComponentSlots.remove, so a late failure does not roll back removal or earlier damage. Complete pool initialization and collision geometry remain outside this handler. Only direct BL/B callers were searched.
 
 ## Port
+
+- `projectile_hit.hpp/.cpp::on_projectile_hit` ports the complete entry-point ordering over ComponentSlots. ProjectileHitHost supplies damage, defeat, impact and component-pool return; these are explicit game services, not silently omitted effects. `tests/test_projectile_hit.cpp` covers guards, owner reread, removal notifications before pool return, miss/nonlethal cleanup, callbacks removing components and late speed failures. `tests/test_ecs_combat.cpp` connects the handler to EcsDamageHost and verifies lethal damage, stage accounting, defeat invocation, impact and cleanup in one scenario. Defeat animation/spawn behavior, impact visuals and collision detection remain external.
 
 - `ecs_combat.hpp/.cpp::EcsDamageHost` now binds DamageHost directly to `ComponentSlots`, decoded catalogs and explicit saved-level arrays. Each stat query re-reads the relevant component ID and catalog entry; member totals re-resolve each equipment slot. Character saved levels are separate from initial table levels, equipment levels come from the owning catalog's saved-level array, and enemy level comes from EnemyRecordLink. Table/level storage and captured parameter objects must outlive the hit. Presentation remains an explicit receiver-entity interface.
 - Parameter lookup now uses `DamageParameterMap`, a standard unordered_map keyed by int32, in both hosts. `ParamSet.get_Item` is a dictionary indexer, **not** a positional vector access. Missing keys fault without insertion; present null values return null until the caller dereferences them. Sparse and negative keys are representable. `CombatParameterLinks` in slot 23 projects the original parameter-component/ParamSet indirection; it does not implement construction or serialization.
@@ -160,6 +166,8 @@ OnBulletHit requires an Enemy component on the receiver, reads attack/attackAttr
 - Missing: concrete parameter resolution (GetTotalParamValue, EnemyData), attack timing, effective live RNG configuration/seeding, effect selection/animation/diagnostics, event-15 dispatch, collision guards and full Defeat integration. `Damage` remains **documented**, because this port covers its numeric/state composition with explicit services rather than the entire method.
 
 ## Evidence
+
+- Projectile entry: local `research/exports/damage-consumers/M37627_OnBulletHit.asm` (0x114f4ac, 344 bytes); slots/removers in `research/exports/projectile-hit/`. Metadata offsets identify Damage.value/attribute, Projectile.parent and Speed.vx/vy/vz. Pool method usages at GOT 0x2730a48 and 0x27307a0 resolve to public `Stack<T>.Push`; no stack implementation was reverse engineered. Confidence high for guards, reads, calls and write ordering.
 
 - `ParamSet.get_Item` at ELF 0x1179310 loads its dictionary field +0x10, requires it nonnull and forwards key w1 to a generic indexer (local `research/exports/parameter-slot/ParameterItem.asm`). GOT 0x27321a0 resolves usage 0xc001a165, method-spec 53426, method 12526, declaring type 1568 `System.Collections.Generic.Dictionary<TKey,TValue>.get_Item`. The lookup contract is public: [Microsoft Dictionary.Item documentation](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2.item?view=net-8.0) specifies failure for missing keys and allows null reference values. Standard C++ keyed storage implements that bounded contract; no dictionary internals or enumeration policy were reconstructed.
 
@@ -193,7 +201,7 @@ OnBulletHit requires an Enemy component on the receiver, reads attack/attackAttr
 2. (blocking) Effective live RNG selection and seeding (see [rng.md](rng.md)); explicit-seed System.Random damage sequences are now reproducible in contract tests.
 3. (blocking) Value of `MyConfig.FPS` and `MyConfig.DEBUG` in release; scheduler cadence consuming the attack interval; writers of `enemy+0x1c`.
 4. Effect tables +0x450/+0x458 and the effect/animation side of `Damage`; other event-15 subscribers.
-5. Full guards of `OnCollide`/`OnBulletHit` and `SearchAndAttack` filters; state numbers 2 and 4; indirect callers of `Damage`.
+5. Full guards of `OnCollide` and `SearchAndAttack` filters; state numbers 2 and 4; indirect callers of `Damage`. OnBulletHit guards and payload are now ported.
 6. (blocking) Resolve character/shop/equipment records from live ECS entities and restore saved levels/purchases. Static combat table projections, maximum-table initial values and the maximum/shop provider are ported. Character growth and main-character shop-upgrade arithmetic are ported. Equipment interpolation, total ordering and elemental-bonus selection are established above.
 7. Whether the affinity/rate statics are modified after `AppData..cctor`.
 8. Runtime comparison of host libm versus Android libm for the sine path; the general easing arithmetic and enemy parameter consumer are ported and statically tested. No bitwise runtime equivalence is claimed.

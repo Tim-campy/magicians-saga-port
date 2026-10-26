@@ -1,4 +1,5 @@
 #include "core/gameplay/ecs_combat.hpp"
+#include "core/gameplay/projectile_hit.hpp"
 #include <cstdlib>
 #include <functional>
 #include <stdexcept>
@@ -47,7 +48,26 @@ struct Fixture {
         receiver.add(combat_enemy_slot,&enemy).add(combat_parameter_slot,&receive_parameters);
     }
 };
+struct HitHost final:ProjectileHitHost {
+    Fixture& fixture;Draws random;int defeats=0,impacts=0,pools=0;
+    explicit HitHost(Fixture& f):fixture(f){}
+    bool damage(ComponentSlots* attacker,ComponentSlots& target,std::int32_t value,std::int32_t attribute) override {
+        check(attacker==&fixture.attacker && &target==&fixture.receiver);
+        return apply_combat_damage(value,attribute,random,fixture.host);
+    }
+    void defeat(ComponentSlots&) override{++defeats;}
+    void impact(ComponentSlots&,ComponentSlots*) override{++impacts;}
+    void return_component(std::int32_t,Component*) override{++pools;}
+};
 int main(){
+    {Fixture f;HitHost host(f);f.hp.value=1;ComponentSlots bullet(35);
+        ProjectileLink projectile;projectile.parent=&f.attacker;ProjectileDamage damage;damage.value=100;
+        ProjectileSpeed speed;speed.x=5;ProjectileCollision collision;
+        bullet.add(projectile_slot,&projectile).add(projectile_damage_slot,&damage)
+              .add(projectile_collision_slot,&collision).add(projectile_speed_slot,&speed);
+        on_projectile_hit(&bullet,&f.receiver,host);
+        check(f.hp.value==0&&f.presentation.total==44&&host.defeats==1&&host.impacts==1&&host.pools==2&&speed.x==0);
+    }
     {Fixture f;Draws r;check(!apply_combat_damage(100,0,r,f.host));check(f.hp.value==156&&f.presentation.total==44&&r.cursor==4);}
     {Fixture f;set_combat_equipment(f.attacker,EquipmentSlot::weapon,1);f.gear_levels[1]=100;
         Draws r;apply_combat_damage(100,0,r,f.host);check(f.presentation.damage==137); // Live gear ID and saved level, critical.

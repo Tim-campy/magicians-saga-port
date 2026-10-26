@@ -17,6 +17,10 @@ All addresses are ELF VAs (load bias 0; Ghidra exports add `0x100000`). Numbers 
 - `SystemManager`: `+0x10` OnSystemEnabled delegate, `+0x18` OnSystemDisabled delegate, `+0x20` all systems, `+0x28` IInitSystem list, `+0x30` IUpdateSystem list, `+0x48` IPausable list, `+0x70` byte isPause; further collections at `+0x38,+0x40,+0x50,+0x58,+0x60` (draw/other lists, contracts not reconstructed).
 - `BaseSystem`: `+0x10` manager reference (used by `BasePauseSystem` hooks), `+0x18` byte enabled. Vtable slots: 4 OnEnabled, 5 OnDisabled, 6 OnPause, 7 Serialize, 8 Deserialize, 9 SerializeExtra, 10 DeserializeExtra, 11 OnBeforeSerialize, 12 OnDeserialized.
 
+### Projectile hit components
+
+The generated getters confirm Speed slot 1, Projectile slot 27, Collision slot 32 and Damage slot 33. Projectile.parent (+0x38) supplies the attacker; Damage.value/attribute (+0x10/+0x14) supply numeric attack inputs. OnBulletHit removes Projectile and Collision after impact, then stores zero in Speed.vx/vy/vz (+0x10/+0x14/+0x18). Generated removers notify through entity removal before returning the captured object to ComponentFactory stacks. Portable component projections and the handler live in `projectile_hit`; unobserved shape/motion fields are not invented. See [combat.md](combat.md#damage-callers) for guards and callback-sensitive ordering.
+
 ### Combat record links
 
 Combat getters establish four component slots: equipment 8 (`Entity.get_equip`, 0x112e6dc), human 14 (`get_human`, 0x112f19c), parameter 23 (`get_parameter`, 0x113070c), enemy 24 (`get_enemy`, 0x112e45c). Each passes that index to the entity's virtual getter and checks a nonnull result's component type. A missing component returns null there; its subsequent dereference by the stat route faults.
