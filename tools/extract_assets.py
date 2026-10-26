@@ -13,6 +13,8 @@ length-prefixed names, offset array, size array and byte flags. Data contains
 length-prefixed members. All 1963 observed flags are zero (uncompressed).
 Eight other TextAssets are preserved byte-for-byte. No proprietary key is
 embedded in this script: it is read from the hash-verified user's metadata.
+--culture-signs also exports 339 native number-format records and the smallest
+shared-pool prefix containing all referenced signs, validated within ELF load bounds.
 Outputs and manifest stay local under extracted/; --check verifies all payloads and
 members. Names are retained in the manifest, output names have numeric prefixes
 to avoid Windows case collisions. No game content is embedded in the script.
@@ -93,7 +95,48 @@ def unpack_container(data):
     return members
 
 
-def check(root):
+def culture_sign_payloads(elf):
+    """Copy 339 reached 48-byte records and the pool prefix needed by their signs.
+
+    Layout from native 0x10367cc/GetNFIValues. Preserve offsets and UTF-8 bytes;
+    pool allocation size is unknown, so scan only within its file-backed segment.
+    """
+    if len(elf) < 64 or elf[:6] != b'\x7fELF\x02\x01' or struct.unpack_from('<H', elf, 18)[0] != 183:
+        raise ValueError('Expected little-endian ARM64 ELF')
+    phoff, = struct.unpack_from('<Q', elf, 32)
+    entsize, count = struct.unpack_from('<HH', elf, 54)
+    if entsize != 56 or phoff+count*entsize > len(elf):
+        raise ValueError('Invalid ELF program headers')
+    segments = []
+    for i in range(count):
+        kind, _, offset, va, _, size, _, _ = struct.unpack_from('<IIQQQQQQ', elf, phoff+i*entsize)
+        if kind == 1:
+            if offset+size > len(elf):
+                raise ValueError('Truncated ELF load segment')
+            segments.append((va, offset, size))
+    def tail(va):
+        matches = [(offset+va-base, offset+size) for base, offset, size in segments if base <= va < base+size]
+        if len(matches) != 1:
+            raise ValueError('Culture address is not uniquely file-backed')
+        begin, end = matches[0]
+        return elf[begin:end]
+    records = tail(0x897cfc)[:339*48]
+    if len(records) != 339*48:
+        raise ValueError('Truncated culture number records')
+    pool = tail(0x886828)
+    extent = 0
+    for i in range(339):
+        for field in (0x14, 0x16):
+            offset, = struct.unpack_from('<H', records, i*48+field)
+            end = pool.find(b'\0', offset)
+            if end < 0:
+                raise ValueError('Culture sign is outside the pool or unterminated')
+            pool[offset:end].decode('utf8', errors='strict')
+            extent = max(extent, end+1)
+    return {'culture/number-records.bin': records, 'culture/sign-pool.bin': pool[:extent]}
+
+
+def check(root, require_culture=False):
     manifest = json.loads((root / 'manifest.json').read_text(encoding='utf8'))
     if (manifest['apk_sha256'] != APK_SHA or len(manifest['files']) != 38
             or len(manifest['members']) != 1963):
@@ -101,7 +144,11 @@ def check(root):
     failed = False
     if 'unity_media' in manifest and (len(manifest['unity_media']) != 187 or len(manifest['empty_textures']) != 5):
         raise ValueError('Unexpected Unity media inventory')
-    for row in manifest['files'] + manifest['members'] + manifest.get('unity_media', []):
+    if require_culture and 'culture_signs' not in manifest:
+        raise ValueError('Culture sign outputs are required; extract with --culture-signs')
+    if 'culture_signs' in manifest and (len(manifest['culture_signs']) != 2 or {r['output'] for r in manifest['culture_signs']} != {'culture/number-records.bin', 'culture/sign-pool.bin'}):
+        raise ValueError('Unexpected culture sign inventory')
+    for row in manifest['files'] + manifest['members'] + manifest.get('unity_media', []) + manifest.get('culture_signs', []):
         path = bounded(root, row['output'])
         if not path.is_file():
             print('missing:', row['output']); failed = True
@@ -175,7 +222,7 @@ def unity_media(obj, files, filename):
     return [('.fsb', content), ('.wav', wav)], facts
 
 
-def extract(apk, root, include_unity=False):
+def extract(apk, root, include_unity=False, include_culture=False):
     if digest(apk.read_bytes()) != APK_SHA:
         raise ValueError('Expected original Magician\'s Saga 1.4.0 APK, SHA-256 ' + APK_SHA)
     # Optional existing isolated installation; uv provides the same pinned dependency.
@@ -188,6 +235,7 @@ def extract(apk, root, include_unity=False):
         raise ValueError('Requires UnityPy 1.25.4')
     TypeTreeHelper.read_typetree_boost = False
     with zipfile.ZipFile(apk) as archive:
+        culture = culture_sign_payloads(archive.read('lib/arm64-v8a/libil2cpp.so')) if include_culture else {}
         metadata = archive.read(METADATA)
         key = metadata[4557992:4558036]
         if len(key) != 44 or digest(key) != KEY_SHA:
@@ -274,6 +322,9 @@ def extract(apk, root, include_unity=False):
                                      'FSB loop metadata retained in source; runtime mixer not reconstructed.',
                                      'Font bytes preserved; shaping and glyph coverage not verified.',
                                      'SEB/INF semantics and presentation still under investigation.'])
+    if include_culture:
+        outputs.update(culture)
+        manifest['culture_signs'] = [{'output': name, 'size': len(data), 'sha256': digest(data)} for name, data in culture.items()]
     outputs['manifest.json'] = (json.dumps(manifest, ensure_ascii=False, indent=2)+'\n').encode('utf8')
     # Preflight all collisions before writes. Never replace differing user files.
     for relative, data in outputs.items():
@@ -295,15 +346,16 @@ def main():
     p.add_argument('apk', type=Path, nargs='?')
     p.add_argument('--out', type=Path, default=Path('extracted'))
     p.add_argument('--check', action='store_true')
+    p.add_argument('--culture-signs', action='store_true', help='Also export native number-format records and bounded sign pool')
     p.add_argument('--unity-media', action='store_true', help='Also export Unity textures, fonts and FSB/WAV audio')
     args = p.parse_args()
     try:
         if args.check:
-            if not check(args.out):
+            if not check(args.out, args.culture_signs):
                 raise SystemExit(1)
-            print('All manifest files verified (TextAssets, members and optional Unity media).')
+            print('All manifest files verified (TextAssets, members and optional media/culture data).')
         elif args.apk:
-            extract(args.apk, args.out, args.unity_media)
+            extract(args.apk, args.out, args.unity_media, args.culture_signs)
         else:
             p.error('Supply APK or --check')
     except (ValueError, OSError, KeyError, struct.error, zipfile.BadZipFile) as error:

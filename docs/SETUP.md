@@ -41,6 +41,9 @@ python -I tools/registry.py build research/il2cpp-code-map.json
 # Assets (38 TextAssets, 1,963 container members; --unity-media adds textures, FSB/WAV audio and fonts)
 uv run tools/extract_assets.py game/MagiciansSaga-1.4.0.apk --out extracted
 uv run tools/extract_assets.py --check --out extracted
+# Use a fresh destination: differing manifests are never overwritten.
+uv run tools/extract_assets.py game/MagiciansSaga-1.4.0.apk --out extracted/culture-enabled --culture-signs
+uv run tools/extract_assets.py --check --out extracted/culture-enabled --culture-signs
 uv run tools/extract_assets.py game/MagiciansSaga-1.4.0.apk --out extracted/full --unity-media
 ```
 
