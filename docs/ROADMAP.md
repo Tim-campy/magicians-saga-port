@@ -29,7 +29,7 @@ The plan in one page. Agents take the first unblocked task of the current work p
 ## Next tasks
 
 ### 1. Events and scripts
-- [ ] Trace culture setters, collation availability/backend, CreateSpecificCulture lookup and CultureData sign lookup; native locale selection/normalization is ported, but prefix/sign providers still need the selected culture data.
+- [ ] Recover native culture-table lookup (0x1036c08), neutral-to-specific mapping and number-format index/count; the locale source and hyphen fallback are ported, and packed sign offsets are documented. Trace culture setters and collation availability/backend before replacing prefix/sign providers.
 - [ ] Bind decoded billing-item/catalog providers and complete notification manager adapters, preserving task execution gates.
 - [ ] Port decor/town/capture callbacks, then bind update_select_form to a desktop host with orientation/image-dictionary storage, decoded saves, camera dimensions and form factories.
 - [ ] Find the consumer of `hour_ != -1`, the writer of `SubForm.delayEvent_` (`+0x1d0`) and the remaining effect opcodes of the 15-entry table at `0x627b6e`.

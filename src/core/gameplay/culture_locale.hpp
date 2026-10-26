@@ -15,4 +15,11 @@ public:
 };
 std::string select_native_locale(CultureLocaleHost&);
 std::string normalize_culture_locale(std::string_view);
+class CultureNameLookup {
+public:
+    virtual ~CultureNameLookup() = default;
+    // Updates the same culture object on every attempt, including failed ones.
+    virtual bool construct(std::u16string_view name) = 0;
+};
+bool construct_culture_from_name(std::u16string_view name,CultureNameLookup&);
 }

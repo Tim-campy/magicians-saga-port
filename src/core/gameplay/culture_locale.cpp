@@ -30,4 +30,18 @@ std::string normalize_culture_locale(std::string_view value) {
     for(auto& c:result)if(c>='A' && c<='Z')c=static_cast<char>(c+('a'-'A'));
     return result;
 }
+// CultureInfo.ConstructLocaleFromName 0x1e27ab8. Caller rejects null names.
+bool construct_culture_from_name(std::u16string_view name,CultureNameLookup& lookup) {
+    if(lookup.construct(name))return true;
+    if(name.size()<3)return false;
+    auto end=name.size()-1;
+    while(end>0) {
+        // LastIndexOf starts one position before the current candidate's end.
+        const auto dash=name.rfind(u'-',end-1);
+        if(dash==name.npos || dash==0)return false;
+        end=dash;
+        if(lookup.construct(name.substr(0,end)))return true;
+    }
+    return false;
+}
 }

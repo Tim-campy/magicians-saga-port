@@ -12,7 +12,19 @@ struct Host:CultureLocaleHost {
     std::optional<std::string> environment(std::string_view name) override {calls.emplace_back(name);return name=="LC_ALL"?all:language;}
     std::optional<std::string> process_locale() override {calls.push_back("process");return process;}
 };
+struct Lookup:CultureNameLookup {
+    std::vector<std::u16string> calls;
+    std::optional<std::u16string> accepted;
+    bool construct(std::u16string_view name) override {calls.emplace_back(name);return accepted && name==*accepted;}
+};
 int main(){
+    {Lookup l;l.accepted=u"zh-Hant";check(construct_culture_from_name(u"zh-Hant-XX",l));check((l.calls==std::vector<std::u16string>{u"zh-Hant-XX",u"zh-Hant"}));}
+    {Lookup l;check(!construct_culture_from_name(u"a-b-c",l));check((l.calls==std::vector<std::u16string>{u"a-b-c",u"a-b",u"a"}));}
+    {Lookup l;l.accepted=u"x-y";check(construct_culture_from_name(u"x-y",l));check(l.calls.size()==1);}
+    // A trailing hyphen is skipped by the first backward search.
+    {Lookup l;check(!construct_culture_from_name(u"ab-cd-",l));check((l.calls==std::vector<std::u16string>{u"ab-cd-",u"ab"}));}
+    {Lookup l;check(!construct_culture_from_name(u"a--b",l));check((l.calls==std::vector<std::u16string>{u"a--b",u"a-",u"a"}));}
+    for(const auto* name:{u"",u"a",u"ab",u"ab-",u"-ab",u"abc",u"a_b"}){Lookup l;check(!construct_culture_from_name(name,l));check(l.calls.size()==1);}
     {Host h;h.platform="pt-BR";h.all="en_US";check(select_native_locale(h)=="pt-BR");check(h.calls==std::vector<std::string>{"platform"});}
     {Host h;h.all="";h.language="ja_JP";check(select_native_locale(h).empty());check((h.calls==std::vector<std::string>{"platform","LC_ALL"}));}
     {Host h;h.all="C";h.language="ja_JP";check(select_native_locale(h).empty());check(h.calls.size()==2);}
