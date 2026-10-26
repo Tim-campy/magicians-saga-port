@@ -284,3 +284,8 @@ add_executable(test_collation_tables test_collation_tables.cpp)
 target_link_libraries(test_collation_tables PRIVATE collation_tables)
 project_warnings(test_collation_tables)
 add_test(NAME collation_tables_contract COMMAND test_collation_tables)
+
+add_executable(test_collation_index test_collation_index.cpp)
+target_link_libraries(test_collation_index PRIVATE collation_index)
+project_warnings(test_collation_index)
+add_test(NAME collation_index_contract COMMAND test_collation_index)
