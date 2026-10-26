@@ -11,6 +11,41 @@ extractor = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(extractor)
 
 
+class CollationTests(unittest.TestCase):
+    def fixture(self):
+        rows = [('collation.'+name+'.bin', b'\3'+bytes(size-1))
+                for name, size in extractor.COLLATION_SIZES.items()]
+        directory = struct.pack('<i', len(rows)) + b''.join(
+            struct.pack('<ii', len(data), len(name)) + name.encode('ascii') for name, data in rows)
+        return struct.pack('<i', len(directory))+directory+b''.join(data for _, data in rows), rows
+
+    def test_payloads_and_corruption(self):
+        data, rows = self.fixture()
+        self.assertEqual(extractor.collation_payloads(data), {'collation/'+name: payload for name, payload in rows})
+        directory = struct.unpack_from('<i', data)[0]+4
+        for bad in [data[:7], data[:-1], data+b'x', data[:directory]+b'\2'+data[directory+1:],
+                    data[:4]+struct.pack('<i', 8)+data[8:], data[:8]+struct.pack('<i', -1)+data[12:]]:
+            with self.assertRaises(ValueError):extractor.collation_payloads(bad)
+
+    def test_manifest_inventory_integrity(self):
+        _, rows = self.fixture()
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);(root/'collation').mkdir()
+            inventory=[]
+            for name, data in rows:
+                (root/'collation'/name).write_bytes(data)
+                inventory.append({'output':'collation/'+name,'size':len(data),'sha256':extractor.digest(data)})
+            manifest={'apk_sha256':extractor.APK_SHA,'files':[inventory[0]]*38,'members':[inventory[0]]*1963}
+            def write(): (root/'manifest.json').write_text(json.dumps(manifest),encoding='utf8')
+            write();self.assertTrue(extractor.check(root))
+            with self.assertRaisesRegex(ValueError,'Collation outputs are required'):extractor.check(root,require_collation=True)
+            manifest['collation']=inventory;write();self.assertTrue(extractor.check(root,require_collation=True))
+            path=root/inventory[-1]['output'];original=path.read_bytes();path.write_bytes(b'bad')
+            self.assertFalse(extractor.check(root,require_collation=True));path.write_bytes(original)
+            manifest['collation']=inventory[:-1]+[inventory[0]];write()
+            with self.assertRaisesRegex(ValueError,'Unexpected collation inventory'):extractor.check(root)
+
+
 class RuntimeTests(unittest.TestCase):
     def test_payload_and_bounds(self):
         data=bytearray(512+50056+288)

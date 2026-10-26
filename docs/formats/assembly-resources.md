@@ -12,6 +12,8 @@ The core collation payload starts with version byte 3 followed by five length-pr
 
 ## Reading it
 
+The main extractor supports `--collation` and writes the seven unchanged payloads under `collation/` in the selected output root. The existing APK hash check, all-output collision preflight and no-overwrite policy apply. Manifest `collation` rows record output names, fixed-version sizes and SHA-256. `--check --collation` requires the complete seven-file inventory and checks its bytes along with all other outputs; old manifests remain valid without the requirement. See [setup](../SETUP.md) for commands. No key or decryption is required for this container.
+
 Run `python -I tools/inspect_assembly_resources.py game/MagiciansSaga-1.4.0.apk`. The inspector reads the fixed ZIP member, validates directory/payload extents and the collation layout, and prints names, sizes, offsets and hashes, never payload contents. It requires exact directory/payload consumption as a portable validation boundary; the native trusted-data reader does not provide these bounds checks. Synthetic tests in `tests/test_assembly_resources.py` cover truncation, negative extents, exact ends, duplicate names, empty payloads, version gates and directory round trips.
 
 ## Evidence

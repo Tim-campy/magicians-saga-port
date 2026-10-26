@@ -22,6 +22,7 @@ code and relocated metadata literals; the mapping is local data, not source code
 --culture-lower includes the preceding culture outputs and nine invariant UTF-16
 lowercase arrays from metadata default-data initializers.
 --runtime-tables exports the 288-byte Hashtable prime initializer from metadata.
+--collation exports seven version-3 resources from the mscorlib resource container.
 Outputs and manifest stay local under extracted/; --check verifies all payloads and
 members. Names are retained in the manifest, output names have numeric prefixes
 to avoid Windows case collisions. No game content is embedded in the script.
@@ -45,6 +46,42 @@ METADATA = 'assets/bin/Data/Managed/Metadata/global-metadata.dat'
 # Version-specific layout knowledge only; table contents come from the verified APK.
 LOWER_LAYOUT = ((98432,1175),(6824,38),(105288,509),(106360,16),(31832,26),
                 (43136,47),(62816,131),(29032,87),(47744,106))
+
+
+COLLATION_MEMBER = 'assets/bin/Data/Managed/Resources/mscorlib.dll-resources.dat'
+COLLATION_SIZES = dict(zip(('core', 'tailoring', 'cjkCHS', 'cjkCHT', 'cjkJA', 'cjkKO', 'cjkKOlv2'),
+                           (118901, 6724, 55813, 44549, 44549, 44549, 22273)))
+
+
+def collation_payloads(container):
+    """Native 0x100e5d4 directory: int32 length/count, then size/name-length/name."""
+    if len(container) < 8:
+        raise ValueError('Truncated assembly resource header')
+    directory, count = struct.unpack_from('<ii', container)
+    body = directory + 4
+    if body < 8 or body > len(container) or count != 7:
+        raise ValueError('Unexpected assembly resource directory')
+    cursor, outputs = 8, {}
+    for _ in range(count):
+        if cursor + 8 > directory + 4:
+            raise ValueError('Truncated assembly resource entry')
+        size, length = struct.unpack_from('<ii', container, cursor)
+        cursor += 8
+        if length < 0 or cursor + length > directory + 4 or size < 1 or body + size > len(container):
+            raise ValueError('Assembly resource outside container')
+        name = container[cursor:cursor + length].decode('ascii')
+        cursor += length
+        expected = {'collation.' + key + '.bin': value for key, value in COLLATION_SIZES.items()}
+        if name not in expected or size != expected[name] or 'collation/' + name in outputs:
+            raise ValueError('Unexpected collation resource inventory')
+        payload = container[body:body + size]
+        if payload[0] != 3:
+            raise ValueError('Expected collation version 3')
+        outputs['collation/' + name] = payload
+        body += size
+    if cursor != directory + 4 or body != len(container):
+        raise ValueError('Assembly resource end mismatch')
+    return outputs
 
 
 def culture_lower_payloads(metadata):
@@ -286,7 +323,7 @@ def culture_sign_payloads(elf, include_names=False):
     return outputs
 
 
-def check(root, require_culture=False, require_names=False, require_neutral=False, require_lower=False, require_runtime=False):
+def check(root, require_culture=False, require_names=False, require_neutral=False, require_lower=False, require_runtime=False, require_collation=False):
     manifest = json.loads((root / 'manifest.json').read_text(encoding='utf8'))
     if (manifest['apk_sha256'] != APK_SHA or len(manifest['files']) != 38
             or len(manifest['members']) != 1963):
@@ -315,7 +352,13 @@ def check(root, require_culture=False, require_names=False, require_neutral=Fals
         raise ValueError('Runtime tables are required; extract with --runtime-tables')
     if 'runtime_tables' in manifest and (len(runtime) != 1 or runtime[0]['output'] != 'runtime/hashtable-primes.bin' or runtime[0]['size'] != 288):
         raise ValueError('Unexpected runtime table inventory')
-    for row in manifest['files'] + manifest['members'] + manifest.get('unity_media', []) + manifest.get('culture_signs', []) + runtime:
+    collation = manifest.get('collation', [])
+    expected_collation = {'collation/collation.' + key + '.bin': size for key, size in COLLATION_SIZES.items()}
+    if require_collation and not collation:
+        raise ValueError('Collation outputs are required; extract with --collation')
+    if 'collation' in manifest and (len(collation) != 7 or {r['output']: r['size'] for r in collation} != expected_collation):
+        raise ValueError('Unexpected collation inventory')
+    for row in manifest['files'] + manifest['members'] + manifest.get('unity_media', []) + manifest.get('culture_signs', []) + runtime + collation:
         path = bounded(root, row['output'])
         if not path.is_file():
             print('missing:', row['output']); failed = True
@@ -389,7 +432,7 @@ def unity_media(obj, files, filename):
     return [('.fsb', content), ('.wav', wav)], facts
 
 
-def extract(apk, root, include_unity=False, include_culture=False, include_names=False, include_neutral=False, include_lower=False, include_runtime=False):
+def extract(apk, root, include_unity=False, include_culture=False, include_names=False, include_neutral=False, include_lower=False, include_runtime=False, include_collation=False):
     include_neutral = include_neutral or include_lower
     include_names = include_names or include_neutral
     include_culture = include_culture or include_names
@@ -406,6 +449,7 @@ def extract(apk, root, include_unity=False, include_culture=False, include_names
     TypeTreeHelper.read_typetree_boost = False
     with zipfile.ZipFile(apk) as archive:
         culture = culture_sign_payloads(archive.read('lib/arm64-v8a/libil2cpp.so'), include_names) if include_culture else {}
+        collation = collation_payloads(archive.read(COLLATION_MEMBER)) if include_collation else {}
         metadata = archive.read(METADATA)
         runtime = runtime_payloads(metadata) if include_runtime else {}
         if include_lower:
@@ -503,6 +547,9 @@ def extract(apk, root, include_unity=False, include_culture=False, include_names
     if include_runtime:
         outputs.update(runtime)
         manifest['runtime_tables'] = [{'output': name, 'size': len(data), 'sha256': digest(data)} for name, data in runtime.items()]
+    if include_collation:
+        outputs.update(collation)
+        manifest['collation'] = [{'output': name, 'size': len(data), 'sha256': digest(data)} for name, data in collation.items()]
     outputs['manifest.json'] = (json.dumps(manifest, ensure_ascii=False, indent=2)+'\n').encode('utf8')
     # Preflight all collisions before writes. Never replace differing user files.
     for relative, data in outputs.items():
@@ -524,6 +571,7 @@ def main():
     p.add_argument('apk', type=Path, nargs='?')
     p.add_argument('--out', type=Path, default=Path('extracted'))
     p.add_argument('--check', action='store_true')
+    p.add_argument('--collation', action='store_true', help='Include seven original version-3 collation resources')
     p.add_argument('--runtime-tables', action='store_true', help='Include the 72-entry runtime Hashtable prime table')
     p.add_argument('--culture-lower', action='store_true', help='Include nine invariant lowercase tables and all culture outputs')
     p.add_argument('--culture-neutral', action='store_true', help='Also derive the neutral-name to LCID mapping from native code')
@@ -535,11 +583,11 @@ def main():
         if args.check:
             if not check(args.out, args.culture_signs or args.culture_names or args.culture_neutral or args.culture_lower,
                          args.culture_names or args.culture_neutral or args.culture_lower,
-                         args.culture_neutral or args.culture_lower, args.culture_lower, args.runtime_tables):
+                         args.culture_neutral or args.culture_lower, args.culture_lower, args.runtime_tables, args.collation):
                 raise SystemExit(1)
-            print('All manifest files verified (TextAssets, members and optional media/culture/runtime data).')
+            print('All manifest files verified (TextAssets, members and optional media/culture/runtime/collation data).')
         elif args.apk:
-            extract(args.apk, args.out, args.unity_media, args.culture_signs, args.culture_names, args.culture_neutral, args.culture_lower, args.runtime_tables)
+            extract(args.apk, args.out, args.unity_media, args.culture_signs, args.culture_names, args.culture_neutral, args.culture_lower, args.runtime_tables, args.collation)
         else:
             p.error('Supply APK or --check')
     except (ValueError, OSError, KeyError, struct.error, zipfile.BadZipFile) as error:
