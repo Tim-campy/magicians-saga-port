@@ -1,5 +1,16 @@
 #include "current_culture.hpp"
 namespace saga::core {
+// CultureInfo .ctor 0x1e275c8 / ConstructInvariant 0x1e27468.
+std::shared_ptr<CultureInstance> make_invariant_culture(bool user_override,bool read_only) {
+    auto value=std::make_shared<CultureInstance>();
+    value->identity.lcid=127;
+    value->identity.constructed=true;
+    // Fresh zero-initialized territory stays null; name is String.Empty.
+    // No native number-record lookup occurs on this path.
+    value->use_user_override=user_override;
+    value->read_only=read_only;
+    return value;
+}
 // Thread.GetCurrentCultureNoAppX 0x1ecd268; UserDefaultCulture 0x1e2a8e0.
 // Preserve both TLS accesses on the hit branch, even if the second returns null.
 std::shared_ptr<CultureInstance> resolve_current_culture(CurrentCultureState& state,

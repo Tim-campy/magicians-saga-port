@@ -486,7 +486,7 @@ The exception boundary is now proved from LSDA **0x948d70**: `[0x1e24abc,0x1e24a
 
 `CultureManagedError` represents host-translated managed throws accepted by this object filter. The port catches that category only around `create_specific`; arbitrary C++ failures propagate. Runtime class-initialization and managed allocation identities are outside this decoded model. A failure obtaining the locale or invariant culture propagates without the final cache write. Any provider-side mutation is retained; a successful final selection overwrites the current cache just as the native store does. No blanket catch or invented default locale is introduced.
 
-`current_culture_contract` tests cached bypass, invariant-mode no-cache return, normal success/flag stores, empty-name creation returning the invariant object, null-name/result fallback, translated managed failure, unrelated C++ failure, locale failure, fallback failure and cache mutation ordering. Windows CTest passes **46/46**. The decoded specific factory is now composed below; actual invariant data remains required; decoded thread/default precedence is composed below. This kernel does not yet install a desktop culture or replace collation.
+`current_culture_contract` tests cached bypass, invariant-mode no-cache return, normal success/flag stores, empty-name creation returning the invariant object, null-name/result fallback, translated managed failure, unrelated C++ failure, locale failure, fallback failure and cache mutation ordering. Windows CTest passes **46/46**. The decoded specific factory is now composed below; invariant number-format ownership remains required; decoded thread/default precedence is composed below. This kernel does not yet install a desktop culture or replace collation.
 
 ### Thread/default-culture precedence
 
@@ -496,7 +496,17 @@ The thread and application-default branches do not set readOnly/useUserOverride 
 
 Evidence: local `research/exports/notification-culture/F1ecd268.asm`, `F1ecd23c.asm`, `F1e1ab40.asm`, and `notification-culture-providers/F1e2a70c.asm`, `F1e2a8e0.asm`. Export instruction addresses include the Ghidra image base of 0x100000; addresses above are ELF VAs. Confidence high for branch order and rereads; no runtime comparison.
 
-The expanded `current_culture_contract` tests thread priority, changed and null second reads, application-default priority over a populated user cache, fallback construction and flags, repeated resolution with a cache, and thread/default provider exceptions. Windows CTest passes 47/47. Limits: synchronization, culture setters, actual invariant contents and host installation still require their own recovered contracts.
+The expanded `current_culture_contract` tests thread priority, changed and null second reads, application-default priority over a populated user cache, fallback construction and flags, repeated resolution with a cache, and thread/default provider exceptions. Windows CTest passes 47/47. Limits: synchronization, culture setters, invariant number-format ownership and host installation still require their own recovered contracts.
+
+### Invariant identity and initialization
+
+CultureInfo .cctor (`0x1e2af48`) constructs LCID 127 with useUserOverride=false and readOnly=true and stores that instance at CultureInfo static +0. InvariantCulture (`0x1e1b388`) returns the captured static pointer after a runtime barrier. The LCID constructor marks constructed=true and assigns its supplied flags before the invariant branch. That branch obtains invariant CultureData (`0x1e17e08`) and calls ConstructInvariant (`0x1e27468`). ConstructInvariant writes LCID 127, String.Empty at name +0x48, and leaves the fresh territory field null. It does not perform native culture-table population or select a packed number record.
+
+`make_invariant_culture` now constructs those decoded fields in portable code. `InvariantCultureState` owns the shared read-only/default-override instance per explicitly owned domain state. LCID construction uses a fresh instance directly, removing the former new-invariant host callback. Empty-name and fallback paths still ask their host for the shared instance; a host can bind that getter to the state. The absent portable number index means "no native table selected", not a claim that the native zero-initialized int32 field is nullable.
+
+NumberFormatInfo ownership is a separate remaining contract: ConstructInvariant stores NumberFormatInfo.InvariantInfo (`0x1e10458`) at +0x30. A mutable culture clones it via `0x1e147c0`; the clone uses MemberwiseClone then clears its read-only byte +0xd0. InvariantInfo lazily creates a default NumberFormatInfo, sets +0xd2=true and passes it through `0x1e14450` before caching. These object identities and mutation semantics are not yet represented by the decoded culture fields. They must be preserved before connecting live signs or setters. Other calendar/display fields are outside the current parsing projection.
+
+Evidence: bounded exports in local `research/exports/culture-invariant/` and `culture-invariant-init/`; .cctor address resolved from mscorlib token 0x06002d80 through the shipped method-pointer table. Confidence high for stores, constructor flags and clone branch. Tests cover fresh versus shared identities, independent domain state, decoded field values, mutable flags and the existing empty-name path's mutation of the shared override flag. Windows CTest passes 47/47; no Android verification.
 
 ### Supplied-item initialization and null SecureString inputs
 
@@ -520,7 +530,7 @@ Null names fail; empty names return the host's invariant singleton. Nonempty nam
 
 The factory composes with `construct_current_culture`: managed selection failures reach its invariant fallback, while malformed extracted buffers remain C++ data errors and propagate. `specific_culture_contract` exercises canonical names, fallback, flags, null versus empty territory, 16-bit LCID aliases, missing neutral targets, singleton versus new invariant instances, cache composition and malformed buffers. Windows CTest passes 47/47 after a clean rebuild. Local inspection confirms that all 339 canonical-name and nonzero territory references fit the existing 19,129-byte extracted pool.
 
-Limits: this is the decoded selection/number-index contract, not full CultureInfo/CultureData construction; calendar data, Unicode lowercasing, invariant contents, thread storage/setters and collation remain explicit host responsibilities or open work. The original also constructs CultureData after neutral selection; its allocation and unrelated fields are not represented by this value model. The host must load and validate the extracted neutral JSON into unique typed entries before calling the factory; no proprietary mapping is embedded in source.
+Limits: this is the decoded selection/number-index contract, not full CultureInfo/CultureData construction; calendar data, Unicode lowercasing, invariant number-format ownership, thread storage/setters and collation remain explicit host responsibilities or open work. The original also constructs CultureData after neutral selection; its allocation and unrelated fields are not represented by this value model. The host must load and validate the extracted neutral JSON into unique typed entries before calling the factory; no proprietary mapping is embedded in source.
 
 
 ## Port

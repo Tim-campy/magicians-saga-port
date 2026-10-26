@@ -70,6 +70,16 @@ void thread_contract(){
 }
 int main(){
     thread_contract();
+    {InvariantCultureState a,b;
+        check(a.instance!=b.instance && a.instance->read_only && !a.instance->use_user_override);
+        check(a.instance->identity.lcid==127 && a.instance->identity.constructed);
+        check(!a.instance->identity.territory && a.instance->name.empty() && !a.instance->number_index);
+        auto fresh=make_invariant_culture(true,false);
+        check(fresh!=a.instance && !fresh->read_only && fresh->use_user_override);
+        fresh->name=u"mutated";check(a.instance->name.empty());
+        Host h;h.invariant=a.instance;h.specific=a.instance;h.name=u"";CurrentCultureState s;
+        check(construct_current_culture(s,h)==a.instance && a.instance->use_user_override);
+        check(!b.instance->use_user_override);}
     {Host h;CurrentCultureState s{h.specific};check(construct_current_culture(s,h)==h.specific && h.calls.empty());check(!s.cached->read_only);}
     {Host h;CurrentCultureState s;h.mode=true;check(construct_current_culture(s,h)==h.invariant && !s.cached);check((h.calls==std::vector<std::string>{"mode","invariant"}));}
     {Host h;CurrentCultureState s;h.mutate=&s;check(construct_current_culture(s,h)==h.specific && s.cached==h.specific);check(s.cached->read_only && s.cached->use_user_override);check((h.calls==std::vector<std::string>{"mode","name","create"}));h.calls.clear();check(construct_current_culture(s,h)==h.specific && h.calls.empty());}

@@ -14,17 +14,15 @@ public:
     CultureSelectionFailure kind;
 };
 // Full CultureData/calendar allocation is outside this decoded number-selection model.
-// Invariant contents and Unicode lowercasing require recovered host implementations.
+// NumberFormatInfo objects and Unicode lowercasing require recovered host implementations.
 class SpecificCultureHost {
 public:
     virtual ~SpecificCultureHost() = default;
     virtual std::u16string lower_invariant(const std::u16string&) = 0;
     virtual std::shared_ptr<CultureInstance> invariant_culture() = 0;
-    // LCID constructor creates a new invariant instance; empty-name factory returns the singleton.
-    virtual std::shared_ptr<CultureInstance> new_invariant_culture() = 0;
 };
 std::shared_ptr<CultureInstance> create_culture_by_lcid(std::int32_t,bool user_override,bool read_only,
-    const CultureTables&,SpecificCultureHost&);
+    const CultureTables&);
 std::shared_ptr<CultureInstance> create_specific_culture(const std::optional<std::u16string>&,
     const CultureTables&,SpecificCultureHost&);
 }

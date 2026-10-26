@@ -13,6 +13,12 @@ struct CultureInstance {
 // Host-translated managed throws. Unrelated C++ failures are not swallowed.
 class CultureManagedError:public std::runtime_error {public:using std::runtime_error::runtime_error;};
 struct CurrentCultureState {std::shared_ptr<CultureInstance> cached;};
+// Decoded CultureInfo fields only; NumberFormatInfo/calendar objects are separate.
+std::shared_ptr<CultureInstance> make_invariant_culture(bool user_override,bool read_only);
+struct InvariantCultureState {
+    // CultureInfo .cctor constructs (127, false, true) once per managed domain.
+    std::shared_ptr<CultureInstance> instance=make_invariant_culture(false,true);
+};
 class CurrentCultureHost {
 public:
     virtual ~CurrentCultureHost() = default;

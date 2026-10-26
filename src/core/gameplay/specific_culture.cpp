@@ -40,16 +40,15 @@ struct NameLookup:CultureNameLookup {
 }
 // CultureInfo .ctor(int,bool,bool) 0x1e275c8: decoded fields needed for number parsing.
 std::shared_ptr<CultureInstance> create_culture_by_lcid(std::int32_t id,bool user_override,bool read_only,
-    const CultureTables& tables,SpecificCultureHost& host) {
+    const CultureTables& tables) {
     if(id<0)throw CultureSelectionError(CultureSelectionFailure::NegativeLcid);
     std::shared_ptr<CultureInstance> result;
-    if(id==0x7f)result=host.new_invariant_culture();
+    if(id==0x7f)result=make_invariant_culture(user_override,read_only);
     else {
         const auto row=assets::find_culture_record_by_lcid(id,tables.records);
         if(!row)throw CultureSelectionError(CultureSelectionFailure::MissingLcid);
         result=populate(tables,*row);
     }
-    if(!result)throw CultureManagedError("missing new invariant culture");
     result->read_only=read_only;
     result->use_user_override=user_override;
     return result;
@@ -66,7 +65,7 @@ std::shared_ptr<CultureInstance> create_specific_culture(const std::optional<std
     if(result->identity.lcid!=0x7f && !result->identity.territory) {
         const auto neutral_name=host.lower_invariant(result->name);
         for(const auto& entry:tables.neutral)if(entry.name==neutral_name)
-            return create_culture_by_lcid(entry.lcid,true,false,tables,host);
+            return create_culture_by_lcid(entry.lcid,true,false,tables);
         throw CultureSelectionError(CultureSelectionFailure::UnknownNeutral);
     }
     return result;
