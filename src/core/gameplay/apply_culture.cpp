@@ -1,10 +1,9 @@
 #include "apply_culture.hpp"
 #include "assets/culture_signs.hpp"
 namespace saga::core {
-namespace {
 // The extractor proves valid UTF-8 for every reachable sign. Reject corrupted
 // inputs at this adapter boundary; managed replacement fallback is not modeled.
-std::u16string decode_sign(std::string_view bytes) {
+std::u16string decode_culture_utf8(std::string_view bytes) {
     std::u16string result;
     for(std::size_t i=0;i<bytes.size();) {
         const auto first=static_cast<unsigned char>(bytes[i++]);
@@ -32,11 +31,10 @@ std::u16string decode_sign(std::string_view bytes) {
     }
     return result;
 }
-}
 ApplyNumberSigns read_apply_number_signs(std::string_view records,std::string_view pool,std::size_t index) {
     const auto text=assets::read_culture_signs(records,pool,index);
-    auto negative=decode_sign(text.negative);
-    auto positive=decode_sign(text.positive);
+    auto negative=decode_culture_utf8(text.negative);
+    auto positive=decode_culture_utf8(text.positive);
     return {std::move(positive),std::move(negative)};
 }
 }

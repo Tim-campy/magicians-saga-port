@@ -486,7 +486,7 @@ The exception boundary is now proved from LSDA **0x948d70**: `[0x1e24abc,0x1e24a
 
 `CultureManagedError` represents host-translated managed throws accepted by this object filter. The port catches that category only around `create_specific`; arbitrary C++ failures propagate. Runtime class-initialization and managed allocation identities are outside this decoded model. A failure obtaining the locale or invariant culture propagates without the final cache write. Any provider-side mutation is retained; a successful final selection overwrites the current cache just as the native store does. No blanket catch or invented default locale is introduced.
 
-`current_culture_contract` tests cached bypass, invariant-mode no-cache return, normal success/flag stores, empty-name creation returning the invariant object, null-name/result fallback, translated managed failure, unrelated C++ failure, locale failure, fallback failure and cache mutation ordering. Windows CTest passes **46/46**. The specific factory remains an explicit required provider: next compose name lookup, neutral mapping, LCID construction and actual invariant data using the extracted tables, and bind current-thread/default-culture precedence. This kernel does not yet install a desktop culture or replace collation.
+`current_culture_contract` tests cached bypass, invariant-mode no-cache return, normal success/flag stores, empty-name creation returning the invariant object, null-name/result fallback, translated managed failure, unrelated C++ failure, locale failure, fallback failure and cache mutation ordering. Windows CTest passes **46/46**. The decoded specific factory is now composed below; actual invariant data and current-thread/default-culture precedence remain required. This kernel does not yet install a desktop culture or replace collation.
 
 ### Supplied-item initialization and null SecureString inputs
 
@@ -501,6 +501,17 @@ SecureString(string) (`0x1c08f08`) calls SecureNumber's constructor and Set (`0x
 The numeric text is captured before CurrentInfo/sign-provider access; provider-side changes to the task's provision text do not replace the captured parse input. Conversely, the catalog provider runs before the matcher reads current task fields. Tests verify both orders, supplied-item precedence, getter order, item replacement, missing text/value wrappers, preserved talk fields, constructor flags and partial state on a late failure.
 
 Evidence: local `research/exports/apply-item/`, `apply-secure-set/`, the earlier Init export and LSDA. Confidence high for the decoded initialization contract. Managed encryption/randomization, wrapper allocation identities and live catalogue/culture initialization remain outside this portable value model; no payment/receipt validation or task execution is implied by initializing a task.
+
+### Decoded specific-culture factory
+
+The portable factory in `src/core/gameplay/specific_culture.cpp` composes name encoding, hyphen fallback, culture-row lookup and the extracted neutral mapping. It reads signed LCID (+0), canonical name (+8), nullable territory (+0x14) and number index (+0x20) from 56-byte records. A zero territory offset means null; a nonzero offset to an empty string remains present. Evidence: CreateSpecificCulture `0x1e24b98`, native population `0x1036a60`, neutral dispatcher `0x1e27fc4` and LCID constructor `0x1e275c8`, in the bounded exports cited above. Confidence high for these decoded fields and branches.
+
+Null names fail; empty names return the host's invariant singleton. Nonempty names undergo host-supplied invariant lowercasing before lookup. A neutral result uses its canonical name, lowercased again, for an exact mapping comparison. Unknown neutral names and absent target LCIDs retain distinct managed failure categories; no replacement region is invented. The LCID constructor rejects negative int32 values before native signed-int16 lookup, creates a fresh invariant instance for 127, and preserves its two caller-supplied flags. Neutral dispatch supplies useUserOverride=true and readOnly=false. Linear exact matching of validated unique mapping keys replaces the hash dispatcher without admitting hash collisions.
+
+The factory composes with `construct_current_culture`: managed selection failures reach its invariant fallback, while malformed extracted buffers remain C++ data errors and propagate. `specific_culture_contract` exercises canonical names, fallback, flags, null versus empty territory, 16-bit LCID aliases, missing neutral targets, singleton versus new invariant instances, cache composition and malformed buffers. Windows CTest passes 47/47 after a clean rebuild. Local inspection confirms that all 339 canonical-name and nonzero territory references fit the existing 19,129-byte extracted pool.
+
+Limits: this is the decoded selection/number-index contract, not full CultureInfo/CultureData construction; calendar data, Unicode lowercasing, invariant contents, thread precedence and collation remain explicit host responsibilities or open work. The original also constructs CultureData after neutral selection; its allocation and unrelated fields are not represented by this value model. The host must load and validate the extracted neutral JSON into unique typed entries before calling the factory; no proprietary mapping is embedded in source.
+
 
 ## Port
 

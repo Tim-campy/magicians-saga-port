@@ -5,6 +5,8 @@
 namespace saga::core {
 struct CultureInstance {
     CultureIdentity identity;
+    std::u16string name;
+    std::optional<std::size_t> number_index;
     bool read_only=false;
     bool use_user_override=false;
 };

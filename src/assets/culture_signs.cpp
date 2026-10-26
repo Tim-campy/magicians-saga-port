@@ -19,7 +19,7 @@ std::optional<std::size_t> find_culture_record_by_lcid(std::int32_t lcid,std::st
     return std::nullopt;
 }
 // Native bsearch/comparator/population: 0x1036c08, 0x1036cc0, 0x1036a60.
-std::optional<std::size_t> find_culture_number_index(std::string_view key,std::string_view names,
+std::optional<std::size_t> find_culture_record_by_name(std::string_view key,std::string_view names,
     std::string_view cultures,std::string_view pool) {
     if(names.size()%4 || cultures.size()%56)throw std::invalid_argument("truncated culture lookup tables");
     key=key.substr(0,key.find('\0'));
@@ -40,12 +40,20 @@ std::optional<std::size_t> find_culture_number_index(std::string_view key,std::s
         else {
             const auto index=u16(names,mid*4+2);
             if(index>=0x8000 || index>=cultures.size()/56)throw std::invalid_argument("invalid signed culture index");
-            const auto number=u16(cultures,index*56+0x20);
-            if(number>=0x8000)throw std::invalid_argument("negative number-format index");
-            return number;
+            return index;
         }
     }
     return std::nullopt;
+}
+std::optional<std::size_t> find_culture_number_index(std::string_view key,std::string_view names,
+    std::string_view cultures,std::string_view pool) {
+    const auto index=find_culture_record_by_name(key,names,cultures,pool);
+    if(!index)return std::nullopt;
+    const auto offset=*index*56+0x20;
+    const auto number=static_cast<std::size_t>(static_cast<unsigned char>(cultures[offset]))
+        +256U*static_cast<unsigned char>(cultures[offset+1]);
+    if(number>=0x8000)throw std::invalid_argument("negative number-format index");
+    return number;
 }
 CultureSignText read_culture_signs(std::string_view records,std::string_view pool,std::size_t index) {
     constexpr std::size_t stride=48;
