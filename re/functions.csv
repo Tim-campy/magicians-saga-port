@@ -4047,7 +4047,7 @@ game:0x060010a0,data.CharaData.Load,data,documented,424,0x116dcc4
 game:0x060010a1,game:0x060010a1,data,,276,0x116de6c
 game:0x060010a2,game:0x060010a2,data,,296,0x116df80
 game:0x060010a3,game:0x060010a3,data,,472,0x116e0a8
-game:0x060010a4,game:0x060010a4,data,,432,0x116e280
+game:0x060010a4,data.CharaData..cctor,data,traced,432,0x116e280
 game:0x060010a5,game:0x060010a5,data,,8,0x116e430
 game:0x060010a6,game:0x060010a6,data,,16,0x116e438
 game:0x060010a7,game:0x060010a7,data,,8,0x116e448
@@ -4114,7 +4114,7 @@ game:0x060010e3,data.EnemyData.Load,data,documented,344,0x116ec2c
 game:0x060010e4,game:0x060010e4,data,,120,0x116ed84
 game:0x060010e5,game:0x060010e5,data,,120,0x116edfc
 game:0x060010e6,game:0x060010e6,data,,108,0x116ee74
-game:0x060010e7,game:0x060010e7,data,,208,0x116eee0
+game:0x060010e7,data.EnemyData..cctor,data,traced,208,0x116eee0
 game:0x060010e8,game:0x060010e8,data,,8,0x116efb0
 game:0x060010e9,game:0x060010e9,data,,16,0x116efb8
 game:0x060010ea,game:0x060010ea,data,,8,0x116efc8

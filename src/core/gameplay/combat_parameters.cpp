@@ -4,6 +4,22 @@
 #include <stdexcept>
 
 namespace saga::core {
+// CharaData..cctor 0x116e280 and EnemyData..cctor 0x116eee0 initialize separate arrays
+// from the same 52-byte metadata field; do not share mutable state between types.
+ParameterMaximumLevels initial_parameter_maximum_levels() {
+    ParameterMaximumLevels levels{};
+    levels.fill(200);
+    std::fill_n(levels.begin(),4,1000);
+    return levels;
+}
+std::int32_t TableCharacterParameterHost::maximum_level(std::int32_t index) {
+    return maxima_.at(static_cast<std::size_t>(index));
+}
+const ShopParameterUpgrade& TableCharacterParameterHost::shop_upgrade(std::int32_t id) {
+    const auto& record=shop_.at(static_cast<std::size_t>(id));
+    if(!record)throw std::invalid_argument("missing magic shop record");
+    return *record;
+}
 namespace {
 std::int32_t wrap(std::uint32_t bits) {
     return static_cast<std::int32_t>(bits<=0x7fffffffU?static_cast<std::int64_t>(bits):

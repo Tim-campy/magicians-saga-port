@@ -78,3 +78,5 @@ game:0x06000f40	reimplemented	src/core/gameplay/combat_parameters.cpp	Explicit-l
 game:0x06000f3f	reimplemented	src/core/gameplay/combat_parameters.cpp	Stored-level character growth and shop bonus; explicit-level override tested
 game:0x060011a0	reimplemented	src/core/gameplay/combat_parameters.cpp	Parameter keys 0..4 and 10..12 map to shop ids 0..7; other keys -1
 game:0x060011a3	reimplemented	src/core/gameplay/combat_parameters.cpp	Wrapping upValue times buyCount; negative counts preserved
+game:0x060010a4	traced	docs/subsystems/combat.md	Character PARAM_MAX_LEVELS initializer resolved; other static arrays not fully ported
+game:0x060010e7	traced	docs/subsystems/combat.md	Enemy PARAM_MAX_LEVELS initializer resolved; independent array with same metadata source as character

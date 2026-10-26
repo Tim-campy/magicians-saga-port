@@ -1,6 +1,8 @@
 #pragma once
 #include "combat_damage.hpp"
 #include "event_flow.hpp"
+#include <array>
+#include <optional>
 
 namespace saga::core {
 struct EquipmentParameters {
@@ -31,6 +33,20 @@ public:
     virtual ~CharacterParameterHost()=default;
     virtual std::int32_t maximum_level(std::int32_t parameter)=0;
     virtual const ShopParameterUpgrade& shop_upgrade(std::int32_t id)=0;
+};
+using ParameterMaximumLevels=std::array<std::int32_t,13>;
+ParameterMaximumLevels initial_parameter_maximum_levels();
+using ShopParameterTable=std::vector<std::optional<ShopParameterUpgrade>>;
+// References preserve live table changes. Storage must outlive the provider.
+class TableCharacterParameterHost final:public CharacterParameterHost {
+public:
+    TableCharacterParameterHost(const ParameterMaximumLevels& maxima,const ShopParameterTable& shop)
+        :maxima_(maxima),shop_(shop){}
+    std::int32_t maximum_level(std::int32_t index) override;
+    const ShopParameterUpgrade& shop_upgrade(std::int32_t id) override;
+private:
+    const ParameterMaximumLevels& maxima_;
+    const ShopParameterTable& shop_;
 };
 std::int32_t character_parameter(const CharacterParameters&,std::int32_t index,
                                  std::int32_t level,CharacterParameterHost&);

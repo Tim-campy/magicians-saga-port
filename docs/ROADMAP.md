@@ -31,7 +31,7 @@ Current maintainer priority: game-specific decompilation and gameplay integratio
 ## Next tasks
 
 ### Current gameplay focus
-- [ ] Recover per-parameter maximum levels and bind decoded character/shop records; close the enemy growth curve (-50 amplitude), then event-15 consumers. Character growth/shop arithmetic and equipment totals are ported; live ECS/data integration remains open.
+- [ ] Close the enemy growth curve (-50 amplitude), then bind decoded character/shop records and event-15 consumers. Initial maximum levels and live maximum/shop providers are ported alongside character growth; concrete ECS/data integration remains open.
 
 ### 1. Events and scripts
 - [ ] Bind decoded billing-item/catalog providers and complete notification manager adapters, preserving task execution gates.

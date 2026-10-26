@@ -114,4 +114,26 @@ int main(){
     character.values->at(0)=nullptr;growth.calls.clear();failed=false;
     try{member_base_parameter(character,0,growth);}catch(const std::invalid_argument&){failed=true;}
     check(failed&&growth.calls.empty(),"invalid character row faults before maximum and shop providers");
+    auto maxima=initial_parameter_maximum_levels();
+    const auto enemy_maxima=initial_parameter_maximum_levels();
+    for(std::size_t i=0;i<maxima.size();++i)check(maxima[i]==(i<4?1000:200),"APK initial parameter maxima");
+    ShopParameterTable shop(8);shop[0]=ShopParameterUpgrade{7,3};
+    TableCharacterParameterHost bound(maxima,shop);
+    CharacterParameters actual{rows(100,1000),1000,2};
+    check(member_base_parameter(actual,0,bound)==1021,"initial maximum and shop table binding");
+    actual.level=1100;
+    check(member_base_parameter(actual,0,bound)==1064,"extension begins above level 1000 with actual maximum");
+    actual.level=1200;
+    check(member_base_parameter(actual,0,bound)==1107,"extension completes at level 1200");
+    shop[0]->purchases=4;
+    check(member_base_parameter(actual,0,bound)==1114,"live purchase count affects next query");
+    maxima[0]=1200;
+    check(member_base_parameter(actual,0,bound)==1028&&enemy_maxima[0]==1000,"live maximum; character/enemy arrays are independent");
+    shop[0].reset();failed=false;
+    try{member_base_parameter(actual,0,bound);}catch(const std::invalid_argument&){failed=true;}
+    check(failed,"missing selected shop record faults");
+    actual.flags=0;
+    check(member_base_parameter(actual,0,bound)==1000,"nonmain never accesses missing shop record");
+    failed=false;try{bound.maximum_level(13);}catch(const std::out_of_range&){failed=true;}
+    check(failed,"maximum index checked");
 }
