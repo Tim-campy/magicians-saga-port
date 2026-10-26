@@ -3751,11 +3751,11 @@ game:0x06000f78,game:0x06000f78,ecs,,4,0x115fe50
 game:0x06000f79,game:0x06000f79,ecs,,8,0x115fe54
 game:0x06000f7a,game:0x06000f7a,ecs,,8,0x115fe5c
 game:0x06000f7b,game:0x06000f7b,ecs,,88,0x115fe64
-game:0x06000f7c,game:0x06000f7c,ecs,,340,0x115febc
+game:0x06000f7c,ecs.ProjectileSystem.Init,ecs,traced,340,0x115febc
 game:0x06000f7d,game:0x06000f7d,ecs,,8,0x1160010
-game:0x06000f7e,game:0x06000f7e,ecs,,2992,0x1160018
+game:0x06000f7e,ecs.ProjectileSystem.Update,ecs,documented,2992,0x1160018
 game:0x06000f7f,game:0x06000f7f,ecs,,16,0x1160bc8
-game:0x06000f80,game:0x06000f80,ecs,,104,0x1160bd8
+game:0x06000f80,ecs.ProjectileSystem.OnProjectileImpact,ecs,traced,104,0x1160bd8
 game:0x06000f81,ecs.ProjectileSystem.Fire,ecs,reimplemented,480,0x1157230
 game:0x06000f82,game:0x06000f82,ecs,,8,0x1160c40
 game:0x06000f83,game:0x06000f83,ecs,,8,0x1160c48

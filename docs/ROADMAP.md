@@ -31,7 +31,7 @@ Current maintainer priority: game-specific decompilation and gameplay integratio
 ## Next tasks
 
 ### Current gameplay focus
-- [ ] Complete defeat/impact and the per-frame ProjectileSystem motion consumer; FlyAway/Fire launch and modification payloads are ported; human/enemy state transitions are ported and tested in the contact-collision chain; projectile-hit control flow is integrated with EcsDamageHost; per-call slot/ID/catalog/saved-level resolution is connected, while component construction and save restoration remain open. Connected stat/damage/event-15 accounting tests now pass; effect selection and the full event subscriber set remain open.
+- [ ] Bind projectile motion to live subset scheduling and the horizontal movement pass; implement impact/event-23 subscribers and complete Defeat; FlyAway/Fire launch and modification payloads are ported; human/enemy state transitions are ported and tested in the contact-collision chain; projectile-hit control flow is integrated with EcsDamageHost; per-call slot/ID/catalog/saved-level resolution is connected, while component construction and save restoration remain open. Connected stat/damage/event-15 accounting tests now pass; effect selection and the full event subscriber set remain open.
 
 ### 1. Events and scripts
 - [ ] Bind decoded billing-item/catalog providers and complete notification manager adapters, preserving task execution gates.

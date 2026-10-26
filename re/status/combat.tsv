@@ -99,3 +99,6 @@ game:0x06000ec6	reimplemented	src/core/gameplay/combat_state.cpp	Human pre/store
 game:0x06000ec7	reimplemented	src/core/gameplay/combat_state.cpp	1-to-2 direction and animation before state mutation
 game:0x06000ec8	reimplemented	src/core/gameplay/combat_state.cpp	Ordered speed idle-animation and strict attack-counter reset
 game:0x06000e84	reimplemented	src/core/gameplay/projectile_launch.cpp	Ordered position reads RNG draws Fire and modification replacement; contact integration tested
+game:0x06000f7e	documented	docs/subsystems/combat.md	Per-entity motion and impact removal ported; live group enumerators and exception disposal pending
+game:0x06000f7c	traced	docs/subsystems/combat.md	Required subset slots 27 0 1 and event-23 subscription
+game:0x06000f80	traced	docs/subsystems/combat.md	Emitter destroy then destroyed Cell and Projectile checks; other event-23 subscribers open

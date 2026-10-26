@@ -379,3 +379,8 @@ add_executable(test_projectile_launch test_projectile_launch.cpp)
 target_link_libraries(test_projectile_launch PRIVATE projectile_launch)
 project_warnings(test_projectile_launch)
 add_test(NAME projectile_launch_contract COMMAND test_projectile_launch)
+
+add_executable(test_projectile_motion test_projectile_motion.cpp)
+target_link_libraries(test_projectile_motion PRIVATE projectile_motion)
+project_warnings(test_projectile_motion)
+add_test(NAME projectile_motion_contract COMMAND test_projectile_motion)
