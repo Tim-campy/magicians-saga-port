@@ -34,9 +34,10 @@ game:0x06000266	documented	docs/subsystems/events.md	town LINQ predicate: null f
 game:0x06001039	documented	docs/subsystems/events.md	BaseData.Check: flags +0x1c bitmask nonzero; called by condition 21
 game:0x0600106b	documented	docs/subsystems/events.md	CharaData.get_level returns int32 +0x40; condition 5 reads the same field directly
 game:0x060007ff	traced	docs/subsystems/events.md	Init resets loopCounter_ and sets evenCheck_; other initialization not recovered
-game:0x06000800	traced	docs/subsystems/events.md	select_form_pass composes guards, cloud/marker kernels, first-cycle event1 loop, queue and Push; prelude and touch movement composed; trigger/button tail and concrete callbacks unresolved
+game:0x06000800	traced	docs/subsystems/events.md	select_form_pass composes guards, cloud/marker kernels, first-cycle event1 loop, queue and Push; prelude and touch movement composed; post-movement triggers composed; button tail and concrete callbacks unresolved
 game:0x0600031a	traced	docs/subsystems/events.md	currency response passes incoming amount to AddBalance; SDK side effects unported
 game:0x06000747	reimplemented	src/core/gameplay/select_prelude.cpp	MyFormBase.Update counter and orientation/view call order; tests/test_select_prelude.cpp
 game:0x06000139	documented	docs/subsystems/events.md	ResetImageAnimation dictionary values and row[1] zeroing; portable row kernel tested; dictionary binding pending
 game:0x0600013a	documented	docs/subsystems/events.md	UpdateImageAnimations ordered row[1] wrap32 increment; portable row kernel tested; dictionary binding pending
 game:0x0600081f	reimplemented	src/core/gameplay/select_touch_move.cpp	CheckCollisionTownHuman: first live-list match at binary32 distance <5 excluding row[8]==2; tests/test_select_touch_move.cpp
+game:0x060001c7	reimplemented	src/core/gameplay/select_triggers.cpp	CheckAlreadyEvent: negative/out-of-range false, fresh catalog row execution_count>0; tests/test_select_triggers.cpp

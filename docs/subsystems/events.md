@@ -216,9 +216,23 @@ After a movement branch, ARM64 FCVTZS converts toward zero with signed saturatio
 
 `CheckCollisionTownHuman` (`0x11eecdc`, `game:0x0600081f`) scans the live list in increasing index order, re-reading it between iterations. Each required int32[] row must have slot 8; value 2 skips the row. Otherwise convert row[1] to binary32, subtract the current witchX_, take absolute value, and return the first index with distance strictly less than 5. No match returns -1; null storage/rows and short rows fail. A newly encountered nonnegative index invokes `SetTalkFuki(index,false)` before assigning collisionId_; the same index does not repeat the call. Losing contact assigns -1. A failing bubble callback leaves the prior collisionId_ intact. The callback still owns text-table selection and the 120-tick bubble lifetime observed in SetTalkFuki (`0x11eedd8`); those bodies are not ported here.
 
-`update_select_form_prefix` now includes this block after `process_select_form_pass` returns ContinueInput. Its next continuation address is `0x11ec948` (the standalone pass still stops at `0x11ec7ec`). The remaining trigger/button paths and bubble data bindings remain open.
+`update_select_form_prefix` now includes this block after `process_select_form_pass` returns ContinueInput. Its next continuation address is `0x11ec948` (the standalone pass still stops at `0x11ec7ec`). The trigger paths are composed below; the remaining buttons and bubble data bindings remain open.
+
+### Post-movement progression triggers
+
+Confidence high: Update `0x11ec948`?`0x11eca24`, helper bodies in `research/exports/select-triggers/` and `select-bits/`. First `GetStamina` (`0x110c248`) reads sysSave_.longArray[1] as int64, but the caller compares W0 with 1: only the low 32 bits participate. If equal and `CheckAlreadyEvent(1118)` is false, invoke indexed ExecEvent(1118) with default contexts, discarding its form result. Then read save_.intArray[0], test bit 0x80, and when absent call AppData.On(0x80). The normal save_ is AppData+0x198; sysSave_ is +0x190. They must not be conflated.
+
+`AppData.On` (`0x1110708`) captures a fresh normal-save integer array, reads slot 0, ORs the mask through BitUtil.On (`0x1bee8fc`), converts back to SecureInt, and stores into the retained array. The portable decoded binding reads the array separately for the initial test and the update and preserves all other bits. A missing array/slot fails after any prior event effects, without reaching the second trigger.
+
+Next query `FlagCheck(0x2000)` (`0x1101944`): sysSave_.intArray at the index selected by static SYSSAVEI_FLAG (+0x2bc), followed by a nonzero bit intersection (BitUtil.Check `0x1bee8e4`). If true and CheckAlreadyEvent(1133) is false, call indexed ExecEvent(1133) with default contexts and discard the result. The second flag read happens after the first event and save update, so their side effects can change whether it executes. Both triggers continue to the button path; they do not use the automatic-selection form-return rule.
+
+`CheckAlreadyEvent` (`0x110c4c4`, `game:0x060001c7`) returns false immediately for negative ids; otherwise requires a catalog and returns false for id >= length. For an in-range id it gets the catalog again, requires the row and returns execution_count >0. A replaced/shrunk catalog or in-range null row fails. An out-of-range event id therefore suppresses neither the first trigger's normal-save flag mutation nor the later button processing. The extracted 229-entry catalog cannot resolve ids 1118/1133; no extra records are invented by the port.
+
+The required SelectTriggerHost supplies decoded stamina, the system flag word and normal-save integer storage. SecureInt storage/encoding and effective SYSSAVEI_FLAG initialization remain outside this kernel. `update_select_form_prefix` now runs these triggers after touch movement on ContinueInput, and its next continuation address is `0x11eca28`. Tests use synthetic event catalogs to cover both effect-bearing ids and the observed short-catalog shape.
 
 ## Port
+
+- `src/core/gameplay/select_triggers.{hpp,cpp}` ports CheckAlreadyEvent and the two ordered post-movement triggers with normal/system save separation. `tests/test_select_triggers.cpp` covers low-word stamina, repeat eligibility for nonpositive counters, dynamic second-gate effects, discarded forms, out-of-range ids, catalog replacement and missing-save failure ordering. `test_select_form_pass.cpp` checks composition after movement and early-return bypass.
 
 - `src/core/gameplay/select_touch_move.{hpp,cpp}` ports binary32 witch movement, integer conversion and first-match town contact. Strict floating-point compiler options prevent contraction/reassociation. `tests/test_select_touch_move.cpp` covers direction, signed-target overshoot, bounds, repeated/new contact, callback failure and nonfinite values. `test_select_form_pass.cpp` verifies that dialog returns skip it and normal event continuation reaches it.
 
@@ -270,7 +284,7 @@ Fixture JSON schema (all keys optional; absence preserves missing state rather t
 
 For a synthetic money-only event with nonempty effects, a minimal auto fixture is `{"context_present": true, "context_character_count": 1, "sys_save_present": false}`. This is test state, not an inferred new-game state. PRINT is required when an empty script or failed identity lookup reaches its diagnostic gate; quest_data_count is required only for that lookup's fallback. Additional predicates require their corresponding catalogs/scalars. Tool collection lengths are limited to 100000; these are harness limits, not recovered game limits.
 
-- Last recorded build: Windows/MSVC, 31/31 CTest (30 C++ contracts plus native scenario integration).
+- Last recorded build: Windows/MSVC, 32/32 CTest (31 C++ contracts plus native scenario integration).
 - Missing: population of decoded default-args/diagnostic state from saves/configuration, SelectForm integration, remaining unit `CheckTerm` predicates, integration with save-loaded execution counters; hour-based delays; `SubForm.delayEvent_` path (slot 5); `SelectForm.Update` guards; opcodes other than the eight; `SecureLong`/`SecureInt` storage; billing item source for stamina; UI forms.
 
 ## Evidence
@@ -304,7 +318,7 @@ For a synthetic money-only event with nonempty effects, a minimal auto fixture i
 ## Open questions
 
 1. (blocking) Concrete context/catalog bindings for the 14 recovered table-used conditions; automatic selection is composed with the kernels but not yet called by a desktop form/frame loop. Populate the decoded host from data/save/ECS providers, including hero level and the Config.DEBUG/AppData.debugRescueNum initialization state. Other unit branches remain unresolved for scripts outside Event.txt.
-2. (blocking) Bind the composed select_form_pass to a desktop form host: recover the remaining post-movement triggers/buttons at 0x11ec948 and implement its required notification/decor/town/guide/capture callbacks plus orientation and image-dictionary bindings for the recovered prelude. The guards, clouds, markers, counter, initial event loop and reached-pass scheduling are composed and tested.
+2. (blocking) Bind the composed select_form_pass to a desktop form host: recover the remaining buttons at 0x11eca28 and implement its required notification/decor/town/guide/capture callbacks plus orientation and image-dictionary bindings for the recovered prelude. The guards, clouds, markers, counter, initial event loop and reached-pass scheduling are composed and tested.
 3. (blocking) Initial/real values of `SYSSAVEI_YUGAMI`, the `ITEM_STAMINA_UP` item state, and the money/crystal/stamina slots from save/new game.
 4. Unit dispatcher opcodes other than 1/2/4/8/10/12/15/31 (jump table has 15 entries); scripts outside `Event.txt` (quests, built events) may use them.
 5. Consumer of `DelayEvent` entries with `hour_ != -1` (none in the extracted table).

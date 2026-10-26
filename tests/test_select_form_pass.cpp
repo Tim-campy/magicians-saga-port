@@ -4,7 +4,7 @@
 #include <stdexcept>
 using namespace saga::core;
 void check(bool v,const char* message) {if(!v){std::cerr<<message<<'\n';std::exit(1);}}
-struct Host:SelectFormPassHost,SelectCloudHost,SelectMarkerHost,EventExecutionHost,FormStackHost,SelectPreludeHost,SelectTouchMoveHost {
+struct Host:SelectFormPassHost,SelectCloudHost,SelectMarkerHost,EventExecutionHost,FormStackHost,SelectPreludeHost,SelectTouchMoveHost,SelectTriggerHost {
     SelectFormPassState state{0,false,false,{nullptr,this,nullptr},{false,false,nullptr},{0,false}};
     EventDelayQueue queue;
     DecodedEventConditionState decoded;
@@ -16,6 +16,9 @@ struct Host:SelectFormPassHost,SelectCloudHost,SelectMarkerHost,EventExecutionHo
     std::shared_ptr<SelectClouds> cloud_list=std::make_shared<SelectClouds>();
     std::shared_ptr<EventCatalog> catalog=std::make_shared<EventCatalog>(2);
     Host() {decoded.context_present=true;decoded.context_character_count=1;decoded.money=0;}
+    std::int64_t stamina() override {log.push_back("stamina");return 0;}
+    std::uint32_t system_flags() override {log.push_back("sysflags");return 0;}
+    std::shared_ptr<EventIntegers> save_integers() override {throw std::logic_error("unexpected save");}
     std::shared_ptr<TownHumanRows> town_humans() override {log.push_back("collision");return std::make_shared<TownHumanRows>();}
     void set_talk_bubble(std::int32_t,bool) override {throw std::logic_error("unexpected bubble");}
     std::int32_t saved_orientation() override {log.push_back("orientation");return 0;}
@@ -79,14 +82,15 @@ int main() {
     {
         Host h;SelectPreludeState prelude{0,0,0,20};h.state.form.dialog=h.child;
         SelectTouchMoveState movement{true,0,10,0,-1};
-        const auto result=update_select_form_prefix(prelude,h,h.state,h,h,h,h.queue,h,h.conditions,movement,h);
+        const auto result=update_select_form_prefix(prelude,h,h.state,h,h,h,h.queue,h,h.conditions,movement,h,h);
         check(result.pass==SelectPassResult::ReturnTrue && result.snapshot.camera_x==20,"prefix snapshot and return");
         check(prelude.update_counter==1 && h.state.events.loop_counter==0 && !h.state.form.dialog,"base counter advances even on dialog return");
         check(h.log==std::vector<std::string>({"orientation","width","view","images","images"}),"common work precedes dialog gate");
         check(movement.witch_x==0,"dialog return skips touch movement");
         h.log.clear();h.state.events.loop_counter=2;
-        const auto next=update_select_form_prefix(prelude,h,h.state,h,h,h,h.queue,h,h.conditions,movement,h);
-        check(next.pass==SelectPassResult::ContinueInput && movement.witch_x==6 && h.log.back()=="collision","normal continuation advances character after events");
+        const auto next=update_select_form_prefix(prelude,h,h.state,h,h,h,h.queue,h,h.conditions,movement,h,h);
+        check(next.pass==SelectPassResult::ContinueInput && movement.witch_x==6 && h.log.back()=="sysflags","normal continuation reaches triggers");
+        check(h.log.at(h.log.size()-3)=="collision" && h.log.at(h.log.size()-2)=="stamina","movement precedes triggers");
     }
     {
         Host h;h.state.form.dialog=h.child;
