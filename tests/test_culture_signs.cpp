@@ -8,6 +8,19 @@ void check(bool b){if(!b){std::cerr<<"culture sign contract failure\n";std::exit
 template<class F>void fails(F f){try{f();check(false);}catch(const std::invalid_argument&){}}
 int main(){
     {
+        std::string cultures(5*56,'\0');
+        for(std::size_t i=0;i<5;++i)cultures[i*56]=static_cast<char>(i==0?1:i==4?3:2);
+        check(find_culture_record_by_lcid(2,cultures)==2); // Midpoint, not first duplicate.
+        check(find_culture_record_by_lcid(0x10002,cultures)==2);
+        check(find_culture_record_by_lcid(-65534,cultures)==2); // Native helper truncates; constructor rejects earlier.
+        check(find_culture_record_by_lcid(1,cultures)==0 && find_culture_record_by_lcid(3,cultures)==4);
+        check(!find_culture_record_by_lcid(0,cultures) && !find_culture_record_by_lcid(4,cultures));
+        cultures[0]=static_cast<char>(0xff);cultures[1]=static_cast<char>(0xff);
+        check(find_culture_record_by_lcid(65535,cultures)==0);
+        check(!find_culture_record_by_lcid(1,{}));
+        fails([&]{find_culture_record_by_lcid(1,cultures.substr(1));});
+    }
+    {
         const std::string names_pool("aa\0bb\0cc\0",9);
         std::string names(12,'\0'),cultures(168,'\0');
         names[4]=3;names[8]=6;names[2]=2;names[6]=0;names[10]=1;

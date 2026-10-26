@@ -65,7 +65,12 @@ int main(int argc,char** argv){
                 const auto decoded=read_apply_number_signs(records,pool,*number);
                 check(parse_apply_integer(decoded.positive+u"123",decoded)==123);
                 check(parse_apply_integer(decoded.negative+u"123",decoded)==-123);
+                const auto lcid=u16(cultures,culture*56);
+                const auto selected=saga::assets::find_culture_record_by_lcid(static_cast<std::int32_t>(lcid),cultures);
+                check(selected && u16(cultures,*selected*56)==lcid);
             }
+            check(saga::assets::find_culture_record_by_lcid(4,cultures)==4);
+            check(saga::assets::find_culture_record_by_lcid(0x7c04,cultures)==329);
             std::cout<<"339 culture names resolved to matching number records\n";
         }
     }

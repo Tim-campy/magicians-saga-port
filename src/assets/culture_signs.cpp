@@ -1,6 +1,23 @@
 #include "culture_signs.hpp"
 #include <stdexcept>
 namespace saga::assets {
+// Native 0x1036a00/0x1037294; bsearch ordering from AOSP android-15.0.0_r1.
+std::optional<std::size_t> find_culture_record_by_lcid(std::int32_t lcid,std::string_view cultures) {
+    if(cultures.size()%56)throw std::invalid_argument("truncated culture records");
+    const auto low=static_cast<std::uint32_t>(lcid)&0xffffU;
+    const auto key=static_cast<std::int32_t>(low)-(low>=0x8000U?65536:0);
+    std::size_t first=0,last=cultures.size()/56;
+    while(first<last) {
+        const auto mid=first+(last-first)/2,offset=mid*56;
+        const auto raw=static_cast<std::int32_t>(static_cast<unsigned char>(cultures[offset]))
+            +256*static_cast<unsigned char>(cultures[offset+1]);
+        const auto value=raw-(raw>=0x8000?65536:0);
+        if(key==value)return mid;
+        if(key<value)last=mid;
+        else first=mid+1;
+    }
+    return std::nullopt;
+}
 // Native bsearch/comparator/population: 0x1036c08, 0x1036cc0, 0x1036a60.
 std::optional<std::size_t> find_culture_number_index(std::string_view key,std::string_view names,
     std::string_view cultures,std::string_view pool) {
