@@ -1,5 +1,7 @@
 #pragma once
 #include "async_local_values.hpp"
+#include "execution_context.hpp"
+#include <functional>
 namespace saga::core {
 // Copy-only projection. Dispatch, thread affinity and queue execution remain host responsibilities.
 class SynchronizationContext {
@@ -28,4 +30,9 @@ public:
 };
 // Erased values must have been stored through a SynchronizationContext base pointer.
 AsyncValue copy_synchronization_context(AsyncValue);
+// GetThreadLocalContext remains a host boundary, invoked only for an absent slot.
+using SynchronizationFallback = std::function<AsyncValue()>;
+AsyncValue current_synchronization_context(const ThreadExecutionState&,const SynchronizationFallback&);
+AsyncValue current_no_flow_synchronization_context(const ThreadExecutionState&,const SynchronizationFallback&);
+void set_synchronization_context(ThreadExecutionState&,AsyncValue,ExecutionContextCopyHost&);
 }

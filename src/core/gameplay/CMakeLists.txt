@@ -104,4 +104,4 @@ saga_library(context_capture context_capture.cpp)
 target_link_libraries(context_capture PUBLIC call_context context_switch)
 
 saga_library(synchronization_copy synchronization_copy.cpp)
-target_link_libraries(synchronization_copy PUBLIC async_local_values)
+target_link_libraries(synchronization_copy PUBLIC async_local_values execution_context)
