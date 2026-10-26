@@ -3,6 +3,7 @@
 #include "select_clouds.hpp"
 #include "select_markers.hpp"
 #include "select_event_pass.hpp"
+#include "select_prelude.hpp"
 namespace saga::core {
 struct SelectFormPassState {
     std::int32_t state;
@@ -36,4 +37,8 @@ enum class SelectPassResult { ReturnTrue, ContinueInput };
 // ContinueInput resumes original Update at 0x11ec7ec; it is not a completed frame.
 SelectPassResult process_select_form_pass(SelectFormPassState&,SelectFormPassHost&,
     SelectCloudHost&,SelectMarkerHost&,EventDelayQueue&,EventExecutionHost&,EventConditionHost&);
+struct SelectUpdatePrefixResult {SelectPreludeSnapshot snapshot;SelectPassResult pass;};
+SelectUpdatePrefixResult update_select_form_prefix(SelectPreludeState&,SelectPreludeHost&,
+    SelectFormPassState&,SelectFormPassHost&,SelectCloudHost&,SelectMarkerHost&,
+    EventDelayQueue&,EventExecutionHost&,EventConditionHost&);
 }

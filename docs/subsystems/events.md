@@ -188,6 +188,16 @@ Confidence high: SelectForm.Update ELF `0x11ebe64`?`0x11ec0bc`, local `research/
 
 When slot 0 exceeds wrap32(form field +0x160 + AppData static +0x394), remove the entry first. Read AppData static +0x19c, GameView.GetGameHeight (`0x10f77f4`), AppData.IsLowAspect (`0x1113870`), Random(30), then Random(4) (`0x1102f70`), in that order. Append an eight-int32 array `[-30, y, resource, 0, 1, variant, 0, 20]`, with y = wrap32(height - (lowAspect ? 285 : 280) - firstRandom). Appended records are not updated in this pass. Failure after removal does not restore the old entry. Resource and right-edge fields remain explicit host inputs; their initialization and the RNG implementation are not inferred.
 
+### Common SelectForm prelude and image-animation ticks
+
+Confidence high from `research/exports/select-prelude/`, `research/exports/select-orientation/` and the Update export. The literal at ELF `0x627350` is the uint64 value 1: the 8-byte store at `0x11ebd8c` writes int32 `errFunc_=1` (+0xf0) and `errLine_=0` (+0xf4), not a floating-point animation parameter. Field names are confirmed through the metadata field-offset table.
+
+`MyFormBase.Update` (`0x11d1684`, `game:0x06000747`) advances its independent `update_` counter (+0xb8) with wrap32 increment followed by signed remainder INT32_MAX. It then requires AppData/save storage, converts the SecureInt selected by static `SYSSAVEI_SCREEN_ORIENTATION` (+0x2e8) and, only for -1, calls `AppData.EnableLandSpace` (`0x1116ce8`). It sends -1 for true or 0 for false to `IApplication.SetOrientation` (`0x1b872a8`); the signed bit extraction is intentional. Finally it calls `get_IsLandspace_` (`0x11d2040`), which requires GameView and compares GetGameWidth to 240, discards that result and returns true. The counter write is retained on subsequent failure. `EnableLandSpace` is not pure: its successful event-6 unlock path can write a save flag; the host must preserve this side effect. Its full body and the platform orientation mapping are not yet ported.
+
+SelectForm then captures loopCounter_, camX_ (+0x154) and static AppData.VIEW_X (+0x38c). A zero captured loop counter triggers `ResetImageAnimation` (`0x10ffac0`, `game:0x06000139`), then `UpdateImageAnimations` (`0x10ffc6c`, `game:0x0600013a`) always runs. Both get the values collection of `AppData.imageAnimationInfos_` (+0x170), enumerate it, and traverse each int32[][] group in increasing row order. Reset writes row[1]=0; update writes wrap32(row[1]+1). Empty groups are allowed; null groups/rows and rows shorter than two fail, preserving earlier writes. Aliased rows are visited for every occurrence. The update never takes a modulo or checks another slot. Reset and update access the dictionary independently. These operations precede dialog/state/balance gates, even if those gates return early.
+
+The portable image helpers accept an ordered values view with stable membership during each pass. A concrete host must preserve dictionary traversal order, aliases and enumeration failure behavior; this binding remains open. `update_select_form_prefix` now performs the prelude and the composed pass, returning the original camera/view snapshots alongside the continuation outcome. Input code must use these snapshots where the ARM64 uses its saved registers, rather than re-read fields after callbacks.
+
 ### Composed SelectForm pass
 
 `process_select_form_pass` composes the recovered interval beginning at ELF `0x11ebde8`. Its caller must first perform the common prelude (`MyFormBase.Update`, image-animation reset when counter is zero, then image-animation update), including the original null checks and snapshots needed by the later input continuation. The port consumes the dialog marker before dispatching the state. States 3/4 and other nonzero states follow the capture/BGM branches above; they do not touch the normal counter or event queue.
@@ -197,6 +207,8 @@ State 0 executes counter advance, clouds, conditional markers, notifications, ba
 The composed pass then runs counted delays and selection. A selected form goes through `push_select_form`, preserving autoSave/evenCheck writes before manager access. `ReturnTrue` means the original returns true at this boundary. `ContinueInput` means resume at `0x11ec7ec`; it is deliberately not a successful whole-frame result. Notification, decoration, town, balance, capture and guide bodies remain required host methods with no default no-op implementation. The host also owns ChangeState's label updates and final state write. A desktop binding must preserve shared application/static flag ownership across forms, rather than create independent copies per form.
 
 ## Port
+
+- `src/core/gameplay/select_prelude.{hpp,cpp}` ports MyFormBase.Update with required orientation/view host callbacks, SelectForm prelude ordering/snapshots and ordered image-animation row operations. `tests/test_select_prelude.cpp` covers aliasing, wrap32, null/short-row partial writes, automatic-orientation arguments and save failure after counter mutation; the composed prefix is also covered in `test_select_form_pass.cpp`. Dictionary storage and EnableLandSpace/platform bodies remain external.
 
 - `src/core/gameplay/select_form_pass.{hpp,cpp}` composes the recovered state/dialog/balance guards, cloud/marker refresh, first-cycle city events, queue/selection and returned-form Push. `tests/test_select_form_pass.cpp` exercises these together with synthetic catalogs, real event execution and delays, including mutation surviving manager failure. Common prelude and post-selection input remain outside this interval.
 
@@ -244,7 +256,7 @@ Fixture JSON schema (all keys optional; absence preserves missing state rather t
 
 For a synthetic money-only event with nonempty effects, a minimal auto fixture is `{"context_present": true, "context_character_count": 1, "sys_save_present": false}`. This is test state, not an inferred new-game state. PRINT is required when an empty script or failed identity lookup reaches its diagnostic gate; quest_data_count is required only for that lookup's fallback. Additional predicates require their corresponding catalogs/scalars. Tool collection lengths are limited to 100000; these are harness limits, not recovered game limits.
 
-- Last recorded build: Windows/MSVC, 29/29 CTest (28 C++ contracts plus native scenario integration).
+- Last recorded build: Windows/MSVC, 30/30 CTest (29 C++ contracts plus native scenario integration).
 - Missing: population of decoded default-args/diagnostic state from saves/configuration, SelectForm integration, remaining unit `CheckTerm` predicates, integration with save-loaded execution counters; hour-based delays; `SubForm.delayEvent_` path (slot 5); `SelectForm.Update` guards; opcodes other than the eight; `SecureLong`/`SecureInt` storage; billing item source for stamina; UI forms.
 
 ## Evidence
@@ -278,7 +290,7 @@ For a synthetic money-only event with nonempty effects, a minimal auto fixture i
 ## Open questions
 
 1. (blocking) Concrete context/catalog bindings for the 14 recovered table-used conditions; automatic selection is composed with the kernels but not yet called by a desktop form/frame loop. Populate the decoded host from data/save/ECS providers, including hero level and the Config.DEBUG/AppData.debugRescueNum initialization state. Other unit branches remain unresolved for scripts outside Event.txt.
-2. (blocking) Bind the composed select_form_pass to a desktop form host: recover the common prelude and post-selection input continuation at 0x11ec7ec, and implement its required notification/decor/town/guide/capture callbacks. The guards, clouds, markers, counter, initial event loop and reached-pass scheduling are composed and tested.
+2. (blocking) Bind the composed select_form_pass to a desktop form host: recover the post-selection input continuation at 0x11ec7ec and implement its required notification/decor/town/guide/capture callbacks plus orientation and image-dictionary bindings for the recovered prelude. The guards, clouds, markers, counter, initial event loop and reached-pass scheduling are composed and tested.
 3. (blocking) Initial/real values of `SYSSAVEI_YUGAMI`, the `ITEM_STAMINA_UP` item state, and the money/crystal/stamina slots from save/new game.
 4. Unit dispatcher opcodes other than 1/2/4/8/10/12/15/31 (jump table has 15 entries); scripts outside `Event.txt` (quests, built events) may use them.
 5. Consumer of `DelayEvent` entries with `hour_ != -1` (none in the extracted table).

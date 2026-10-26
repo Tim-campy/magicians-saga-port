@@ -291,8 +291,8 @@ game:0x06000135,game:0x06000135,unassigned,,8,0x117b32c
 game:0x06000136,game:0x06000136,unassigned,,996,0x117bf40
 game:0x06000137,game:0x06000137,unassigned,,8,0x117bb5c
 game:0x06000138,game:0x06000138,unassigned,,504,0x117c324
-game:0x06000139,game:0x06000139,boot,,428,0x10ffac0
-game:0x0600013a,game:0x0600013a,boot,,440,0x10ffc6c
+game:0x06000139,main.AppData.ResetImageAnimation,boot,documented,428,0x10ffac0
+game:0x0600013a,main.AppData.UpdateImageAnimations,boot,documented,440,0x10ffc6c
 game:0x0600013b,game:0x0600013b,boot,,868,0x10ffe24
 game:0x0600013c,game:0x0600013c,boot,,88,0x1100188
 game:0x0600013d,game:0x0600013d,boot,,184,0x11001e0
@@ -1817,7 +1817,7 @@ game:0x06000743,game:0x06000743,ui,,40,0x11d6f94
 game:0x06000744,game:0x06000744,ui,,4,0x11d6fbc
 game:0x06000745,game:0x06000745,ui,,176,0x11cf8a4
 game:0x06000746,game:0x06000746,ui,,432,0x11d0548
-game:0x06000747,game:0x06000747,ui,,252,0x11d1684
+game:0x06000747,form.MyFormBase.Update,ui,reimplemented,252,0x11d1684
 game:0x06000748,game:0x06000748,ui,,44,0x11d1b00
 game:0x06000749,game:0x06000749,ui,,8,0x11d1f10
 game:0x0600074a,game:0x0600074a,ui,,48,0x11d1f44

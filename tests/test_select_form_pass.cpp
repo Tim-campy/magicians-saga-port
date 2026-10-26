@@ -4,7 +4,7 @@
 #include <stdexcept>
 using namespace saga::core;
 void check(bool v,const char* message) {if(!v){std::cerr<<message<<'\n';std::exit(1);}}
-struct Host:SelectFormPassHost,SelectCloudHost,SelectMarkerHost,EventExecutionHost,FormStackHost {
+struct Host:SelectFormPassHost,SelectCloudHost,SelectMarkerHost,EventExecutionHost,FormStackHost,SelectPreludeHost {
     SelectFormPassState state{0,false,false,{nullptr,this,nullptr},{false,false,nullptr},{0,false}};
     EventDelayQueue queue;
     DecodedEventConditionState decoded;
@@ -16,6 +16,12 @@ struct Host:SelectFormPassHost,SelectCloudHost,SelectMarkerHost,EventExecutionHo
     std::shared_ptr<SelectClouds> cloud_list=std::make_shared<SelectClouds>();
     std::shared_ptr<EventCatalog> catalog=std::make_shared<EventCatalog>(2);
     Host() {decoded.context_present=true;decoded.context_character_count=1;decoded.money=0;}
+    std::int32_t saved_orientation() override {log.push_back("orientation");return 0;}
+    bool enable_landscape() override {throw std::logic_error("unexpected landscape");}
+    void set_orientation(std::int32_t) override {throw std::logic_error("unexpected orientation write");}
+    std::int32_t game_width() override {log.push_back("width");return 240;}
+    std::int32_t view_x() override {log.push_back("view");return 10;}
+    std::shared_ptr<ImageAnimationValues> image_animation_values() override {log.push_back("images");return std::make_shared<ImageAnimationValues>();}
     SelectPassResult run() {return process_select_form_pass(state,*this,*this,*this,queue,*this,conditions);}
     bool capture_input(std::uint32_t mask) override {check(mask==0x100000U,"capture mask");log.push_back("input");return input;}
     void change_state(std::int32_t n) override {log.push_back("change");state.state=n;}
@@ -68,6 +74,13 @@ struct Host:SelectFormPassHost,SelectCloudHost,SelectMarkerHost,EventExecutionHo
     }
 };
 int main() {
+    {
+        Host h;SelectPreludeState prelude{0,0,0,20};h.state.form.dialog=h.child;
+        const auto result=update_select_form_prefix(prelude,h,h.state,h,h,h,h.queue,h,h.conditions);
+        check(result.pass==SelectPassResult::ReturnTrue && result.snapshot.camera_x==20,"prefix snapshot and return");
+        check(prelude.update_counter==1 && h.state.events.loop_counter==0 && !h.state.form.dialog,"base counter advances even on dialog return");
+        check(h.log==std::vector<std::string>({"orientation","width","view","images","images"}),"common work precedes dialog gate");
+    }
     {
         Host h;h.state.form.dialog=h.child;
         check(h.run()==SelectPassResult::ReturnTrue && !h.state.form.dialog && h.log.empty(),"dialog clears before state dispatch");

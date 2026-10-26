@@ -1,5 +1,12 @@
 #include "select_form_pass.hpp"
 namespace saga::core {
+SelectUpdatePrefixResult update_select_form_prefix(SelectPreludeState& prelude,SelectPreludeHost& prelude_host,
+    SelectFormPassState& state,SelectFormPassHost& host,SelectCloudHost& clouds,SelectMarkerHost& markers,
+    EventDelayQueue& queue,EventExecutionHost& execution,EventConditionHost& conditions) {
+    const auto snapshot=update_select_prelude(prelude,state.events.loop_counter,prelude_host);
+    const auto pass=process_select_form_pass(state,host,clouds,markers,queue,execution,conditions);
+    return {snapshot,pass};
+}
 // SelectForm.Update, ELF 0x11ebde8..0x11ec7e8, with returned-form Push at 0x11ecb30.
 SelectPassResult process_select_form_pass(SelectFormPassState& state,SelectFormPassHost& host,
     SelectCloudHost& clouds,SelectMarkerHost& markers,EventDelayQueue& queue,

@@ -29,7 +29,7 @@ The plan in one page. Agents take the first unblocked task of the current work p
 ## Next tasks
 
 ### 1. Events and scripts
-- [ ] Recover SelectForm common prelude and post-selection input continuation (0x11ec7ec), then bind select_form_pass to a desktop host with notification/decor/town/guide/capture callbacks.
+- [ ] Recover SelectForm post-selection input continuation (0x11ec7ec); bind update_select_form_prefix to a desktop host, including orientation/image-dictionary and notification/decor/town/guide/capture callbacks.
 - [ ] Find the consumer of `hour_ != -1`, the writer of `SubForm.delayEvent_` (`+0x1d0`) and the remaining effect opcodes of the 15-entry table at `0x627b6e`.
 
 ### 2. Game data and saves
