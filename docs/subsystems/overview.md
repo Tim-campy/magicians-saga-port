@@ -86,6 +86,8 @@ Layout: `src/core` (rules; `gameplay`, `animation`, `ecs`, `persistence`), `src/
 - [../archive/reports/01-apk-inventory.md](../archive/reports/01-apk-inventory.md), [02-architecture.md](../archive/reports/02-architecture.md), [03-open-questions.md](../archive/reports/03-open-questions.md), [05-il2cpp-metadata.md](../archive/reports/05-il2cpp-metadata.md), [07-il2cpp-code-map.md](../archive/reports/07-il2cpp-code-map.md), [10-unity-assets.md](../archive/reports/10-unity-assets.md) (scene/TimeManager), [80-project-restructure.md](../archive/reports/80-project-restructure.md)
 - Local: `research/local/apk-inventory.json` (`tools/inspect_apk.py`), `research/local/rea-evidence.json`, `build/research/resource-redownload-stubs.json`
 
+The runtime culture sign fields are documented in [culture number signs](../formats/culture-number-signs.md); their reader operates on locally supplied data.
+
 ## Open questions
 
 1. (blocking) Is all gameplay data in the APK? Absence of OBB/URLs is not proof; needs load/download chains and a controlled run.

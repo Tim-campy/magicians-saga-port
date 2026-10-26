@@ -39,3 +39,4 @@ eventmsg-table,EventMsg.txt record layout,text,reimplemented
 text-markup,TextLayout inline markup tags and parameters,text,documented
 font-texture-size,getFontTextureSize payload (two big-endian float32),fonts,documented
 language-pack-directive,@language directive in language-pack CSV,fonts,traced
+culture-number-signs,Packed culture number-format sign fields (48-byte records and UTF-8 pool),data,reimplemented
