@@ -254,3 +254,8 @@ add_executable(test_runtime_data test_runtime_data.cpp)
 target_link_libraries(test_runtime_data PRIVATE runtime_data)
 project_warnings(test_runtime_data)
 add_test(NAME runtime_data_contract COMMAND test_runtime_data)
+
+add_executable(test_context_notifications test_context_notifications.cpp)
+target_link_libraries(test_context_notifications PRIVATE context_notifications)
+project_warnings(test_context_notifications)
+add_test(NAME context_notifications_contract COMMAND test_context_notifications)

@@ -93,3 +93,6 @@ target_link_libraries(hashtable_capacity PUBLIC hashtable_rehash)
 
 saga_library(hashtable_write hashtable_write.cpp)
 target_link_libraries(hashtable_write PUBLIC hashtable_capacity)
+
+saga_library(context_notifications context_notifications.cpp)
+target_link_libraries(context_notifications PUBLIC async_local_values)
