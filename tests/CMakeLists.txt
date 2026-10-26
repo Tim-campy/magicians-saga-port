@@ -366,7 +366,7 @@ project_warnings(test_projectile_hit)
 add_test(NAME projectile_hit_contract COMMAND test_projectile_hit)
 
 add_executable(test_contact_collision test_contact_collision.cpp)
-target_link_libraries(test_contact_collision PRIVATE combat_state projectile_launch)
+target_link_libraries(test_contact_collision PRIVATE combat_state projectile_launch human_contact entity_events)
 project_warnings(test_contact_collision)
 add_test(NAME contact_collision_contract COMMAND test_contact_collision)
 
@@ -459,3 +459,8 @@ add_executable(test_human_contact test_human_contact.cpp)
 target_link_libraries(test_human_contact PRIVATE human_contact)
 project_warnings(test_human_contact)
 add_test(NAME human_contact_contract COMMAND test_human_contact)
+
+add_executable(test_entity_events test_entity_events.cpp)
+target_link_libraries(test_entity_events PRIVATE entity_events)
+project_warnings(test_entity_events)
+add_test(NAME entity_events_contract COMMAND test_entity_events)

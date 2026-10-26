@@ -31,7 +31,7 @@ Current maintainer priority: game-specific decompilation and gameplay integratio
 ## Next tasks
 
 ### Current gameplay focus
-- [ ] Resolve EventManager delivery order/mutation semantics for combat events 23/29/30 and bind the ported Human/Enemy contact and impact receivers; registration sites and Projectile cleanup / Enemy death-retarget receivers are established.
+- [ ] Complete EventManager unsubscribe matching and audit other subscribers to events 23/29/30 before full world binding; ordered delivery/addition snapshots and both real contact receivers are now composed and tested.
 - [ ] Bind the full system update schedule and event subscriptions around the tested live Projectile -> Move -> Collision passes and final Garbage pass; the 26-system order and all NeedsUpdate gates are now ported/tested; initialization and missing bodies remain before composing the complete frame.
 - [ ] Complete entity registration/ID allocation, dynamic GetSubSet dedup/population and concrete effect/drop factories. All four gameplay passes now have live group implementations; a complete launch/landing and collision/expiration sequences pass integration tests.
 - [ ] Connect the existing damage/defeat/reward/progression chains to the integrated world and decoded save state, then add a desktop gameplay scenario.

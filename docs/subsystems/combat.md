@@ -295,13 +295,13 @@ Side effects, in order:
 
 Callbacks can replace Position or change the state seen by ChangeState. Late failures preserve earlier stores: a missing Direction faults after movement and CutInAnimation; an effect failure prevents the state change. There is no rollback or post-callback destroyed guard.
 
-Port: `human_contact.hpp/.cpp` calls the existing state-transition module and leaves hero lookup, cut-in animation, effect creation and live destroyed state as explicit host services. Contract tests cover both input orders, all displacement choices, NaN/equality, Damage/dead/data guards, missing components, position replacement, captured-vs-live position reads, state callback changes and partial failure. EventManager delivery and integration with EnemySystem.OnCollide remain separate; no artificial handler ordering is imposed.
+Port: `human_contact.hpp/.cpp` calls the existing state-transition module and leaves hero lookup, cut-in animation, effect creation and live destroyed state as explicit host services. Contract tests cover both input orders, all displacement choices, NaN/equality, Damage/dead/data guards, missing components, position replacement, captured-vs-live position reads, state callback changes and partial failure. The entity-event adapter now delivers this receiver before EnemySystem.OnCollide, with an integration test covering both real bodies; complete world wiring remains open.
 
 Evidence: local `research/exports/combat-subscriptions/ecs_HumanSystem_OnCollide.asm` and `research/exports/human-contact-guards/`. HumanComponent.isDead at 0x1140054 uses `(state & 0xfffffffe) == 4`; CharaData.isSub at 0x116abdc reads flag bit 2. EnemyComponent.Check at 0x113f05c uses component flags, while BaseData.Check receives the EnemyData record. Confidence high for this receiver; no Android comparison.
 
 ### Combat event registration and remaining receivers
 
-SystemManager.Init visits factory order. The inspected Init bodies register these handlers (registration order, not yet proof of EventManager delivery semantics):
+SystemManager.Init visits factory order. The inspected Init bodies register these handlers (registration order, also delivery order under the recovered delegate-combination contract; see [ecs.md](ecs.md#entity-event-delivery)):
 
 | Factory index / Init registry id | Event | Callback |
 | --- | --- | --- |
@@ -310,7 +310,7 @@ SystemManager.Init visits factory order. The inspected Init bodies register thes
 | 5 / game:0x06000e67 | 23, then 29, then 30 | EnemySystem.OnProjectileImpact, EnemySystem.OnCollide, EnemySystem.OnHumanDead |
 | 10 / game:0x06000f7c | 23 | ProjectileSystem.OnProjectileImpact |
 
-Stage Init also registers events 9 and 15; this table is limited to the three combat events. Enemy Init requests And({24}); Human Init requests And({14}); Projectile Init requests And({27,0,1}). Delegate targets are resolved through metadata usage pointers, not guessed from the event numbers. The event-29 Human callback is distinct from the Enemy contact handler; both bodies are now ported. Do not substitute one for the other or assume event delivery order from registration alone.
+Stage Init also registers events 9 and 15; this table is limited to the three combat events. Enemy Init requests And({24}); Human Init requests And({14}); Projectile Init requests And({27,0,1}). Delegate targets are resolved through metadata usage pointers, not guessed from the event numbers. The event-29 Human callback is distinct from the Enemy contact handler; both bodies are now ported. They must both receive event 29, Human before Enemy; an exception in Human prevents Enemy delivery.
 
 `ProjectileSystem.OnProjectileImpact` (game:0x06000f80, 0x1160bd8, 104 bytes) requires its entity, tests Emitter slot 31 and calls Entity.Destroy(true) when present, **before** checking destroyed state. It then returns if destroyed or missing Cell slot 5. Otherwise it requires Projectile slot 27 and returns without reading the payload. There is no generic removal of Projectile here and no enabled gate. Cleanup may change what the enclosing Projectile completion pass sees; the precise runtime destruction/pooling path remains relevant.
 
@@ -318,7 +318,7 @@ Stage Init also registers events 9 and 15; this table is limited to the three co
 
 Port: `combat_event_receivers.hpp/.cpp` implements both receiver bodies over existing component slots and EntitySubset. SearchTarget and destruction are explicit host contracts. Tests cover required-component failures, destruction-before-guard, target identity, captured-component stores, destroyed enemies, search failure and live-group invalidation. This is not a full event bus or complete system Init implementation.
 
-Evidence: local `research/exports/combat-subscriptions/` bounded exports; `projectile-update/Init.asm` and `stage-damage/M37912_Init.asm`; metadata usage kind-3 targets at ELF GOT 0x2731528/0x2731518/0x2731520 (Enemy), 0x2731668/0x2731660 (Human), 0x27319f0 (Projectile), and 0x2731a20 (Stage human death). Emitter getter at 0x112e268 passes slot 31. Confidence high for these receiver bodies and registration call sites; runtime delivery behavior remains unverified.
+Evidence: local `research/exports/combat-subscriptions/` bounded exports; `projectile-update/Init.asm` and `stage-damage/M37912_Init.asm`; metadata usage kind-3 targets at ELF GOT 0x2731528/0x2731518/0x2731520 (Enemy), 0x2731668/0x2731660 (Human), 0x27319f0 (Projectile), and 0x2731a20 (Stage human death). Emitter getter at 0x112e268 passes slot 31. Confidence high for these receiver bodies and registration call sites; static delivery order is established in the ECS document; runtime behavior remains unverified.
 
 ## Evidence
 

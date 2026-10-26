@@ -303,6 +303,22 @@ Evidence: local `research/exports/ecs-order/update-membership.json` derived from
 
 Port: `src/core/ecs/update_scheduler.hpp/.cpp` implements indexed dispatch, all 26 gates and ordered binding of the 26 required system bodies. Tests cover callback mutations, timer ordering, failure propagation and live enabled changes. This does not implement the missing system bodies, initialization/event subscriptions or a complete playable frame.
 
+### Entity event delivery
+
+World's generic one/two-argument wrappers forward to the EventManager at World+0x30. The combat call sites select shared native bodies: World Add wrappers 0x131a398/0x131a640, instance Add 0x131a3e8/0x131a690, EventManager Add 0x12bde40/0x12be754; World Send wrappers 0x131ab08/0x131aeec, instance Send 0x131ab58/0x131af44, EventManager Send 0x12bf744/0x12bfa3c.
+
+EventManager stores one-argument and two-argument callbacks in separate dictionaries at +0x10/+0x18, keyed by int32 event ID. Add wraps the supplied typed callback, combines the existing delegate followed by the new wrapper via System.Delegate.Combine (0x1ea70b8), and stores the result. Duplicates are retained. It also adds tracking records to separate lists at +0x20/+0x28; those carry event ID, original delegate hash and wrapper reference for removal. Null registration is not harmless: the dictionary write precedes a required original-delegate hash read.
+
+Send looks up the delegate once through IDictionaryExtension.GetValue (0x12cc074, TryGetValue with null default), returns when absent/null, otherwise invokes the captured delegate with the original payload references. It does not queue events, test system enabled/pause flags or revalidate entities. A subscriber exception propagates.
+
+Public contract reused: [Delegate.Combine](https://learn.microsoft.com/en-us/dotnet/api/system.delegate.combine) appends the second invocation list to the first, retaining duplicates. The [C# delegate specification, sections 21.5-21.6](https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/delegates) establishes immutable invocation lists, synchronous ordered calls and exception termination. Therefore an Add during delivery leaves that delivery unchanged; nested or later Send sees the new list. No delegate runtime, dictionary hashing or generic type machinery is reconstructed.
+
+Port: `entity_events.hpp/.cpp` supplies the Entity-pointer payload projection using standard unordered_map, shared_ptr, vector and function. Registration copies the list of shared callable references; Send captures that list without allocating. Stateful callbacks retain their identity across additions. `bind_combat_receivers` registers the seven established Stage/Human/Enemy/Projectile callbacks in factory order. It is a registration slice, not full system Init; valid nonempty callbacks and borrowed receiver lifetimes are required. Unsubscribe, removal tracking/hash collisions, RemoveAll, null-registration partial failure and other payload types are not implemented. Consequently the original generic Add/Send methods are not promoted in the registry by this adapter.
+
+The contact integration test now delivers event 29 to both real Human and Enemy receivers, proving that Human position/state updates precede Enemy damage/recoil. The event tests cover independent arities, duplicate callbacks, nested death notification, additions during delivery, callable state and exception interruption.
+
+Evidence: local `research/exports/combat-event-bus/` with exact FDE bounds from `il2cpp-unwind.json`; code-map resolution of Delegate.Combine and metadata usage resolution of Dictionary ContainsKey/get_Item/set_Item and IDictionaryExtension.GetValue. Confidence high for the dispatch contract and selected registration order. Removal matching and the complete subscriber inventory remain open; Android comparison absent.
+
 ## Evidence
 
 - Temporary lifetime: local `research/exports/garbage-lifetime/{Init,NeedsUpdate,Update,AddGarbage}.asm`. Init writes filter value 0x16; AddGarbage writes +0x10 and passes slot 0x16; Update stores the decremented counter at 0x11532e0, then queues on signed <= 0, and calls Entity.Destroy(true) at 0x1153384 only after the first enumeration finishes. Confidence high for arithmetic and call order; Android comparison absent.

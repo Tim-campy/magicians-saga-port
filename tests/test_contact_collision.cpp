@@ -1,3 +1,5 @@
+#include "core/gameplay/human_contact.hpp"
+#include "core/ecs/entity_events.hpp"
 #include "core/gameplay/combat_state.hpp"
 #include "core/gameplay/projectile_launch.hpp"
 #include <cstdlib>
@@ -7,7 +9,7 @@
 #include <string>
 using namespace saga::core;
 void check(bool value){if(!value)std::abort();}
-struct Host final:ContactCollisionHost,HumanStateHost,ProjectileLaunchHost,RandomSource {
+struct Host final:ContactCollisionHost,HumanContactHost,ProjectileLaunchHost,RandomSource {
     ProjectileLink flying;ProjectileModification modification;
     std::int32_t next()override{return 0;}
     ProjectileLink& acquire_projectile()override{return flying;}
@@ -24,6 +26,10 @@ struct Host final:ContactCollisionHost,HumanStateHost,ProjectileLaunchHost,Rando
     void defeat(ComponentSlots&)override{calls.push_back("defeat");if(after_defeat)after_defeat();}
     void impact(ComponentSlots&,ComponentSlots*)override{calls.push_back("impact");}
     void return_component(std::int32_t slot,Component*)override{calls.push_back("pool"+std::to_string(slot));}
+    bool destroyed(ComponentSlots&)override{return blocked;}
+    void contact_effect(std::int32_t a,std::int32_t id,std::int32_t b,float x,float y,float z)override{
+        check(a==0&&id==2&&b==0&&x==1&&y==12&&z==11);calls.push_back("humanEffect");
+    }
     bool collision_blocked(ComponentSlots&)override{calls.push_back("blocked");return blocked;}
     void cut_in_animation(ComponentSlots&,std::int32_t a,std::int32_t f)override{calls.push_back("cut");animation=a;frame=f;}
     void change_animation(ComponentSlots&,std::int32_t a,std::int32_t f)override{check(a==16&&f==1);calls.push_back("animate");}
@@ -63,6 +69,20 @@ struct Fixture {
     void run(){on_contact_collision(&enemy,&human,tables,maxima,host);}
 };
 int main(){
+    {Fixture f;ProjectileSpeed human_speed;ContactDirection human_direction;
+        f.human.add(1,&human_speed).add(12,&human_direction);
+        EntityEvents events;
+        // Both real receiver bodies in the factory-established event-29 order.
+        events.subscribe(29,EntityEvents::Pair([&](ComponentSlots* a,ComponentSlots* b){on_human_contact(a,b,f.tables,f.host);}));
+        events.subscribe(29,EntityEvents::Pair([&](ComponentSlots* a,ComponentSlots* b){
+            check(f.human_link.state==3&&f.hp.z==23);
+            on_contact_collision(a,b,f.tables,f.maxima,f.host);
+        }));
+        events.send(29,&f.enemy,&f.human);
+        check(f.host.calls==std::vector<std::string>{"cut","humanEffect","cut","effect2","damage","progress","enemy3","sound"});
+        check(f.hp.z==23&&human_speed.z==3&&f.ep.z==90&&f.speed.z==-10);
+    }
+
     {Fixture f;f.run();check(f.host.calls==std::vector<std::string>{"cut","effect2","damage","progress","enemy3","sound"});
         check(f.host.owner==&f.enemy&&f.host.amount==123&&f.host.attribute==2);
         check(f.host.animation==52&&f.host.frame==30&&f.direction.locked&&f.ep.z==90&&f.speed.z==-10&&f.speed.x==4&&f.speed.y==5);}
