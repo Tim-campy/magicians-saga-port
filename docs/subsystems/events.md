@@ -257,7 +257,7 @@ If both initial buttons are false, continuation is `0x11ecb5c`. The subsequent p
 
 | Mask / start | Observed action; remaining work |
 | --- | --- |
-| 0x08000000 / 0x11ecb5c | Selected building: sound, building-list validation, save position, dispatch by building id/type. Invalid selection can fall through to the next button. Full branch pending. |
+| 0x08000000 / 0x11ecb5c | Selected building: sound, building-list validation, save position, dispatch by building id/type. Invalid selection can fall through to the next button. Ported below; data and form factories remain host bindings. |
 | 0x10000000 / 0x11ecdcc | Sound; write normal-save slots 11,12,10,8 from camX_, camY_, integer-converted touchDragDistance_ and selected area; clear selected area; Push AppData.frmSelectStage_ (+0xa8). Pending port. |
 | 0x20000000 / 0x11ecf94 | Clear two selection-message fields, sound, MakeObstacle(selected building), Push, clear selected building. Pending port. |
 | 0x40000000 / 0x11ed038 | MakeStoreInvite then Push; update first town row with state 1 to state 2, save a system value and reset bubble fields. Pending complete bindings. |
@@ -266,7 +266,21 @@ If both initial buttons are false, continuation is `0x11ecb5c`. The subsequent p
 
 These are input masks passed to the original input helper, not desktop key assignments. No later branch is treated as implemented by the first-two-button kernel.
 
+### Selected-building action and saved position
+
+`process_select_building_button` covers input 0x08000000 and its branches, beginning at `0x11ecb5c`. False input continues to the area button. True input first plays the button sound, captures TownSystem.GetBuildingList, then reads selectChip_ (+0x11c). Negative selection continues without requiring the returned list; a nonnegative out-of-range index also continues. A valid index writes the normal-save integer slots 11,12,10 in that order, obtaining a fresh array each time: camX_ (+0x154), camY_ (+0x158), integer-converted touchDragDistance_ (+0x164). The conversion is ARM64 FCVTZS with the explicit +infinity-to-INT32_MIN override; NaN gives zero and finite positive overflow INT32_MAX. Earlier writes survive a later bounds/null failure. Portable camera_x and drag_distance fields are references to the prelude/movement storage, not copies.
+
+Then re-read the current selection within the retained building list. Null row clears selection and returns; otherwise row[1] is the building-data id. For -1, TownSystem.CheckEnable(index) (`0x116a59c`, required bool array +0x28 with bounds check) gates construction. When enabled, write dispUnLockInfoNumber_/Frame_ (+0x18c/+0x190) both -1, call MakeBuildList(current selection), then Push. Disabled construction still clears selection and returns.
+
+For an existing building, call IsShop (`0x116c9c4`, `game:0x0600103c`) on the first catalog record, then obtain the record again to read kind (+0x40). IsShop is true for kinds 1..5,9,10. If true, MakeShopForm uses the second kind read, then Push. If false and second kind is 6, get the living-member array and current selected slot. A non-null member goes to MakeHumanHouse(member,index,false); null goes to MakeShopForm(6), requires its result, and stores the live selected index at ShopForm+0x12c before Push. Otherwise obtain a fresh building record for kind==7 (construct SubForm type 15), then, if false, another for kind==12 (read sysSave integer selected by AppData static+0x304 and call MakeShareWindow(value==0)). Other kinds open nothing.
+
+All handled valid-slot paths clear selectChip_ to -1 only after any Push returns. Push failure therefore retains selection and its already-set autoSave/evenCheck flags. Position persistence happens before every one of these routes, including a null row or unrecognized kind. `update_select_through_building` composes this action after the room/shop pass; false continuation is the area button at `0x11ecdcc`.
+
+Factory boundaries are explicit: MakeBuildList allocates SubForm type 12 and stores the chip at +0x174; MakeHumanHouse allocates type 16 and stores the member at +0x128 and chip at +0x174 (the observed option is false); MakeShareWindow allocates type 27 and stores the argument at +0x170. Full form constructors/content, GetBuildingList and GetLivingSubMemberArray remain host bindings. Evidence: `research/exports/select-building/` plus Update `0x11ecb5c`?`0x11ecdcc`, `0x11ed260`?`0x11ed310`, `0x11ed5b4`?`0x11ed61c`, `0x11ed834`?`0x11ed93c`. Confidence high for the dispatch and mutation contracts; runtime behavior remains unverified.
+
 ## Port
+
+- `src/core/gameplay/select_building.{hpp,cpp}` ports the complete selected-building dispatch, position writes and IsShop predicate. Tests in `test_select_building.cpp` cover all routes, invalid/empty slots, live catalog replacement, null housing-shop failure, nonfinite position conversion, partial save writes and Push failure. The composed entry now reaches the area-button boundary.
 
 - `src/core/gameplay/select_navigation.{hpp,cpp}` ports room-transition and type-11 shop button priority plus the room callback. `tests/test_select_navigation.cpp` verifies deferred marker/Push effects, callback ownership, null child handling, failure ordering and continuation when neither button is pressed. `update_select_through_navigation` composes it with the existing prefix through SelectUpdateBindings and stops before building buttons; the integration test also verifies dialog bypass and deferred room Push.
 
@@ -324,7 +338,7 @@ Fixture JSON schema (all keys optional; absence preserves missing state rather t
 
 For a synthetic money-only event with nonempty effects, a minimal auto fixture is `{"context_present": true, "context_character_count": 1, "sys_save_present": false}`. This is test state, not an inferred new-game state. PRINT is required when an empty script or failed identity lookup reaches its diagnostic gate; quest_data_count is required only for that lookup's fallback. Additional predicates require their corresponding catalogs/scalars. Tool collection lengths are limited to 100000; these are harness limits, not recovered game limits.
 
-- Last recorded build: Windows/MSVC, 34/34 CTest (33 C++ contracts plus native scenario integration).
+- Last recorded build: Windows/MSVC, 35/35 CTest (34 C++ contracts plus native scenario integration).
 - Missing: population of decoded default-args/diagnostic state from saves/configuration, SelectForm integration, remaining unit `CheckTerm` predicates, integration with save-loaded execution counters; hour-based delays; `SubForm.delayEvent_` path (slot 5); `SelectForm.Update` guards; opcodes other than the eight; `SecureLong`/`SecureInt` storage; billing item source for stamina; UI forms.
 
 ## Evidence
@@ -358,7 +372,7 @@ For a synthetic money-only event with nonempty effects, a minimal auto fixture i
 ## Open questions
 
 1. (blocking) Concrete context/catalog bindings for the 14 recovered table-used conditions; automatic selection is composed with the kernels but not yet called by a desktop form/frame loop. Populate the decoded host from data/save/ECS providers, including hero level and the Config.DEBUG/AppData.debugRescueNum initialization state. Other unit branches remain unresolved for scripts outside Event.txt.
-2. (blocking) Bind the composed select_form_pass to a desktop form host: recover the remaining building/area/resident buttons at 0x11ecb5c and implement its required notification/decor/town/guide/capture callbacks plus orientation and image-dictionary bindings for the recovered prelude. The guards, clouds, markers, counter, initial event loop and reached-pass scheduling are composed and tested.
+2. (blocking) Bind the composed select_form_pass to a desktop form host: recover the remaining area/resident buttons at 0x11ecdcc and implement its required notification/decor/town/guide/capture callbacks plus orientation and image-dictionary bindings for the recovered prelude. The guards, clouds, markers, counter, initial event loop and reached-pass scheduling are composed and tested.
 3. (blocking) Initial/real values of `SYSSAVEI_YUGAMI`, the `ITEM_STAMINA_UP` item state, and the money/crystal/stamina slots from save/new game.
 4. Unit dispatcher opcodes other than 1/2/4/8/10/12/15/31 (jump table has 15 entries); scripts outside `Event.txt` (quests, built events) may use them.
 5. Consumer of `DelayEvent` entries with `hour_ != -1` (none in the extracted table).

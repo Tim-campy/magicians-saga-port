@@ -3943,7 +3943,7 @@ game:0x06001038,data.BaseData.NewGame,data,documented,4,0x116bf98
 game:0x06001039,data.BaseData.Check,data,documented,16,0x1169924
 game:0x0600103a,data.BuildingData.NewGame,data,traced,132,0x116c868
 game:0x0600103b,game:0x0600103b,data,,216,0x116c8ec
-game:0x0600103c,game:0x0600103c,data,,44,0x116c9c4
+game:0x0600103c,data.BuildingData.IsShop,data,reimplemented,44,0x116c9c4
 game:0x0600103d,game:0x0600103d,data,,32,0x116c9f0
 game:0x0600103e,game:0x0600103e,data,,188,0x116ca10
 game:0x0600103f,game:0x0600103f,data,,348,0x116cacc

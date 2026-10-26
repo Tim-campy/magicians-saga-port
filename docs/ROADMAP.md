@@ -29,7 +29,7 @@ The plan in one page. Agents take the first unblocked task of the current work p
 ## Next tasks
 
 ### 1. Events and scripts
-- [ ] Port the remaining building/area/resident buttons (0x11ecb5c) and connect the late town_bubble lifetime call (0x11ed538); bind update_select_through_navigation to a desktop host, including orientation/image-dictionary and notification/decor/town/guide/capture callbacks.
+- [ ] Port the remaining area/obstacle/resident buttons (0x11ecdcc) and connect the late town_bubble lifetime call (0x11ed538); bind update_select_through_building to a desktop host, including orientation/image-dictionary and notification/decor/town/guide/capture callbacks.
 - [ ] Find the consumer of `hour_ != -1`, the writer of `SubForm.delayEvent_` (`+0x1d0`) and the remaining effect opcodes of the 15-entry table at `0x627b6e`.
 
 ### 2. Game data and saves

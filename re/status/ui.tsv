@@ -12,3 +12,4 @@ game:0x06000811	reimplemented	src/core/gameplay/town_bubble.cpp	SetTalkFuki orde
 game:0x06000838	reimplemented	src/core/gameplay/town_bubble.cpp	CheckViewArea inclusive wrapped bounds and short-circuit dimension queries; tests/test_town_bubble.cpp
 game:0x06000846	reimplemented	src/core/gameplay/town_bubble.cpp	SetTalkFuki predicate requires nonnull VoiceData and type==4; tests/test_town_bubble.cpp
 game:0x0600083d	reimplemented	src/core/gameplay/select_navigation.cpp	Deferred room callback clears weaponNew before AppData access and SelectForm.Push; tests/test_select_navigation.cpp
+game:0x0600103c	reimplemented	src/core/gameplay/select_building.cpp	BuildingData.IsShop kinds 1..5,9,10; tests/test_select_building.cpp
