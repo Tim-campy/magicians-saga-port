@@ -43,3 +43,6 @@ if(SAGA_BUILD_VIEWER)
   target_link_libraries(asset_viewer PRIVATE SDL3::SDL3-static opt_grid)
   project_warnings(asset_viewer)
 endif()
+
+saga_library(runtime_data runtime_data.cpp)
+target_link_libraries(runtime_data PUBLIC hashtable_write)

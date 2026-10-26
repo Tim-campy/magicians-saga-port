@@ -21,6 +21,7 @@ pool prefix through all lookup names; it does not extract other culture strings.
 code and relocated metadata literals; the mapping is local data, not source code.
 --culture-lower includes the preceding culture outputs and nine invariant UTF-16
 lowercase arrays from metadata default-data initializers.
+--runtime-tables exports the 288-byte Hashtable prime initializer from metadata.
 Outputs and manifest stay local under extracted/; --check verifies all payloads and
 members. Names are retained in the manifest, output names have numeric prefixes
 to avoid Windows case collisions. No game content is embedded in the script.
@@ -60,6 +61,16 @@ def culture_lower_payloads(metadata):
             raise ValueError('Lowercase initializer outside default-data section')
         outputs[f'culture/lower-{index}.bin'] = metadata[base+offset:base+offset+length]
     return outputs
+
+
+def runtime_payloads(metadata):
+    """HashHelpers .cctor 0x1e2fe44: 72 int32 entries at default_data +50056."""
+    if len(metadata) < 256 or struct.unpack_from('<II', metadata) != (0xfab11baf,31):
+        raise ValueError('Expected v31 metadata for runtime tables')
+    base, size = struct.unpack_from('<II', metadata, 72)
+    if base < 256 or base+size > len(metadata) or size < 50056+288:
+        raise ValueError('Runtime initializer outside default-data section')
+    return {'runtime/hashtable-primes.bin': metadata[base+50056:base+50056+288]}
 
 
 def digest(data):
@@ -275,7 +286,7 @@ def culture_sign_payloads(elf, include_names=False):
     return outputs
 
 
-def check(root, require_culture=False, require_names=False, require_neutral=False, require_lower=False):
+def check(root, require_culture=False, require_names=False, require_neutral=False, require_lower=False, require_runtime=False):
     manifest = json.loads((root / 'manifest.json').read_text(encoding='utf8'))
     if (manifest['apk_sha256'] != APK_SHA or len(manifest['files']) != 38
             or len(manifest['members']) != 1963):
@@ -299,7 +310,12 @@ def check(root, require_culture=False, require_names=False, require_neutral=Fals
         raise ValueError('Lowercase culture outputs are required; extract with --culture-lower')
     if 'culture_signs' in manifest and (inventory not in (basic, full, neutral, lower) or len(rows) != len(inventory)):
         raise ValueError('Unexpected culture sign inventory')
-    for row in manifest['files'] + manifest['members'] + manifest.get('unity_media', []) + manifest.get('culture_signs', []):
+    runtime = manifest.get('runtime_tables', [])
+    if require_runtime and not runtime:
+        raise ValueError('Runtime tables are required; extract with --runtime-tables')
+    if 'runtime_tables' in manifest and (len(runtime) != 1 or runtime[0]['output'] != 'runtime/hashtable-primes.bin' or runtime[0]['size'] != 288):
+        raise ValueError('Unexpected runtime table inventory')
+    for row in manifest['files'] + manifest['members'] + manifest.get('unity_media', []) + manifest.get('culture_signs', []) + runtime:
         path = bounded(root, row['output'])
         if not path.is_file():
             print('missing:', row['output']); failed = True
@@ -373,7 +389,7 @@ def unity_media(obj, files, filename):
     return [('.fsb', content), ('.wav', wav)], facts
 
 
-def extract(apk, root, include_unity=False, include_culture=False, include_names=False, include_neutral=False, include_lower=False):
+def extract(apk, root, include_unity=False, include_culture=False, include_names=False, include_neutral=False, include_lower=False, include_runtime=False):
     include_neutral = include_neutral or include_lower
     include_names = include_names or include_neutral
     include_culture = include_culture or include_names
@@ -391,6 +407,7 @@ def extract(apk, root, include_unity=False, include_culture=False, include_names
     with zipfile.ZipFile(apk) as archive:
         culture = culture_sign_payloads(archive.read('lib/arm64-v8a/libil2cpp.so'), include_names) if include_culture else {}
         metadata = archive.read(METADATA)
+        runtime = runtime_payloads(metadata) if include_runtime else {}
         if include_lower:
             culture.update(culture_lower_payloads(metadata))
         if include_neutral:
@@ -483,6 +500,9 @@ def extract(apk, root, include_unity=False, include_culture=False, include_names
     if include_culture:
         outputs.update(culture)
         manifest['culture_signs'] = [{'output': name, 'size': len(data), 'sha256': digest(data)} for name, data in culture.items()]
+    if include_runtime:
+        outputs.update(runtime)
+        manifest['runtime_tables'] = [{'output': name, 'size': len(data), 'sha256': digest(data)} for name, data in runtime.items()]
     outputs['manifest.json'] = (json.dumps(manifest, ensure_ascii=False, indent=2)+'\n').encode('utf8')
     # Preflight all collisions before writes. Never replace differing user files.
     for relative, data in outputs.items():
@@ -504,6 +524,7 @@ def main():
     p.add_argument('apk', type=Path, nargs='?')
     p.add_argument('--out', type=Path, default=Path('extracted'))
     p.add_argument('--check', action='store_true')
+    p.add_argument('--runtime-tables', action='store_true', help='Include the 72-entry runtime Hashtable prime table')
     p.add_argument('--culture-lower', action='store_true', help='Include nine invariant lowercase tables and all culture outputs')
     p.add_argument('--culture-neutral', action='store_true', help='Also derive the neutral-name to LCID mapping from native code')
     p.add_argument('--culture-names', action='store_true', help='Include name index and culture records with native number signs')
@@ -514,11 +535,11 @@ def main():
         if args.check:
             if not check(args.out, args.culture_signs or args.culture_names or args.culture_neutral or args.culture_lower,
                          args.culture_names or args.culture_neutral or args.culture_lower,
-                         args.culture_neutral or args.culture_lower, args.culture_lower):
+                         args.culture_neutral or args.culture_lower, args.culture_lower, args.runtime_tables):
                 raise SystemExit(1)
-            print('All manifest files verified (TextAssets, members and optional media/culture data).')
+            print('All manifest files verified (TextAssets, members and optional media/culture/runtime data).')
         elif args.apk:
-            extract(args.apk, args.out, args.unity_media, args.culture_signs, args.culture_names, args.culture_neutral, args.culture_lower)
+            extract(args.apk, args.out, args.unity_media, args.culture_signs, args.culture_names, args.culture_neutral, args.culture_lower, args.runtime_tables)
         else:
             p.error('Supply APK or --check')
     except (ValueError, OSError, KeyError, struct.error, zipfile.BadZipFile) as error:

@@ -249,3 +249,8 @@ add_executable(test_hashtable_write test_hashtable_write.cpp)
 target_link_libraries(test_hashtable_write PRIVATE hashtable_write)
 project_warnings(test_hashtable_write)
 add_test(NAME hashtable_write_contract COMMAND test_hashtable_write)
+
+add_executable(test_runtime_data test_runtime_data.cpp)
+target_link_libraries(test_runtime_data PRIVATE runtime_data)
+project_warnings(test_runtime_data)
+add_test(NAME runtime_data_contract COMMAND test_runtime_data)

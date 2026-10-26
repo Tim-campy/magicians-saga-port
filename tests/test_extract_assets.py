@@ -11,6 +11,36 @@ extractor = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(extractor)
 
 
+class RuntimeTests(unittest.TestCase):
+    def test_payload_and_bounds(self):
+        data=bytearray(512+50056+288)
+        struct.pack_into('<II',data,0,0xfab11baf,31)
+        struct.pack_into('<II',data,72,512,50056+288)
+        payload=bytes(range(256))+bytes(range(32))
+        data[-288:]=payload
+        self.assertEqual(extractor.runtime_payloads(data),{'runtime/hashtable-primes.bin':payload})
+        for bad in (data[:255],data[:-1],b'BAD!'+data[4:]):
+            with self.assertRaises(ValueError):extractor.runtime_payloads(bad)
+        struct.pack_into('<II',data,72,512,50056+287)
+        with self.assertRaises(ValueError):extractor.runtime_payloads(data)
+
+    def test_manifest_runtime_required_and_integrity(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);(root/'runtime').mkdir();data=bytes(288)
+            (root/'runtime/hashtable-primes.bin').write_bytes(data)
+            row={'output':'runtime/hashtable-primes.bin','size':288,'sha256':extractor.digest(data)}
+            manifest={'apk_sha256':extractor.APK_SHA,'files':[row]*38,'members':[row]*1963}
+            def write(): (root/'manifest.json').write_text(json.dumps(manifest),encoding='utf8')
+            write()
+            self.assertTrue(extractor.check(root))
+            with self.assertRaisesRegex(ValueError,'Runtime tables are required'):extractor.check(root,require_runtime=True)
+            manifest['runtime_tables']=[row];write();self.assertTrue(extractor.check(root,require_runtime=True))
+            (root/'runtime/hashtable-primes.bin').write_bytes(b'bad')
+            self.assertFalse(extractor.check(root,require_runtime=True))
+            manifest['runtime_tables']=[row,row];write()
+            with self.assertRaisesRegex(ValueError,'Unexpected runtime table inventory'):extractor.check(root)
+
+
 class LowercaseTests(unittest.TestCase):
     def sample(self):
         base,size=512,106392

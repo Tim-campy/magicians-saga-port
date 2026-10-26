@@ -50,6 +50,8 @@ uv run tools/extract_assets.py game/MagiciansSaga-1.4.0.apk --out extracted/cult
 uv run tools/extract_assets.py --check --out extracted/culture-neutral --culture-neutral
 uv run tools/extract_assets.py game/MagiciansSaga-1.4.0.apk --out extracted/culture-lower --culture-lower
 uv run tools/extract_assets.py --check --out extracted/culture-lower --culture-lower
+uv run tools/extract_assets.py game/MagiciansSaga-1.4.0.apk --out extracted/runtime --runtime-tables
+uv run tools/extract_assets.py --check --out extracted/runtime --runtime-tables
 uv run tools/extract_assets.py game/MagiciansSaga-1.4.0.apk --out extracted/full --unity-media
 ```
 
@@ -93,3 +95,5 @@ To include name-to-number lookup in that local integration check:
 The Windows desktop build script uses code page 65001, requests VSLANG=1033 after vcvars, and refreshes CMake configuration with --fresh (CMake 3.24+; supported by the installed Visual Studio CMake). Installed localized compiler resources may still emit Portuguese: UTF-8 keeps CMake's detected /showIncludes prefix consistent with Ninja's input. When migrating an old build with a corrupt localized prefix, remove its generated CMakeFiles/<cmake-version>/CMakeCXXCompiler.cmake and clean Ninja outputs once before rebuilding; reconfiguration alone cannot repair already stale objects or the persisted compiler detection.
 
 After the desktop build and a successful culture manifest check, exercise native loading/selection/parsing with `build/desktop/test_culture_data.exe extracted/culture-lower EN-US +42` (expected LCID/value: `1033 42`). The optional arguments use local data; ordinary CTest uses only synthetic inventories. `CultureDataHost` supplies the base-culture adapter; it does not select the OS locale or install live thread storage.
+
+The runtime Hashtable table is loaded with `load_hashtable_primes(extracted_root)` and shared by `RuntimeCallContextHost`. After its manifest check, run `build/desktop/test_runtime_data.exe extracted/runtime` to exercise growth and full mutable-context copying with local data. The host requires an explicit correlation-value clone callback; scheduler/TLS state is not inferred. See [runtime table format](formats/runtime-hashtable-primes.md).

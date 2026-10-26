@@ -88,6 +88,8 @@ Layout: `src/core` (rules; `gameplay`, `animation`, `ecs`, `persistence`), `src/
 
 The runtime culture sign fields are documented in [culture number signs](../formats/culture-number-signs.md); their reader operates on locally supplied data.
 
+The runtime Hashtable capacity initializer is documented in [runtime prime table](../formats/runtime-hashtable-primes.md); extraction and desktop loading are implemented.
+
 ## Open questions
 
 1. (blocking) Is all gameplay data in the APK? Absence of OBB/URLs is not proof; needs load/download chains and a controlled run.
