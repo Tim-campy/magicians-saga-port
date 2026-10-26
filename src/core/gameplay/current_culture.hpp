@@ -22,4 +22,14 @@ public:
     virtual std::shared_ptr<CultureInstance> invariant_culture() = 0;
 };
 std::shared_ptr<CultureInstance> construct_current_culture(CurrentCultureState&,CurrentCultureHost&);
+class ThreadCultureHost {
+public:
+    virtual ~ThreadCultureHost() = default;
+    // Live reads of Thread's thread-static +8 and CultureInfo static +0x20.
+    // The latter includes the runtime's read barrier; setters are not modeled yet.
+    virtual std::shared_ptr<CultureInstance> thread_culture() = 0;
+    virtual std::shared_ptr<CultureInstance> default_thread_culture() = 0;
+};
+std::shared_ptr<CultureInstance> resolve_current_culture(CurrentCultureState&,
+    ThreadCultureHost&,CurrentCultureHost&);
 }

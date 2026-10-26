@@ -1,5 +1,14 @@
 #include "current_culture.hpp"
 namespace saga::core {
+// Thread.GetCurrentCultureNoAppX 0x1ecd268; UserDefaultCulture 0x1e2a8e0.
+// Preserve both TLS accesses on the hit branch, even if the second returns null.
+std::shared_ptr<CultureInstance> resolve_current_culture(CurrentCultureState& state,
+    ThreadCultureHost& thread,CurrentCultureHost& user_default) {
+    if(thread.thread_culture())return thread.thread_culture();
+    auto selected=thread.default_thread_culture();
+    if(selected)return selected;
+    return construct_current_culture(state,user_default);
+}
 // CultureInfo.ConstructCurrentCulture 0x1e249b0, LSDA 0x948d70.
 // Runtime class initialization/allocation identities are outside this decoded model.
 std::shared_ptr<CultureInstance> construct_current_culture(CurrentCultureState& state,CurrentCultureHost& host) {

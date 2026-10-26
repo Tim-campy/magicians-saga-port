@@ -29,7 +29,7 @@ The plan in one page. Agents take the first unblocked task of the current work p
 ## Next tasks
 
 ### 1. Events and scripts
-- [ ] Recover invariant culture data and compose thread/default-culture precedence on the decoded specific factory and current-culture cache; bind the host loader for the extracted tables/neutral map and invariant Unicode lowercasing. AOSP duplicate selection awaits device comparison. Trace culture setters and collation availability/backend before replacing prefix/sign providers.
+- [ ] Recover invariant culture data for the composed specific factory, current-culture cache and thread/default selector; bind the host loader for the extracted tables/neutral map and invariant Unicode lowercasing. AOSP duplicate selection awaits device comparison. Trace culture setters and collation availability/backend before replacing prefix/sign providers.
 - [ ] Bind decoded billing-item/catalog providers and complete notification manager adapters, preserving task execution gates.
 - [ ] Port decor/town/capture callbacks, then bind update_select_form to a desktop host with orientation/image-dictionary storage, decoded saves, camera dimensions and form factories.
 - [ ] Find the consumer of `hour_ != -1`, the writer of `SubForm.delayEvent_` (`+0x1d0`) and the remaining effect opcodes of the 15-entry table at `0x627b6e`.

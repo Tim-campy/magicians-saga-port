@@ -21,7 +21,55 @@ struct Host:CurrentCultureHost {
     }
     std::shared_ptr<CultureInstance> invariant_culture() override {calls.push_back("invariant");if(fail_invariant)throw CultureManagedError("invariant");return invariant;}
 };
+struct ThreadHost:ThreadCultureHost {
+    std::vector<std::shared_ptr<CultureInstance>> reads;
+    std::shared_ptr<CultureInstance> standard;
+    std::vector<std::string> calls;
+    std::size_t index=0;
+    bool fail_thread=false,fail_default=false;
+    std::shared_ptr<CultureInstance> thread_culture()override{
+        calls.push_back("thread");
+        if(fail_thread)throw CultureManagedError("thread");
+        check(index<reads.size());return reads[index++];
+    }
+    std::shared_ptr<CultureInstance> default_thread_culture()override{
+        calls.push_back("default");
+        if(fail_default)throw CultureManagedError("default");
+        return standard;
+    }
+};
+void thread_contract(){
+    {Host h;ThreadHost t;CurrentCultureState s{h.invariant};
+        t.reads={h.specific,h.specific};t.standard=h.invariant;
+        check(resolve_current_culture(s,t,h)==h.specific);
+        check((t.calls==std::vector<std::string>{"thread","thread"}) && h.calls.empty());
+        check(s.cached==h.invariant && !h.specific->read_only);}
+    {Host h;ThreadHost t;CurrentCultureState s;
+        t.reads={h.specific,h.invariant};
+        check(resolve_current_culture(s,t,h)==h.invariant && h.calls.empty() && !s.cached);}
+    {Host h;ThreadHost t;CurrentCultureState s;
+        t.reads={h.specific,nullptr};t.standard=h.invariant;
+        check(!resolve_current_culture(s,t,h) && t.calls.size()==2 && h.calls.empty());}
+    {Host h;ThreadHost t;CurrentCultureState s{h.invariant};
+        t.reads={nullptr};t.standard=h.specific;
+        check(resolve_current_culture(s,t,h)==h.specific && s.cached==h.invariant);
+        check((t.calls==std::vector<std::string>{"thread","default"}) && h.calls.empty());}
+    {Host h;ThreadHost t;CurrentCultureState s;
+        t.reads={nullptr,nullptr};
+        check(resolve_current_culture(s,t,h)==h.specific && s.cached==h.specific);
+        check(h.specific->read_only && h.specific->use_user_override);
+        h.calls.clear();
+        check(resolve_current_culture(s,t,h)==h.specific && h.calls.empty());
+        check((t.calls==std::vector<std::string>{"thread","default","thread","default"}));}
+    {Host h;ThreadHost t;CurrentCultureState s;t.fail_thread=true;
+        try{resolve_current_culture(s,t,h);check(false);}catch(const CultureManagedError&){}
+        check(!s.cached && h.calls.empty() && t.calls.size()==1);}
+    {Host h;ThreadHost t;CurrentCultureState s;t.reads={nullptr};t.fail_default=true;
+        try{resolve_current_culture(s,t,h);check(false);}catch(const CultureManagedError&){}
+        check(!s.cached && h.calls.empty() && t.calls.size()==2);}
+}
 int main(){
+    thread_contract();
     {Host h;CurrentCultureState s{h.specific};check(construct_current_culture(s,h)==h.specific && h.calls.empty());check(!s.cached->read_only);}
     {Host h;CurrentCultureState s;h.mode=true;check(construct_current_culture(s,h)==h.invariant && !s.cached);check((h.calls==std::vector<std::string>{"mode","invariant"}));}
     {Host h;CurrentCultureState s;h.mutate=&s;check(construct_current_culture(s,h)==h.specific && s.cached==h.specific);check(s.cached->read_only && s.cached->use_user_override);check((h.calls==std::vector<std::string>{"mode","name","create"}));h.calls.clear();check(construct_current_culture(s,h)==h.specific && h.calls.empty());}
