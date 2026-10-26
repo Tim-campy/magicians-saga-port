@@ -27,6 +27,12 @@ The optional name lookup reader `find_culture_number_index` accepts a sorted uni
 
 The normal APK hash gate applies before this extraction. `--check --culture-neutral` requires the five-file inventory and verifies sizes/hashes; older two/four-file inventories remain valid for their own options. Synthetic tests exercise leaf decoding and reject altered instruction shapes, bad branches, duplicate keys, truncation and invalid ELF. Full extracted mappings stay under the gitignored output directory.
 
+### Invariant lowercase arrays
+
+`--culture-lower` implies neutral/name/sign extraction and adds `culture/lower-0.bin` through `lower-8.bin`. These are the nine little-endian uint16 arrays consumed by TextInfoToLowerData, in static-field order; their input ranges, unit counts and metadata offsets are documented in [events](../subsystems/events.md). They total 4,270 bytes. Offsets are relative to the v31 metadata default_data section (header section index 8), and the extractor validates both that section's file bounds and every initializer extent. The exact original APK SHA-256 gate applies before these version-specific offsets are used.
+
+The arrays are copied byte-for-byte without normalization, deduplication or use of the operating system's Unicode tables. The manifest's existing culture inventory records each size and SHA-256. `--check --culture-lower` requires all 14 culture outputs; ordinary checks accept the old 2/4/5-file inventories and the new 14-file inventory, but reject incomplete or duplicated entries. Synthetic tests cover exact reconstruction, endian preservation, invalid version/header/section/initializer bounds, file modification and inventory compatibility. Full arrays remain local.
+
 ## Evidence
 
 Native record expansion at 0x10367cc copies record +0x14 into scratch +0x28 and record +0x16 into scratch +0x58. CultureData.GetNFIValues at 0x1e1dec4 decodes these into NumberFormatInfo +0x30 and +0x28. Its helper at 0x1e1ddcc scans to NUL and calls UTF8 Encoding.GetString. The 339-entry culture-name index and culture records cover number indices 0..338. Details and local evidence paths: [events](../subsystems/events.md). Confidence high; no runtime comparison yet.

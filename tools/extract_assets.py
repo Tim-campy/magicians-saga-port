@@ -19,6 +19,8 @@ shared-pool prefix containing all referenced signs, validated within ELF load bo
 pool prefix through all lookup names; it does not extract other culture strings.
 --culture-neutral also derives the 130 neutral-name/LCID leaves from bounded ARM64
 code and relocated metadata literals; the mapping is local data, not source code.
+--culture-lower includes the preceding culture outputs and nine invariant UTF-16
+lowercase arrays from metadata default-data initializers.
 Outputs and manifest stay local under extracted/; --check verifies all payloads and
 members. Names are retained in the manifest, output names have numeric prefixes
 to avoid Windows case collisions. No game content is embedded in the script.
@@ -38,6 +40,26 @@ import wave
 APK_SHA = 'd58943e6ed4137975a554f1e210853f4a7b41573a38dbb462f4f5e159bf6eead'
 KEY_SHA = 'cb79ca3dff35eca5c3307e5321dbf86d68aefb366d138b0b72ff2fb47173a24c'
 METADATA = 'assets/bin/Data/Managed/Metadata/global-metadata.dat'
+# TextInfoToLowerData .cctor 0x1e2460c; offsets within v31 default_data.
+# Version-specific layout knowledge only; table contents come from the verified APK.
+LOWER_LAYOUT = ((98432,1175),(6824,38),(105288,509),(106360,16),(31832,26),
+                (43136,47),(62816,131),(29032,87),(47744,106))
+
+
+def culture_lower_payloads(metadata):
+    if len(metadata) < 256 or struct.unpack_from('<II', metadata) != (0xfab11baf,31):
+        raise ValueError('Expected v31 metadata for lowercase tables')
+    # Ninth header section: field/parameter default-value data, index 8.
+    base, size = struct.unpack_from('<II', metadata, 8+8*8)
+    if base < 256 or base+size > len(metadata):
+        raise ValueError('Lowercase default-data section outside metadata')
+    outputs = {}
+    for index, (offset,count) in enumerate(LOWER_LAYOUT):
+        length = 2*count
+        if offset+length > size:
+            raise ValueError('Lowercase initializer outside default-data section')
+        outputs[f'culture/lower-{index}.bin'] = metadata[base+offset:base+offset+length]
+    return outputs
 
 
 def digest(data):
@@ -253,7 +275,7 @@ def culture_sign_payloads(elf, include_names=False):
     return outputs
 
 
-def check(root, require_culture=False, require_names=False, require_neutral=False):
+def check(root, require_culture=False, require_names=False, require_neutral=False, require_lower=False):
     manifest = json.loads((root / 'manifest.json').read_text(encoding='utf8'))
     if (manifest['apk_sha256'] != APK_SHA or len(manifest['files']) != 38
             or len(manifest['members']) != 1963):
@@ -266,13 +288,16 @@ def check(root, require_culture=False, require_names=False, require_neutral=Fals
     basic = {'culture/number-records.bin', 'culture/sign-pool.bin'}
     full = basic | {'culture/name-index.bin', 'culture/culture-records.bin'}
     neutral = full | {'culture/neutral-map.json'}
+    lower = neutral | {f'culture/lower-{i}.bin' for i in range(9)}
     rows = manifest.get('culture_signs', [])
     inventory = {r['output'] for r in rows}
-    if require_names and inventory not in (full, neutral):
+    if require_names and inventory not in (full, neutral, lower):
         raise ValueError('Culture name outputs are required; extract with --culture-names')
-    if require_neutral and inventory != neutral:
+    if require_neutral and inventory not in (neutral, lower):
         raise ValueError('Neutral culture outputs are required; extract with --culture-neutral')
-    if 'culture_signs' in manifest and (inventory not in (basic, full, neutral) or len(rows) != len(inventory)):
+    if require_lower and inventory != lower:
+        raise ValueError('Lowercase culture outputs are required; extract with --culture-lower')
+    if 'culture_signs' in manifest and (inventory not in (basic, full, neutral, lower) or len(rows) != len(inventory)):
         raise ValueError('Unexpected culture sign inventory')
     for row in manifest['files'] + manifest['members'] + manifest.get('unity_media', []) + manifest.get('culture_signs', []):
         path = bounded(root, row['output'])
@@ -348,7 +373,8 @@ def unity_media(obj, files, filename):
     return [('.fsb', content), ('.wav', wav)], facts
 
 
-def extract(apk, root, include_unity=False, include_culture=False, include_names=False, include_neutral=False):
+def extract(apk, root, include_unity=False, include_culture=False, include_names=False, include_neutral=False, include_lower=False):
+    include_neutral = include_neutral or include_lower
     include_names = include_names or include_neutral
     include_culture = include_culture or include_names
     if digest(apk.read_bytes()) != APK_SHA:
@@ -365,6 +391,8 @@ def extract(apk, root, include_unity=False, include_culture=False, include_names
     with zipfile.ZipFile(apk) as archive:
         culture = culture_sign_payloads(archive.read('lib/arm64-v8a/libil2cpp.so'), include_names) if include_culture else {}
         metadata = archive.read(METADATA)
+        if include_lower:
+            culture.update(culture_lower_payloads(metadata))
         if include_neutral:
             culture['culture/neutral-map.json'] = neutral_culture_payload(archive.read('lib/arm64-v8a/libil2cpp.so'), metadata)
         key = metadata[4557992:4558036]
@@ -476,6 +504,7 @@ def main():
     p.add_argument('apk', type=Path, nargs='?')
     p.add_argument('--out', type=Path, default=Path('extracted'))
     p.add_argument('--check', action='store_true')
+    p.add_argument('--culture-lower', action='store_true', help='Include nine invariant lowercase tables and all culture outputs')
     p.add_argument('--culture-neutral', action='store_true', help='Also derive the neutral-name to LCID mapping from native code')
     p.add_argument('--culture-names', action='store_true', help='Include name index and culture records with native number signs')
     p.add_argument('--culture-signs', action='store_true', help='Also export native number-format records and bounded sign pool')
@@ -483,11 +512,13 @@ def main():
     args = p.parse_args()
     try:
         if args.check:
-            if not check(args.out, args.culture_signs or args.culture_names or args.culture_neutral, args.culture_names or args.culture_neutral, args.culture_neutral):
+            if not check(args.out, args.culture_signs or args.culture_names or args.culture_neutral or args.culture_lower,
+                         args.culture_names or args.culture_neutral or args.culture_lower,
+                         args.culture_neutral or args.culture_lower, args.culture_lower):
                 raise SystemExit(1)
             print('All manifest files verified (TextAssets, members and optional media/culture data).')
         elif args.apk:
-            extract(args.apk, args.out, args.unity_media, args.culture_signs, args.culture_names, args.culture_neutral)
+            extract(args.apk, args.out, args.unity_media, args.culture_signs, args.culture_names, args.culture_neutral, args.culture_lower)
         else:
             p.error('Supply APK or --check')
     except (ValueError, OSError, KeyError, struct.error, zipfile.BadZipFile) as error:

@@ -48,6 +48,8 @@ uv run tools/extract_assets.py game/MagiciansSaga-1.4.0.apk --out extracted/cult
 uv run tools/extract_assets.py --check --out extracted/culture-lookup --culture-names
 uv run tools/extract_assets.py game/MagiciansSaga-1.4.0.apk --out extracted/culture-neutral --culture-neutral
 uv run tools/extract_assets.py --check --out extracted/culture-neutral --culture-neutral
+uv run tools/extract_assets.py game/MagiciansSaga-1.4.0.apk --out extracted/culture-lower --culture-lower
+uv run tools/extract_assets.py --check --out extracted/culture-lower --culture-lower
 uv run tools/extract_assets.py game/MagiciansSaga-1.4.0.apk --out extracted/full --unity-media
 ```
 

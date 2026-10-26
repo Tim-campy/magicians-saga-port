@@ -11,6 +11,63 @@ extractor = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(extractor)
 
 
+class LowercaseTests(unittest.TestCase):
+    def sample(self):
+        base,size=512,106392
+        data=bytearray(base+size)
+        struct.pack_into('<II',data,0,0xfab11baf,31)
+        struct.pack_into('<II',data,72,base,size)
+        for i,(offset,count) in enumerate(extractor.LOWER_LAYOUT):
+            for j in range(count):
+                struct.pack_into('<H',data,base+offset+2*j,(i*257+j*19)&65535)
+        return data
+
+    def test_exact_arrays_and_byte_order(self):
+        data=self.sample();outputs=extractor.culture_lower_payloads(data)
+        self.assertEqual(len(outputs),9)
+        self.assertEqual(sum(map(len,outputs.values())),4270)
+        for i,(offset,count) in enumerate(extractor.LOWER_LAYOUT):
+            expected=struct.pack('<'+'H'*count,*[(i*257+j*19)&65535 for j in range(count)])
+            self.assertEqual(outputs[f'culture/lower-{i}.bin'],expected)
+
+    def test_section_and_version_bounds(self):
+        data=self.sample()
+        for bad in (data[:255],data[:-1],b'BAD!'+data[4:]):
+            with self.assertRaises(ValueError):extractor.culture_lower_payloads(bad)
+        for base,size in ((0,106392),(512,106391),(512,0),(0xffffffff,106392)):
+            bad=bytearray(data);struct.pack_into('<II',bad,72,base,size)
+            with self.assertRaises(ValueError):extractor.culture_lower_payloads(bad)
+        bad=bytearray(data);struct.pack_into('<I',bad,4,30)
+        with self.assertRaises(ValueError):extractor.culture_lower_payloads(bad)
+
+    def test_manifest_inventory_hashes_and_legacy(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp)
+            def row(name,data):
+                path=root/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(data)
+                return {'output':name,'size':len(data),'sha256':extractor.digest(data)}
+            base=row('synthetic.bin',b'synthetic')
+            culture=[row(name,b'synthetic') for name in ('culture/number-records.bin','culture/sign-pool.bin',
+                'culture/name-index.bin','culture/culture-records.bin','culture/neutral-map.json')]
+            lower=[row(name,data) for name,data in extractor.culture_lower_payloads(self.sample()).items()]
+            manifest={'apk_sha256':extractor.APK_SHA,'files':[base]*38,'members':[base]*1963,'culture_signs':culture+lower}
+            def write(): (root/'manifest.json').write_text(json.dumps(manifest),encoding='utf8')
+            write()
+            self.assertTrue(extractor.check(root,True,True,True,True))
+            (root/'culture/lower-8.bin').write_bytes(b'changed')
+            self.assertFalse(extractor.check(root,require_lower=True))
+            manifest['culture_signs']=culture;write()
+            self.assertTrue(extractor.check(root,require_neutral=True))
+            with self.assertRaisesRegex(ValueError,'Lowercase culture outputs are required'):
+                extractor.check(root,require_lower=True)
+            manifest['culture_signs']=culture+lower[:-1];write()
+            with self.assertRaisesRegex(ValueError,'Unexpected culture sign inventory'):
+                extractor.check(root)
+            manifest['culture_signs']=culture+lower+[lower[0]];write()
+            with self.assertRaisesRegex(ValueError,'Unexpected culture sign inventory'):
+                extractor.check(root)
+
+
 class NeutralMappingTests(unittest.TestCase):
     def leaf(self, base=0x1000, lcid=0x1234):
         def branch(pc, target, opcode):
