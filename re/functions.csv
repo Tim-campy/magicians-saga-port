@@ -1381,7 +1381,7 @@ game:0x06000578,game:0x06000578,services,,76,0x11bae98
 game:0x06000579,game:0x06000579,services,,8,0x11baee4
 game:0x0600057a,game:0x0600057a,services,,96,0x11baeec
 game:0x0600057b,game:0x0600057b,services,,168,0x11baf4c
-game:0x0600057c,system.billing.ui.ApplyTask..ctor,services,traced,132,0x11bb7cc
+game:0x0600057c,system.billing.ui.ApplyTask..ctor,services,reimplemented,132,0x11bb7cc
 game:0x0600057d,system.billing.ui.ApplyTask.Init,services,traced,2008,0x11baff4
 game:0x0600057e,game:0x0600057e,services,,236,0x11bb850
 game:0x0600057f,game:0x0600057f,services,,432,0x11bb93c
@@ -4778,7 +4778,7 @@ kairo:0x0600017b,kairo:0x0600017b,platform,,200,0x1b115bc
 kairo:0x0600017c,kairo:0x0600017c,platform,,92,0x1b11684
 kairo:0x0600017d,kairo:0x0600017d,platform,,92,0x1b116e0
 kairo:0x0600017e,kairo:0x0600017e,platform,,92,0x1b1173c
-kairo:0x0600017f,kairo:0x0600017f,platform,,8,0x1b114f4
+kairo:0x0600017f,java.lang.JInteger.ParseInt,platform,documented,8,0x1b114f4
 kairo:0x06000180,kairo:0x06000180,platform,,28,0x1b11578
 kairo:0x06000181,kairo:0x06000181,platform,,140,0x1b11798
 kairo:0x06000182,kairo:0x06000182,platform,,12,0x1b11824

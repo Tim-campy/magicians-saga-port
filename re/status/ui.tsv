@@ -30,7 +30,8 @@ game:0x06000848	reimplemented	src/core/gameplay/select_guide.cpp	Guide occupied 
 game:0x06000819	reimplemented	src/core/gameplay/select_camera.cpp	SetActiveX: normal-save capacity, descending live areas, ordered extent writes; test_select_camera and test_select_form_pass
 game:0x06000802	traced	docs/subsystems/events.md	UpdateNotifyValue controller composed in select_notifications; regex/prefix literals resolved; Init and matcher adapters unresolved
 game:0x06000580	reimplemented	src/core/gameplay/select_notifications.cpp	ApplyTask.Enable item presence or nonempty decoded gift; no payment authorization; test_select_notifications
-game:0x0600057c	traced	docs/subsystems/events.md	String ApplyTask constructor delegates Init(null,text,0,true)
-game:0x0600057d	traced	docs/subsystems/events.md	ApplyTask.Init parsing routes and LSDA conversion scope recovered; catalog choice kernel in apply_task.cpp tested; front-end/integer conversion pending
+game:0x0600057c	reimplemented	src/core/gameplay/apply_task.cpp	String constructor via make_notification_gift, decoded null-item Init and explicit culture/prefix/catalog providers; test_apply_task and test_select_notifications
+game:0x0600057d	traced	docs/subsystems/events.md	ApplyTask.Init gift route, integer conversion and catalog matcher ported in apply_task.cpp; supplied-item route and live providers pending
 game:0x060005c3	traced	docs/subsystems/events.md	AddApplyTask true option appends; false option deduplicates by Equals
 game:0x060005b8	traced	docs/subsystems/events.md	UpdateApplyTask guarded monitor loop with lock/readiness and execution callbacks
+kairo:0x0600017f	documented	docs/subsystems/events.md	JInteger.ParseInt forwards to Int32.Parse with CurrentInfo and style7; reached non-null numeric kernel tested in apply_task.cpp

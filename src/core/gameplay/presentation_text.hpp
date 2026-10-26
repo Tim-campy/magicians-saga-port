@@ -12,6 +12,8 @@ std::vector<std::u16string> split_form_text(const std::u16string* text);
 std::vector<std::u16string> split_event_text_fields(const std::u16string* text);
 // StringUtil.Split14533 with comma, used by the color parameter fallback.
 std::vector<std::u16string> split_text_color_fields(const std::u16string* text);
+// Same StringUtil.Split overload for a caller-supplied single-code-unit delimiter.
+std::vector<std::u16string> split_trimmed_text_fields(const std::u16string* text,char16_t delimiter);
 
 using NullablePresentationText = std::optional<std::u16string>;
 class PresentationTextHost {

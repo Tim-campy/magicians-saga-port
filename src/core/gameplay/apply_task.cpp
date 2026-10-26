@@ -1,7 +1,69 @@
 #include "apply_task.hpp"
+#include "presentation_text.hpp"
 #include <limits>
 #include <stdexcept>
 namespace saga::core {
+namespace {
+bool number_space(char16_t value) {return value==u' ' || (value>=u'\t' && value<=u'\r');}
+}
+std::int32_t parse_apply_integer(const std::u16string& text,const ApplyNumberSigns& signs) {
+    std::size_t pos=0;
+    while(pos<text.size() && number_space(text[pos]))++pos;
+    bool negative=false;
+    if(!signs.positive.empty() && text.compare(pos,signs.positive.size(),signs.positive)==0)pos+=signs.positive.size();
+    else if(!signs.negative.empty() && text.compare(pos,signs.negative.size(),signs.negative)==0) {pos+=signs.negative.size();negative=true;}
+    const auto first=pos;
+    std::uint64_t magnitude=0;
+    const std::uint64_t limit=negative?2147483648ULL:2147483647ULL;
+    bool overflow=false;
+    while(pos<text.size() && text[pos]>=u'0' && text[pos]<=u'9') {
+        if(!overflow) {magnitude=magnitude*10+static_cast<std::uint32_t>(text[pos]-u'0');overflow=magnitude>limit;}
+        ++pos;
+    }
+    if(pos==first)throw ApplyNumberError(ApplyNumberFailure::Format);
+    while(pos<text.size() && number_space(text[pos]))++pos;
+    while(pos<text.size() && text[pos]==0)++pos;
+    if(pos!=text.size())throw ApplyNumberError(ApplyNumberFailure::Format); // Syntax takes priority over overflow.
+    if(overflow)throw ApplyNumberError(ApplyNumberFailure::Overflow);
+    const auto signed_value=negative?-static_cast<std::int64_t>(magnitude):static_cast<std::int64_t>(magnitude);
+    return static_cast<std::int32_t>(signed_value);
+}
+void initialize_apply_gift(ApplyGiftState& state,std::optional<std::u16string> gift,std::int32_t type,bool notice,ApplyGiftHost& host) {
+    state.gift=gift?std::move(*gift):std::u16string{};
+    state.type=type;state.notice=notice;state.locked=false;
+    state.name=std::u16string{};state.product_id.clear();state.provision_type.clear();state.provision_text.clear();state.provision_value=0;
+    if(state.gift.empty())return;
+    if(state.gift.find(u'\t')!=std::u16string::npos) {
+        const auto fields=split_form_text(&state.gift);
+        const auto& first=fields.at(0);
+        state.talk_character=parse_apply_integer(first,host.current_number_signs());
+        state.talk_text=fields.at(1);
+        return;
+    }
+    if(host.starts_special_gift(state.gift))return;
+    const auto product=split_text_color_fields(&state.gift); // Same trimmed comma overload.
+    state.product_id=product.at(0);
+    if(product.size()>=2)state.name=product.at(1);
+    const auto provision=split_trimmed_text_fields(&state.product_id,u'_');
+    if(!provision.empty())state.provision_type=provision.at(0);
+    if(provision.size()>1)state.provision_text=provision.at(1);
+    try {
+        if(state.provision_text==u"on")state.provision_value=1;
+        else if(state.provision_text==u"off")state.provision_value=0;
+        else state.provision_value=parse_apply_integer(state.provision_text,host.current_number_signs());
+    } catch(const ApplyManagedError&) {
+        // Only this provision conversion is protected by Init's native catch.
+    }
+    if(state.name->empty()) {
+        const auto selected=resolve_apply_name_item(host.catalog(),state.provision_type,state.provision_text,state.provision_value);
+        if(selected)state.name=selected->name;
+    }
+}
+std::shared_ptr<NotificationApplyTask> make_notification_gift(NotificationText text,ApplyGiftHost& host) {
+    auto state=std::make_shared<ApplyGiftState>();
+    initialize_apply_gift(*state,text?std::optional<std::u16string>(*text):std::nullopt,0,true,host);
+    return std::make_shared<NotificationApplyTask>(NotificationApplyTask{nullptr,state->gift,state});
+}
 std::shared_ptr<ApplyCatalogItem> resolve_apply_name_item(const std::shared_ptr<ApplyCatalog>& catalog,
     const std::u16string& type,const std::u16string& text,std::int32_t value) {
     if(!catalog)throw std::invalid_argument("missing billing catalog");
