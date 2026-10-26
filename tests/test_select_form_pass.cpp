@@ -87,8 +87,20 @@ struct Host:SelectFormPassHost,SelectCloudHost,SelectMarkerHost,EventExecutionHo
         catalog->at(1)=record;
     }
 };
-struct LateBindings final:SelectBuildingHost,SelectTownButtonsHost,SelectGuidanceSaveHost,SelectCameraHost,SelectReviewHost,SelectGuideHost,SelectActiveAreaHost {
-    int save_calls=0,platform_calls=0,guide_sums=0;
+struct LateBindings final:SelectBuildingHost,SelectTownButtonsHost,SelectGuidanceSaveHost,SelectCameraHost,SelectReviewHost,SelectGuideHost,SelectActiveAreaHost,SelectNotificationHost {
+    int save_calls=0,platform_calls=0,guide_sums=0,notification_reads=0;
+    EventObject notification_manager() override {return std::make_shared<int>(1);}
+    std::int32_t value_count(EventObject) override {++notification_reads;return 0;}
+    NotificationText value(EventObject,std::int32_t) override {throw std::logic_error("unexpected notification value");}
+    bool matches(NotificationText,NotificationPattern) override {throw std::logic_error("unexpected notification pattern");}
+    bool starts_currency_sale(NotificationText) override {throw std::logic_error("unexpected sale prefix");}
+    EventObject billing_manager() override {throw std::logic_error("unexpected billing");}
+    std::shared_ptr<NotificationApplyTask> make_apply_task(NotificationText) override {throw std::logic_error("unexpected task");}
+    void add_apply_task(EventObject,std::shared_ptr<NotificationApplyTask>,bool) override {throw std::logic_error("unexpected task add");}
+    void show_currency_sale(NotificationText) override {throw std::logic_error("unexpected sale");}
+    void show_free_movie() override {throw std::logic_error("unexpected movie");}
+    void remove_value(EventObject,std::int32_t) override {throw std::logic_error("unexpected notification removal");}
+    void update_apply_tasks(EventObject,bool) override {throw std::logic_error("unexpected task update");}
     std::shared_ptr<EventIntegers> normal_save_integers() override {return std::make_shared<EventIntegers>(20,0);}
     std::shared_ptr<CameraAreas> camera_areas() override {return std::make_shared<CameraAreas>();}
     bool pressed(std::uint32_t) override {return false;}
@@ -144,13 +156,13 @@ int main() {
         auto owner=std::shared_ptr<SelectFormPassState>(h,&h->state);
         SelectBuildingState building{-1,prelude.camera_x,0,movement.drag_distance,-1,3};
         SelectCameraState camera{false,2,0,prelude.camera_x,building.camera_y,0,1000};
-        LateBindings late;SelectGuideState guide_state;SelectActiveAreaPassHost guide_pass{*h,guide_state,late,camera,late};
+        LateBindings late;SelectGuideState guide_state;SelectRecoveredPassHost guide_pass{*h,guide_state,late,camera,late,late};
         SelectUpdateBindings bindings{prelude,*h,owner,guide_pass,*h,*h,h->queue,*h,h->conditions,movement,*h,*h,h};
         SelectTownButtonsState town{-1,0};TownBubbleState bubble{-1,nullptr,3};
         h->state.auto_save=true;
         check(update_select_form(bindings,building,late,town,bubble,late,late,camera,late,late),"full Update return");
         check(prelude.camera_x==0 && camera.left_extent==-449 && camera.right_extent==320 && building.unlock_info_frames==2 && bubble.frames==2,"full update reaches movement and lifetimes");
-        check(late.save_calls==1 && late.platform_calls==1 && !h->state.auto_save,"full update saves before late gates");
+        check(late.notification_reads==1 && late.save_calls==1 && late.platform_calls==1 && !h->state.auto_save,"full update saves before late gates");
         check(late.guide_sums==2 && guide_state.flags->at(0)==1 && guide_state.flags->at(1)==0 && h->log.back()=="bgm","forced and late recovered guide calls before BGM");
         h->state.form.dialog=h->child;h->state.auto_save=true;h->log.clear();
         update_select_form(bindings,building,late,town,bubble,late,late,camera,late,late);

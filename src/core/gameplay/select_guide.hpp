@@ -1,6 +1,7 @@
 #pragma once
 #include "select_building.hpp"
 #include "select_camera.hpp"
+#include "select_notifications.hpp"
 namespace saga::core {
 struct GuideTownRecord {std::int32_t flags,id;}; // BaseData+0x1c and town record+0x20.
 using GuideTowns=std::vector<std::shared_ptr<GuideTownRecord>>;
@@ -39,13 +40,15 @@ public:
 private:
     SelectFormPassHost& pass_;SelectGuideState& state_;SelectGuideHost& guide_;
 };
-class SelectActiveAreaPassHost final:public SelectGuidePassHost {
+class SelectRecoveredPassHost final:public SelectGuidePassHost {
 public:
-    SelectActiveAreaPassHost(SelectFormPassHost& pass,SelectGuideState& guide_state,SelectGuideHost& guide,
-        SelectCameraState& camera,SelectActiveAreaHost& areas)
-        :SelectGuidePassHost(pass,guide_state,guide),camera_(camera),areas_(areas) {}
+    SelectRecoveredPassHost(SelectFormPassHost& pass,SelectGuideState& guide_state,SelectGuideHost& guide,
+        SelectCameraState& camera,SelectActiveAreaHost& areas,SelectNotificationHost& notifications)
+        :SelectGuidePassHost(pass,guide_state,guide),camera_(camera),areas_(areas),notifications_(notifications) {}
     void set_active_x() override {set_select_active_x(camera_,areas_);}
+    void update_notifications() override {update_select_notifications(notifications_);}
 private:
     SelectCameraState& camera_;SelectActiveAreaHost& areas_;
+    SelectNotificationHost& notifications_;
 };
 }

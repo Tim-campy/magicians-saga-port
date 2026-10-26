@@ -1381,11 +1381,11 @@ game:0x06000578,game:0x06000578,services,,76,0x11bae98
 game:0x06000579,game:0x06000579,services,,8,0x11baee4
 game:0x0600057a,game:0x0600057a,services,,96,0x11baeec
 game:0x0600057b,game:0x0600057b,services,,168,0x11baf4c
-game:0x0600057c,game:0x0600057c,services,,132,0x11bb7cc
-game:0x0600057d,game:0x0600057d,services,,2008,0x11baff4
+game:0x0600057c,system.billing.ui.ApplyTask..ctor,services,traced,132,0x11bb7cc
+game:0x0600057d,system.billing.ui.ApplyTask.Init,services,traced,2008,0x11baff4
 game:0x0600057e,game:0x0600057e,services,,236,0x11bb850
 game:0x0600057f,game:0x0600057f,services,,432,0x11bb93c
-game:0x06000580,game:0x06000580,services,,52,0x11bbaec
+game:0x06000580,system.billing.ui.ApplyTask.Enable,services,reimplemented,52,0x11bbaec
 game:0x06000581,game:0x06000581,services,,16,0x11b8450
 game:0x06000582,game:0x06000582,services,,36,0x11b842c
 game:0x06000583,game:0x06000583,services,,124,0x11bbb20
@@ -1439,7 +1439,7 @@ game:0x060005b4,game:0x060005b4,services,,44,0x11c22bc
 game:0x060005b5,game:0x060005b5,services,,212,0x11c2360
 game:0x060005b6,game:0x060005b6,services,,316,0x11c2548
 game:0x060005b7,game:0x060005b7,services,,2388,0x11c2684
-game:0x060005b8,game:0x060005b8,services,,588,0x11bd4d8
+game:0x060005b8,system.billing.ui.BillingManager.UpdateApplyTask,services,traced,588,0x11bd4d8
 game:0x060005b9,game:0x060005b9,services,,72,0x11c2fd8
 game:0x060005ba,game:0x060005ba,services,,592,0x11c3020
 game:0x060005bb,game:0x060005bb,services,,220,0x11c32ec
@@ -1450,7 +1450,7 @@ game:0x060005bf,game:0x060005bf,services,,436,0x11c049c
 game:0x060005c0,game:0x060005c0,services,,1280,0x11c1dbc
 game:0x060005c1,game:0x060005c1,services,,952,0x11c0058
 game:0x060005c2,game:0x060005c2,services,,64,0x11c35c4
-game:0x060005c3,game:0x060005c3,services,,316,0x11c0650
+game:0x060005c3,system.billing.ui.BillingManager.AddApplyTask,services,traced,316,0x11c0650
 game:0x060005c4,game:0x060005c4,services,,276,0x11c2434
 game:0x060005c5,game:0x060005c5,services,,264,0x11c3604
 game:0x060005c6,game:0x060005c6,services,,140,0x11c0410

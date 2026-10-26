@@ -28,4 +28,9 @@ game:0x0600083e	reimplemented	src/core/gameplay/select_guide.cpp	Guide available
 game:0x06000847	reimplemented	src/core/gameplay/select_guide.cpp	Guide active town predicate: non-null, flag bit0 and id != -1; tests/test_select_guide.cpp
 game:0x06000848	reimplemented	src/core/gameplay/select_guide.cpp	Guide occupied slot predicate: non-null and row1 != -1; tests/test_select_guide.cpp
 game:0x06000819	reimplemented	src/core/gameplay/select_camera.cpp	SetActiveX: normal-save capacity, descending live areas, ordered extent writes; test_select_camera and test_select_form_pass
-game:0x06000802	traced	docs/subsystems/events.md	UpdateNotifyValue reverse queue routing into validated ApplyTask and offer forms; removal-before-final-save; payload predicates unresolved
+game:0x06000802	traced	docs/subsystems/events.md	UpdateNotifyValue controller composed in select_notifications; regex/prefix literals resolved; Init and matcher adapters unresolved
+game:0x06000580	reimplemented	src/core/gameplay/select_notifications.cpp	ApplyTask.Enable item presence or nonempty decoded gift; no payment authorization; test_select_notifications
+game:0x0600057c	traced	docs/subsystems/events.md	String ApplyTask constructor delegates Init(null,text,0,true)
+game:0x0600057d	traced	docs/subsystems/events.md	ApplyTask.Init field setup, gift parsing and catalog path traced; conversion and catch scopes unresolved
+game:0x060005c3	traced	docs/subsystems/events.md	AddApplyTask true option appends; false option deduplicates by Equals
+game:0x060005b8	traced	docs/subsystems/events.md	UpdateApplyTask guarded monitor loop with lock/readiness and execution callbacks
