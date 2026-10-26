@@ -34,6 +34,8 @@ The game's screens are forms (`kairo.unity.form.FormBase` → `LibraryFormBase` 
 
 ## Behaviour
 
+SelectForm event scheduling is documented in [events.md](events.md): dialog/state/balance gates, loopCounter_ arithmetic, evenCheck_ initialization and periodic requests, and the portable reached queue/selection block. The complete form Update and Push behavior remain unported.
+
 ### DoMethod (19739, `0x1be48e4`)
 
 Codes 0..5; byte table at ELF `0x68dd53` = `00 3c 0c 37 05 67`, target = `0x1be4958 + 4*byte`.

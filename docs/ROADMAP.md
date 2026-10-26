@@ -29,7 +29,7 @@ The plan in one page. Agents take the first unblocked task of the current work p
 ## Next tasks
 
 ### 1. Events and scripts
-- [ ] Map `SelectForm+0x31` and the other `SelectForm.Update` guards (`+0xc0`, states of `+0xf8`, origin of `+0x5c` in `AcquireBalance`).
+- [ ] Recover state-0 table/UI preparation and dialog_ producers in SelectForm, then bind its state/dialog/balance guards and Push to the recovered select_event_pass kernel.
 - [ ] Find the consumer of `hour_ != -1`, the writer of `SubForm.delayEvent_` (`+0x1d0`) and the remaining effect opcodes of the 15-entry table at `0x627b6e`.
 
 ### 2. Game data and saves

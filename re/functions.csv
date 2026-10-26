@@ -772,7 +772,7 @@ game:0x06000316,game:0x06000316,services,,104,0x118788c
 game:0x06000317,game:0x06000317,services,,104,0x11878f4
 game:0x06000318,game:0x06000318,services,,160,0x118795c
 game:0x06000319,game:0x06000319,services,,100,0x11879fc
-game:0x0600031a,game:0x0600031a,services,,184,0x1187a60
+game:0x0600031a,system.tapjoy.ui.Tapjoy.HandleGetCurrencyBalanceResponse,services,traced,184,0x1187a60
 game:0x0600031b,game:0x0600031b,services,,100,0x1187b18
 game:0x0600031c,game:0x0600031c,services,,160,0x1187b7c
 game:0x0600031d,game:0x0600031d,services,,100,0x1187c1c
@@ -2001,8 +2001,8 @@ game:0x060007fb,game:0x060007fb,ui,,836,0x11e9470
 game:0x060007fc,game:0x060007fc,ui,,376,0x11e97b4
 game:0x060007fd,game:0x060007fd,ui,,272,0x11e992c
 game:0x060007fe,game:0x060007fe,ui,,492,0x11e9a3c
-game:0x060007ff,game:0x060007ff,ui,,5644,0x11e9c28
-game:0x06000800,game:0x06000800,ui,,8068,0x11ebb94
+game:0x060007ff,form.SelectForm.Init,ui,traced,5644,0x11e9c28
+game:0x06000800,form.SelectForm.Update,ui,traced,8068,0x11ebb94
 game:0x06000801,game:0x06000801,ui,,2704,0x11ef380
 game:0x06000802,game:0x06000802,ui,,744,0x11edb18
 game:0x06000803,game:0x06000803,ui,,384,0x11f0594
