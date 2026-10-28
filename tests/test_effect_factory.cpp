@@ -1,4 +1,5 @@
 #include "core/gameplay/effect_factory.hpp"
+#include "core/gameplay/animation_pass.hpp"
 #include "core/ecs/dynamic_subsets.hpp"
 #include <cstdlib>
 #include <limits>
@@ -45,7 +46,13 @@ int main(){
         check(animated_images.size()==1&&h.entity.get(7)==&h.image&&h.entity.get(10)==&h.playback);
         check(*h.image.arrays.textures==std::vector<std::int32_t>{4}&&*h.image.arrays.resources==std::vector<std::int32_t>{20});
         check(*h.image.arrays.u==std::vector<std::int32_t>{-1}&&*h.image.arrays.v==*h.image.arrays.u&&*h.image.arrays.width==*h.image.arrays.u&&*h.image.arrays.height==*h.image.arrays.u);
-        check(h.playback.state.rate==1&&h.playback.state.return_clip==-1);}
+        check(h.playback.state.rate==1&&h.playback.state.return_clip==-1);
+        auto& animated=h.groups.get(std::make_shared<ComponentGroupFilter>(std::vector<std::int32_t>{2,10}));
+        SharedAnimationClip clip{0,8};AnimationResource resource{std::make_shared<std::vector<SharedAnimationClip*>>(8,nullptr)};
+        resource.clips->at(7)=&clip;AnimationSystemState state{&animated,std::make_shared<std::vector<AnimationResource*>>(24,nullptr)};
+        state.resources->at(20)=&resource;
+        for(int i=0;i<5;++i)update_animations(state,{false,true});
+        check(h.sprite.animation.frame==0&&clip.frame==5&&h.garbage.frames==7);}
     {Host h;EntityIdState ids;auto r=request();r.loop=true;r.depth=false;r.image=-1;r.animate=false;
         create_effect(r,ids,h);check(h.calls==std::vector<int>{-2,-3,26,0,1,2}&&h.effect.max_frame==0);}
     {Host h;EntityIdState ids;h.duration=0;create_visual_effect({},7,-1,false,ids,h);check(h.effect.max_frame==-1&&h.garbage.frames==-1&&h.effect.type==0&&h.effect.frame==0);}

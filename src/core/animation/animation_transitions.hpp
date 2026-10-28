@@ -28,6 +28,14 @@ struct EntityAnimation {
     bool enemy;
 };
 
+// Borrowed live fields; mutations preceding a missing-field error remain visible.
+struct EntityAnimationView {
+    SpriteAnimation* sprite;
+    AnimationPlayback* playback;
+    std::int32_t* direction;
+    bool human, monster, enemy;
+};
+
 // Invalid ECS state is explicit. Mutations preceding the missing component are
 // retained, as in the observed native control flow. This is not an IL2CPP ABI.
 class MissingAnimationComponent : public std::runtime_error {
@@ -38,5 +46,8 @@ public:
 void change_animation(EntityAnimation& entity, std::int32_t clip, bool reset_frame);
 void cut_in_animation(EntityAnimation& entity, std::int32_t clip, std::int32_t return_clip);
 void restore_animation(EntityAnimation& entity);
+void change_animation(EntityAnimationView, std::int32_t clip, bool reset_frame);
+void cut_in_animation(EntityAnimationView, std::int32_t clip, std::int32_t return_clip);
+void restore_animation(EntityAnimationView);
 
 } // namespace saga::core

@@ -52,7 +52,7 @@ kairo:0x06001757	traced	docs/formats/seb.md	GetImage: forwards +0x88 to Resource
 kairo:0x0600176a	traced	docs/formats/seb.md	GetCurFrame returns +0x18
 kairo:0x0600176b	traced	docs/formats/seb.md	SetCurFrame stores +0x18 unnormalised
 kairo:0x0600176c	traced	docs/formats/seb.md	GetMaxFrame returns +0x1c
-kairo:0x0600176d	documented	docs/formats/seb.md	Frame: (frame+1) mod maxFrame unless AutoAnimation; callers AnimationSystem.Update, RoomForm/SubForm.Update
+kairo:0x0600176d	reimplemented	src/core/gameplay/animation_pass.cpp	Manual shared clock gated by AutoAnimation/application flag; int32 increment and ARM signed remainder including zero/overflow tested.
 kairo:0x06001754	traced	docs/formats/seb.md	get_AutoAnimation: static +0x14
 kairo:0x06001755	traced	docs/formats/seb.md	set_AutoAnimation: stores arg&1; no direct callers found
 kairo:0x060017bc	documented	docs/formats/seb.md	PushThisFrameRender: register in active list; callers Draw overloads

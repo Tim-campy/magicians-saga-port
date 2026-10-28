@@ -46,6 +46,7 @@ Sample: `load/copy.seb` (28 bytes, one record) = FrameNo 0, TexId 0, U 0, V 0, W
 
 - `tools/inspect_seb.py` (`parse`/`encode`, stdlib): neutral field names (`values`, `header_value`, `legacy_value`, `control`, `extra_word`, `pair`, `tail_pair`, `flags`); rebuild from scalars only; rejects modes other than 0/1, negative counts, truncation, trailing bytes. `tests/test_seb.py` (6). Inventory SHA-256 `70b8d7c9…61d0a0`.
 - `src/assets/seb.cpp` (`parse_seb`): `std::optional` for absent fields (JSON `null`), contiguous groups/records; `SebLimits` 32 MiB / 32,767 groups / 1,000,000 records; throws `SebError`. Test `tests/test_seb.cpp`. `asset_inspect --seb` matched `dataclasses.asdict(inspect_seb.parse())` on all 303 files.
+- `src/core/gameplay/animation_pass.cpp` implements the shared manual Seb.Frame clock step and the separate ECS entity loop, documented in [animation](../subsystems/animation.md#animationsystemupdate-per-pass). Effective flags and loaded clip clocks are explicit inputs; this does not derive maxFrame from parsed records or implement automatic drawing clocks. The tests preserve ARM signed remainder for divisor zero, negative divisors and INT_MIN/-1, alongside int32 wrapping increments.
 
 ## Evidence
 
@@ -57,5 +58,4 @@ Sample: `load/copy.seb` (28 bytes, one record) = FrameNo 0, TexId 0, U 0, V 0, W
 1. (blocking) Record combination between neighbouring FrameNo values in `GetSpriteLocal` (interpolation?).
 2. (blocking) TexId -> Image/OPT resolution and `GetOptimizeSeb`; semantics of negative TexId commands (-8 and others) and mode-0 derived colour/control.
 3. Writers of AutoAnimation and `IApplication.static+0x1c`; real tick rate of `Frame`/`OnGUI`.
-4. `RestoreAnimation` effects and `animation+0x10/+0x14` meaning.
-5. Meaning of `header_value`, `legacy_value`, `extra_word` and unused flag bits.
+4. Meaning of `header_value`, `legacy_value`, `extra_word` and unused flag bits.

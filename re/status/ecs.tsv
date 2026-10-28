@@ -98,7 +98,7 @@ game:0x06000cdc	traced	docs/subsystems/ecs.md
 game:0x06000cde	traced	docs/subsystems/ecs.md	
 game:0x06000cc2	traced	docs/subsystems/ecs.md	
 game:0x06000cca	traced	docs/subsystems/ecs.md	
-game:0x06000dba	documented	docs/subsystems/animation.md	
+game:0x06000dba	reimplemented	src/core/gameplay/animation_pass.cpp	And(2,10), publish 24 manager entries and ordered lookup/store; replacement and partial failure tested.
 game:0x06000dbb	reimplemented	src/core/ecs/update_scheduler.cpp	Ordered dispatch or concrete enabled/pass gate; contract test; runtime comparison pending.
 game:0x06000dbe	documented	docs/subsystems/animation.md	
 game:0x06000dc2	documented	docs/subsystems/animation.md	
@@ -108,7 +108,7 @@ game:0x06000b45	documented	docs/subsystems/animation.md
 game:0x06000b9c	documented	docs/subsystems/animation.md	
 game:0x06000b9b	documented	docs/subsystems/animation.md	
 game:0x06000d0f	documented	docs/subsystems/animation.md	
-game:0x06000dbc	traced	docs/subsystems/animation.md	
+game:0x06000dbc	reimplemented	src/core/gameplay/animation_pass.cpp	Shared clocks then live entity selection, wrap/rate, signed >= restore and captured-max remainder; effect integration tested.
 game:0x06000dc4	traced	docs/subsystems/animation.md	
 game:0x06000b1e	traced	docs/subsystems/animation.md	
 game:0x06000b1f	traced	docs/subsystems/animation.md	

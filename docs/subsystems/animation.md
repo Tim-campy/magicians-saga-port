@@ -1,6 +1,6 @@
 # Animation (ECS animation components and AnimationSystem)
 
-Per-entity sprite animation is driven by three ECS components — `SebComponent` (slot 2), `AnimationComponent` (slot 10), `DirectionComponent` (slot 12) — and by `ecs.AnimationSystem` (factory position 19). Statically established: field layout, the three clip transitions (Change / CutIn / Restore), every direct `AddAnimation` producer and its guard, system registration, Init/Update/Pause dispatch and the persisted payloads. Port: transitions, component payload codecs and pooled slot-10 insertion are tested; effect creation now inserts actual playback into live ECS groups. The per-frame `AnimationSystem.Update` loop and the other spawn factories remain incomplete. The shared SEB frame advance (`Seb.Frame`, AutoAnimation) is a different mechanism; see [../formats/seb.md](../formats/seb.md) and the SEB timing report.
+Per-entity sprite animation is driven by three ECS components — `SebComponent` (slot 2), `AnimationComponent` (slot 10), `DirectionComponent` (slot 12) — and by `ecs.AnimationSystem` (factory position 19). Statically established: component layouts, clip transitions (Change / CutIn / Restore), direct `AddAnimation` producers, system registration, Init/Update/Pause dispatch and persisted payloads. Port: transitions, component payload codecs, pooled playback insertion and AnimationSystem Init/Update are tested with live ECS fields. Effect creation now feeds the per-pass animation loop. Resource catalog loading, effective global flags, rendering and other spawn factories remain incomplete. Shared SEB clocks and per-entity counters stay separate; see [../formats/seb.md](../formats/seb.md).
 
 Addresses are ELF VAs (Ghidra exports add `0x100000`).
 
@@ -52,14 +52,31 @@ EmitterSystem path to the particle (per enumerated entity with `Entity.get_emitt
 ### System registration and dispatch
 
 - `Systems.CreateSystems` puts `AnimationSystem` at array position **19** (after `ModifyAnimatinSystem` at 18, before `CellCullingSystem` 20 and `RenderSystem` 21), constructed then `set_enabled(true)`.
-- `SystemManager.Add` appends it to the IInitSystem and IUpdateSystem lists (interface offsets 13 and 14 in its vtable, start 58921) and to the IPausable list (offset 16). Its absolute index in the Update list is not known.
+- `SystemManager.Add` appends it to the IInitSystem and IUpdateSystem lists (interface offsets 13 and 14 in its vtable, start 58921) and to the IPausable list (offset 16). It is entry 16 (zero-based) of the established 26-system update list; see [ecs](ecs.md#complete-update-schedule).
 - `AnimationSystem.Init` (`0x1141a58`): builds `Filter.And([2, 10])` (Seb + Animation), `World.GetSubSet` → stored at `this+0x20`; allocates an array of **24** ResourceManagers filled by `AppData.GetResourceManager(0..23)` (`this+0x28`).
 - `SystemManager.Update(pass)` → `AnimationSystem.NeedsUpdate` (`0x1141bb8`, returns enabled byte +0x18, ignores pass) → `AnimationSystem.Update` (`0x1141bc0`). Reached from `QuestForm.Update`, which may run up to 3 ECS passes per form event (see [ecs.md](ecs.md)).
 
 ### AnimationSystem.Update (per pass)
 
 1. Walk the ResourceManager array (`this+0x28`, inner arrays +0x18) and call `Seb.Frame` on each non-null SEB (`0x1141c24–0x1141cb4`) — the shared manual frame advance.
-2. Enumerate the subset's `HashSet<Entity>` (`Subset+0x30`; `GetEnumerator`/`MoveNext`/`Dispose`; slot order, see [ecs.md](ecs.md)). For each entity: get `seb`; select the Seb by `res`/`id` (negative values filtered, bounds/null checked) and read its maxFrame; `frame += animation.rate`; if `backup != -1` and the counter reaches maxFrame, call `RestoreAnimation`; then re-fetch the Seb component and `frame %= maxFrame` using the maxFrame **captured before** the restore (`0x1141e08–0x1141e24`).
+2. Enumerate the subset's `HashSet<Entity>` (`Subset+0x30`; `GetEnumerator`/`MoveNext`/`Dispose`; slot order, see [ecs.md](ecs.md)). For each entity: require Seb; select by `res`/`id` as below and capture maxFrame; add animation.rate to the component frame with int32 wrap. When backup != -1 and the new frame is signed **>= maxFrame**, restore. Re-fetch the component and take ARM signed remainder using the maximum captured **before** restoration (`0x1141e08–0x1141e24`). No positive-maximum guard or lower-frame clamp is present.
+
+Selection is direct indexing of AnimationSystem.resourceManagers_ (+0x28), then ResourceManager.seb (+0x18), not a GetSeb callback or a search. Its asymmetry matters:
+
+| Condition | Outcome before entity-frame mutation |
+| --- | --- |
+| Negative resource ID | Skip entity |
+| Negative clip ID or resource ID >= manager-array length | Skip entity |
+| Null selected manager | Skip entity |
+| Null manager array or selected manager's SEB array | Error |
+| Clip ID >= selected SEB-array length | Bounds error |
+| Null selected SEB | Error (shared phase skips this null entry) |
+
+The shared phase captures the manager array, skips null managers and null SEBs, and requires every nonnull manager's SEB array, even when its manager is not selected by an entity. It captures each inner array's initial length and re-reads that manager's array for successive entries. Shared references are not deduplicated: a repeated SEB pointer is advanced per occurrence. The entity phase re-reads the manager-array field. Shared advancement finishes before the entity cursor opens; earlier shared/individual frame writes survive a later failure.
+
+Seb.Frame (kairo:0x0600176d, entry 0x1bb16c4) leaves its shared frame unchanged when AutoAnimation is true or IApplication.static+0x1c is false. Otherwise add 1 with int32 wrap and apply SDIV/MSUB remainder. These gates do not suppress the separate entity loop. ARM divisor zero has quotient zero, retaining the numerator; INT_MIN/-1 yields remainder zero; other remainders follow division toward zero and can be negative. The port computes the nonzero-divisor remainder in int64 to avoid C++ undefined behavior.
+
+Initialization stores the And(2,10) result first (null is retained), publishes a fresh 24-element null array, then requests AppData.GetResourceManager(0..23) in order. Returned null entries are allowed. A lookup failure keeps the new subset, array and prior filled entries. The current destination array is captured before each lookup; replacement during that lookup redirects the next iteration, not the current store. Reinitialization replaces the array without destroying prior referenced storage.
 
 The per-entity counter is separate from the SEB object's own frame; do not merge them or assume both step by 1.
 
@@ -74,7 +91,7 @@ The per-entity counter is separate from the SEB object's own frame; do not merge
 | `ecs.AnimationSystem..ctor` | game:0x06000dc4 | Constructor (called by CreateSystems) | medium |
 | `ecs.AnimationSystem.Init` | game:0x06000dba | Subset And(2,10), 24 ResourceManagers | high |
 | `ecs.AnimationSystem.NeedsUpdate` | game:0x06000dbb | Returns enabled byte +0x18; ignores pass | high |
-| `ecs.AnimationSystem.Update` | game:0x06000dbc | SEB frame advance + per-entity counters + restore | medium |
+| `ecs.AnimationSystem.Update` | game:0x06000dbc | Ordered shared clocks, direct selection, frame/restore/remainder | high |
 | `ecs.AnimationSystem.Pause` | game:0x06000dbe | IPausable.Pause: toggles enabled + hook | high |
 | `ecs.AnimationSystem.ChangeAnimation` | game:0x06000dbf | Set clip (+direction), optional frame reset | high |
 | `ecs.AnimationSystem.CutInAnimation` | game:0x06000dc0 | Set return clip and clip, reset frame | high |
@@ -131,7 +148,7 @@ Spawn values never come from component defaults: Human/MapChip/Nature/Effect/Pro
 
 Entity.AddAnimation (game:0x06000b20, 0x112c488, 312 bytes) acquires a component and writes rate and backup together at +0x10/+0x14 before inserting slot 10. If a nonempty pool returns null, the native helper allocates a replacement; the portable PlaybackPool boundary must return a valid acquired component or throw. Neither field is clamped and no existing-slot guard precedes acquisition/writes. An occupied slot ignores the incoming object but its payload is already written; returning the installed pooled object changes that payload without a new notification. A notification error retains both stores and slot insertion. The known producers' (1,-1) values remain caller arguments, not defaults.
 
-Port: `visual_components.hpp/.cpp` defines EntityPlayback containing the existing AnimationPlayback state and implements add_animation_component. EffectFactoryHost now uses it by default; the effect test checks actual slot 10, rate 1/backup -1 and live Image+Animation group membership. The dedicated visual_components test checks negative/full-width arguments, reuse, occupied-slot objects and pool/notification failures. This does not yet bind change/cut-in/restore to live component references or execute the per-frame animation loop.
+Port: `visual_components.hpp/.cpp` defines EntityPlayback containing the existing AnimationPlayback state and implements add_animation_component. EffectFactoryHost uses it by default; the effect test checks actual slot 10, rate 1/backup -1 and live Image+Animation group membership. The dedicated visual_components test checks negative/full-width arguments, reuse, occupied-slot objects and pool/notification failures. The animation_pass integration below supplies live transition references and the per-frame loop.
 
 Evidence: local `research/exports/animation-producers/M36765_AddAnimation.asm` and `research/exports/visual-components/metadata-contract.json`; combined field store at 0x112c594 and slot selection at 0x112c5b0. Confidence high; no runtime comparison.
 
@@ -142,9 +159,13 @@ Evidence: local `research/exports/animation-producers/M36765_AddAnimation.asm` a
 - `src/core/animation/animation_transitions.{hpp,cpp}` (library `animation_transitions`): plain structs `SpriteAnimation {resource, clip, frame}`, `AnimationPlayback {rate, return_clip}`, `EntityAnimation` with `std::optional` sprite/playback/direction and human/monster/enemy flags, no default initialisers. `change_animation`, `cut_in_animation`, `restore_animation` reproduce the three methods including the mutation order before a missing component (`MissingAnimationComponent` exception, not IL2CPP ABI) and 32-bit wrap without UB. Test: `tests/test_animation_transitions.cpp` (CTest `animation_transitions_contract`): plain change with/without reset, human/monster/enemy direction differences, repeated cut-in, single restore, missing components with preserved partial mutations, negative id alignment and wrap.
 - `src/core/animation/animation_payload.{hpp,cpp}`: component payload codecs, see [../formats/animation-payload.md](../formats/animation-payload.md). Test: `tests/test_animation_payload.cpp`.
 - `src/core/gameplay/visual_components.{hpp,cpp}` links the slot-10 playback payload to `component_slots` and the effect factory. The effect/drop entity factories and projectile trajectory/launch kernels are now ported; their per-frame visual consumers remain incomplete.
-- Missing: `AnimationSystem.Update` loop (needs SEB maxFrame selection via ResourceManagers and Seb.Frame), its concrete Init/subset wiring, Pause, other spawn factories, emitter execution and live transition adapters.
+- `src/core/gameplay/animation_pass.{hpp,cpp}` implements initialize_animation, ordered update_animations and the shared manual clock step over explicit loaded resource/clip arrays and effective flag inputs. live_animation projects the actual Sprite/Playback/ContactDirection fields and Human/Monster/Enemy slot predicates (14/16/24) into a borrowed EntityAnimationView. The existing transition algorithms now operate on that view; the optional-value API delegates to the same implementation, preserving partial mutations without copying a failed operation back.
+- `tests/test_animation_pass.cpp` covers Init filter/24 lookups/null managers, reinitialization and partial failures, array replacement, pass/enable gates through GameplayUpdate, direct selection skips/errors, shared/individual ordering, duplicate shared clocks, overshoot/zero-rate restoration, live kind/direction differences, missing-direction partial restoration, int32 wrap and signed/zero/overflow divisors. The effect factory test composes actual ID registration/dynamic And(2,10) group -> effect components -> five animation passes and checks independent shared/entity clocks. These tests provide no Android or pixel comparison.
+- Missing: catalog-to-ResourceManager/SEB clock construction (especially maxFrame derivation), effective flag binding, concrete Pause adapter, other spawn factories, emitter execution and image/rendering consumers.
 
 ## Evidence
+
+- Local `research/exports/seb-timing-followup/M37433_Update.asm`, `animation-producers/M37431_Init.asm`, `seb-timing/M18994_Frame.asm`, `animation-transitions/M37438_RestoreAnimation.asm` and `animation-pass-contract.json`. Update shared calls are at 0x1141c8c; resource/clip checks at 0x1141d3c..0x1141d8c, max capture at 0x1141d90, wrapped store at 0x1141dc4, signed >= decision at 0x1141df8/0x1141dfc, restore at 0x1141e04 and remainder at 0x1141e1c..0x1141e24. Init publishes the manager array at 0x1141b1c before lookup 0x1141b48 and stores through the captured array at 0x1141b80. Registered field offsets corroborate resourceManagers_ +0x28 and ResourceManager.seb +0x18; hasMonster's word at 0x1130548 loads slot 16. Confidence high for these static contracts; no runtime comparison.
 
 - [29-seb-animation-timing.md](../archive/reports/29-seb-animation-timing.md) — AnimationSystem.Update body (owned by the SEB/timing docs; used here for the per-entity loop)
 - [30-animation-transitions.md](../archive/reports/30-animation-transitions.md) — components, Change/CutIn/Restore, port
@@ -158,8 +179,8 @@ Evidence: local `research/exports/animation-producers/M36765_AddAnimation.asm` a
 
 ## Open questions
 
-1. (blocking) Exact `AnimationSystem.Update` Seb selection from `res`/`id` (ResourceManager array, filtering) and the comparison "reaches maxFrame" (`>=` vs `==`), plus modulo semantics for maxFrame ≤ 0.
-2. (blocking) Full component sets created by each factory (only Seb/Animation/Direction traced); the enemy resource resolver (record+0x50) and `BaseData.Check(1)` meaning.
+1. (blocking) Populate ResourceManager.seb from decoded catalogs/files with original ID gaps and maxFrame derivation; bind the effective AutoAnimation/application-update flags. Direct Update selection, comparison and remainder behavior are now implemented.
+2. (blocking) Remaining factories' full component sets (CreateEffect/CreateDrop now ported); the enemy resource resolver (record+0x50) and `BaseData.Check(1)` meaning.
 3. Who calls Change/CutIn/Restore from gameplay, with which ids; meaning of the id layout (groups of 4 directions, human base 36).
-4. EmitterComponent fields (+0x10..+0x20), its queue collection, `emitter+0x14` values 1 and 2; CreateParticle semantics; ProjectileSystem trajectory math; callers that decide `anim`/`rotate`.
-5. `ModifyAnimatinSystem` / `ModifyAnimationComponent` and `SyncAnimationComponent` roles (adjacent animation systems, not yet analysed).
+4. EmitterComponent fields (+0x10..+0x20), its queue collection, `emitter+0x14` values 1 and 2; CreateParticle semantics; callers that decide `anim`/`rotate`. Projectile trajectory math is now ported in gameplay.
+5. `ModifyAnimatinSystem` and `SyncAnimationComponent` execution roles; ModifyAnimation creation/payload and the shared Sync marker are ported, per-frame execution remains open.

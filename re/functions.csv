@@ -3301,9 +3301,9 @@ game:0x06000db6,ecs.MyEntityManager.Create,ecs,documented,4,0x1141a44
 game:0x06000db7,game:0x06000db7,ecs,,8,0x1141a48
 game:0x06000db8,ecs.ComponentFactory.Create,ecs,traced,516,0x1137008
 game:0x06000db9,game:0x06000db9,ecs,,8,0x1141a50
-game:0x06000dba,ecs.AnimationSystem.Init,ecs,documented,352,0x1141a58
+game:0x06000dba,ecs.AnimationSystem.Init,ecs,reimplemented,352,0x1141a58
 game:0x06000dbb,ecs.AnimationSystem.NeedsUpdate,ecs,reimplemented,8,0x1141bb8
-game:0x06000dbc,ecs.AnimationSystem.Update,ecs,traced,896,0x1141bc0
+game:0x06000dbc,ecs.AnimationSystem.Update,ecs,reimplemented,896,0x1141bc0
 game:0x06000dbd,game:0x06000dbd,ecs,,100,0x1142048
 game:0x06000dbe,ecs.AnimationSystem.Pause,ecs,documented,52,0x11420ac
 game:0x06000dbf,ecs.AnimationSystem.ChangeAnimation,ecs,reimplemented,136,0x11420e0
@@ -10192,7 +10192,7 @@ kairo:0x06001769,kairo:0x06001769,ui,,700,0x1bb13f0
 kairo:0x0600176a,kairo.unity.ui.Seb.GetCurFrame,ui,traced,8,0x1bb16ac
 kairo:0x0600176b,kairo.unity.ui.Seb.SetCurFrame,ui,traced,8,0x1bb16b4
 kairo:0x0600176c,kairo.unity.ui.Seb.GetMaxFrame,ui,traced,8,0x1bb16bc
-kairo:0x0600176d,kairo.unity.ui.Seb.Frame,ui,documented,216,0x1bb16c4
+kairo:0x0600176d,kairo.unity.ui.Seb.Frame,ui,reimplemented,216,0x1bb16c4
 kairo:0x0600176e,kairo:0x0600176e,ui,,328,0x1bb179c
 kairo:0x0600176f,kairo:0x0600176f,ui,,328,0x1bb2144
 kairo:0x06001770,kairo:0x06001770,ui,,4,0x1bb228c
