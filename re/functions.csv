@@ -2709,7 +2709,7 @@ game:0x06000b24,game:0x06000b24,ecs,,380,0x112c700
 game:0x06000b25,game:0x06000b25,ecs,,168,0x112c87c
 game:0x06000b26,game:0x06000b26,ecs,,136,0x112c924
 game:0x06000b27,game:0x06000b27,ecs,,16,0x112c9ac
-game:0x06000b28,game:0x06000b28,ecs,,272,0x112c9bc
+game:0x06000b28,kairo.unity.ecs.Entity.AddBullet,ecs,documented,272,0x112c9bc
 game:0x06000b29,game:0x06000b29,ecs,,168,0x112cacc
 game:0x06000b2a,game:0x06000b2a,ecs,,136,0x112cb74
 game:0x06000b2b,game:0x06000b2b,ecs,,16,0x112cbfc
@@ -2732,7 +2732,7 @@ game:0x06000b3b,game:0x06000b3b,ecs,,296,0x112d548
 game:0x06000b3c,game:0x06000b3c,ecs,,168,0x112d670
 game:0x06000b3d,game:0x06000b3d,ecs,,136,0x112d718
 game:0x06000b3e,game:0x06000b3e,ecs,,16,0x112d7a0
-game:0x06000b3f,game:0x06000b3f,ecs,,292,0x112d7b0
+game:0x06000b3f,kairo.unity.ecs.Entity.AddDamage,ecs,documented,292,0x112d7b0
 game:0x06000b40,game:0x06000b40,ecs,,168,0x112d8d4
 game:0x06000b41,game:0x06000b41,ecs,,136,0x112d97c
 game:0x06000b42,game:0x06000b42,ecs,,132,0x112da04
@@ -2750,7 +2750,7 @@ game:0x06000b4d,game:0x06000b4d,ecs,,324,0x112dff4
 game:0x06000b4e,game:0x06000b4e,ecs,,168,0x112e138
 game:0x06000b4f,game:0x06000b4f,ecs,,136,0x112e1e0
 game:0x06000b50,game:0x06000b50,ecs,,16,0x112e268
-game:0x06000b51,game:0x06000b51,ecs,,316,0x112e278
+game:0x06000b51,kairo.unity.ecs.Entity.AddEmitter,ecs,documented,316,0x112e278
 game:0x06000b52,game:0x06000b52,ecs,,168,0x112e3b4
 game:0x06000b53,game:0x06000b53,ecs,,136,0x112e45c
 game:0x06000b54,kairo.unity.ecs.Entity.get_hasEnemy,ecs,traced,16,0x112e4e4
@@ -2900,7 +2900,7 @@ game:0x06000bf2,game:0x06000bf2,ecs,,512,0x113460c
 game:0x06000bf3,game:0x06000bf3,ecs,,540,0x113480c
 game:0x06000bf4,kairo.unity.ecs.World.CreateEffect,ecs,reimplemented,72,0x1134a28
 game:0x06000bf5,kairo.unity.ecs.World.CreateEffect,ecs,reimplemented,588,0x1134a70
-game:0x06000bf6,game:0x06000bf6,ecs,,648,0x1134cbc
+game:0x06000bf6,kairo.unity.ecs.World.CreateBullet,ecs,reimplemented,648,0x1134cbc
 game:0x06000bf7,kairo.unity.ecs.World.CreateParticle,ecs,traced,600,0x1134f44
 game:0x06000bf8,game:0x06000bf8,ecs,,252,0x113519c
 game:0x06000bf9,kairo.unity.ecs.World.CreateDrop,ecs,reimplemented,664,0x1135298
@@ -3572,7 +3572,7 @@ game:0x06000ec5,ecs.HumanSystem.SearchAndAttack,ecs,reimplemented,376,0x1156074
 game:0x06000ec6,ecs.HumanSystem.ChangeState,ecs,reimplemented,140,0x11562e4
 game:0x06000ec7,ecs.HumanSystem.PreChangeState,ecs,reimplemented,84,0x1157080
 game:0x06000ec8,ecs.HumanSystem.ChangedState,ecs,reimplemented,240,0x11570d4
-game:0x06000ec9,ecs.HumanSystem.Shoot,ecs,traced,1836,0x1156638
+game:0x06000ec9,ecs.HumanSystem.Shoot,ecs,reimplemented,1836,0x1156638
 game:0x06000eca,ecs.HumanSystem.GetAttackAttribute,ecs,reimplemented,176,0x1156e48
 game:0x06000ecb,ecs.HumanSystem.LimitHumanPosition,ecs,reimplemented,184,0x1155fbc
 game:0x06000ecc,game:0x06000ecc,ecs,,8,0x1157510
@@ -3615,7 +3615,7 @@ game:0x06000ef0,game:0x06000ef0,ecs,,8,0x1159220
 game:0x06000ef1,game:0x06000ef1,ecs,,8,0x1159228
 game:0x06000ef2,game:0x06000ef2,ecs,,88,0x1159230
 game:0x06000ef3,game:0x06000ef3,ecs,,148,0x1159288
-game:0x06000ef4,game:0x06000ef4,ecs,,44,0x115931c
+game:0x06000ef4,ecs.HumanSystem.<Shoot>b__75_0,ecs,reimplemented,44,0x115931c
 game:0x06000ef5,game:0x06000ef5,ecs,,228,0x1159348
 game:0x06000ef6,game:0x06000ef6,ecs,,416,0x115942c
 game:0x06000ef7,game:0x06000ef7,ecs,,744,0x11595cc
@@ -3982,7 +3982,7 @@ game:0x0600105f,game:0x0600105f,data,,8,0x116d3f4
 game:0x06001060,game:0x06001060,data,,8,0x116d3fc
 game:0x06001061,game:0x06001061,data,,8,0x116d404
 game:0x06001062,game:0x06001062,data,,8,0x116d40c
-game:0x06001063,game:0x06001063,data,,264,0x116d414
+game:0x06001063,data.BulletData.Load,data,reimplemented,264,0x116d414
 game:0x06001064,game:0x06001064,data,,4,0x116d51c
 game:0x06001065,game:0x06001065,data,,4,0x116d520
 game:0x06001066,game:0x06001066,data,,108,0x116d524
@@ -4119,7 +4119,7 @@ game:0x060010e8,game:0x060010e8,data,,8,0x116efb0
 game:0x060010e9,game:0x060010e9,data,,16,0x116efb8
 game:0x060010ea,game:0x060010ea,data,,8,0x116efc8
 game:0x060010eb,game:0x060010eb,data,,8,0x116efd0
-game:0x060010ec,game:0x060010ec,data,,140,0x116efd8
+game:0x060010ec,data.EquipmentData.get_bullet,data,reimplemented,140,0x116efd8
 game:0x060010ed,data.EquipmentData.NewGame,data,traced,60,0x116f0c8
 game:0x060010ee,data.EquipmentData.AddStock,data,reimplemented,140,0x116f104
 game:0x060010ef,game:0x060010ef,data,,116,0x116f190

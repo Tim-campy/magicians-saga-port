@@ -20,8 +20,8 @@ public:
     virtual RandomSource& human_random()=0;
     virtual std::int32_t celebration_frame_period()=0; // Current character-library SEB clip 0 maxFrame.
     virtual void remove_human_modification(ComponentSlots&)=0; // Existing detach/pool-return kernel.
-    // HumanSystem.Shoot remains a required, separately reconstructed producer;
-    // no fallback bullet, cost, spell selection or success result is invented here.
+    // Bind the concrete shoot_human producer in human_shoot.hpp with its required
+    // live catalogs/worlds/audio. No fallback success or projectile is supplied.
     virtual bool shoot_human(ComponentSlots& actor,ComponentSlots& target)=0;
 };
 bool stage_attack_active(const StageStartState&); // StageSystem.get_isAttackActive 0x115651c.
@@ -48,6 +48,6 @@ void limit_human_position(HumanFrameSystem&,ComponentSlots*,HumanFrameHost&); //
 // Parameter.Add 0x1178d54: base-maximum clamp, wrapping add; extras do not affect the clamp.
 std::int32_t add_human_parameter(DamageParameter&,std::int32_t amount);
 // Full HumanSystem.Update 0x1155114; states 4/5 and unknown state values are inert.
-// Calls the required Shoot producer only when the recovered burst gate fires.
+// Calls the supplied concrete Shoot binding only when the recovered burst gate fires.
 void update_humans(HumanFrameSystem&,HumanFrameHost&);
 }

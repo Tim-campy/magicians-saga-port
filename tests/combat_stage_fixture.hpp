@@ -18,6 +18,9 @@ struct Services:EnemyImpactHost,ContactCollisionHost,CombatEventHost,EnemyDefeat
     std::array<std::int32_t,3> defeat_counts{};std::deque<ProjectileLink> projectiles;
     std::vector<std::int32_t> returned;std::int32_t searches=0,guards=0,damage_amount=0;
     std::function<void(ComponentSlots&)> on_search;
+    std::function<void(ComponentSlots&,ComponentSlots*)> on_impact;
+    std::function<void(ComponentSlots&)> on_read_bullet;
+    std::function<void(ComponentSlots&,ComponentSlots&)> on_bullet_impact;
     EnemyEventServices bindings{records,f.enemy_pools.maxima,f.random,*this,*this,*this};
     explicit Services(UpdateFixture& fixture):f(fixture){
         for(std::size_t i=0;i<characters.size();++i){characters[i].emplace();characters[i]->flags=i==0?2:4;
@@ -44,9 +47,9 @@ struct Services:EnemyImpactHost,ContactCollisionHost,CombatEventHost,EnemyDefeat
         return apply_combat_damage(amount,attribute,f.random,host);
     }
     void defeat(ComponentSlots& e)override{defeat_enemy(e,records,f.enemy_system,f.random,*this);}
-    void impact(ComponentSlots&,ComponentSlots*)override{unbound();}
-    void read_bullet_data(ComponentSlots&)override{unbound();}
-    void create_bullet_impact(ComponentSlots&,ComponentSlots&)override{unbound();}
+    void impact(ComponentSlots& e,ComponentSlots* parent)override{if(on_impact)on_impact(e,parent);else unbound();}
+    void read_bullet_data(ComponentSlots& e)override{if(on_read_bullet)on_read_bullet(e);else unbound();}
+    void create_bullet_impact(ComponentSlots& e,ComponentSlots& parent)override{if(on_bullet_impact)on_bullet_impact(e,parent);else unbound();}
     void bullet_hit(ComponentSlots& source,ComponentSlots* target)override{on_projectile_hit(&source,target,*this);}
     ComponentSlots* create_effect(std::int32_t,std::int32_t,std::int32_t,ProjectilePoint)override{unbound();}
     ComponentSlots* create_emitter(std::int32_t,std::int32_t,std::int32_t,std::int32_t,std::int32_t,ProjectilePoint)override{unbound();}
