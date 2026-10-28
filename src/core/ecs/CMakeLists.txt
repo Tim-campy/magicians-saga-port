@@ -10,3 +10,6 @@ saga_library(system_initialization system_initialization.cpp)
 
 saga_library(entity_creation entity_creation.cpp)
 target_link_libraries(entity_creation PUBLIC component_slots)
+
+saga_library(entity_registration entity_registration.cpp)
+target_link_libraries(entity_registration PUBLIC component_slots)

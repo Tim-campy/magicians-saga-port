@@ -479,3 +479,8 @@ add_executable(test_entity_creation test_entity_creation.cpp)
 target_link_libraries(test_entity_creation PRIVATE entity_creation)
 project_warnings(test_entity_creation)
 add_test(NAME entity_creation_contract COMMAND test_entity_creation)
+
+add_executable(test_entity_registration test_entity_registration.cpp)
+target_link_libraries(test_entity_registration PRIVATE entity_registration entity_creation entity_subset)
+project_warnings(test_entity_registration)
+add_test(NAME entity_registration_contract COMMAND test_entity_registration)
