@@ -37,6 +37,20 @@ struct World final:EntityCreationHost {
     void register_entity(ComponentSlots& e,bool temporary)override{registry.add(&node(e).registration,temporary);}
 };
 int main(){
+    {Observer observer;EntityRegistry registry(observer);Node a(30),b(10),c(20),d(40),e(50);
+        registry.add(&a.registration,false);registry.add(&b.registration,false);registry.add(&c.registration,false);
+        registry.erase(30);registry.erase(10);registry.add(&d.registration,false);registry.add(&e.registration,false);
+        auto cursor=registry.values();check(cursor.next()==&e.slots&&cursor.next()==&d.slots&&cursor.next()==&c.slots&&!cursor.next());
+        // Even a failed duplicate Add invalidates the captured enumerator.
+        fails([&]{registry.add(&c.registration,false);});fails([&]{cursor.next();});
+        auto stable=registry.values();registry.erase(999);check(stable.next()==&e.slots);
+        auto temporary=registry.values();registry.add(&a.registration,true);check(temporary.next()==&e.slots);
+        registry.erase(40);registry.erase(50);registry.erase(20);registry.add(&b.registration,false);
+        auto reused=registry.values();check(reused.next()==&b.slots&&!reused.next()); // Reuses slot 2, not a reset to zero.
+        registry.add(&a.registration,false);auto order=registry.values();check(order.next()==&a.slots&&order.next()==&b.slots);
+        registry.clear();auto empty=registry.values();registry.clear();fails([&]{empty.next();});
+    }
+
     {Observer observer;EntityRegistry registry(observer);ComponentEvents events;ComponentSlots e(35,&events);Component a,b;
         e.add(0,&a);EntityRegistration record{5,&e,&events};registry.add(&record,false);
         check(registry.find(5)==&e&&observer.adds==0); // No initial component synchronization.

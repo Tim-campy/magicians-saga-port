@@ -21,14 +21,34 @@ void ComponentEvents::changed(ComponentSlots& e,std::int32_t i,Component* old,Co
 void ComponentEvents::dispose(){added_.reset();removed_.reset();changed_.reset();}
 void EntityRegistry::add(EntityRegistration* entity,bool temporary){
     if(!entity||!entity->components)throw std::invalid_argument("missing registration entity");
-    if(!temporary&&!entries_.emplace(entity->id,entity->components).second)
-        throw std::invalid_argument("duplicate registered entity id");
+    if(!temporary){
+        ++version_; // Native TryInsert increments before checking duplicate keys.
+        if(entries_.find(entity->id)!=entries_.end())throw std::invalid_argument("duplicate registered entity id");
+        const auto index=free_==no_slot?slots_.size():free_;
+        const bool appended=free_==no_slot;
+        if(appended)slots_.push_back({nullptr,no_slot});
+        try{entries_.emplace(entity->id,index);}
+        catch(...){if(appended)slots_.pop_back();throw;}
+        if(appended)slots_[index].entity=entity->components;
+        else{free_=slots_[index].next_free;slots_[index]={entity->components,no_slot};}
+    }
     if(!entity->events)throw std::invalid_argument("missing component subscription service");
     entity->events->subscribe_added(observer_);
     entity->events->subscribe_removed(observer_);
     entity->events->subscribe_changed(observer_);
 }
 ComponentSlots* EntityRegistry::find(std::int32_t id)const{
-    const auto entry=entries_.find(id);return entry==entries_.end()?nullptr:entry->second;
+    const auto entry=entries_.find(id);return entry==entries_.end()?nullptr:slots_[entry->second].entity;
+}
+void EntityRegistry::erase(std::int32_t id){
+    const auto entry=entries_.find(id);if(entry==entries_.end())return;
+    const auto index=entry->second;entries_.erase(entry);
+    slots_[index]={nullptr,free_};free_=index;++version_;
+}
+void EntityRegistry::clear(){entries_.clear();slots_.clear();free_=no_slot;++version_;}
+std::optional<ComponentSlots*> EntityRegistry::Cursor::next(){
+    if(version_!=owner_.version_)throw std::runtime_error("entity registry changed during enumeration");
+    while(index_<owner_.slots_.size())if(auto* entity=owner_.slots_[index_++].entity)return entity;
+    return std::nullopt;
 }
 }

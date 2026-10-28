@@ -2,6 +2,8 @@
 #include "component_slots.hpp"
 #include <memory>
 #include <unordered_map>
+#include <optional>
+#include <limits>
 
 namespace saga::core {
 class ComponentSubscriptions {
@@ -39,9 +41,23 @@ public:
     void add(EntityRegistration*,bool temporary);
     bool contains(std::int32_t id)const{return entries_.find(id)!=entries_.end();}
     ComponentSlots* find(std::int32_t)const;
-    void erase(std::int32_t id){entries_.erase(id);} // Host primitive, not full entity destruction.
+    void erase(std::int32_t); // Host primitive, not full entity destruction.
+    void clear();
+    class Cursor {
+    public:
+        explicit Cursor(const EntityRegistry& owner):owner_(owner),version_(owner.version_){}
+        std::optional<ComponentSlots*> next();
+    private:
+        const EntityRegistry& owner_;std::uint32_t version_;std::size_t index_=0;
+    };
+    Cursor values()const{return Cursor(*this);}
 private:
     ComponentObserver& observer_;
-    std::unordered_map<std::int32_t,ComponentSlots*> entries_; // Enumeration intentionally not exposed.
+    static constexpr auto no_slot=std::numeric_limits<std::size_t>::max();
+    struct Slot {ComponentSlots* entity;std::size_t next_free=no_slot;};
+    std::unordered_map<std::int32_t,std::size_t> entries_;
+    std::vector<Slot> slots_;
+    std::size_t free_=no_slot;
+    std::uint32_t version_=0;
 };
 }
