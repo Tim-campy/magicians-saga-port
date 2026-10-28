@@ -2724,8 +2724,8 @@ game:0x06000b33,game:0x06000b33,ecs,,168,0x112d148
 game:0x06000b34,game:0x06000b34,ecs,,68,0x112d1f0
 game:0x06000b35,game:0x06000b35,ecs,,136,0x112d234
 game:0x06000b36,game:0x06000b36,ecs,,16,0x112d2bc
-game:0x06000b37,game:0x06000b37,ecs,,316,0x112d2cc
-game:0x06000b38,game:0x06000b38,ecs,,168,0x112d408
+game:0x06000b37,kairo.unity.ecs.Entity.AddCollision,ecs,reimplemented,316,0x112d2cc
+game:0x06000b38,kairo.unity.ecs.Entity.RemoveCollision,ecs,reimplemented,168,0x112d408
 game:0x06000b39,game:0x06000b39,ecs,,136,0x112d4b0
 game:0x06000b3a,game:0x06000b3a,ecs,,16,0x112d538
 game:0x06000b3b,game:0x06000b3b,ecs,,296,0x112d548
@@ -2892,7 +2892,7 @@ game:0x06000bea,game:0x06000bea,ecs,,260,0x1133588
 game:0x06000beb,kairo.unity.ecs.World.CreateMapChip,ecs,traced,276,0x113368c
 game:0x06000bec,kairo.unity.ecs.World.CreateNature,ecs,traced,264,0x11337a0
 game:0x06000bed,game:0x06000bed,ecs,,364,0x11338a8
-game:0x06000bee,game:0x06000bee,ecs,,228,0x1133edc
+game:0x06000bee,kairo.unity.ecs.World.CreateSubChara,ecs,reimplemented,228,0x1133edc
 game:0x06000bef,kairo.unity.ecs.World.CreateHuman,ecs,traced,1224,0x1133a14
 game:0x06000bf0,kairo.unity.ecs.World.CreateEnemy,ecs,traced,1040,0x1133fc0
 game:0x06000bf1,game:0x06000bf1,ecs,,572,0x11343d0
@@ -3678,7 +3678,7 @@ game:0x06000f2f,game:0x06000f2f,ecs,,8,0x115c1dc
 game:0x06000f30,game:0x06000f30,ecs,,8,0x115c1e4
 game:0x06000f31,game:0x06000f31,ecs,,244,0x115c1ec
 game:0x06000f32,game:0x06000f32,ecs,,188,0x115c2e0
-game:0x06000f33,game:0x06000f33,ecs,,3068,0x115c4a0
+game:0x06000f33,ecs.MemberSystem.OnStart,ecs,reimplemented,3068,0x115c4a0
 game:0x06000f34,ecs.MemberSystem.OnFinish,ecs,reimplemented,756,0x115d618
 game:0x06000f35,ecs.MemberSystem.AddMember,ecs,reimplemented,348,0x115d0a4
 game:0x06000f36,ecs.MemberSystem.RemoveMember,ecs,reimplemented,108,0x115d90c
@@ -3709,12 +3709,12 @@ game:0x06000f4e,game:0x06000f4e,ecs,,56,0x115e0e0
 game:0x06000f4f,game:0x06000f4f,ecs,,1184,0x115e118
 game:0x06000f50,game:0x06000f50,unassigned,,92,0x115e5b8
 game:0x06000f51,game:0x06000f51,unassigned,,8,0x115e614
-game:0x06000f52,game:0x06000f52,unassigned,,52,0x115e61c
-game:0x06000f53,game:0x06000f53,unassigned,,24,0x115e650
-game:0x06000f54,game:0x06000f54,unassigned,,28,0x115e668
+game:0x06000f52,<>c.<OnStart>b__16_0,unassigned,reimplemented,52,0x115e61c
+game:0x06000f53,<>c.<OnStart>b__16_1,unassigned,reimplemented,24,0x115e650
+game:0x06000f54,<>c.<OnStart>b__16_2,unassigned,reimplemented,28,0x115e668
 game:0x06000f55,game:0x06000f55,unassigned,,8,0x115d09c
-game:0x06000f56,game:0x06000f56,unassigned,,76,0x115e684
-game:0x06000f57,game:0x06000f57,unassigned,,24,0x115e6d0
+game:0x06000f56,<>c__DisplayClass16_0.<OnStart>b__3,unassigned,reimplemented,76,0x115e684
+game:0x06000f57,<>c__DisplayClass16_0.<OnStart>b__4,unassigned,reimplemented,24,0x115e6d0
 game:0x06000f58,game:0x06000f58,ecs,,412,0x115e6e8
 game:0x06000f59,game:0x06000f59,ecs,,8,0x115e884
 game:0x06000f5a,game:0x06000f5a,ecs,,4,0x115e88c
@@ -3987,7 +3987,7 @@ game:0x06001064,game:0x06001064,data,,4,0x116d51c
 game:0x06001065,game:0x06001065,data,,4,0x116d520
 game:0x06001066,game:0x06001066,data,,108,0x116d524
 game:0x06001067,game:0x06001067,data,,12,0x116d590
-game:0x06001068,game:0x06001068,data,,12,0x116abdc
+game:0x06001068,data.CharaData.get_isSub,data,reimplemented,12,0x116abdc
 game:0x06001069,game:0x06001069,data,,16,0x116abe8
 game:0x0600106a,game:0x0600106a,data,,16,0x116d59c
 game:0x0600106b,data.CharaData.get_level,data,documented,8,0x116d5ac

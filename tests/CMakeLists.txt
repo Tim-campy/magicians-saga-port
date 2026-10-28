@@ -551,3 +551,8 @@ add_executable(test_member_roster test_member_roster.cpp)
 target_link_libraries(test_member_roster PRIVATE member_roster animation_pass member_selection)
 project_warnings(test_member_roster)
 add_test(NAME member_roster_contract COMMAND test_member_roster)
+
+add_executable(test_party_start test_party_start.cpp)
+target_link_libraries(test_party_start PRIVATE party_start animation_pass stage_cleanup)
+project_warnings(test_party_start)
+add_test(NAME party_start_contract COMMAND test_party_start)

@@ -19,7 +19,7 @@ public:
     EntitySubset(const EntitySubset&)=delete;
     EntitySubset& operator=(const EntitySubset&)=delete;
     ComponentObserver* notifications=nullptr;
-    // Original cache is invalidated here; cache production/get_entity remains unported.
+    // Original cache is invalidated here; cache production remains unported.
     const std::vector<ComponentSlots*>* cached_entities=nullptr;
     bool add(ComponentSlots*);
     bool add(ComponentSlots*,std::int32_t,Component*);

@@ -255,3 +255,6 @@ target_link_libraries(member_selection PUBLIC dynamic_subsets projectile_launch)
 
 saga_library(member_roster member_roster.cpp)
 target_link_libraries(member_roster PUBLIC combat_state)
+
+saga_library(party_start party_start.cpp)
+target_link_libraries(party_start PUBLIC member_roster member_selection quest_return)

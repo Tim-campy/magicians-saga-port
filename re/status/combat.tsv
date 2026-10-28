@@ -129,3 +129,13 @@ game:0x06000f44	reimplemented	src/core/gameplay/member_roster.cpp	Empty-slot ass
 game:0x06000f45	reimplemented	src/core/gameplay/member_roster.cpp	Reject empty sentinel and try formation slots in order until first accepted assignment; duplicate IDs allowed.
 game:0x06000f46	reimplemented	src/core/gameplay/member_roster.cpp	First matching formation index, with unconditional minus-one sentinel rejection.
 game:0x060000fb	reimplemented	src/core/gameplay/member_roster.cpp	Nonzero base maximum copies into base value; zero and extra fields preserved; composed member initialization tested.
+game:0x06000f33	reimplemented	src/core/gameplay/party_start.cpp	Stored/debug party entry composed with real groups, sub snapshot destruction, hero collision/roster, placement and InitMembers; human creation/RNG/ranking/data services explicit.
+game:0x06000bee	reimplemented	src/core/gameplay/party_start.cpp	Live character saved level/EXP to World.instance human factory, zero direction/absolute position and supplied formation offsets; capture/failure tested.
+game:0x06000b37	reimplemented	src/core/gameplay/party_start.cpp	Acquire/write Collision payload before slot 32 insertion; occupied-slot and party-entry replacement tested.
+game:0x06000b38	reimplemented	src/core/gameplay/party_start.cpp	Capture Collision, detach slot 32, then pool return including null; failure leaves removal committed.
+game:0x06001068	reimplemented	src/core/gameplay/party_start.cpp	Inherited character flags mask 4; old-sub destruction and debug catalog selection tested.
+game:0x06000f52	reimplemented	src/core/gameplay/party_start.cpp	Require entity/human/record then test sub flag during live group snapshot; group mutation/failure boundaries tested.
+game:0x06000f53	reimplemented	src/core/gameplay/party_start.cpp	Null records skip debug sub-candidate selection; table-order selection tested with null gaps.
+game:0x06000f54	reimplemented	src/core/gameplay/party_start.cpp	Check inherited flags mask 0x100 for ordered priority selection; first-eight behavior tested.
+game:0x06000f56	reimplemented	src/core/gameplay/party_start.cpp	Forward captured candidate array and null default to explicit RandomOrDefault service once per missing priority entry; call counts and repeats tested.
+game:0x06000f57	reimplemented	src/core/gameplay/party_start.cpp	Forward buffered character to captured distance-system service; null-system guard, key order and stable sorting tested.

@@ -11,7 +11,7 @@ struct PlayerWorldState {
 // World.get_playerEntity 0x1133210; cache miss queries And({30}), then first entity.
 ComponentSlots* world_player_entity(PlayerWorldState&);
 // MemberSystem.get_hero 0x1156370 ignores its receiver. The host supplies the
-// current AppData.world_ reference; a missing world is an error, not a null hero.
+// current BaseSystem.world_ reference; a missing world is an error, not a null hero.
 ComponentSlots* member_hero(PlayerWorldState*);
 // StageSystem.GetFrontLineHuman 0x11657c4. Borrowed current members_ list is
 // captured for this call; valid list/entity lifetimes and no concurrent mutation.
