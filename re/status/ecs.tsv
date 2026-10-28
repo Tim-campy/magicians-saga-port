@@ -71,7 +71,7 @@ game:0x06000bd4	documented	docs/subsystems/ecs.md
 game:0x06000bd5	documented	docs/subsystems/ecs.md	
 game:0x06000ce4	documented	docs/subsystems/ecs.md	
 game:0x06000ce5	documented	docs/subsystems/ecs.md	
-game:0x06000ce7	documented	docs/subsystems/ecs.md	
+game:0x06000ce7	reimplemented	src/core/ecs/system_initialization.cpp	Versioned initialization order, borrowed world forwarding, success-only pause reset and partial event binding tested.
 game:0x06000ce8	reimplemented	src/core/ecs/update_scheduler.cpp	Ordered dispatch or concrete enabled/pass gate; contract test; runtime comparison pending.
 game:0x06000cee	documented	docs/subsystems/ecs.md	
 game:0x06000cf0	documented	docs/subsystems/ecs.md	

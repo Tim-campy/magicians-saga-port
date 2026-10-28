@@ -5,3 +5,5 @@ saga_library(update_scheduler update_scheduler.cpp)
 
 saga_library(entity_events entity_events.cpp)
 target_link_libraries(entity_events PUBLIC component_slots)
+
+saga_library(system_initialization system_initialization.cpp)

@@ -3094,7 +3094,7 @@ game:0x06000ce3,kairo.unity.ecs.SystemManager.set_isPause,ecs,documented,12,0x11
 game:0x06000ce4,kairo.unity.ecs.SystemManager.Add,ecs,documented,1404,0x113bbd4
 game:0x06000ce5,kairo.unity.ecs.SystemManager.AddSystems,ecs,documented,108,0x113c150
 game:0x06000ce6,kairo.unity.ecs.SystemManager.RemoveAllSystems,ecs,documented,940,0x113c1bc
-game:0x06000ce7,kairo.unity.ecs.SystemManager.Init,ecs,documented,444,0x113c614
+game:0x06000ce7,kairo.unity.ecs.SystemManager.Init,ecs,reimplemented,444,0x113c614
 game:0x06000ce8,kairo.unity.ecs.SystemManager.Update,ecs,reimplemented,460,0x113c7d0
 game:0x06000ce9,game:0x06000ce9,ecs,,228,0x113c99c
 game:0x06000cea,game:0x06000cea,ecs,,260,0x113ca88

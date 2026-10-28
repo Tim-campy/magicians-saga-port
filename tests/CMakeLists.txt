@@ -464,3 +464,8 @@ add_executable(test_entity_events test_entity_events.cpp)
 target_link_libraries(test_entity_events PRIVATE entity_events)
 project_warnings(test_entity_events)
 add_test(NAME entity_events_contract COMMAND test_entity_events)
+
+add_executable(test_system_initialization test_system_initialization.cpp)
+target_link_libraries(test_system_initialization PRIVATE system_initialization entity_events)
+project_warnings(test_system_initialization)
+add_test(NAME system_initialization_contract COMMAND test_system_initialization)
