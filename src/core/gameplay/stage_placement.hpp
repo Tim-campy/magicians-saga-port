@@ -12,8 +12,10 @@ struct StageQuest {
     std::int32_t prisoner_maximum=0,rescued_prisoners=0;
     std::int32_t reward_treasure=0,cleared_reward_treasure=0;
     std::int32_t boss_id=0,boss_level=0; // QuestData +0x70 / +0x44.
+    std::int32_t base_level=0,enemy_interval=0,enemy_maximum=0,enemy_total_limit=0;
     std::uint8_t completed=0;
     StageScriptGroups events,fixed_treasure;
+    StageScriptGroups normal_enemies,fixed_enemies; // +0x60 / +0x68, first group used.
 };
 struct StagePlacementState {std::shared_ptr<StageQuest> quest;};
 struct StageGeometry {std::int32_t step_x=0,step_z=0;}; // MapComponent +0x20/+0x24.

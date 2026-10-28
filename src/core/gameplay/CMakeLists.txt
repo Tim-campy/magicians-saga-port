@@ -294,3 +294,6 @@ else()
   target_compile_options(enemy_factory PRIVATE -ffp-contract=off)
   target_compile_options(enemy_creation PRIVATE -ffp-contract=off)
 endif()
+
+saga_library(enemy_population enemy_population.cpp)
+target_link_libraries(enemy_population PUBLIC enemy_creation stage_update)

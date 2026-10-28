@@ -14,7 +14,7 @@ Random.Hits(p) / Hits1000(p) / Choose / Lot
                    other    -> System.Random (this+0x10)
 ```
 
-- `Random..cctor` (0x1128ce4) allocates a 256-element array (meaning unknown) and constructs JRandom with `JSystem.CurrentTimeMillis()` as the seed argument. When this initializer actually runs is not pinned.
+- `Random..cctor` (0x1128ce4) allocates the 256-element expanded-weight scratch array used by Lot and constructs JRandom with `JSystem.CurrentTimeMillis()` as the seed argument. When this initializer actually runs is not pinned.
 - The seeded JRandom constructor (0x1b04ba8) constructs **all three** backends, not only the selected one: System.Random at `this+0x10`, Random2018 at `+0x18`, Xorshift128 at `+0x20`. A byte flag at static offset 0 forces the seed to zero when set; otherwise the low 32 bits of the argument are passed. Metadata names a static candidate `fix_` for this flag; a writer has now been traced in IApplication.Awake (see initialization below). `SetSeed` (0x1b04e50) rebuilds the three objects the same way. The unseeded constructor (0x1b04b88) calls CurrentTimeMillis and delegates.
 - Vtable slot 5 (vtable origin 0x138, stride 16, so `class+0x188`) resolves via metadata v31 to: System.Random (type 247) -> `System.Random.Next`; Xorshift128 (type 1728) -> `Xorshift128.Next`; Random2018 (type 1729) -> inherited `System.Random.Next`. Random2018 therefore has no own `Next`; its `Init` (0x1b050c8) alters inherited state through reflection (`Type.GetTypeFromHandle`, `FieldInfo.SetValue`), which rules out swapping in a standard library generator.
 
@@ -22,14 +22,14 @@ Random.Hits(p) / Hits1000(p) / Choose / Lot
 
 | Method | Registry id | Role | Confidence |
 |---|---|---|---|
-| kairo.unity.math.Random..cctor | game:0x06000a99 | 256-element array + JRandom(CurrentTimeMillis) | medium |
+| kairo.unity.math.Random..cctor | game:0x06000a99 | 256-cell Lot scratch array + JRandom(CurrentTimeMillis) | high |
 | kairo.unity.math.Random.Rand() | game:0x06000a9a | Forward to NextInt of the static instance | high |
 | kairo.unity.math.Random.Rand(bound) | game:0x06000a9b | Conditional negate, signed remainder | high |
 | kairo.unity.math.Random.Rand(min,max) | game:0x06000a9c | `min + NextInt % (max-min+1)` (32-bit) | high |
 | kairo.unity.math.Random.Hits | game:0x06000a9d | `Rand(100) < p` | high |
 | kairo.unity.math.Random.Hits1000 | game:0x06000a9e | `Rand(1000) < p` | high |
 | kairo.unity.math.Random.Choose | game:0x06000a9f | Calls Hits; body not read | low |
-| kairo.unity.math.Random.Lot | game:0x06000aa1 | Calls Rand; body not read | low |
+| kairo.unity.math.Random.Lot | game:0x06000aa1 | Expanded-weight scratch table, ordered truncation and retrying Rand(total) | high |
 | java.util.JRandom..ctor() | kairo:0x060000b8 | CurrentTimeMillis then seeded ctor | medium |
 | java.util.JRandom..ctor(seed) | kairo:0x060000b9 | Builds all three backends, `fix_` zero-seed flag | high |
 | java.util.JRandom.SetSeed | kairo:0x060000bd | Rebuilds all three backends | high |
@@ -52,6 +52,16 @@ Random.Hits(p) / Hits1000(p) / Choose / Lot
 Known gameplay consumers (call order matters for determinism) are listed in [combat.md](combat.md#rng-consumption-order) and [rewards.md](rewards.md).
 
 ## Initialization and public implementation reuse
+
+### Weighted enemy selection
+
+Lot (0x1129064, 476 bytes) was recovered because it directly blocks EnemySystem.CreateNormalEnemy. It is a game-specific selector whose fixed scratch capacity changes the distribution; a standard weighted distribution is not its contract. Null or empty weights return -1 without clearing scratch or drawing. Otherwise clear the current scratch cells to -1 and expand positive weights in input order, writing each input index once per unit of weight; zero/negative weights contribute no cells. After each write, increment the populated count and stop expanding all rows when that count reaches scratch length-1. With the original length 256, at most 255 cells participate and the last cell stays -1. A large early weight can exclude later rows completely.
+
+Capture the current scratch reference, call the existing Rand(populated count), then bounds-check/read the chosen cell on that captured reference. Return any value other than -1. A -1 result repeats the draw using a fresh scratch reference, without rebuilding the weights/table. The RNG callback can therefore replace scratch without redirecting the current read. All-nonpositive, nonempty input still calls Rand(0): its ARM remainder preserves the raw draw; a valid scratch index yields -1 and retries, while an invalid index faults. There is no invented early return, distribution normalization or retry cap. A successful normal enemy spawn consumes this selection draw followed by Rand(-1,1); missing/short rows fail in the preceding weight projection before either draw.
+
+Port: WeightedLotteryState in [game_random.hpp](../../src/core/gameplay/game_random.hpp) owns the original 256-cell initial table and weighted_lottery in its implementation expresses the contract over std::vector plus the existing RNG wrapper. [Population tests](../../tests/test_enemy_population.cpp) cover weighted positions, saturation, null/empty input, retry/draw order, scratch replacement, custom small buffers and the all-nonpositive bounds-failure path. The selected backend and seed remain explicit services. Evidence: local research/exports/enemy-population-helpers/F1129064.asm; source reset 0x11290b0..0x1129114, expansion/truncation 0x1129118..0x11291d0, captured-table draw/read/retry 0x11291e0..0x112921c. Confidence high for the static selector; no Android comparison.
+
+### Backend initialization
 
 JRandom has five fields (random_, random2018_, randomXor_, fix_, Logic backing field) and eight methods; the metadata declares no static constructor. Managed field initialization therefore gives fix_=false and Logic=0 before any writes ([C# initialization specification](https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/classes#1555-field-initialization)). This establishes the initial state, not an immutable runtime policy. Logic 0 selects System.Random; any value other than 1/2 also selects it. The port reads Logic for each draw rather than caching it.
 
@@ -85,6 +95,5 @@ Tests in `test_game_random.cpp` cover public reference vectors, independent inst
 1. (blocking) Effective value of `JRandom.Logic` at runtime and all writers of it (direct static stores, reflection).
 2. (blocking) Public-source matching for the alternative `Xorshift128.Next` / `Random2018.Init` paths if selected; explicit-seed System.Random.Next is now source-matched/ported. Can alternative backends return negatives?
 3. (blocking) Seed: when `Random..cctor` runs, whether `SetSeed` is called later (e.g. per stage/save), and further writers of the `fix_` zero-seed flag (editor/replay activation is now known).
-4. Purpose of the 256-element array created by `Random..cctor`.
-5. Bodies of `Random.Choose` and `Random.Lot` (only their direct callees are known).
-6. Controlled-seed differential test against the Android build.
+4. Body of Random.Choose (Lot is now ported through the normal-enemy scenario).
+5. Controlled-seed differential test against the Android build.

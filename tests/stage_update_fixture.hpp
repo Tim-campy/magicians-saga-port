@@ -2,6 +2,7 @@
 #include "enemy_fixture.hpp"
 #include "core/gameplay/stage_update.hpp"
 #include "core/gameplay/stage_recovery.hpp"
+#include "core/gameplay/enemy_population.hpp"
 #include <algorithm>
 #include <limits>
 
@@ -14,7 +15,7 @@ struct PartyCursor {
         auto* e=list->entities()[index++];if(!e)throw std::invalid_argument("null member");return f.entity_id(*e);
     }
 };
-struct UpdateFixture:StartupFixture,StageUpdateHost,StageRecoveryHost,EnemyCreationHost,BossNotificationHost,StageFormStack,
+struct UpdateFixture:StartupFixture,StageUpdateHost,StageRecoveryHost,EnemyPopulationHost,BossNotificationHost,StageFormStack,
     QuestRewardHost,QuestExperienceHost,QuestReturnHost,MemberFinishHost {
     std::vector<std::string> log;std::string fail;
     std::function<void(std::int32_t)> on_event;std::function<void()> on_result,on_retry,on_make_ad,on_make_notice,on_interval;
@@ -26,6 +27,7 @@ struct UpdateFixture:StartupFixture,StageUpdateHost,StageRecoveryHost,EnemyCreat
     bool missing_destroy_world=false,missing_object_world=false,missing_boss=false;
     ComponentSlots* made_boss=nullptr;
     EnemyPoolFixture enemy_pools{*this};EnemyFactoryWorld enemy_factory{ids,enemy_pools};EnemyCreationSystem enemy_system;
+    EnemyStageEntry enemy_entry{enemy_system,*this};WeightedLotteryState lottery;
     std::deque<ProjectileModification> modifier_pool;
     std::int32_t yugami=10000;bool missing_enemy_factory=false;std::size_t yugami_queries=0;
     std::function<void()> on_enemy_factory,on_enemy_world,on_yugami;
@@ -39,7 +41,13 @@ struct UpdateFixture:StartupFixture,StageUpdateHost,StageRecoveryHost,EnemyCreat
     QuestRecord record;QuestRewardResult result;std::function<void()> transition;TownReturnEvent returned{-1,0,0};
     PartyCursor experience_cursor,finish_cursor,sub_cursor;std::size_t treasure_cursor=0;
     UpdateFixture(){human_system.transitions=this;state.quest->events=scripts(std::make_shared<std::vector<EventInstruction>>());
-        state.quest->boss_id=2;state.quest->boss_level=4;duration=initial_human_invincible_time(fps);}
+        state.quest->boss_id=2;state.quest->boss_level=4;duration=initial_human_invincible_time(fps);
+        state.quest->fixed_enemies=scripts(std::make_shared<std::vector<EventInstruction>>());
+        state.quest->normal_enemies=scripts(std::make_shared<std::vector<EventInstruction>>(1,std::make_shared<EventIntegers>(EventIntegers{2,1})));
+        state.quest->base_level=3;state.quest->enemy_interval=2;state.quest->enemy_maximum=5;state.quest->enemy_total_limit=10;
+        enemy_system.stage=&state;enemy_system.members=&roster;enemy_system.subset=&groups.get(std::make_shared<ComponentGroupFilter>(EventIntegers{24}));
+        enemy_system.maximum_by_section=std::make_shared<EventIntegers>(10,0);enemy_system.created_by_section=std::make_shared<EventIntegers>(10,0);
+        state.enemies=&enemy_entry;}
     void call(std::string s){log.push_back(s);if(fail==s)throw std::runtime_error(s);}
     StageGeometry* stage_map()override{return StartupFixture::stage_map();}
     DropPlacementWorld* drop_world()override{return StartupFixture::drop_world();}
@@ -65,8 +73,11 @@ struct UpdateFixture:StartupFixture,StageUpdateHost,StageRecoveryHost,EnemyCreat
     ComponentSlots* create_stage_boss(StageEnemyStart& receiver)override{
         check(&receiver==state.enemies);call("boss");if(on_boss)on_boss();if(missing_boss)return nullptr;
         made_boss=&create_boss_enemy(enemy_system,*this);return made_boss;}
-    void start_enemies(std::shared_ptr<StageQuest> q)override{
-        enemy_system.quest=q;enemy_system.stage=&state;enemy_system.members=state.members;StartupFixture::start_enemies(std::move(q));}
+    QuestEntityHost* population_destruction_world()override{return missing_destroy_world?nullptr:static_cast<Fixture*>(this);}
+    QuestMemberId population_entity_id(ComponentSlots& e)override{return entity_id(e);}
+    RandomSource& population_random()override{return random;}
+    WeightedLotteryState& population_lottery()override{return lottery;}
+    EnemyRecords population_records()override{return enemy_pools.enemy_records();}
     EnemyFactoryWorld* current_enemy_factory()override{if(on_enemy_factory)on_enemy_factory();return missing_enemy_factory?nullptr:&enemy_factory;}
     PlayerWorldState* enemy_world()override{if(on_enemy_world)on_enemy_world();return current_world();}
     StageGeometry* enemy_map()override{return stage_map();}
@@ -117,7 +128,7 @@ struct UpdateFixture:StartupFixture,StageUpdateHost,StageRecoveryHost,EnemyCreat
     std::int32_t& rescued_prisoners()override{return state.quest->rescued_prisoners;}
     QuestRecord& quest_record()override{return record;}
     QuestRecord& return_record()override{return record;}
-    std::int32_t defeated_enemies()override{return 2;}
+    std::int32_t defeated_enemies()override{return enemy_system.defeated_enemies;}
     std::int32_t collected_prisoners()override{return state.rewards()->prisoners;}
     std::int32_t total_damage()override{return state.total_damage;}
     QuestExperienceHost& members()override{return *this;}

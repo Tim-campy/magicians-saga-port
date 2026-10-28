@@ -3,8 +3,8 @@
 
 template<class T>T& field(ComponentSlots& e,std::int32_t slot){auto* p=dynamic_cast<T*>(e.get(slot));check(p);return *p;}
 int main()try{
-    {UpdateFixture f;f.begin();auto& boss=create_boss_enemy(f.enemy_system,f);auto& b=field<EnemyRecordLink>(boss,24);
-     auto* hero=member_hero(&f.world);check(b.enemy_id==2&&b.level==4&&b.flags==1&&b.opponent==hero&&f.yugami_queries==2);
+    {UpdateFixture f;f.begin();const auto calls=f.yugami_queries;auto& boss=create_boss_enemy(f.enemy_system,f);auto& b=field<EnemyRecordLink>(boss,24);
+     auto* hero=member_hero(&f.world);check(b.enemy_id==2&&b.level==4&&b.flags==1&&b.opponent==hero&&f.yugami_queries==calls+2);
      check(field<ContactPosition>(boss,0).x==100&&field<ContactPosition>(boss,0).z==154&&field<ProjectileSpeed>(boss,1).z==0);
      auto& extra=f.nodes.back().entity;auto& e=field<EnemyRecordLink>(extra,24);
      check(&extra!=&boss&&e.enemy_id==1&&e.level==1&&e.flags==0&&e.opponent==hero&&!extra.contains(12));
@@ -47,5 +47,5 @@ int main()try{
     {UpdateFixture f;f.begin();f.state.state=1;field<ContactPosition>(*member_hero(&f.world),0).z=12;
      update_stage(f.state,f);check(f.state.boss_started&&f.made_boss&&f.made_boss->contains(24)&&f.state.boss_fence);
      check(field<EnemyRecordLink>(*f.made_boss,24).flags==1&&field<ProjectileModification>(*f.made_boss,15).max_frame==30);
-     auto& group=f.groups.get(std::make_shared<ComponentGroupFilter>(EventIntegers{24}));check(group.size()==2);}
+     auto& group=f.groups.get(std::make_shared<ComponentGroupFilter>(EventIntegers{24}));check(group.size()==3);}
 }catch(const std::exception& e){std::cerr<<"uncaught enemy creation error: "<<e.what()<<'\n';return 1;}

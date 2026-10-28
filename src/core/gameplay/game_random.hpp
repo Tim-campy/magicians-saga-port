@@ -2,6 +2,8 @@
 #include <array>
 #include <cstdint>
 #include <string>
+#include <memory>
+#include <vector>
 
 namespace saga::core {
 class RandomSource {
@@ -44,4 +46,12 @@ std::int32_t random_inclusive(RandomSource&,std::int32_t minimum,std::int32_t ma
 std::int32_t jrandom_bounded(RandomSource&,std::int32_t bound);
 bool random_hits1000(RandomSource&,std::int32_t threshold);
 bool random_hits(RandomSource&,std::int32_t threshold);
+// Random..cctor's 256-cell table is the mutable scratch space used by Lot.
+// Array lengths stay fixed within int32; reference replacement is supported.
+struct WeightedLotteryState {
+    std::shared_ptr<std::vector<std::int32_t>> table=std::make_shared<std::vector<std::int32_t>>(256,0);
+};
+// Game-specific Random.Lot 0x1129064. Null/empty -> -1 with no draw;
+// nonpositive-only weights retain the original retry/bounds-failure behaviour.
+std::int32_t weighted_lottery(const std::vector<std::int32_t>*,WeightedLotteryState&,RandomSource&);
 }

@@ -42,4 +42,27 @@ std::int32_t jrandom_bounded(RandomSource& source,std::int32_t bound){return rem
 bool random_hits1000(RandomSource& source,std::int32_t threshold){return random_bounded(source,1000)<threshold;}
 // Random.Hits 0x1128f34: the draw occurs even outside the probability range.
 bool random_hits(RandomSource& source,std::int32_t threshold){return random_bounded(source,100)<threshold;}
+std::int32_t weighted_lottery(const std::vector<std::int32_t>* weights,WeightedLotteryState& state,RandomSource& random){
+    if(!weights||weights->empty())return -1;
+    const auto table=[&]() -> std::vector<std::int32_t>& {
+        if(!state.table)throw std::invalid_argument("missing lottery table");return *state.table;
+    };
+    for(auto& cell:table())cell=-1;
+    std::int32_t total=0;bool full=false;
+    for(std::size_t i=0;i<weights->size()&&!full;++i){
+        const auto weight=weights->at(i);if(weight<=0)continue;
+        for(std::int32_t j=0;j<weight;++j){
+            table().at(static_cast<std::size_t>(total))=static_cast<std::int32_t>(i);
+            ++total;
+            if(total>=static_cast<std::int32_t>(table().size())-1){full=true;break;}
+        }
+    }
+    for(;;){
+        const auto captured=state.table;
+        const auto chosen=random_bounded(random,total);
+        if(!captured)throw std::invalid_argument("missing lottery table");
+        const auto result=captured->at(static_cast<std::size_t>(chosen));
+        if(result!=-1)return result;
+    }
+}
 }

@@ -1,11 +1,14 @@
 #pragma once
 #include "enemy_factory.hpp"
-#include "stage_placement.hpp"
+#include "stage_start.hpp"
 
 namespace saga::core {
-struct EnemyCreationSystem {
+struct EnemyCreationSystem:EnemyDefeatCounters {
     std::shared_ptr<StageQuest> quest;
-    StagePlacementState* stage=nullptr;MemberRoster* members=nullptr;
+    StageStartState* stage=nullptr;MemberRoster* members=nullptr;
+    EntitySubset* subset=nullptr; // Initialized And(24); Init's other work is separate.
+    std::int32_t created_enemies=0,loop_counter=0;
+    EventInstruction maximum_by_section,created_by_section; // Both allocated as int32[10] by Init.
 };
 class EnemyCreationHost {
 public:
