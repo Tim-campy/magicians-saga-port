@@ -4,7 +4,8 @@
 
 namespace saga::core {
 // Runtime SEB clock fields, distinct from EntitySprite.animation.frame.
-struct SharedAnimationClip { std::int32_t frame=0, max_frame=0; }; // Seb +0x18/+0x1c.
+struct SebSpriteState;
+struct SharedAnimationClip { std::int32_t frame=0, max_frame=0; SebSpriteState* sprites=nullptr; }; // Seb +0x18/+0x1c and borrowed sprite payload.
 using AnimationClips = std::shared_ptr<std::vector<SharedAnimationClip*>>;
 struct AnimationResource { AnimationClips clips; }; // ResourceManager.seb +0x18.
 using AnimationResources = std::shared_ptr<std::vector<AnimationResource*>>;

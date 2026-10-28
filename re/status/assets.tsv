@@ -44,10 +44,7 @@ kairo:0x0600150c	traced	docs/formats/opt.md	LoadOptimize(byte[]): ByteArrayInput
 kairo:0x0600150e	traced	docs/formats/opt.md	GetOptimize: row-major index formula, null on sentinel
 kairo:0x06001511	traced	docs/formats/opt.md	GetOptimize: expands piece to seven ints
 kairo:0x06001761	traced	docs/formats/seb.md	_load(byte[]): ByteArrayInputStream wrapper to 0x06001762
-kairo:0x06001762	documented	docs/formats/seb.md	_load(stream): disk modes 0/1 parsed by src/assets/seb.cpp; runtime compaction not ported
-kairo:0x06001779	documented	docs/formats/seb.md	ConvBufferToSprite: compact/extended decode and mirroring; caller GetSpriteLocal
-kairo:0x06001778	traced	docs/formats/seb.md	GetSpriteLocal: arg%10000 FrameNo match; neighbour combination open
-kairo:0x06001771	traced	docs/formats/seb.md	GetSpritesLocal: GetSpriteLocal per group
+kairo:0x06001762	documented	docs/formats/seb.md	_load(stream): disk modes 0/1 parsed; record normalization/packing now prepared in seb_sprite.cpp; native bounding precomputation/extension blocks remain unported
 kairo:0x06001757	traced	docs/formats/seb.md	GetImage: forwards +0x88 to ResourceManager.GetImage
 kairo:0x0600176a	traced	docs/formats/seb.md	GetCurFrame returns +0x18
 kairo:0x0600176b	traced	docs/formats/seb.md	SetCurFrame stores +0x18 unnormalised
@@ -86,3 +83,9 @@ game:0x0600024a	reimplemented	src/core/gameplay/render_queue.cpp	Private game qu
 game:0x0600024b	reimplemented	src/core/gameplay/render_queue.cpp	First unequal depth selects larger value index; all-equal range returns minus1 without reorder; tests.
 game:0x0600024c	reimplemented	src/core/gameplay/render_queue.cpp	Private ascending partition uses less-than left and greater-or-equal right scans with row-reference swaps; exact unequal/equal-depth identity tested.
 kairo:0x06001355	reimplemented	src/core/gameplay/render_frame.cpp	Three-channel clamp to 0..255 and packed ffRRGGBB int32; modifier/color packet and boundary tests.
+kairo:0x06001771	reimplemented	src/core/animation/seb_sprite.cpp	Reused per-layer-count result list of local shared arrays; exact/intermediate/absent results and aliasing tested.
+kairo:0x06001777	reimplemented	src/core/animation/seb_sprite.cpp	Instance output allocation, normalized-frame per-layer cache promotion and real compact payload evaluation; 303-file desktop scenario and RenderSystem binding tested.
+kairo:0x06001778	reimplemented	src/core/animation/seb_sprite.cpp	Explicit thread work, layer-count matrix reuse, exact search/fixed-point XY interpolation, overwritten crop interpolation and final flip; alias/failure tests.
+kairo:0x06001779	reimplemented	src/core/animation/seb_sprite.cpp	Compact/extended signed fields, retained compact Color, mirror parity, native dimension-halving and minus8 coordinate negation; negative/extreme dimensions tested.
+kairo:0x060017ad	reimplemented	src/core/animation/seb_sprite.cpp	Invalidate every cached FrameNo before low-bit horizontal/vertical mask store; normalized-frame stale-cache and reversal contracts tested.
+kairo:0x060017ae	reimplemented	src/core/animation/seb_sprite.cpp	Replace age columns with per-layer twelve-cell arrays, initialize FrameNo minus1, preserve negative-size failure and zero-cache lookup fault; tests.

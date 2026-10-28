@@ -22,11 +22,11 @@ class FixtureTests(unittest.TestCase):
 
 @unittest.skipUnless(EXE, 'native integration is registered separately in CTest')
 class NativeTests(unittest.TestCase):
-    def scenario(self, blob, passes=5, application=1, automatic=0):
+    def scenario(self, blob, passes=5, application=1, automatic=0, sprites=False):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'animation.seb'
             path.write_bytes(blob)
-            result = subprocess.run([str(EXE), str(path), '7', str(passes), str(application), str(automatic)],
+            result = subprocess.run([str(EXE), str(path), '7', str(passes), str(application), str(automatic)] + (['--sprites'] if sprites else []),
                                     text=True, capture_output=True, timeout=20)
         return result, [json.loads(line) for line in result.stdout.splitlines()]
 
@@ -54,6 +54,17 @@ class NativeTests(unittest.TestCase):
         result, trace = self.scenario(b'\0\0\0')
         self.assertNotEqual(result.returncode, 0)
         self.assertFalse(trace)
+
+    def test_disk_records_feed_the_effect_sprite_query(self):
+        a = (0, 0, 3, 4, 10, 8, 1, 2, 0, 0)
+        b = (2, 1, 30, 40, 12, 9, 5, 6, 1, 0)
+        blob = struct.pack('>hhhh', 1, 3, 2, 0) + struct.pack('>10h', *a) + struct.pack('>10h', *b)
+        result, trace = self.scenario(blob, passes=3, sprites=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(trace[1]['sprites'], [[0, 0, 3, 4, 10, 8, 1, 2, 0, 0, 0, 0]])
+        self.assertEqual(trace[2]['sprites'], [[1, 0, 3, 4, 10, 8, 3, 4, 0, 0, 0, 0]])
+        self.assertEqual(trace[3]['sprites'], [[2, 1, 30, 40, 12, 9, 5, 6, 1, 0, 0, 0]])
+        self.assertEqual(trace[4]['sprites'], trace[1]['sprites'])
 
 
 if __name__ == '__main__':

@@ -667,3 +667,8 @@ target_link_libraries(test_render_frame PRIVATE render_frame human_initializatio
 project_warnings(test_render_frame)
 add_test(NAME render_frame_contract COMMAND test_render_frame)
 target_link_libraries(test_emitter_frame PRIVATE render_frame)
+
+add_executable(test_seb_sprite test_seb_sprite.cpp)
+target_link_libraries(test_seb_sprite PRIVATE seb_sprite)
+project_warnings(test_seb_sprite)
+add_test(NAME seb_sprite_contract COMMAND test_seb_sprite)

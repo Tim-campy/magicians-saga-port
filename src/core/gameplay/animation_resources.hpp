@@ -1,6 +1,7 @@
 #pragma once
 #include "animation_pass.hpp"
 #include "assets/seb.hpp"
+#include "../animation/seb_sprite.hpp"
 #include <optional>
 
 namespace saga::core {
@@ -36,6 +37,7 @@ public:
     AnimationResource& resource(){return resource_;}
 private:
     std::vector<std::optional<SharedAnimationClip>> clocks_;
+    std::vector<std::optional<SebSpriteState>> sprites_;
     AnimationResource resource_;
 };
 } // namespace saga::core

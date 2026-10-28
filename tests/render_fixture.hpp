@@ -17,6 +17,7 @@ struct RenderServices final:RenderInitializationWorld,RenderFrameHost {
     std::function<void(const std::string&)> hook;std::vector<std::string> calls;
     std::function<AnimationResource*(std::int32_t)> resource_provider;
     bool missing_cursor=false;
+    SebStaticWork sprite_work;
     RenderServices(HumanFixture& fixture,CameraServices& view,CellServices& index):t(fixture),camera(view),cells(index){
         for(auto& clock:clocks){clock.frame=11;clock.max_frame=20;resource.clips->push_back(&clock);}
         catalog.characters=&resource;catalog.common=&resource;catalog.enemies=&resource;catalog.equipment=&resource;
@@ -33,9 +34,9 @@ struct RenderServices final:RenderInitializationWorld,RenderFrameHost {
     std::unique_ptr<RenderCursor> visible_render_cursor()override{step("cursor");return missing_cursor?nullptr:std::make_unique<Cursor>(visible);}
     AnimationResource* render_resource(RenderQueue&,std::int32_t id)override{step("resource");return resource_provider?resource_provider(id):get_animation_resource(catalog,id);}
     EventInstruction render_sprite(SharedAnimationClip& clip,std::int32_t frame,std::int32_t layer)override{
-        queries.emplace_back(&clip,frame,layer);step("sprite");return bounds;
+        queries.emplace_back(&clip,frame,layer);step("sprite");return clip.sprites?seb_sprite(*clip.sprites,sprite_work,frame,layer):bounds;
     }
-    std::int32_t render_layer_count(SharedAnimationClip&)override{step("layers");return layer_count;}
+    std::int32_t render_layer_count(SharedAnimationClip& clip)override{step("layers");return clip.sprites?static_cast<std::int32_t>(clip.sprites->groups->size()):layer_count;}
     std::int32_t render_extra_depth_rate()override{step("depth-rate");return extra_depth_rate;}
     RenderQueue* current_render_queue()override{step("application");return application;}
     void render_error(ComponentSlots& e,const std::exception&)override{errors.push_back(&e);step("error");}

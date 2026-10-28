@@ -60,11 +60,13 @@ int wmain(int argc,wchar_t** argv) {
 #else
 int main(int argc,char** argv) {
 #endif
-    if(argc!=6) {
-        std::cerr<<"Usage: animation_trace <selected-seb> <clip-id> <passes> <application-update:0|1> <automatic:0|1>\n";
+    if(argc!=6&&argc!=7) {
+        std::cerr<<"Usage: animation_trace <selected-seb> <clip-id> <passes> <application-update:0|1> <automatic:0|1> [--sprites]\n";
         return 2;
     }
     try {
+        const bool sprites=argc==7;
+        if(sprites&&std::filesystem::path(argv[6]).string()!="--sprites")throw std::invalid_argument("unknown scenario option");
         const auto clip=integer(argv[2],65535),passes=integer(argv[3],100000);
         const SharedAnimationGates gates{integer(argv[5],1)!=0,integer(argv[4],1)!=0};
         const auto file=read_seb(argv[1]);
@@ -73,13 +75,24 @@ int main(int argc,char** argv) {
         AnimationSystemState state;initialize_animation(state,&scenario);
         create_visual_effect({},clip,-1,false,scenario.ids,scenario);
         auto* clock=loaded.resource().clips->at(static_cast<std::size_t>(clip));
+        SebStaticWork sprite_work;
         std::cout<<"{\"scenario\":\"effect_animation\",\"resource\":20,\"clip\":"<<clip
                  <<",\"max_frame\":"<<clock->max_frame<<",\"effect_lifetime\":"<<scenario.garbage.frames
                  <<",\"entity_id\":"<<scenario.id<<",\"group_size\":"<<state.subset->size()<<"}\n";
         for(std::int32_t pass=0;pass<=passes;++pass) {
             if(pass!=0)update_animations(state,gates);
             std::cout<<"{\"pass\":"<<pass<<",\"entity_frame\":"<<scenario.sprite.animation.frame
-                     <<",\"shared_frame\":"<<clock->frame<<"}\n";
+                     <<",\"shared_frame\":"<<clock->frame;
+            if(sprites){std::cout<<",\"sprites\":[";
+                for(std::size_t layer=0;layer<file.groups.size();++layer){
+                    if(layer)std::cout<<',';
+                    const auto value=seb_sprite(*clock->sprites,sprite_work,scenario.sprite.animation.frame,static_cast<std::int32_t>(layer));
+                    if(!value)std::cout<<"null";
+                    else{std::cout<<'[';for(std::size_t i=0;i<value->size();++i){if(i)std::cout<<',';std::cout<<value->at(i);}std::cout<<']';}
+                }
+                std::cout<<']';
+            }
+            std::cout<<"}\n";
         }
         return std::cout?0:1;
     } catch(const std::exception& error) {

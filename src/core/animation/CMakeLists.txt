@@ -1,1 +1,3 @@
 saga_library(animation_transitions animation_transitions.cpp animation_payload.cpp)
+saga_library(seb_sprite seb_sprite.cpp)
+target_link_libraries(seb_sprite PUBLIC seb)

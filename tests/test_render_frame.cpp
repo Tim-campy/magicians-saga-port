@@ -16,6 +16,13 @@ int main()try{
      check(r.row(1).at(render_depth)==221&&field<EntityDepth>(e,4).value==220);
      auto first=r.output.buffers->at(0)->at(0);r.update();check(r.output.counts->at(0)==4);clear_render_queue(r.output);r.update();
      check(r.output.counts->at(0)==2&&r.output.buffers->at(0)->at(0)==first);}
+    {Setup s;auto& r=s.render;saga::assets::SebRecord a;a.value_count=10;a.values={0,0,7,8,82,20,-41,0,0,0};
+     auto b=a;b.values[0]=1;b.values[4]=84;saga::assets::Seb file{0,2,{{0,2,std::int16_t{0}}},{a,b}};
+     PreparedAnimationResource loaded(index_resource_catalog({2}),{&file});
+     r.resource_provider=[&](std::int32_t id){return id==1?&loaded.resource():nullptr;};auto& e=r.object();r.visible.add(&e);r.update();
+     check(r.errors.empty()&&r.output.counts->at(0)==1&&r.row().at(render_u)==7&&r.row().at(render_width)==82);
+     field<EntitySprite>(e,2).animation.frame=1;clear_render_queue(r.output);r.update();
+     check(r.errors.empty()&&r.row().at(render_width)==84&&r.row().at(render_frame)==1);}
     {Setup s;auto& r=s.render;auto& e=r.object();e.remove(5);field<EntityDepth>(e,4).value=17;field<EntitySprite>(e,2).layers=std::make_shared<EventIntegers>(EventIntegers{0});r.visible.add(&e);r.update();
      check(r.row().at(render_depth)==17&&r.row().at(render_alpha)==255&&r.errors.empty());}
     {Setup s;auto& r=s.render;auto& hidden=r.object();Component invisible;hidden.add(21,&invisible);hidden.remove(0);
