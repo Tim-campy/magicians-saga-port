@@ -40,3 +40,7 @@ game:0x06000588	documented	docs/subsystems/events.md	GetProductId SecureString +
 game:0x0600058f	documented	docs/subsystems/events.md	GetProvisionType SecureString +0x68 ToString with nullable wrapper; Init callers and portable getter boundaries documented
 game:0x06000591	documented	docs/subsystems/events.md	GetProvisionValueText SecureString +0x70 ToString with nullable wrapper; Init callers and portable getter boundaries documented
 game:0x06000590	documented	docs/subsystems/events.md	GetProvisionValue requires SecureInt +0x78 before conversion; Init callers and portable getter boundaries documented
+game:0x060007c0	reimplemented	src/core/gameplay/quest_camera.cpp	Required GameView dimension then QuestForm VIEW_X and current scale; wrapping subtraction and reused signed scaling; width/scale mutation and concrete visibility tests.
+game:0x060007c1	reimplemented	src/core/gameplay/quest_camera.cpp	Required GameView dimension then QuestForm VIEW_Y and current scale; signed scaling with zero/overflow semantics; fresh camera/visibility path tested.
+game:0x060007b9	reimplemented	src/core/gameplay/quest_camera.cpp	Five map queries then discarded viewport calls, decoded save center17/18 writes/rereads and fresh width/height offset stores; retained partial writes and real frame tests.
+game:0x060007ba	reimplemented	src/core/gameplay/quest_camera.cpp	Four map queries/viewport probes then direct camX/Y stores, save centers17/18 using captured X/live Y, final static-render marker; failure/reentrant-field tests.

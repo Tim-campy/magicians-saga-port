@@ -24,6 +24,20 @@ std::int32_t initial_human_invincible_time(std::int32_t fps){return word(static_
 bool is_retry_removable_effect(ComponentSlots* e){return component<EntitySprite>(required(e),2).animation.clip==100;}
 float member_formation_x(ComponentSlots* e,StageRecoveryHost& host){return formation(e,host,false);}
 float member_formation_z(ComponentSlots* e,StageRecoveryHost& host){return formation(e,host,true);}
+namespace {
+float indexed_formation(std::int32_t index,StageRecoveryHost& host,bool z){
+    auto& first=required(member_hero(host.recovery_world()));
+    const auto origin=z?required(position(first)).z:required(position(first)).x;
+    auto& second=required(member_hero(host.recovery_world()));auto& hero_human=human(second);
+    const auto offset=z?hero_human.formation_z:hero_human.formation_x;
+    const auto grid=z?index/4:index%4;
+    const auto distance=word(static_cast<std::uint32_t>(grid)*36U);
+    const float relative=origin-static_cast<float>(offset);
+    return relative+static_cast<float>(distance);
+}
+}
+float indexed_member_formation_x(std::int32_t i,StageRecoveryHost& host){return indexed_formation(i,host,false);}
+float indexed_member_formation_z(std::int32_t i,StageRecoveryHost& host){return indexed_formation(i,host,true);}
 void remove_recovery_modification(ComponentSlots& e,StageRecoveryHost& host){
     auto* previous=e.get(15);e.remove(15);host.release_recovery_modification(previous);
 }

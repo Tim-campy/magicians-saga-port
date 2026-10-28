@@ -61,12 +61,16 @@ CellEntities cell_entities(CellIndexState&,std::int32_t xi,std::int32_t yi,CellI
 // x/y are the caller's camera offsets; no implicit desktop viewport is invented.
 EventInstruction project_cell_location(EventInstruction,std::int32_t x,std::int32_t y,
                                        std::int32_t step_x,std::int32_t half_step_z);
-class CellVisibilityHost:public CellIndexHost {
+class CellVisibilityView {
 public:
-    virtual void clear_cell_visibility()=0;
+    virtual ~CellVisibilityView()=default;
     virtual std::int32_t cell_game_width()=0; // QuestForm.GetGameWidth, including current scale.
     virtual std::int32_t cell_game_height()=0;
     virtual EventInstruction cell_view_origin(std::int32_t step_x,std::int32_t half_step_z)=0;
+};
+class CellVisibilityHost:public CellIndexHost,public CellVisibilityView {
+public:
+    virtual void clear_cell_visibility()=0;
     virtual void add_cell_visibility(ComponentSlots&)=0; // Current global World's HashSet, deduplicated.
     virtual std::int32_t cell_visibility_count()=0;
     virtual void store_cell_visibility_count(std::int32_t)=0;

@@ -651,3 +651,9 @@ target_link_libraries(test_cell_system PRIVATE cell_system motion_pass update_sc
 project_warnings(test_cell_system)
 add_test(NAME cell_system_contract COMMAND test_cell_system)
 target_link_libraries(test_emitter_frame PRIVATE cell_system)
+
+add_executable(test_quest_camera test_quest_camera.cpp)
+target_link_libraries(test_quest_camera PRIVATE quest_camera human_initialization enemy_initialization pass_initialization motion_pass update_scheduler hero_bootstrap human_factory animation_pass)
+project_warnings(test_quest_camera)
+add_test(NAME quest_camera_contract COMMAND test_quest_camera)
+target_link_libraries(test_emitter_frame PRIVATE quest_camera)

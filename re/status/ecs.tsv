@@ -217,3 +217,17 @@ game:0x06000dfa	reimplemented	src/core/gameplay/cell_system.cpp	Fresh global coo
 game:0x06000dfb	reimplemented	src/core/gameplay/cell_system.cpp	Required dictionary, null for absent keys or stored null list, preserve shared list identity; index and visibility tests.
 game:0x06000dfc	reimplemented	src/core/gameplay/cell_system.cpp	Single tail branch to actual ChangeCellEntity; typed event14 callback tested with moving entities, duplicates and destruction.
 game:0x06000b77	reimplemented	src/core/gameplay/cell_system.cpp	Concrete entity presence of Invisible slot21; actual visibility sweep excludes tagged entities before visible-set Add, tested.
+game:0x06000de2	reimplemented	src/core/gameplay/quest_camera.cpp	Supplied-world fresh registered camera, required angle45, flags reset/pinch120/new empty history without range reset or prior entity destruction; tests.
+game:0x06000de4	reimplemented	src/core/gameplay/quest_camera.cpp	Nullable Camera getter then fresh MemberSystem indexed formation, native conversion/wrap/isometric offsets and current QuestForm cursor; 120 pass0 combat integration.
+game:0x06000de5	reimplemented	src/core/gameplay/quest_camera.cpp	Native validation/flags/touch-count gates, scaled delta float round trip and five-pair oldest-array reuse; malformed partial-write and no invented pan/zoom semantics tested.
+game:0x06000de6	reimplemented	src/core/gameplay/quest_camera.cpp	Viewport-dependent min then clamp200, same-value return, component scale store before Position/form validation and real QuestForm position/save recenter; separate scales tested.
+game:0x06000de7	reimplemented	src/core/gameplay/quest_camera.cpp	Capture scratch before live width/minimum callback, write old entry0 then current entry1 and return current array; replacement identity tested.
+game:0x06000de8	reimplemented	src/core/gameplay/quest_camera.cpp	Fresh global GameView game width <=240 gives10 else75; boundary and captured range tests through explicit view service.
+game:0x06000de9	reimplemented	src/core/gameplay/quest_camera.cpp	Constant200 maximum, used/tested by actual scale clamp and range construction.
+game:0x06000dea	reimplemented	src/core/gameplay/quest_camera.cpp	Fresh required QuestForm then binary32 FCVTZS/positive-infinity conversion and actual cursor/save/offset chain; live formation integration tested.
+game:0x06000deb	reimplemented	src/core/gameplay/quest_camera.cpp	Fresh required QuestForm then native binary32 conversion and distinct coordinate/save/static-render path; changed-scale and explicit-position tests.
+game:0x06000dec	reimplemented	src/core/gameplay/quest_camera.cpp	Current required QuestForm forwarding to actual scaled width; concrete cell-view adapter and visibility integration tests.
+game:0x06000ded	reimplemented	src/core/gameplay/quest_camera.cpp	Current required QuestForm forwarding to actual scaled height; concrete cell-view adapter and visibility integration tests.
+game:0x06000be9	reimplemented	src/core/gameplay/quest_camera.cpp	Supplied entity-manager registration type0 before zero Position and fresh Camera0/100; factory order/failure and live schedule tests.
+game:0x06000b2f	reimplemented	src/core/gameplay/quest_camera.cpp	Allocate fresh CameraComponent rather than pooled object, write angle/scale then slot3; constructor/init/factory failure tests.
+game:0x06000b2e	reimplemented	src/core/gameplay/quest_camera.cpp	Nullable typed slot3 getter with incompatible-type fault; Camera Init requires result while Update discards it; missing component update tested.

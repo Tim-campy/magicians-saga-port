@@ -231,3 +231,7 @@ game:0x06000b28	documented	docs/subsystems/combat.md	Static pool pop-or-construc
 game:0x06000b51	documented	docs/subsystems/combat.md	Pool acquisition then category/type/interval/frame/maxEmitNum/arg1 stores before slot 31; full factory payload and notification order tested.
 game:0x06000b3f	documented	docs/subsystems/combat.md	Pool acquisition, value/attribute/parent writes before slot 33; reached bullet and impact payloads ported, general helper remains documented.
 game:0x060000fe	reimplemented	src/core/gameplay/parameter_experience.cpp	Capped early return including negative amounts; wrapping level sum/delta with upper-then-lower Clamp; malformed caps/overflow and unchanged-stat tests.
+game:0x06000f49	reimplemented	src/core/gameplay/stage_recovery.cpp	Two fresh hero lookups, Position.x minus current Human formation_x then signed index%4*36 with binary32 order; negative-index and actual camera tests.
+game:0x06000f4a	reimplemented	src/core/gameplay/stage_recovery.cpp	Two fresh hero lookups, Position.z minus current Human formation_z plus wrapping trunc(index/4)*36; negative-grid and camera integration tests.
+game:0x06000a8a	reimplemented	src/core/gameplay/quest_camera.cpp	Wrapping int32 x-z inside actual camera projection with +20 and binary32 round trip to QuestForm cursor; composed formation/offset tests.
+game:0x06000a8b	reimplemented	src/core/gameplay/quest_camera.cpp	Wrapping int32 sum then signed truncation by2 inside actual camera projection; cursor offset/save/viewport integration tests.
