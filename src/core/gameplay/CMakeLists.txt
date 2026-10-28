@@ -205,3 +205,6 @@ if(MSVC)
 else()
   target_compile_options(human_contact PRIVATE -ffp-contract=off)
 endif()
+
+saga_library(pass_initialization pass_initialization.cpp)
+target_link_libraries(pass_initialization PUBLIC motion_pass collision_pass combat_event_receivers entity_events)

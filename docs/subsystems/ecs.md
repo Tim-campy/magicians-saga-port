@@ -372,6 +372,25 @@ Port: `system_initialization.hpp/.cpp` provides a borrowed InitSystem/Initializa
 
 Evidence: local `research/exports/ecs-order/M37220_Init.asm`: captures list at 0x113c688, forwards world at 0x113c728, loops through MoveNext at 0x113c6c4 and clears pause at 0x113c740 only on the success path. Confidence high for dispatcher ordering and side effects; Android comparison absent.
 
+### Gameplay pass initialization
+
+The four concrete Init bodies now have portable implementations in `pass_initialization.hpp/.cpp`:
+
+| Method / registry id | All filter, in original order | Later effects |
+| --- | --- | --- |
+| ProjectileSystem.Init / game:0x06000f7c | 27, 0, 1 | Store subset +0x20; create fresh completion list +0x28; subscribe OnProjectileImpact to event 23 |
+| MoveSystem.Init / game:0x06000f6d | 0, 1 | Store subset +0x20 |
+| CollisionSystem.Init / game:0x06000e0a | 32, 0 | Store subset +0x20; create fresh pending-pair list +0x28 |
+| GarbageSystem.Init / game:0x06000ea3 | 22 | Store subset +0x20 |
+
+Each requires the world when invoking GetSubSet. A returned null subset is stored without a new guard. A lookup failure leaves the previous subset/queue untouched; a subscription failure leaves Projectile's newly stored subset and fresh queue in place. Repeated Projectile Init creates another event-23 subscription without removing the previous one. No enabled or pause guard is added. Filter allocation failures are outside the portable host contract.
+
+PassInitializationWorld exposes subset acquisition and event-23 registration. It does not invent dynamic group deduplication, initial population or entity IDs. Projectile's receiver calls the real projectile_impact_cleanup body; the CombatEventHost must outlive its subscription. The persistent completion/pair queues are reset only after a successful subset lookup. Movement and Garbage do not create those queues in Init.
+
+Tests check all four filters, null-world/lookup/subscription failures, null subset storage, duplicate receiver delivery and removal. The trajectory integration now acquires its real live projectile/movement groups through these Init bodies before the scheduled launch/landing passes, and delivers impact to the actual cleanup receiver. The synthetic factory test returns a shared diagnostic group to inspect requests; it makes no claim about World.GetSubSet semantics.
+
+Evidence: local `research/exports/system-initializers/{ProjectileSystem,MoveSystem,CollisionSystem,GarbageSystem}.asm`. Projectile stores its group at 0x115ffac, queue at 0x115ffc4 and registers at 0x1160004; Collision stores its group at 0x1145f04 and queue at 0x1145f1c. Confidence high; runtime comparison absent.
+
 ## Evidence
 
 - Temporary lifetime: local `research/exports/garbage-lifetime/{Init,NeedsUpdate,Update,AddGarbage}.asm`. Init writes filter value 0x16; AddGarbage writes +0x10 and passes slot 0x16; Update stores the decremented counter at 0x11532e0, then queues on signed <= 0, and calls Entity.Destroy(true) at 0x1153384 only after the first enumeration finishes. Confidence high for arithmetic and call order; Android comparison absent.

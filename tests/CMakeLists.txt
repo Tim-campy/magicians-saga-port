@@ -441,7 +441,7 @@ project_warnings(test_live_combat_subsets)
 add_test(NAME live_combat_subsets_contract COMMAND test_live_combat_subsets)
 
 add_executable(test_motion_pass test_motion_pass.cpp)
-target_link_libraries(test_motion_pass PRIVATE motion_pass update_scheduler)
+target_link_libraries(test_motion_pass PRIVATE motion_pass update_scheduler pass_initialization)
 project_warnings(test_motion_pass)
 add_test(NAME motion_pass_contract COMMAND test_motion_pass)
 
@@ -469,3 +469,8 @@ add_executable(test_system_initialization test_system_initialization.cpp)
 target_link_libraries(test_system_initialization PRIVATE system_initialization entity_events)
 project_warnings(test_system_initialization)
 add_test(NAME system_initialization_contract COMMAND test_system_initialization)
+
+add_executable(test_pass_initialization test_pass_initialization.cpp)
+target_link_libraries(test_pass_initialization PRIVATE pass_initialization)
+project_warnings(test_pass_initialization)
+add_test(NAME pass_initialization_contract COMMAND test_pass_initialization)
