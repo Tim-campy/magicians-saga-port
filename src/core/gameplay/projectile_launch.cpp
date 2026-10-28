@@ -19,11 +19,15 @@ ContactPosition& position(ComponentSlots& e){
     return *p;
 }
 }
-void add_projectile_modification(ComponentSlots& e,std::int32_t type,std::int32_t max_frame,bool destroy,bool loop,ProjectileLaunchHost& host){
+ComponentSlots& add_animation_modification(ComponentSlots& e,AnimationModificationRequest r,AnimationModificationPool& host){
     auto& p=host.acquire_modification();
-    p.type=type;p.x=0;p.y=0;p.z=0;p.scale_x=1;p.scale_y=1;
-    p.angle=0;p.frame=0;p.max_frame=max_frame;p.anchor=0;p.destroy=destroy;p.loop=loop;p.alpha=255;
-    e.add(modify_animation_slot,&p);
+    p.type=r.type;p.x=r.x;p.y=r.y;p.z=r.z;p.scale_x=r.scale_x;p.scale_y=r.scale_y;
+    p.angle=r.angle;p.frame=r.frame;p.max_frame=r.max_frame;p.anchor=r.anchor;p.destroy=r.destroy;p.loop=r.loop;p.alpha=r.alpha;
+    return e.add(modify_animation_slot,&p);
+}
+void add_projectile_modification(ComponentSlots& e,std::int32_t type,std::int32_t max_frame,bool destroy,bool loop,ProjectileLaunchHost& host){
+    AnimationModificationRequest r;r.type=type;r.max_frame=max_frame;r.destroy=destroy;r.loop=loop;
+    add_animation_modification(e,r,host);
 }
 std::int32_t launch_projectile(ComponentSlots& e,ProjectilePoint start,ProjectilePoint end,
     std::int32_t speed,ComponentSlots* parent,bool animate,bool rotate,std::int32_t height_percent,

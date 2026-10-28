@@ -27,6 +27,7 @@ struct StageStartState:StagePlacementState {
     std::shared_ptr<std::vector<AttackButtonState*>> attack_buttons;
     std::shared_ptr<std::vector<std::uint8_t>> event_states;
     std::shared_ptr<StageDialog> dialog; // StageSystem.dialog_ +0x60.
+    ComponentSlots* boss_fence=nullptr; // bossBattleFence_ +0xa0; cleanup owns destruction.
     // Use this operation for every drop_ reference replacement so collection
     // always reads the same current object as stage startup/result accounting.
     void replace_rewards(std::shared_ptr<StageRewards> value){rewards_=std::move(value);collection.rewards=rewards_.get();}

@@ -1,4 +1,5 @@
 #include "stage_update.hpp"
+#include "stage_recovery.hpp"
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -93,7 +94,7 @@ void update_stage(StageStartState& s,StageUpdateHost& host){
         if(dialog->kind==98){
             if(dialog->answer==0){
                 if(host.check_crystals(100)){
-                    host.subtract_crystals(100);host.retry_stage(s);s.dialog.reset();return;
+                    host.subtract_crystals(100);retry_stage(s,host.recovery_host());s.dialog.reset();return;
                 }
                 const auto reason=required(s.dialog.get()).reason;
                 s.dialog=make_stage_retry_dialog(reason,host);
@@ -103,7 +104,7 @@ void update_stage(StageStartState& s,StageUpdateHost& host){
             }
             if(dialog->answer==1){
                 auto* stack=host.stage_form_stack();const auto ad=host.make_interstitial_ad();
-                required(stack).push(ad.get());host.retry_stage(s);s.dialog.reset();return;
+                required(stack).push(ad.get());retry_stage(s,host.recovery_host());s.dialog.reset();return;
             }
             change_stage(s,dialog->reason==2?6:5);s.dialog.reset();return;
         }
@@ -118,7 +119,7 @@ void update_stage(StageStartState& s,StageUpdateHost& host){
         collect_drops(s.collection,host.collection_host());
         update_collecting_drops(s.collection,host.collection_host());
         if(execute_stage_events(s,host)){release_stage_movement(host.movement_host());return;}
-        if(!s.boss_started&&stage_progress_rate(s,host)>=90)host.start_boss_battle(s);
+        if(!s.boss_started&&stage_progress_rate(s,host)>=90)start_stage_boss_battle(s,host.recovery_host());
         if(s.collection.boss_defeated&&s.collection.reward_box_picked_up){celebrate(s);return;}
         update_stage_attack_buttons(s);
         if(!s.collection.boss_defeated){

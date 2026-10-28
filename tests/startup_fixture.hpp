@@ -64,8 +64,8 @@ struct StartupFixture:Fixture,DropFactoryHost,EffectFactoryHost,DropCollectionHo
         std::vector<std::optional<QuestMemberId>> out;auto& group=groups.get(std::make_shared<ComponentGroupFilter>(EventIntegers{slot}));
         auto cursor=group.cursor();while(const auto e=cursor.next())out.push_back(entity_id(**e));return out;}
     QuestEntityHost& destruction_host()override{return *this;}
-    std::optional<QuestMemberId> extra_entity()override{return extra;}
-    void clear_extra_entity()override{extra.reset();}
+    std::optional<QuestMemberId> extra_entity()override{return state.boss_fence?std::optional<QuestMemberId>{entity_id(*state.boss_fence)}:extra;}
+    void clear_extra_entity()override{extra.reset();state.boss_fence=nullptr;}
     void clear_collecting_drops()override{if(!state.collection.collecting)throw std::runtime_error("collecting");state.collection.collecting->clear();}
     ComponentSlots* front_line_human()override{return saga::core::front_line_human(&state.members->members->entities());}
     EntitySubset* drop_subset()override{return &groups.get(std::make_shared<ComponentGroupFilter>(EventIntegers{34}));}

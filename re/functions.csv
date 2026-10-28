@@ -2800,8 +2800,8 @@ game:0x06000b7f,game:0x06000b7f,ecs,,216,0x11300e8
 game:0x06000b80,game:0x06000b80,ecs,,36,0x11301c0
 game:0x06000b81,game:0x06000b81,ecs,,136,0x11301e4
 game:0x06000b82,game:0x06000b82,ecs,,16,0x113026c
-game:0x06000b83,game:0x06000b83,ecs,,408,0x113027c
-game:0x06000b84,game:0x06000b84,ecs,,168,0x1130414
+game:0x06000b83,kairo.unity.ecs.Entity.AddModifyAnimation,ecs,reimplemented,408,0x113027c
+game:0x06000b84,kairo.unity.ecs.Entity.RemoveModifyAnimation,ecs,reimplemented,168,0x1130414
 game:0x06000b85,game:0x06000b85,ecs,,136,0x11304bc
 game:0x06000b86,kairo.unity.ecs.Entity.get_hasMonster,ecs,traced,16,0x1130544
 game:0x06000b87,game:0x06000b87,ecs,,272,0x1130554
@@ -2904,7 +2904,7 @@ game:0x06000bf6,game:0x06000bf6,ecs,,648,0x1134cbc
 game:0x06000bf7,kairo.unity.ecs.World.CreateParticle,ecs,traced,600,0x1134f44
 game:0x06000bf8,game:0x06000bf8,ecs,,252,0x113519c
 game:0x06000bf9,kairo.unity.ecs.World.CreateDrop,ecs,reimplemented,664,0x1135298
-game:0x06000bfa,game:0x06000bfa,ecs,,252,0x1135530
+game:0x06000bfa,kairo.unity.ecs.World.CreateZObject,ecs,reimplemented,252,0x1135530
 game:0x06000bfb,kairo.unity.ecs.World..ctor,ecs,traced,284,0x11333ac
 game:0x06000bfc,game:0x06000bfc,ecs,,8,0x113562c
 game:0x06000bfd,game:0x06000bfd,ecs,,8,0x1135634
@@ -3223,12 +3223,12 @@ game:0x06000d68,game:0x06000d68,ecs,,8,0x113ffb4
 game:0x06000d69,game:0x06000d69,ecs,,8,0x113ffbc
 game:0x06000d6a,ecs.HumanComponent.get_data,ecs,reimplemented,124,0x113ffc4
 game:0x06000d6b,ecs.HumanComponent.get_isAlive,ecs,reimplemented,20,0x1140040
-game:0x06000d6c,game:0x06000d6c,ecs,,20,0x1140054
+game:0x06000d6c,ecs.HumanComponent.get_isDead,ecs,reimplemented,20,0x1140054
 game:0x06000d6d,game:0x06000d6d,ecs,,16,0x1140068
 game:0x06000d6e,ecs.HumanComponent.Serialize,ecs,traced,288,0x1140078
 game:0x06000d6f,ecs.HumanComponent.Deserialize,ecs,traced,288,0x1140198
 game:0x06000d70,game:0x06000d70,ecs,,8,0x11402b8
-game:0x06000d71,game:0x06000d71,ecs,,520,0x11402c0
+game:0x06000d71,ecs.HumanComponent..cctor,ecs,traced,520,0x11402c0
 game:0x06000d72,game:0x06000d72,ecs,,40,0x11404c8
 game:0x06000d73,game:0x06000d73,ecs,,40,0x11404f0
 game:0x06000d74,game:0x06000d74,ecs,,40,0x1140518
@@ -3698,8 +3698,8 @@ game:0x06000f43,ecs.MemberSystem.SwapFormationIndex,ecs,reimplemented,104,0x115d
 game:0x06000f44,ecs.MemberSystem.SetCharaDataId,ecs,reimplemented,260,0x115c39c
 game:0x06000f45,ecs.MemberSystem.SetCharaDataIdEmptySpace,ecs,reimplemented,116,0x115deec
 game:0x06000f46,ecs.MemberSystem.GetFormationNumber,ecs,reimplemented,92,0x115df60
-game:0x06000f47,game:0x06000f47,ecs,,124,0x11561ec
-game:0x06000f48,game:0x06000f48,ecs,,124,0x1156268
+game:0x06000f47,ecs.MemberSystem.GetFormationX,ecs,reimplemented,124,0x11561ec
+game:0x06000f48,ecs.MemberSystem.GetFormationZ,ecs,reimplemented,124,0x1156268
 game:0x06000f49,game:0x06000f49,ecs,,120,0x115dfbc
 game:0x06000f4a,game:0x06000f4a,ecs,,120,0x115e034
 game:0x06000f4b,ecs.MemberSystem.GetFormationInitLeftTopX,ecs,reimplemented,116,0x115d978
@@ -3786,7 +3786,7 @@ game:0x06000f9b,ecs.StageSystem.Init,ecs,traced,840,0x1162298
 game:0x06000f9c,ecs.StageSystem.NeedsUpdate,ecs,reimplemented,8,0x11625e0
 game:0x06000f9d,ecs.StageSystem.Update,ecs,reimplemented,2012,0x11625e8
 game:0x06000f9e,ecs.StageSystem.Start,ecs,reimplemented,800,0x1165198
-game:0x06000f9f,game:0x06000f9f,ecs,,1884,0x1162eb8
+game:0x06000f9f,ecs.StageSystem.Retry,ecs,reimplemented,1884,0x1162eb8
 game:0x06000fa0,ecs.StageSystem.ShowQuestResult,ecs,documented,3152,0x1164548
 game:0x06000fa1,ecs.StageSystem.ResetTimer,ecs,reimplemented,116,0x1165694
 game:0x06000fa2,game:0x06000fa2,ecs,,112,0x115bbf0
@@ -3807,7 +3807,7 @@ game:0x06000fb0,game:0x06000fb0,ecs,,12,0x116372c
 game:0x06000fb1,ecs.StageSystem.ReturnTown,ecs,reimplemented,244,0x1162dc4
 game:0x06000fb2,ecs.StageSystem.UpdateQuestRecord,ecs,reimplemented,156,0x1165728
 game:0x06000fb3,ecs.StageSystem.CleanUp,ecs,reimplemented,476,0x11654b8
-game:0x06000fb4,game:0x06000fb4,ecs,,464,0x11641a8
+game:0x06000fb4,ecs.StageSystem.StartBossBattle,ecs,reimplemented,464,0x11641a8
 game:0x06000fb5,ecs.StageSystem.OnBossDefeat,ecs,reimplemented,304,0x11663e4
 game:0x06000fb6,ecs.StageSystem.OnHumanDead,ecs,reimplemented,80,0x1166514
 game:0x06000fb7,ecs.StageSystem.OnGameOver,ecs,reimplemented,284,0x116442c
@@ -3843,7 +3843,7 @@ game:0x06000fd4,game:0x06000fd4,ecs,,36,0x11683b4
 game:0x06000fd5,AttackButton.ChangeState,ecs,reimplemented,8,0x11683d8
 game:0x06000fd6,game:0x06000fd6,unassigned,,92,0x11683e0
 game:0x06000fd7,game:0x06000fd7,unassigned,,8,0x116843c
-game:0x06000fd8,game:0x06000fd8,unassigned,,48,0x1168444
+game:0x06000fd8,<>c.<Retry>b__57_0,unassigned,reimplemented,48,0x1168444
 game:0x06000fd9,game:0x06000fd9,unassigned,,8,0x1168474
 game:0x06000fda,<>c__DisplayClass75_0.<ReturnTown>b__0,unassigned,reimplemented,216,0x116847c
 game:0x06000fdb,game:0x06000fdb,ecs,,4,0x1168554

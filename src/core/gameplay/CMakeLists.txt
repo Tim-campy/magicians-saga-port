@@ -273,4 +273,12 @@ saga_library(stage_start stage_start.cpp)
 target_link_libraries(stage_start PUBLIC stage_placement drop_collection stage_cleanup party_start)
 
 saga_library(stage_update stage_update.cpp)
-target_link_libraries(stage_update PUBLIC stage_start boss_notification)
+target_link_libraries(stage_update PUBLIC stage_start boss_notification stage_recovery)
+
+saga_library(stage_recovery stage_recovery.cpp)
+target_link_libraries(stage_recovery PUBLIC stage_start)
+if(MSVC)
+  target_compile_options(stage_recovery PRIVATE /fp:strict)
+else()
+  target_compile_options(stage_recovery PRIVATE -ffp-contract=off)
+endif()

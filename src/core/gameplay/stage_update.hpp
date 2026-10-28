@@ -3,6 +3,7 @@
 #include "boss_notification.hpp"
 
 namespace saga::core {
+class StageRecoveryHost;
 struct StageForm {virtual ~StageForm()=default;};
 struct StageDialog:StageForm {std::int32_t kind=0,answer=0,reason=0;}; // +0x240/+0xc8/+0x170.
 class StageFormStack {
@@ -10,8 +11,7 @@ public:virtual ~StageFormStack()=default;virtual void push(StageForm*)=0;
 };
 // Factories retain forms for their complete stacked lifetime; Push borrows the
 // same identity and may receive null. All factories/services are required.
-// In particular the ad factory and crystal
-// operations have no success fallback; Retry's body is not implemented here.
+// The ad factory and crystal operations have no success fallback.
 class StageUpdateHost:public StagePlacementHost {
 public:
     virtual DropCollectionHost& collection_host()=0;
@@ -20,8 +20,7 @@ public:
     virtual bool key_pulse(std::int32_t mask)=0; // Resolve current canvas each time.
     virtual void pause_systems(bool)=0; // Resolve current world each time.
     virtual bool execute_stage_event(std::int32_t id)=0; // AppData.ExecEvent result != null.
-    virtual void start_boss_battle(StageStartState&)=0;
-    virtual void retry_stage(StageStartState&)=0;
+    virtual StageRecoveryHost& recovery_host()=0;
     virtual bool check_crystals(std::int32_t)=0;
     virtual void subtract_crystals(std::int32_t)=0;
     virtual StageFormStack* stage_form_stack()=0;
@@ -49,6 +48,6 @@ void update_stage_attack_buttons(StageStartState&);
 std::shared_ptr<StageDialog> make_stage_retry_dialog(std::int32_t reason,StageUpdateHost&);
 void stage_game_over(StageStartState&,std::int32_t reason,StageUpdateHost&);
 // StageSystem.Update 0x11625e8: dialog prelude and all seven states. Compose
-// with Start; map/enemy/boss/retry/result presentation remain explicit services.
+// with Start/Retry/StartBossBattle; enemy creation and presentation remain services.
 void update_stage(StageStartState&,StageUpdateHost&);
 } // namespace saga::core

@@ -11,12 +11,24 @@ struct ProjectileModification final:Component {
     bool destroy=false,loop=false;
     std::int32_t alpha=0;
 };
-class ProjectileLaunchHost {
+class AnimationModificationPool {
+public:
+    virtual ~AnimationModificationPool()=default;
+    virtual ProjectileModification& acquire_modification()=0;
+};
+struct AnimationModificationRequest {
+    std::int32_t type=0,angle=0,frame=0,max_frame=0,anchor=0;
+    float x=0,y=0,z=0,scale_x=1,scale_y=1;
+    bool destroy=false,loop=false;
+    std::int32_t alpha=255;
+};
+// Entity.AddModifyAnimation 0x113027c: all payload fields before slot 15.
+ComponentSlots& add_animation_modification(ComponentSlots&,AnimationModificationRequest,AnimationModificationPool&);
+class ProjectileLaunchHost:public AnimationModificationPool {
 public:
     virtual ~ProjectileLaunchHost()=default;
     // Host owns returned objects and must keep them alive through slot callbacks.
     virtual ProjectileLink& acquire_projectile()=0;
-    virtual ProjectileModification& acquire_modification()=0;
     virtual void return_component(std::int32_t,Component*)=0;
     virtual void add_animation(ComponentSlots&,std::int32_t rate,std::int32_t backup)=0;
 };
