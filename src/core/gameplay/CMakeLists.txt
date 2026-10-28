@@ -231,3 +231,7 @@ endif()
 saga_library(cell_component cell_component.cpp)
 target_link_libraries(cell_component PUBLIC component_slots)
 target_link_libraries(entity_visual PUBLIC cell_component)
+
+saga_library(visual_components visual_components.cpp)
+target_link_libraries(visual_components PUBLIC component_slots animation_transitions)
+target_link_libraries(entity_visual PUBLIC visual_components)

@@ -103,7 +103,7 @@ game:0x06000dbb	reimplemented	src/core/ecs/update_scheduler.cpp	Ordered dispatch
 game:0x06000dbe	documented	docs/subsystems/animation.md	
 game:0x06000dc2	documented	docs/subsystems/animation.md	
 game:0x06000dc3	documented	docs/subsystems/animation.md	
-game:0x06000b20	documented	docs/subsystems/animation.md	
+game:0x06000b20	reimplemented	src/core/gameplay/visual_components.cpp	Pooled int32 playback writes before slot 10; occupied-slot/failure semantics and effect factory integration tested.
 game:0x06000b45	documented	docs/subsystems/animation.md	
 game:0x06000b9c	documented	docs/subsystems/animation.md	
 game:0x06000b9b	documented	docs/subsystems/animation.md	
@@ -168,3 +168,6 @@ game:0x06000c66	reimplemented	src/core/ecs/dynamic_subsets.cpp	Dynamic filter di
 game:0x06000001	documented	docs/subsystems/ecs.md	GetSubSet forwarding/population/publication or ordered array comparison contract; native bounded evidence.
 game:0x06000bf4	reimplemented	src/core/gameplay/effect_factory.cpp	Effect factory wrapper defaults and ordered construction tested.
 game:0x06000b32	reimplemented	src/core/gameplay/cell_component.cpp	Pooled Cell coordinates and parent, fresh children identity, then slot 5; integrated effect/drop tests.
+game:0x06000b6e	reimplemented	src/core/gameplay/visual_components.cpp	Six singleton image arrays before pooled acquisition and slot 7; scalar factory integration tested.
+game:0x06000b6f	reimplemented	src/core/gameplay/visual_components.cpp	Two image arrays forward null crop references; independent defaults and failure effects tested.
+game:0x06000b70	reimplemented	src/core/gameplay/visual_components.cpp	Pooled Image writes retain nonempty array identity, normalize null/empty independently, then add slot 7; tested.

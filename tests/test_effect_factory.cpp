@@ -9,9 +9,8 @@ struct Host final:EffectFactoryHost,ComponentObserver {
     ComponentEvents events;ComponentSlots entity{35,&events};std::int32_t id=-9;
     EntityRegistry registry{*this};DynamicSubsets groups{registry,[&](const ComponentSlots&){return id;}};
     EffectComponent effect;ContactPosition position;ProjectileSpeed speed;EffectSprite sprite;EffectDepth depth;GarbageLifetime garbage;
-    CellComponent cell;Component image,playback;std::vector<int> calls;std::function<void(int)> after_add;
+    CellComponent cell;EntityImage image;EntityPlayback playback;std::vector<int> calls;std::function<void(int)> after_add;
     int duration=8;bool fail_resource=false,fail_image=false;
-    std::array<std::int32_t,6> image_args{};
     void added(ComponentSlots& e,std::int32_t i,Component* c)override{calls.push_back(i);groups.added(e,i,c);if(after_add)after_add(i);}
     void removed(ComponentSlots& e,std::int32_t i,Component* c)override{groups.removed(e,i,c);}
     void changed(ComponentSlots& e,std::int32_t i,Component* a,Component* b)override{groups.changed(e,i,a,b);}
@@ -26,22 +25,27 @@ struct Host final:EffectFactoryHost,ComponentObserver {
     EffectDepth& acquire_depth()override{return depth;}
     GarbageLifetime& acquire_garbage()override{return garbage;}
     CellComponent& acquire_cell()override{return cell;}
-    void add_image(ComponentSlots& e,const std::array<std::int32_t,6>& args)override{image_args=args;if(fail_image)throw std::runtime_error("image");e.add(17,&image);} // Marker, not Image's native slot/payload.
-    void add_playback(ComponentSlots& e,std::int32_t rate,std::int32_t backup)override{check(rate==1&&backup==-1);e.add(10,&playback);}
+    EntityImage& acquire_image()override{if(fail_image)throw std::runtime_error("image");return image;}
+    EntityPlayback& acquire_playback()override{return playback;}
 };
 EffectRequest request(){return {{-47.9F,2,48.9F},101,9,20,7,true,false,0,3,nullptr,4,true};}
 template<class F>void fails(F f){bool caught=false;try{f();}catch(const std::exception&){caught=true;}check(caught);}
 int main(){
     {Host h;EntityIdState ids;auto filter=std::make_shared<ComponentGroupFilter>(std::vector<std::int32_t>{26,0,1});auto& group=h.groups.get(filter);
         auto& cells=h.groups.get(std::make_shared<ComponentGroupFilter>(std::vector<std::int32_t>{5}));
+        auto& animated_images=h.groups.get(std::make_shared<ComponentGroupFilter>(std::vector<std::int32_t>{7,10}));
         auto r=request();r.parent=&h.entity;create_effect(r,ids,h);
-        check(h.calls==std::vector<int>{-1,-2,-3,26,0,1,2,5,4,22,17,10});
+        check(h.calls==std::vector<int>{-1,-2,-3,26,0,1,2,5,4,22,7,10});
         check(ids.counter==1&&h.registry.find(0)==&h.entity&&group.size()==1);
         check(h.effect.type==101&&h.effect.value==9&&h.effect.depth&&h.effect.frame==3&&h.effect.max_frame==7&&h.effect.parent==&h.entity);
         check(h.position.x==-47.9F&&!h.position.parent&&h.speed.z==0&&h.cell.xi==-1&&h.cell.yi==2);
         check(cells.size()==1&&h.entity.get(5)==&h.cell&&!h.cell.parent&&h.cell.children&&h.cell.children->empty());
         check(h.sprite.animation.resource==20&&h.sprite.animation.clip==7&&h.sprite.animation.frame==3&&h.sprite.layers==std::vector<std::int32_t>{-1});
-        check(h.depth.value==0&&h.depth.extra==40&&h.garbage.frames==7&&h.image_args==std::array<std::int32_t,6>{4,20,-1,-1,-1,-1});}
+        check(h.depth.value==0&&h.depth.extra==40&&h.garbage.frames==7);
+        check(animated_images.size()==1&&h.entity.get(7)==&h.image&&h.entity.get(10)==&h.playback);
+        check(*h.image.arrays.textures==std::vector<std::int32_t>{4}&&*h.image.arrays.resources==std::vector<std::int32_t>{20});
+        check(*h.image.arrays.u==std::vector<std::int32_t>{-1}&&*h.image.arrays.v==*h.image.arrays.u&&*h.image.arrays.width==*h.image.arrays.u&&*h.image.arrays.height==*h.image.arrays.u);
+        check(h.playback.state.rate==1&&h.playback.state.return_clip==-1);}
     {Host h;EntityIdState ids;auto r=request();r.loop=true;r.depth=false;r.image=-1;r.animate=false;
         create_effect(r,ids,h);check(h.calls==std::vector<int>{-2,-3,26,0,1,2}&&h.effect.max_frame==0);}
     {Host h;EntityIdState ids;h.duration=0;create_visual_effect({},7,-1,false,ids,h);check(h.effect.max_frame==-1&&h.garbage.frames==-1&&h.effect.type==0&&h.effect.frame==0);}

@@ -519,3 +519,8 @@ add_executable(test_cell_component test_cell_component.cpp)
 target_link_libraries(test_cell_component PRIVATE cell_component)
 project_warnings(test_cell_component)
 add_test(NAME cell_component_contract COMMAND test_cell_component)
+
+add_executable(test_visual_components test_visual_components.cpp)
+target_link_libraries(test_visual_components PRIVATE visual_components)
+project_warnings(test_visual_components)
+add_test(NAME visual_components_contract COMMAND test_visual_components)

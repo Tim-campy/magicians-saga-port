@@ -2701,7 +2701,7 @@ game:0x06000b1c,game:0x06000b1c,ecs,,348,0x112c1ec
 game:0x06000b1d,game:0x06000b1d,ecs,,168,0x112c348
 game:0x06000b1e,kairo.unity.ecs.Entity.get_animation,ecs,traced,136,0x112c3f0
 game:0x06000b1f,kairo.unity.ecs.Entity.get_hasAnimation,ecs,traced,16,0x112c478
-game:0x06000b20,kairo.unity.ecs.Entity.AddAnimation,ecs,documented,312,0x112c488
+game:0x06000b20,kairo.unity.ecs.Entity.AddAnimation,ecs,reimplemented,312,0x112c488
 game:0x06000b21,game:0x06000b21,ecs,,168,0x112c5c0
 game:0x06000b22,game:0x06000b22,ecs,,136,0x112c668
 game:0x06000b23,game:0x06000b23,ecs,,16,0x112c6f0
@@ -2779,9 +2779,9 @@ game:0x06000b6a,game:0x06000b6a,ecs,,168,0x112f400
 game:0x06000b6b,game:0x06000b6b,ecs,,144,0x112f4a8
 game:0x06000b6c,game:0x06000b6c,ecs,,136,0x112f538
 game:0x06000b6d,game:0x06000b6d,ecs,,16,0x112f5c0
-game:0x06000b6e,game:0x06000b6e,ecs,,336,0x112f5d0
-game:0x06000b6f,game:0x06000b6f,ecs,,20,0x112f9a0
-game:0x06000b70,game:0x06000b70,ecs,,640,0x112f720
+game:0x06000b6e,kairo.unity.ecs.Entity.AddImage,ecs,reimplemented,336,0x112f5d0
+game:0x06000b6f,kairo.unity.ecs.Entity.AddImage,ecs,reimplemented,20,0x112f9a0
+game:0x06000b70,kairo.unity.ecs.Entity.AddImage,ecs,reimplemented,640,0x112f720
 game:0x06000b71,game:0x06000b71,ecs,,168,0x112f9b4
 game:0x06000b72,game:0x06000b72,ecs,,136,0x112fa5c
 game:0x06000b73,game:0x06000b73,ecs,,16,0x112fae4

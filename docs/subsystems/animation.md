@@ -1,6 +1,6 @@
 # Animation (ECS animation components and AnimationSystem)
 
-Per-entity sprite animation is driven by three ECS components — `SebComponent` (slot 2), `AnimationComponent` (slot 10), `DirectionComponent` (slot 12) — and by `ecs.AnimationSystem` (factory position 19). Statically established: field layout, the three clip transitions (Change / CutIn / Restore), every direct `AddAnimation` producer and its guard, system registration, Init/Update/Pause dispatch and the persisted payloads. Port: the transitions and the component payload codecs are reimplemented and tested; the per-frame `AnimationSystem.Update` loop, spawn factories and integration with the ECS are not. The shared SEB frame advance (`Seb.Frame`, AutoAnimation) is a different mechanism; see [../formats/seb.md](../formats/seb.md) and the SEB timing report.
+Per-entity sprite animation is driven by three ECS components — `SebComponent` (slot 2), `AnimationComponent` (slot 10), `DirectionComponent` (slot 12) — and by `ecs.AnimationSystem` (factory position 19). Statically established: field layout, the three clip transitions (Change / CutIn / Restore), every direct `AddAnimation` producer and its guard, system registration, Init/Update/Pause dispatch and the persisted payloads. Port: transitions, component payload codecs and pooled slot-10 insertion are tested; effect creation now inserts actual playback into live ECS groups. The per-frame `AnimationSystem.Update` loop and the other spawn factories remain incomplete. The shared SEB frame advance (`Seb.Frame`, AutoAnimation) is a different mechanism; see [../formats/seb.md](../formats/seb.md) and the SEB timing report.
 
 Addresses are ELF VAs (Ghidra exports add `0x100000`).
 
@@ -127,13 +127,22 @@ Examples (port tests, direction 3): human Change(12, reset) → 15, frame 0; mon
 
 Spawn values never come from component defaults: Human/MapChip/Nature/Effect/Projectile/Particle use rate 1 / backup -1 only when the guarded call is reached; enemies may start at a non-zero frame and may lack Direction; static objects may lack Animation.
 
+### ECS playback insertion
+
+Entity.AddAnimation (game:0x06000b20, 0x112c488, 312 bytes) acquires a component and writes rate and backup together at +0x10/+0x14 before inserting slot 10. If a nonempty pool returns null, the native helper allocates a replacement; the portable PlaybackPool boundary must return a valid acquired component or throw. Neither field is clamped and no existing-slot guard precedes acquisition/writes. An occupied slot ignores the incoming object but its payload is already written; returning the installed pooled object changes that payload without a new notification. A notification error retains both stores and slot insertion. The known producers' (1,-1) values remain caller arguments, not defaults.
+
+Port: `visual_components.hpp/.cpp` defines EntityPlayback containing the existing AnimationPlayback state and implements add_animation_component. EffectFactoryHost now uses it by default; the effect test checks actual slot 10, rate 1/backup -1 and live Image+Animation group membership. The dedicated visual_components test checks negative/full-width arguments, reuse, occupied-slot objects and pool/notification failures. This does not yet bind change/cut-in/restore to live component references or execute the per-frame animation loop.
+
+Evidence: local `research/exports/animation-producers/M36765_AddAnimation.asm` and `research/exports/visual-components/metadata-contract.json`; combined field store at 0x112c594 and slot selection at 0x112c5b0. Confidence high; no runtime comparison.
+
 ## Port
 
 - Fire/FlyAway projectile and ModifyAnimation payload creation is ported in `projectile_launch`; see [combat.md](combat.md#projectile-launch-payload). ModifyAnimation per-frame execution remains open.
 
 - `src/core/animation/animation_transitions.{hpp,cpp}` (library `animation_transitions`): plain structs `SpriteAnimation {resource, clip, frame}`, `AnimationPlayback {rate, return_clip}`, `EntityAnimation` with `std::optional` sprite/playback/direction and human/monster/enemy flags, no default initialisers. `change_animation`, `cut_in_animation`, `restore_animation` reproduce the three methods including the mutation order before a missing component (`MissingAnimationComponent` exception, not IL2CPP ABI) and 32-bit wrap without UB. Test: `tests/test_animation_transitions.cpp` (CTest `animation_transitions_contract`): plain change with/without reset, human/monster/enemy direction differences, repeated cut-in, single restore, missing components with preserved partial mutations, negative id alignment and wrap.
 - `src/core/animation/animation_payload.{hpp,cpp}`: component payload codecs, see [../formats/animation-payload.md](../formats/animation-payload.md). Test: `tests/test_animation_payload.cpp`.
-- Missing: `AnimationSystem.Update` loop (needs SEB maxFrame selection via ResourceManagers and Seb.Frame), Init/subset wiring, Pause, all spawn factories, emitter/projectile systems; no link to `component_slots`. Header comments in `src/core/animation/*.hpp` still cite the old `docs/30-…` report path.
+- `src/core/gameplay/visual_components.{hpp,cpp}` links the slot-10 playback payload to `component_slots` and the effect factory. The effect/drop entity factories and projectile trajectory/launch kernels are now ported; their per-frame visual consumers remain incomplete.
+- Missing: `AnimationSystem.Update` loop (needs SEB maxFrame selection via ResourceManagers and Seb.Frame), its concrete Init/subset wiring, Pause, other spawn factories, emitter execution and live transition adapters.
 
 ## Evidence
 
@@ -154,4 +163,3 @@ Spawn values never come from component defaults: Human/MapChip/Nature/Effect/Pro
 3. Who calls Change/CutIn/Restore from gameplay, with which ids; meaning of the id layout (groups of 4 directions, human base 36).
 4. EmitterComponent fields (+0x10..+0x20), its queue collection, `emitter+0x14` values 1 and 2; CreateParticle semantics; ProjectileSystem trajectory math; callers that decide `anim`/`rotate`.
 5. `ModifyAnimatinSystem` / `ModifyAnimationComponent` and `SyncAnimationComponent` roles (adjacent animation systems, not yet analysed).
-6. Effect of AddAnimation on an entity that already has Animation (slot Add ignores occupied slots, but the pooled component fields are written first).
