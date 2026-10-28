@@ -3,10 +3,12 @@
 #include "stage_start.hpp"
 
 namespace saga::core {
+class EnemyGaugeService;
 struct EnemyCreationSystem:EnemyDefeatCounters {
     std::shared_ptr<StageQuest> quest;
     StageStartState* stage=nullptr;MemberRoster* members=nullptr;
-    EntitySubset* subset=nullptr; // Initialized And(24); Init's other work is separate.
+    EnemyGaugeService* gauge=nullptr; // GaugeSystem reference +0x40; drawing is separate.
+    EntitySubset* subset=nullptr; // And(24), published by initialize_enemies.
     std::int32_t created_enemies=0,loop_counter=0;
     EventInstruction maximum_by_section,created_by_section; // Both allocated as int32[10] by Init.
 };

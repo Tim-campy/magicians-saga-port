@@ -308,3 +308,6 @@ if(MSVC)
 else()
   target_compile_options(enemy_frame PRIVATE -ffp-contract=off)
 endif()
+
+saga_library(enemy_initialization enemy_initialization.cpp)
+target_link_libraries(enemy_initialization PUBLIC enemy_creation enemy_impact contact_collision combat_event_receivers entity_events)

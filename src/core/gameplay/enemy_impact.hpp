@@ -15,6 +15,6 @@ public:
     virtual ComponentSlots* create_emitter(std::int32_t,std::int32_t,std::int32_t,std::int32_t,std::int32_t,ProjectilePoint)=0;
     virtual void boss_defeated(ComponentSlots&)=0; // StageSystem.OnBossDefeat remains separate.
 };
-// EnemySystem.OnProjectileImpact 0x114e7b4; event-23 registration/dispatch are external.
+// EnemySystem.OnProjectileImpact 0x114e7b4; enemy_initialization binds event 23.
 void enemy_projectile_impact(ComponentSlots*,const CombatRecordTables&,RandomSource&,EnemyImpactHost&);
 }

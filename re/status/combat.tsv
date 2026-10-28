@@ -113,8 +113,8 @@ game:0x06000fca	reimplemented	src/core/gameplay/boss_notification.cpp	Ordered ke
 game:0x06000e0a	reimplemented	src/core/gameplay/pass_initialization.cpp	Concrete subset request/store, queue reset or event registration; failure and live trajectory integration tests.
 game:0x06000e0b	reimplemented	src/core/ecs/update_scheduler.cpp	Ordered dispatch or concrete enabled/pass gate; contract test; runtime comparison pending.
 game:0x06000e0c	reimplemented	src/core/gameplay/collision_pass.cpp	Complete pair selection and deferred delivery; live subset gated scheduler and both real contact receivers composed in tests
-game:0x06000e7f	reimplemented	src/core/gameplay/combat_event_receivers.cpp	Live enemy retargeting after human death; SearchTarget remains explicit.
-game:0x06000e67	traced	docs/subsystems/combat.md	Enemy group and event 23/29/30 targets resolved; registration slice bound with ordered delivery; complete Init not ported.
+game:0x06000e7f	reimplemented	src/core/gameplay/combat_event_receivers.cpp	Live current-subset retargeting after human death; actual SearchTarget bound in Init tests, including nested landing/death and captured-component stores.
+game:0x06000e67	reimplemented	src/core/gameplay/enemy_initialization.cpp	Supplied-world subset/Gauge/Stage/Member stores, separate zero quota arrays and actual ordered 23/29/30 handlers; failure/repeat/hash and recoil/damage/drop/nested-death integrations tested.
 game:0x06000ebb	traced	docs/subsystems/combat.md	Human group and event 23/29 targets resolved; real Human and Enemy contact delivery composed; complete Init not ported.
 game:0x06000ed0	reimplemented	src/core/gameplay/human_contact.cpp	Complete human contact receiver composed with real state transitions; guards displacement callbacks and failures tested.
 game:0x06001236	reimplemented	src/core/gameplay/drop_collection.cpp	Boss reward reads inherited int32 flags mask 1; decoded treasure rows and pickup gates tested.

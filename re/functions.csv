@@ -3474,7 +3474,7 @@ game:0x06000e63,game:0x06000e63,ecs,,84,0x114c2b8
 game:0x06000e64,game:0x06000e64,ecs,,28,0x114c30c
 game:0x06000e65,game:0x06000e65,ecs,,8,0x114c328
 game:0x06000e66,game:0x06000e66,ecs,,8,0x114c330
-game:0x06000e67,ecs.EnemySystem.Init,ecs,traced,588,0x114c338
+game:0x06000e67,ecs.EnemySystem.Init,ecs,reimplemented,588,0x114c338
 game:0x06000e68,ecs.EnemySystem.Reset,ecs,reimplemented,108,0x114c584
 game:0x06000e69,ecs.EnemySystem.NeedsUpdate,ecs,reimplemented,8,0x114c68c
 game:0x06000e6a,ecs.EnemySystem.Update,ecs,reimplemented,2368,0x114c694

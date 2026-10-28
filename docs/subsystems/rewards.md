@@ -537,11 +537,11 @@ Evidence: existing local `research/exports/defeat-helpers/M36982_World_CreateDro
 
 ## Open questions
 
-1. (blocking) Bind the ported Start/Update/Retry/StartBossBattle/result/return chain to decoded world/save state and a complete production system frame. MapSystem.LoadMap and full EnemySystem.Update are ported; EnemySystem.Init subscriptions, UI/audio/ad services and original secure storage remain required. The synthetic scenario reaches actual map construction, grants and in-memory character writeback, but does not establish playable integration.
+1. (blocking) Bind the ported Start/Update/Retry/StartBossBattle/result/return chain to decoded world/save state and a complete production system frame. MapSystem.LoadMap and full EnemySystem.Update are ported; EnemySystem.Init now binds its real event handlers in tests; full-frame integration, UI/audio/ad services and original secure storage remain required. The synthetic scenario reaches actual map construction, grants and in-memory character writeback, but does not establish playable integration.
 2. (blocking) Effective live RNG configuration/seed for Hits1000 drop rolls (see [rng.md](rng.md)); an explicit-seed, source-matched System.Random route and drop integration are now tested.
 3. Contracts of the AddMoney/AddCrystal value helpers (SecureLong-like? limits) and save persistence of money, records and high score.
 4. Bind decoded QuestData event/fixed-treasure groups and live RNG configuration to the now-ported money/treasure/prisoner placement chain.
-5. Bind EnemySystem.Init subscriptions to the ported full population/frame pass; supply decoded quest/chip-image/section state, effective shared RNG/scratch bindings and the required QuestForm cursor adapter. Locate the mission-transition owner of previous map-chip entities; LoadMap replaces the grid without destroying them.
+5. Bind the tested EnemySystem initialization/events/population/frame to production world services; supply decoded quest/chip-image/section state, effective shared RNG/scratch bindings and the required QuestForm cursor adapter. Locate the mission-transition owner of previous map-chip entities; LoadMap replaces the grid without destroying them.
 6. Event 1133 content, `SelectForm` return-flag consumers, other event-31/event-15 subscribers.
 7. Guards preventing double Defeat. EnemyData flag 1 is NO_ANIMATION; EnemyComponent flag 1 is BOSS, independently established in [combat](combat.md#enemy-creation-and-initial-targeting).
 8. Scheduler cadence of `StageSystem.Update` (31-tick collection, remainingTime_ units).
