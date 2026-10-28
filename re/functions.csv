@@ -3039,7 +3039,7 @@ game:0x06000c87,game:0x06000c87,ecs,,20,0x11399e0
 game:0x06000c88,game:0x06000c88,ecs,,172,0x11399f4
 game:0x06000c89,game:0x06000c89,ecs,,12,0x1139aa0
 game:0x06000c92,game:0x06000c92,ecs,,344,0x1139aac
-game:0x06000c95,game:0x06000c95,ecs,,1764,0x1139c04
+game:0x06000c95,kairo.unity.ecs.EventManager.RemoveAllEventHandlers,ecs,documented,1764,0x1139c04
 game:0x06000c9b,game:0x06000c9b,unassigned,,72,0x113a2e8
 game:0x06000c9c,game:0x06000c9c,unassigned,,72,0x113a330
 game:0x06000ca5,kairo.unity.ecs.Filter..ctor,ecs,documented,32,0x113a378
