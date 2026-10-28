@@ -252,3 +252,6 @@ endif()
 
 saga_library(member_selection member_selection.cpp)
 target_link_libraries(member_selection PUBLIC dynamic_subsets projectile_launch)
+
+saga_library(member_roster member_roster.cpp)
+target_link_libraries(member_roster PUBLIC combat_state)

@@ -538,7 +538,7 @@ add_test(NAME animation_resources_contract COMMAND test_animation_resources)
 add_test(NAME animation_scenario_integration COMMAND "${Python3_EXECUTABLE}" -I "${CMAKE_CURRENT_SOURCE_DIR}/test_animation_scenario.py" "$<TARGET_FILE:animation_trace>")
 
 add_executable(test_drop_collection test_drop_collection.cpp)
-target_link_libraries(test_drop_collection PRIVATE drop_collection enemy_rewards dynamic_subsets subset_cursors stage_cleanup member_selection)
+target_link_libraries(test_drop_collection PRIVATE drop_collection enemy_rewards dynamic_subsets subset_cursors stage_cleanup member_selection member_roster)
 project_warnings(test_drop_collection)
 add_test(NAME drop_collection_contract COMMAND test_drop_collection)
 
@@ -546,3 +546,8 @@ add_executable(test_member_selection test_member_selection.cpp)
 target_link_libraries(test_member_selection PRIVATE member_selection)
 project_warnings(test_member_selection)
 add_test(NAME member_selection_contract COMMAND test_member_selection)
+
+add_executable(test_member_roster test_member_roster.cpp)
+target_link_libraries(test_member_roster PRIVATE member_roster animation_pass member_selection)
+project_warnings(test_member_roster)
+add_test(NAME member_roster_contract COMMAND test_member_roster)

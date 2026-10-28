@@ -229,7 +229,7 @@ game:0x060000f7,game:0x060000f7,gameplay,,8,0x1178d4c
 game:0x060000f8,game:0x060000f8,gameplay,,64,0x1178d54
 game:0x060000f9,game:0x060000f9,gameplay,,44,0x1178d94
 game:0x060000fa,game:0x060000fa,gameplay,,8,0x1178dc0
-game:0x060000fb,game:0x060000fb,gameplay,,16,0x1178dc8
+game:0x060000fb,parameter.Parameter.Full,gameplay,reimplemented,16,0x1178dc8
 game:0x060000fc,game:0x060000fc,gameplay,,20,0x1178dd8
 game:0x060000fd,parameter.Parameter.Sub,gameplay,reimplemented,64,0x1178dec
 game:0x060000fe,game:0x060000fe,gameplay,,140,0x1178e2c
@@ -3680,9 +3680,9 @@ game:0x06000f31,game:0x06000f31,ecs,,244,0x115c1ec
 game:0x06000f32,game:0x06000f32,ecs,,188,0x115c2e0
 game:0x06000f33,game:0x06000f33,ecs,,3068,0x115c4a0
 game:0x06000f34,ecs.MemberSystem.OnFinish,ecs,reimplemented,756,0x115d618
-game:0x06000f35,game:0x06000f35,ecs,,348,0x115d0a4
-game:0x06000f36,game:0x06000f36,ecs,,108,0x115d90c
-game:0x06000f37,game:0x06000f37,ecs,,1048,0x115d200
+game:0x06000f35,ecs.MemberSystem.AddMember,ecs,reimplemented,348,0x115d0a4
+game:0x06000f36,ecs.MemberSystem.RemoveMember,ecs,reimplemented,108,0x115d90c
+game:0x06000f37,ecs.MemberSystem.InitMembers,ecs,reimplemented,1048,0x115d200
 game:0x06000f38,game:0x06000f38,ecs,,116,0x115da70
 game:0x06000f39,game:0x06000f39,ecs,,116,0x115dae4
 game:0x06000f3a,game:0x06000f3a,ecs,,116,0x115db58
@@ -3694,10 +3694,10 @@ game:0x06000f3f,ecs.MemberSystem.GetParamValue,ecs,reimplemented,24,0x115dd68
 game:0x06000f40,ecs.MemberSystem.GetParamValue,ecs,reimplemented,260,0x115dd80
 game:0x06000f41,ecs.MemberSystem.GetAttributeValue,ecs,reimplemented,24,0x1157410
 game:0x06000f42,game:0x06000f42,ecs,,24,0x1158ed4
-game:0x06000f43,game:0x06000f43,ecs,,104,0x115de84
-game:0x06000f44,game:0x06000f44,ecs,,260,0x115c39c
-game:0x06000f45,game:0x06000f45,ecs,,116,0x115deec
-game:0x06000f46,game:0x06000f46,ecs,,92,0x115df60
+game:0x06000f43,ecs.MemberSystem.SwapFormationIndex,ecs,reimplemented,104,0x115de84
+game:0x06000f44,ecs.MemberSystem.SetCharaDataId,ecs,reimplemented,260,0x115c39c
+game:0x06000f45,ecs.MemberSystem.SetCharaDataIdEmptySpace,ecs,reimplemented,116,0x115deec
+game:0x06000f46,ecs.MemberSystem.GetFormationNumber,ecs,reimplemented,92,0x115df60
 game:0x06000f47,game:0x06000f47,ecs,,124,0x11561ec
 game:0x06000f48,game:0x06000f48,ecs,,124,0x1156268
 game:0x06000f49,game:0x06000f49,ecs,,120,0x115dfbc

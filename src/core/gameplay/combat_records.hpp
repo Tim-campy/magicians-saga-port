@@ -8,6 +8,7 @@ struct HumanRecordLink final:Component {
     std::int32_t character_id=0,state=0,invincible_time=0; // +0x18/+0x24/+0x70.
     std::int32_t attack_frame=0,frame=0; // +0x30/+0x68.
     ComponentSlots* opponent=nullptr; // +0x38.
+    std::int32_t formation_x=0,formation_z=0,formation_index=0; // +0x28/+0x2c/+0x74.
 };
 struct EnemyRecordLink final:Component {
     std::int32_t enemy_id=0,level=0,flags=0; // +0x20/+0x10/+0x14.

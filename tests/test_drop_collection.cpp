@@ -3,6 +3,7 @@
 #include "core/gameplay/stage_cleanup.hpp"
 #include "core/gameplay/subset_cursors.hpp"
 #include "core/gameplay/member_selection.hpp"
+#include "core/gameplay/member_roster.hpp"
 #include "core/ecs/dynamic_subsets.hpp"
 #include <cstdlib>
 #include <deque>
@@ -26,12 +27,13 @@ struct Scene final:DropFactoryHost,EffectFactoryHost,DropCollectionHost,GarbageU
     StageRewards rewards{0,0,0,{}};DropCollectionState state{&rewards,false,false,std::make_shared<std::vector<ComponentSlots*>>()};
     TreasureTable treasures{TreasureRecord{}};EnemyRecord enemy;
     ComponentEvents human_events;ComponentSlots human{35,&human_events};ContactPosition human_position;Component player_tag;
-    std::vector<ComponentSlots*> members{&human};PlayerWorldState player_world{nullptr,&groups};
+    MemberRoster roster;PlayerWorldState player_world{nullptr,&groups};
     std::optional<ComponentSlots*> front_override,hero_override;
     std::vector<std::string> calls;int sounds=0,jingles=0,rolls=0;
     bool fail_duration=false,null_world=false,fail_jingle=false;std::function<void()> on_sound,on_world,on_treasure;
     Scene(){EntityRegistration registration{-100,&human,&human_events};registry.add(&registration,false);
         human_position.x=100;human_position.y=20;human_position.z=150;human.add(0,&human_position).add(30,&player_tag);
+        add_member(roster,&human);
         enemy.experience=EventIntegers{10,10};enemy.treasures=EnemyTreasureGroups{{{0,1000},{9,1000}}};}
     Node& node(const ComponentSlots& e){for(auto& n:nodes)if(&n.entity==&e)return n;throw std::invalid_argument("entity");}
     bool registered_id(std::int32_t id)override{return registry.contains(id);}
@@ -54,7 +56,7 @@ struct Scene final:DropFactoryHost,EffectFactoryHost,DropCollectionHost,GarbageU
     GarbageLifetime& acquire_garbage()override{garbage.emplace_back();return garbage.back();}
     std::int32_t clip_max_frame(std::int32_t r,std::int32_t clip)override{
         check(r==20&&clip==0);calls.push_back("duration");if(fail_duration)throw std::runtime_error("duration");return 12;}
-    ComponentSlots* front_line_human()override{calls.push_back("front");return front_override?*front_override:saga::core::front_line_human(&members);}
+    ComponentSlots* front_line_human()override{calls.push_back("front");return front_override?*front_override:saga::core::front_line_human(&roster.members->entities());}
     EntitySubset* drop_subset()override{calls.push_back("group");return &groups.get(std::make_shared<ComponentGroupFilter>(std::vector<std::int32_t>{34}));}
     const TreasureRecord& treasure(std::int32_t id)override{
         calls.push_back("treasure");if(on_treasure)on_treasure();auto& value=treasures.at(static_cast<std::size_t>(id));
@@ -143,9 +145,9 @@ int main()try{
      fails([&]{collect_drops(s.state,s);});check(s.state.reward_box_picked_up&&s.rewards.treasure_ids.size()==1&&s.nodes[0].entity.contains(22));
     }
     {Scene s;ComponentSlots companion(35);ContactPosition front;front.z=50;HumanRecordLink dead;dead.state=4;
-     companion.add(0,&front).add(14,&dead);s.members.push_back(&companion);s.human_position.z=300;
+     companion.add(0,&front).add(14,&dead);add_member(s.roster,&companion);s.human_position.z=300;
      s.spawn(0,4);collect_drops(s.state,s);check(s.state.collecting->size()==1); // Dead-state member still supplies the minimum Z.
-     s.members.pop_back();s.spawn(0,8);collect_drops(s.state,s);
+     remove_member(s.roster,&companion);s.spawn(0,8);collect_drops(s.state,s);
      check(s.state.collecting->size()==1&&s.nodes[1].drop.frame==-1); // Roster removal changes the pickup gate.
      for(int i=0;i<31;++i)update_collecting_drops(s.state,s);
      check(s.rewards.experience==4&&s.nodes[0].position.z==300&&s.player_world.cached_player==&s.human);

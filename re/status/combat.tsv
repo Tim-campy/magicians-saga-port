@@ -121,3 +121,11 @@ game:0x06001236	reimplemented	src/core/gameplay/drop_collection.cpp	Boss reward 
 kairo:0x06000b5a	reimplemented	src/core/gameplay/projectile_motion.cpp	Existing binary32 float curve shared by projectile motion and 31-pass drop collection; endpoint/gating/order integration tested.
 game:0x06000fa9	reimplemented	src/core/gameplay/member_selection.cpp	Strict minimum-Z party scan from FLT_MAX, first tie, no death/HP filter; actual collection binding and exceptional coordinates tested.
 game:0x06000f2d	reimplemented	src/core/gameplay/member_selection.cpp	Current-world forwarding to the concrete player cache; real group lookup and collection hero targeting tested.
+game:0x06000f35	reimplemented	src/core/gameplay/member_roster.cpp	Ordered unique append to party and non-Player sub-party; null partial insertion and marker changes tested.
+game:0x06000f36	reimplemented	src/core/gameplay/member_roster.cpp	First-occurrence removal from both party lists, no destruction or cache/formation reset; collection integration tested.
+game:0x06000f37	reimplemented	src/core/gameplay/member_roster.cpp	Formation positioning, ordered parameter maxima/full, actual animation/state reset and wrapping sortie count; callback/failure/list contracts tested.
+game:0x06000f43	reimplemented	src/core/gameplay/member_roster.cpp	Formation ID swap with negative/equal/range guards; main-character restriction bypass preserved.
+game:0x06000f44	reimplemented	src/core/gameplay/member_roster.cpp	Empty-slot assignment and guarded clearing of main character; current-array replacement and negative ID contracts tested.
+game:0x06000f45	reimplemented	src/core/gameplay/member_roster.cpp	Reject empty sentinel and try formation slots in order until first accepted assignment; duplicate IDs allowed.
+game:0x06000f46	reimplemented	src/core/gameplay/member_roster.cpp	First matching formation index, with unconditional minus-one sentinel rejection.
+game:0x060000fb	reimplemented	src/core/gameplay/member_roster.cpp	Nonzero base maximum copies into base value; zero and extra fields preserved; composed member initialization tested.
