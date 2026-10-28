@@ -33,7 +33,7 @@ game:0x06000e83	reimplemented	src/core/gameplay/enemy_defeat.cpp	Complete motion
 game:0x06000d47	traced	docs/subsystems/rewards.md	flag +0x14 via BitUtil.Check; bit meaning unknown
 game:0x060010ca	reimplemented	src/core/gameplay/enemy_defeat.cpp	Wrapping int32 addition then clamp at zero; overflow and negative increment tests
 game:0x060010c7	reimplemented	src/core/gameplay/enemy_rewards.cpp	Binary32 zero-amplitude interpolation with wrapped progress/difference; synthetic edges and full local table audit
-game:0x06000bf9	traced	docs/subsystems/rewards.md	drop entity; jump table; type 3 overrides scale to 100
+game:0x06000bf9	reimplemented	src/core/gameplay/drop_factory.cpp	All four pending-drop branches and core payloads; registry/groups and reward suffix integration tested; Cell/Image explicit.
 game:0x06000fa4	documented	docs/subsystems/rewards.md	start collection / boss reward pickup
 game:0x06000fa5	documented	docs/subsystems/rewards.md	31-tick interpolation then OnCollectedDrop
 game:0x06000fb9	documented	docs/subsystems/rewards.md	accumulator switch ported in src/core/gameplay/stage_rewards.cpp; effects/SE not ported

@@ -2903,7 +2903,7 @@ game:0x06000bf5,kairo.unity.ecs.World.CreateEffect,ecs,reimplemented,588,0x1134a
 game:0x06000bf6,game:0x06000bf6,ecs,,648,0x1134cbc
 game:0x06000bf7,kairo.unity.ecs.World.CreateParticle,ecs,traced,600,0x1134f44
 game:0x06000bf8,game:0x06000bf8,ecs,,252,0x113519c
-game:0x06000bf9,kairo.unity.ecs.World.CreateDrop,ecs,traced,664,0x1135298
+game:0x06000bf9,kairo.unity.ecs.World.CreateDrop,ecs,reimplemented,664,0x1135298
 game:0x06000bfa,game:0x06000bfa,ecs,,252,0x1135530
 game:0x06000bfb,kairo.unity.ecs.World..ctor,ecs,traced,284,0x11333ac
 game:0x06000bfc,game:0x06000bfc,ecs,,8,0x113562c

@@ -504,3 +504,13 @@ add_executable(test_effect_factory test_effect_factory.cpp)
 target_link_libraries(test_effect_factory PRIVATE effect_factory dynamic_subsets)
 project_warnings(test_effect_factory)
 add_test(NAME effect_factory_contract COMMAND test_effect_factory)
+
+add_executable(test_drop_factory test_drop_factory.cpp)
+target_link_libraries(test_drop_factory PRIVATE drop_factory dynamic_subsets enemy_rewards combat_rules)
+project_warnings(test_drop_factory)
+add_test(NAME drop_factory_contract COMMAND test_drop_factory)
+
+add_executable(test_entity_visual test_entity_visual.cpp)
+target_link_libraries(test_entity_visual PRIVATE entity_visual)
+project_warnings(test_entity_visual)
+add_test(NAME entity_visual_contract COMMAND test_entity_visual)

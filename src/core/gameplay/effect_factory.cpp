@@ -5,13 +5,7 @@
 namespace saga::core {
 namespace {
 std::int32_t bits(std::uint32_t v){return static_cast<std::int32_t>(v<=0x7fffffffU?static_cast<std::int64_t>(v):static_cast<std::int64_t>(v)-0x100000000LL);}
-std::int32_t cell_coordinate(float v){
-    // ARM FCVTZS, plus the factory's explicit positive-infinity override, then signed /24.
-    if(std::isnan(v))return 0;
-    if(v==std::numeric_limits<float>::infinity()||v<=-2147483648.0F)return std::numeric_limits<std::int32_t>::min()/24;
-    if(v>=2147483648.0F)return std::numeric_limits<std::int32_t>::max()/24;
-    return static_cast<std::int32_t>(v)/24;
-}
+
 }
 ComponentSlots& create_effect(EffectRequest r,EntityIdState& ids,EffectFactoryHost& host){
     auto max_frame=r.max_frame;
@@ -25,7 +19,7 @@ ComponentSlots& create_effect(EffectRequest r,EntityIdState& ids,EffectFactoryHo
     auto& speed=host.acquire_speed();speed.x=0;speed.y=0;speed.z=0;entity.add(1,&speed);
     auto& sprite=host.acquire_sprite();sprite.animation={r.resource,r.clip,r.frame};sprite.layers={-1};entity.add(2,&sprite);
     if(r.depth){
-        host.add_cell(entity,cell_coordinate(r.position.x),cell_coordinate(r.position.z));
+        host.add_cell(entity,factory_cell_coordinate(r.position.x),factory_cell_coordinate(r.position.z));
         auto& depth=host.acquire_depth();depth.value=0;depth.extra=40;entity.add(4,&depth);
     }
     if(!r.loop)add_garbage_lifetime(entity,max_frame,host);

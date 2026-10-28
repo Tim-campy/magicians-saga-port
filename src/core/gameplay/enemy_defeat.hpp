@@ -1,11 +1,12 @@
 #pragma once
 #include "combat_state.hpp"
+#include "depth_component.hpp"
 #include "projectile_launch.hpp"
 
 namespace saga::core {
 inline constexpr std::int32_t defeat_color_slot=6,drop_depth_slot=4;
 struct DefeatColor final:Component {std::array<std::int32_t,4> values{};}; // Raw Color +0x10..+0x1c, not normalized RGBA.
-struct DropDepth final:Component {std::int32_t extra=0;}; // Depth +0x14.
+using DropDepth=EntityDepth;
 struct EnemyDefeatCounters {std::int32_t defeated_enemies=0,remaining_enemies=0;}; // System +0x34/+0x68; caller owns initialization.
 class EnemyDefeatHost:public ProjectileLaunchHost {
 public:
