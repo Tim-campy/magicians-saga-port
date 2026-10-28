@@ -1,6 +1,6 @@
 # ECS (entities, components, systems)
 
-The game runs on Kairosoft's own ECS (`kairo.unity.ecs`, KairoLibrary) specialised by `ecs.*` types in Assembly-CSharp. Statically established: the world/manager construction, the concrete entity factory (one `BaseEntity` type with 35 component slots), slot storage and its notifications, subset (group) maintenance through `IFilter.Matches`, the `HashSet<Entity>` storage and its enumeration order, system registration and Update/Init/Pause dispatch, enable/pause/remove-all/serialize lifecycle, and the two-pass entity load and destroy order. Port: component slot storage, `ContainsAll/ContainsAny` and the `Filter.Matches` predicate are reimplemented and tested; subset membership and observable slot ordering are now ported with live collision/garbage cursors; registry creation/dedup, ID allocation and complete system scheduling remain open. Nothing was compared against a running original.
+The game runs on Kairosoft's own ECS (`kairo.unity.ecs`, KairoLibrary) specialised by `ecs.*` types in Assembly-CSharp. Statically established: the world/manager construction, the concrete entity factory (one `BaseEntity` type with 35 component slots), slot storage and its notifications, subset (group) maintenance through `IFilter.Matches`, the `HashSet<Entity>` storage and its enumeration order, system registration and Update/Init/Pause dispatch, enable/pause/remove-all/serialize lifecycle, and the two-pass entity load and destroy order. Port: component slot storage, `ContainsAll/ContainsAny` and the `Filter.Matches` predicate are reimplemented and tested; subset membership and observable slot ordering are now ported with live collision/garbage cursors; entity ID selection and creation orchestration are now ported with explicit registry/factory services; registry creation/dedup and the complete system schedule remain open. Nothing was compared against a running original.
 
 All addresses are ELF VAs (load bias 0; Ghidra exports add `0x100000`). Numbers like `37083` in the evidence are IL2CPP metadata method indices, not registry ids.
 
@@ -39,7 +39,7 @@ Evidence: local `research/exports/combat-record-links/` and `combat-slots/` boun
 
 ### Entity creation
 
-`World.CreateEntity` (`0x1133568`) forwards to `EntityManager.CreateEntity` (`0x11375e4`) with second argument 0. That calls the manager's virtual factory (vtable slot 4, via class+0x178): `MyEntityManager.Create` (`0x1141a44`, tail call) → `EntityManager.Create` (`0x11378d0`). `Create` returns **null for any type selector ≠ 0**; for selector 0 it allocates `BaseEntity` and calls `BaseEntity..ctor(id, slotCount=manager+0x10, manager)` (`0x1136824`), which allocates the component array. `CreateEntity` treats a null return as an error, then registers the result via `AddEntity`. ID allocation/reuse policy (limit, free-ID search) is not recovered.
+`World.CreateEntity` (`0x1133568`) forwards to `EntityManager.CreateEntity` (`0x11375e4`) with second argument 0. That calls the manager's virtual factory (vtable slot 4, via class+0x178): `MyEntityManager.Create` (`0x1141a44`, tail call) → `EntityManager.Create` (`0x11378d0`). `Create` returns **null for any type selector ≠ 0**; for selector 0 it allocates `BaseEntity` and calls `BaseEntity..ctor(id, slotCount=manager+0x10, manager)` (`0x1136824`), which allocates the component array. `CreateEntity` treats a null return as an error, then registers the result via `AddEntity`. ID selection, threshold scanning and failure ordering are now recovered and ported as described below.
 
 Game factories (`World.CreateHuman/Enemy/MapChip/Nature/Effect/Particle`) build on this and add components explicitly; their animation-relevant arguments are in [animation.md](animation.md).
 
@@ -257,7 +257,7 @@ The integrated test constructs Collision/Position and Garbage groups, changes me
 
 - `src/core/ecs/component_slots.{hpp,cpp}` (`saga::core::ComponentSlots`, library `component_slots`): fixed slot vector of borrowed `Component*`, size fixed at construction, synchronous `ComponentObserver` callbacks (added/removed/changed), `add/change/remove/remove_all/get/contains/contains_all/contains_any`. Does not own, clone or free components; operations don't allocate. Index/size errors are C++ exceptions, not IL2CPP exception identity. Test: `tests/test_component_slots.cpp` (CTest `component_slots_contract`): duplicate add, null add, same-pointer change, callback args and visibility, ascending RemoveAll with later/current/earlier reinsertion, exception without rollback, invalid indices, empty array, predicate short-circuit order, empty/repeated lists, Change(null).
 - `src/core/ecs/component_filter.{hpp,cpp}` (`matches_component_filter(entity, all, any, none)`): Filter.Matches predicate over ComponentSlots with borrowed nullable lists, re-read each call. Test: `tests/test_component_filter.cpp` (`component_filter_contract`).
-- Missing: GC/pooling, array type checks, subclasses overriding virtual slot methods, EntityManager/registry/ID counter and dynamic subset registration/dedup, Filter identity/hash/builders, World, concrete system registration lists, enable/pause/remove-all and (de)serialization passes. Ordered Init/Update dispatch and entity event delivery/removal are ported above. No link yet between component_slots and the animation module.
+- Missing: GC/pooling, array type checks, subclasses overriding virtual slot methods, EntityManager registry and dynamic subset registration/dedup, Filter identity/hash/builders, World, concrete system registration lists, enable/pause/remove-all and (de)serialization passes. Ordered Init/Update dispatch and entity event delivery/removal are ported above. No link yet between component_slots and the animation module.
 - Header comments in `src/core/ecs/*.hpp` still cite the old `docs/35-component-slots.md` path; should point here.
 
 ### Complete update schedule
@@ -391,6 +391,18 @@ Tests check all four filters, null-world/lookup/subscription failures, null subs
 
 Evidence: local `research/exports/system-initializers/{ProjectileSystem,MoveSystem,CollisionSystem,GarbageSystem}.asm`. Projectile stores its group at 0x115ffac, queue at 0x115ffc4 and registers at 0x1160004; Collision stores its group at 0x1145f04 and queue at 0x1145f1c. Confidence high; runtime comparison absent.
 
+### Entity ID selection and creation orchestration
+
+EntityManager.CreateEntity (game:0x06000c5d, 0x11375e4, 372 bytes) captures the previous int32 counter at manager+0x14 and computes next with wrapping int32 addition. When signed next < 0x7ffffffd it stores next and uses the previous counter as the selected ID: a new manager starts at 0, so ordinary creation initially receives IDs 0, 1, 2. Deleted IDs are not searched on this path. No dictionary lookup checks the selected sequential ID before calling the factory.
+
+Otherwise it stores 0x7ffffffd to the counter and probes Dictionary.ContainsKey from ID 0 upward, selecting the first absent ID. Probes cover 0 through 0x7ffffffe; 0x7fffffff is the exclusive loop bound. If every tested ID is present, control falls through with the old counter still selected. That exhaustive path is statically established but not exercised by the tests (it requires 2147483647 probes). The next allocation repeats scanning from zero. Counter values loaded from saves are not sanitized: e.g. INT_MAX increments to INT_MIN and follows the signed sequential branch.
+
+After selection, temporary=true passes ID -1 to virtual Create(type,id); it still advances/clamps the counter and performs the free-ID scan before overriding the ID. A null factory result faults. A nonnull result is passed to AddEntity with the same temporary flag, then returned. Factory/registration failures leave earlier counter changes and service effects committed. The existing concrete MyEntityManager factory returns null for nonzero type; custom virtual factory behavior remains explicit rather than rejected ahead of that call.
+
+Port: `entity_creation.hpp/.cpp` implements this entire selection/Create/AddEntity orchestration over EntityIdState and EntityCreationHost. The host supplies registered-ID queries, object allocation and registration; it owns returned ComponentSlots and establishes their ID field/registry relationship. This does not implement EntityManager's dictionary or its three component-event subscriptions. Tests verify initial IDs, temporary ID gaps, threshold and repeatable probe order, counter visibility during lookup, signed overflow and lookup/factory/null-result/registration failures. HashSet identity remains supplied by the host.
+
+Evidence: local `research/exports/entity-create/M37082_CreateEntity.asm`: previous counter load at 0x1137628, wrapping increment and signed comparison at 0x1137634/0x113763c, clamp at 0x1137648, probe at 0x113766c, selected scan ID at 0x1137688, temporary override at 0x1137694, factory call at 0x11376a4 and AddEntity at 0x11376bc. The 0x1137680 exhaustion branch skips the scan-ID assignment. Confidence high; no Android comparison.
+
 ## Evidence
 
 - Temporary lifetime: local `research/exports/garbage-lifetime/{Init,NeedsUpdate,Update,AddGarbage}.asm`. Init writes filter value 0x16; AddGarbage writes +0x10 and passes slot 0x16; Update stores the decremented counter at 0x11532e0, then queues on signed <= 0, and calls Entity.Destroy(true) at 0x1153384 only after the first enumeration finishes. Confidence high for arithmetic and call order; Android comparison absent.
@@ -409,7 +421,7 @@ Evidence: local `research/exports/system-initializers/{ProjectileSystem,MoveSyst
 
 ## Open questions
 
-1. (blocking) Entity ID allocation: writers of `entity+0x28` besides Deserialize, use of the counter `+0x14`, free-ID policy and limit; whether IDs are stable for an entity's lifetime (they are the HashSet hash).
+1. (blocking) Entity ID lifetime: identify any writers of `entity+0x28` besides construction and Deserialize; whether IDs stay stable while in groups (they are the HashSet hash). Counter selection and free-ID scanning are now established and ported above.
 2. Exact allocation/capacity limits are not reproduced by the narrow ordering adapter. Public-source slot/version behavior is implemented; revisit capacity only if a concrete gameplay case depends on it.
 3. (blocking) Dictionary<int, Entity> (instance 399) enumeration order used by Serialize and DestroyAllEntities.
 4. Full slot-index → component type table (`ComponentFactory.Create`), and EntityManager deletion callbacks/indirect mutations (`Entity.Destroy` wrapper is now ported; see [rewards.md](rewards.md#member-finalization-and-deferred-town-return)).

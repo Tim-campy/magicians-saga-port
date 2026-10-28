@@ -2993,7 +2993,7 @@ game:0x06000c59,kairo.unity.ecs.EntityManager..ctor,ecs,documented,280,0x1137424
 game:0x06000c5a,game:0x06000c5a,ecs,,8,0x113753c
 game:0x06000c5b,game:0x06000c5b,ecs,,80,0x1137544
 game:0x06000c5c,game:0x06000c5c,ecs,,80,0x1137594
-game:0x06000c5d,kairo.unity.ecs.EntityManager.CreateEntity,ecs,documented,372,0x11375e4
+game:0x06000c5d,kairo.unity.ecs.EntityManager.CreateEntity,ecs,reimplemented,372,0x11375e4
 game:0x06000c5e,kairo.unity.ecs.EntityManager.Create,ecs,documented,128,0x11378d0
 game:0x06000c5f,kairo.unity.ecs.EntityManager.DestroyEntity,ecs,reimplemented,152,0x1137950
 game:0x06000c60,kairo.unity.ecs.EntityManager.DestroyAllEntities,ecs,documented,132,0x11379e8

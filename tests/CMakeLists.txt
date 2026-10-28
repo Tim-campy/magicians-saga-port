@@ -474,3 +474,8 @@ add_executable(test_pass_initialization test_pass_initialization.cpp)
 target_link_libraries(test_pass_initialization PRIVATE pass_initialization)
 project_warnings(test_pass_initialization)
 add_test(NAME pass_initialization_contract COMMAND test_pass_initialization)
+
+add_executable(test_entity_creation test_entity_creation.cpp)
+target_link_libraries(test_entity_creation PRIVATE entity_creation)
+project_warnings(test_entity_creation)
+add_test(NAME entity_creation_contract COMMAND test_entity_creation)

@@ -25,7 +25,7 @@ game:0x06000c19	documented	docs/subsystems/ecs.md
 game:0x06000db5	documented	docs/subsystems/ecs.md	
 game:0x06000db6	documented	docs/subsystems/ecs.md	
 game:0x06000c59	documented	docs/subsystems/ecs.md	
-game:0x06000c5d	documented	docs/subsystems/ecs.md	
+game:0x06000c5d	reimplemented	src/core/ecs/entity_creation.cpp	Wrapping counter, threshold/free-ID scan, temporary override and ordered factory/registration; tested failure effects.
 game:0x06000c5e	documented	docs/subsystems/ecs.md	
 game:0x06000c62	documented	docs/subsystems/ecs.md	
 game:0x06000c63	documented	docs/subsystems/ecs.md	
