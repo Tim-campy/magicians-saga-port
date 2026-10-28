@@ -1,5 +1,6 @@
 #pragma once
 #include "core/gameplay/human_factory.hpp"
+#include "core/gameplay/hero_bootstrap.hpp"
 #include "core/gameplay/animation_pass.hpp"
 #include "core/gameplay/stage_cleanup.hpp"
 #include <cstdlib>
@@ -21,10 +22,10 @@ struct Node {
               .add(14,&human).add(23,&parameters);}
 };
 struct Fixture final:PartyStartHost,PartyHumanFactory,PartyDistanceSystem,MemberInitializationHost,
-                     HumanStateHost,QuestEntityHost,EntityDeletionHost,ComponentObserver,HumanFactoryHost {
+                     HumanStateHost,QuestEntityHost,EntityDeletionHost,ComponentObserver,HumanFactoryHost,HeroBootstrapHost {
     std::deque<Node> nodes;std::deque<ProjectileCollision> collisions;std::vector<Component*> released;
     EntityRegistry registry{*this};DynamicSubsets groups{registry,[&](const ComponentSlots& e){return node(e).id;}};
-    PlayerWorldState world{nullptr,&groups};MemberRoster roster;EntityIdState ids;HumanFactory factory{ids,*this};
+    PlayerWorldState world{nullptr,&groups};PlayerWorldState* current_binding=&world;Component player_tag;bool null_player_marker=false;MemberRoster roster;EntityIdState ids;HumanFactory factory{ids,*this};
     HumanHat hat{2,700};HumanHats hat_rows=std::make_shared<std::vector<HumanHat*>>(1,&hat);
     ParameterMaximumLevels maxima=initial_parameter_maximum_levels();EventInstruction parameter_keys=initial_character_parameter_ids();
     std::array<PartyCharacter,12> records;std::array<std::int32_t,12> sorties{};
@@ -38,19 +39,21 @@ struct Fixture final:PartyStartHost,PartyHumanFactory,PartyDistanceSystem,Member
     std::function<void()> on_factory_world,on_release;std::function<void(HumanRecordLink&)> on_record;
     std::function<void(const HumanCreation&)> on_create;
     std::function<void(ComponentSlots&,std::int32_t)> on_added;
-    Fixture(){for(std::size_t i=0;i<records.size();++i){records[i].id=static_cast<std::int32_t>(i);records[i].flags=i==0?2:4;
+    Fixture(bool bootstrap=true){for(std::size_t i=0;i<records.size();++i){records[i].id=static_cast<std::int32_t>(i);records[i].flags=i==0?2:4;
             records[i].saved={4,42};records[i].image=static_cast<std::int32_t>(50+i);records[i].weapon_id=static_cast<std::int32_t>(i+3);
             records[i].parameters.values=std::make_shared<std::vector<EventInstruction>>();
             for(std::int32_t key=0;key<13;++key)records[i].parameters.values->push_back(std::make_shared<EventIntegers>(EventIntegers{100+key,100+key}));
             table->push_back(&records[i]);}
-        spawn(0).entity.add(30,&nodes.front().tag);(*roster.formation)[10]=0;}
+        if(bootstrap)initialize_member_system(roster,&world,*this);}
     Node& node(const ComponentSlots& e){for(auto& n:nodes)if(&n.entity==&e)return n;throw std::invalid_argument("entity");}
     Node& spawn(std::int32_t character){nodes.emplace_back(static_cast<std::int32_t>(nodes.size()));auto& n=nodes.back();
         n.human.character_id=character;EntityRegistration r{n.id,&n.entity,&n.events};registry.add(&r,false);ids.counter=static_cast<std::int32_t>(nodes.size());return n;}
     void added(ComponentSlots& e,std::int32_t i,Component* c)override{groups.added(e,i,c);if(on_added)on_added(e,i);}
     void removed(ComponentSlots& e,std::int32_t i,Component* c)override{groups.removed(e,i,c);}
     void changed(ComponentSlots& e,std::int32_t i,Component* a,Component* b)override{groups.changed(e,i,a,b);}
-    PlayerWorldState* current_world()override{calls.push_back("world");return no_world?nullptr:&world;}
+    PlayerWorldState* current_world()override{calls.push_back("world");return no_world?nullptr:current_binding;}
+    PartyHumanFactory* world_factory(PlayerWorldState&)override{return no_factory?nullptr:&factory;}
+    Component* player_marker()override{return null_player_marker?nullptr:&player_tag;}
     QuestEntityHost* destruction_host(PlayerWorldState& w)override{check(&w==&world);calls.push_back("destruction");return this;}
     QuestMemberId entity_id(ComponentSlots& e)override{return static_cast<QuestMemberId>(node(e).id);}
     PartyCharacter* character(HumanRecordLink& h)override{if(on_record)on_record(h);return table->at(static_cast<std::size_t>(h.character_id));}

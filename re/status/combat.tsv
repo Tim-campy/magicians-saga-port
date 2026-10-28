@@ -142,3 +142,8 @@ game:0x06000f57	reimplemented	src/core/gameplay/party_start.cpp	Forward buffered
 game:0x060000e2	reimplemented	src/core/gameplay/character_parameter_set.cpp	Captured key order, base growth then maximum predicate/live maximum level; first duplicate retained, owner/payload fields and human factory tested.
 game:0x06001076	reimplemented	src/core/gameplay/character_parameter_set.cpp	Unsigned key below two; negative/other keys have no base maximum; actual parameter creation tested.
 game:0x06000c1d	reimplemented	src/core/gameplay/human_factory.cpp	Require each visited hat, Check flags mask 2; public first-match/default selection and pre-allocation failures tested.
+game:0x06000bed	reimplemented	src/core/gameplay/hero_bootstrap.cpp	First nonnull main record ID -> receiver human factory at level 1/EXP 0 -> shared Player; real Member Init/OnStart chain tested.
+game:0x06000f32	reimplemented	src/core/gameplay/hero_bootstrap.cpp	Whole argument loaded-byte gate, current-world creation, independent hero/cache re-query and guarded slot-10 assignment; generic initializer composed.
+game:0x06000bff	reimplemented	src/core/gameplay/hero_bootstrap.cpp	Not-loaded predicate compares entire byte to zero; noncanonical bytes and global-query skip tested.
+game:0x06000b8f	reimplemented	src/core/gameplay/hero_bootstrap.cpp	Insert shared Entity.playerComponent_ at slot 30, no pool/cache mutation; null/shared pointers and listener failure tested.
+game:0x06000c1c	reimplemented	src/core/gameplay/hero_bootstrap.cpp	Null character rows skip main-record search; first mask-2 match used, no-match pre-allocation failure tested.

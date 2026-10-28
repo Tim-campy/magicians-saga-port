@@ -7,6 +7,7 @@ namespace saga::core {
 struct PlayerWorldState {
     ComponentSlots* cached_player=nullptr; // World +0x18.
     DynamicSubsets* groups=nullptr; // EntityManager.GetSubSet service.
+    std::uint8_t loaded=0; // World +0x38; any nonzero byte means loaded.
 };
 // World.get_playerEntity 0x1133210; cache miss queries And({30}), then first entity.
 ComponentSlots* world_player_entity(PlayerWorldState&);

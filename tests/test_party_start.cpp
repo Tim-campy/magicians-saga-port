@@ -10,7 +10,7 @@ int main()try{
      check(f.creations.size()==2&&f.creations[0].character==1&&f.creations[1].character==2);
      const auto& a=f.creations[1];check(a.direction==0&&a.level==4&&a.experience==42&&a.formation_x==108&&a.formation_z==108&&a.x==0&&a.y==0&&a.z==0);
      auto& hero=f.nodes.front();check(hero.human.formation_index==10&&hero.human.formation_x==72&&hero.human.formation_z==72);
-     check(hero.position.x==172&&hero.position.z==272&&hero.hp.value==100&&f.sorties[0]==1);
+     check(hero.position.x==172&&hero.position.z==272&&resolve_combat_parameter(hero.entity,0)->value==100&&f.sorties[0]==1);
      check(f.roster.members->entities().size()==3&&f.roster.sub_members->entities().size()==2);
      check(f.quest_queries==0&&f.editor_queries==0&&f.random_queries==0&&f.distance_order.empty());
      check(front_line_human(&f.roster.members->entities())==&f.nodes[3].entity);}
@@ -36,22 +36,22 @@ int main()try{
      for(const auto& c:f.creations)check(c.formation_x==-36&&c.formation_z==0);
      check(f.nodes.front().human.formation_index==-1&&f.nodes.front().position.x==64);}
     {Fixture f;f.on_factory_world=[&]{f.records[1].saved={77,88};(*f.table)[1]=&f.records[2];};
-     auto* e=create_sub_character(12,24,1,f);check(e&&f.creations.back().character==1&&f.creations.back().level==77&&f.creations.back().experience==88);}
-    {Fixture f;f.no_factory=true;fails([&]{create_sub_character(0,0,1,f);});check(f.creations.empty());
-     f.table->at(1)=nullptr;fails([&]{create_sub_character(0,0,1,f);});fails([&]{create_sub_character(0,0,-1,f);});}
+     auto* e=create_sub_character(12,24,1,static_cast<PartyStartHost&>(f));check(e&&f.creations.back().character==1&&f.creations.back().level==77&&f.creations.back().experience==88);}
+    {Fixture f;f.no_factory=true;fails([&]{create_sub_character(0,0,1,static_cast<PartyStartHost&>(f));});check(f.creations.empty());
+     f.table->at(1)=nullptr;fails([&]{create_sub_character(0,0,1,static_cast<PartyStartHost&>(f));});fails([&]{create_sub_character(0,0,-1,static_cast<PartyStartHost&>(f));});}
     {Fixture f;f.on_release=[](){throw std::runtime_error("release");};auto& e=f.nodes.front().entity;
      add_party_collision(e,99,0,0,0,false,static_cast<PartyStartHost&>(f));fails([&]{start_party(f.roster,f);});
      check(!e.contains(32)&&f.roster.members->entities().empty());}
-    {Fixture f;f.no_world=true;fails([&]{start_party(f.roster,f);});check(f.collisions.empty());}
+    {Fixture f;f.no_world=true;fails([&]{start_party(f.roster,f);});check(f.collisions.size()==1);}
     {Fixture f;(*f.roster.formation)[0]=-2;fails([&]{start_party(f.roster,f);});
      check(f.nodes.front().entity.contains(32)&&f.roster.members->entities().size()==1&&f.sorties[0]==0);}
     {Fixture f;f.debug=true;f.auto_party=true;f.no_distance=true;fails([&]{start_party(f.roster,f);});
      check(f.random_queries==8&&f.distance_order.empty()&&f.layout_index==-1&&f.roster.members->entities().size()==1);}
     {Fixture f;f.debug=true;f.auto_party=true;for(auto& r:f.records)r.flags=0;
      fails([&]{start_party(f.roster,f);});check(f.random_queries==8&&f.creations.empty());}
-    {Fixture f;auto& e=f.nodes.front().entity;auto& occupied=f.collisions.emplace_back();e.add(32,&occupied);
+    {Fixture f;auto& e=f.nodes.front().entity;e.remove(32);auto& occupied=f.collisions.emplace_back();e.add(32,&occupied);
      add_party_collision(e,12,1,2,3,true,static_cast<PartyStartHost&>(f));check(e.get(32)==&occupied&&f.collisions.back().radius==12);
      e.remove(32);remove_party_collision(e,static_cast<PartyStartHost&>(f));check(f.released.back()==nullptr);}
     {Fixture f;auto& other=f.spawn(1);f.on_record=[&](HumanRecordLink&){other.entity.remove(14);};
-     fails([&]{start_party(f.roster,f);});check(f.destroyed.empty()&&f.collisions.empty());}
+     fails([&]{start_party(f.roster,f);});check(f.destroyed.empty()&&f.collisions.size()==1);}
 }catch(const std::exception& e){std::cerr<<"uncaught party start error: "<<e.what()<<'\n';return 1;}

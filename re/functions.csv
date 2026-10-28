@@ -2812,7 +2812,7 @@ game:0x06000b8b,game:0x06000b8b,ecs,,344,0x11307a4
 game:0x06000b8c,game:0x06000b8c,ecs,,168,0x11308fc
 game:0x06000b8d,game:0x06000b8d,ecs,,136,0x11309a4
 game:0x06000b8e,game:0x06000b8e,ecs,,16,0x1130a2c
-game:0x06000b8f,game:0x06000b8f,ecs,,108,0x1130a3c
+game:0x06000b8f,kairo.unity.ecs.Entity.AddPlayer,ecs,reimplemented,108,0x1130a3c
 game:0x06000b90,game:0x06000b90,ecs,,36,0x1130aa8
 game:0x06000b91,game:0x06000b91,ecs,,136,0x1130acc
 game:0x06000b92,game:0x06000b92,ecs,,16,0x1130b54
@@ -2891,7 +2891,7 @@ game:0x06000be9,game:0x06000be9,ecs,,72,0x1133520
 game:0x06000bea,game:0x06000bea,ecs,,260,0x1133588
 game:0x06000beb,kairo.unity.ecs.World.CreateMapChip,ecs,traced,276,0x113368c
 game:0x06000bec,kairo.unity.ecs.World.CreateNature,ecs,traced,264,0x11337a0
-game:0x06000bed,game:0x06000bed,ecs,,364,0x11338a8
+game:0x06000bed,kairo.unity.ecs.World.CreateHero,ecs,reimplemented,364,0x11338a8
 game:0x06000bee,kairo.unity.ecs.World.CreateSubChara,ecs,reimplemented,228,0x1133edc
 game:0x06000bef,kairo.unity.ecs.World.CreateHuman,ecs,reimplemented,1224,0x1133a14
 game:0x06000bf0,kairo.unity.ecs.World.CreateEnemy,ecs,traced,1040,0x1133fc0
@@ -2909,7 +2909,7 @@ game:0x06000bfb,kairo.unity.ecs.World..ctor,ecs,traced,284,0x11333ac
 game:0x06000bfc,game:0x06000bfc,ecs,,8,0x113562c
 game:0x06000bfd,game:0x06000bfd,ecs,,8,0x1135634
 game:0x06000bfe,game:0x06000bfe,ecs,,8,0x113563c
-game:0x06000bff,game:0x06000bff,ecs,,16,0x1135644
+game:0x06000bff,kairo.unity.ecs.World.get_isNewGame,ecs,reimplemented,16,0x1135644
 game:0x06000c00,game:0x06000c00,ecs,,8,0x1135654
 game:0x06000c01,game:0x06000c01,ecs,,152,0x113565c
 game:0x06000c02,kairo.unity.ecs.World.Destroy,ecs,reimplemented,128,0x11356f4
@@ -2929,7 +2929,7 @@ game:0x06000c18,game:0x06000c18,ecs,,64,0x11358f8
 game:0x06000c19,kairo.unity.ecs.World.Deserialize,ecs,documented,76,0x1135938
 game:0x06000c1a,game:0x06000c1a,unassigned,,92,0x1135984
 game:0x06000c1b,game:0x06000c1b,unassigned,,8,0x11359e0
-game:0x06000c1c,game:0x06000c1c,unassigned,,24,0x11359e8
+game:0x06000c1c,<>c.<CreateHero>b__22_0,unassigned,reimplemented,24,0x11359e8
 game:0x06000c1d,<>c.<CreateHuman>b__24_0,unassigned,reimplemented,28,0x1135a00
 game:0x06000c1e,game:0x06000c1e,unassigned,,8,0x1135a1c
 game:0x06000c1f,game:0x06000c1f,unassigned,,56,0x1135a24
@@ -3677,7 +3677,7 @@ game:0x06000f2e,game:0x06000f2e,ecs,,8,0x115c1d4
 game:0x06000f2f,game:0x06000f2f,ecs,,8,0x115c1dc
 game:0x06000f30,game:0x06000f30,ecs,,8,0x115c1e4
 game:0x06000f31,game:0x06000f31,ecs,,244,0x115c1ec
-game:0x06000f32,game:0x06000f32,ecs,,188,0x115c2e0
+game:0x06000f32,ecs.MemberSystem.Init,ecs,reimplemented,188,0x115c2e0
 game:0x06000f33,ecs.MemberSystem.OnStart,ecs,reimplemented,3068,0x115c4a0
 game:0x06000f34,ecs.MemberSystem.OnFinish,ecs,reimplemented,756,0x115d618
 game:0x06000f35,ecs.MemberSystem.AddMember,ecs,reimplemented,348,0x115d0a4

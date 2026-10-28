@@ -263,3 +263,6 @@ saga_library(character_parameter_set character_parameter_set.cpp)
 target_link_libraries(character_parameter_set PUBLIC combat_parameters)
 saga_library(human_factory human_factory.cpp)
 target_link_libraries(human_factory PUBLIC party_start entity_visual character_parameter_set)
+
+saga_library(hero_bootstrap hero_bootstrap.cpp)
+target_link_libraries(hero_bootstrap PUBLIC party_start system_initialization)
