@@ -79,7 +79,7 @@ game:0x06000f3f	reimplemented	src/core/gameplay/combat_parameters.cpp	Stored-lev
 game:0x060011a0	reimplemented	src/core/gameplay/combat_parameters.cpp	Parameter keys 0..4 and 10..12 map to shop ids 0..7; other keys -1
 game:0x060011a3	reimplemented	src/core/gameplay/combat_parameters.cpp	Wrapping upValue times buyCount; negative counts preserved
 game:0x060010a4	traced	docs/subsystems/combat.md	Character PARAM_MAX_LEVELS initializer resolved; other static arrays not fully ported
-game:0x060010e7	traced	docs/subsystems/combat.md	Enemy PARAM_MAX_LEVELS initializer resolved; independent array with same metadata source as character
+game:0x060010e7	reimplemented	src/core/gameplay/enemy_factory.cpp	Independent enemy IDs 0..12 and maxima [1000 x4,200 x9], same documented values with independent storage; full two-field initializer contract tested.
 kairo:0x06000b58	reimplemented	src/core/gameplay/combat_rules.cpp	General ordered binary32 easing with standard sine; 19264 static model cases; Android libm unverified
 game:0x0600119c	documented	docs/subsystems/data.md	Shop schema and combat projection tested against both languages; purchase count not loaded
 game:0x0600111e	documented	docs/subsystems/data.md	Equipment full token framing; retained attribute/status combat projection; mutable level separate
@@ -179,3 +179,9 @@ game:0x06000f48	reimplemented	src/core/gameplay/stage_recovery.cpp	Two current-g
 game:0x06000b84	reimplemented	src/core/gameplay/stage_recovery.cpp	Capture old slot-15 payload, detach then return capture including null; live invincibility and partial-failure tests.
 game:0x06000d6c	reimplemented	src/core/gameplay/stage_recovery.cpp	Exactly Human states 4/5; direct state-0 revival preserves Human.frame/attack/opponent and speed; tested.
 game:0x06000d71	traced	docs/subsystems/rewards.md	INVINCIBLE_TIME assignment is wrap32(3*initial FPS); only duration initialization ported/tested, full static constructor remains unported.
+game:0x06000e77	reimplemented	src/core/gameplay/enemy_creation.cpp	Current world factory, captured target publication then live Yugami!=10000 level*50 with no parameter rebuild; partial-failure tests.
+game:0x06000e76	reimplemented	src/core/gameplay/enemy_creation.cpp	Captured boss ID, cache query/map/GetZ(98), live level, boss then hero-X/GetZ(96) extra enemy and type-9 looping modifier; actual stage integration.
+game:0x06000e73	reimplemented	src/core/gameplay/enemy_creation.cpp	Retain live cached target, boss -> global hero, otherwise ordered nearest alive member using binary32 X/Z; ties/dead/NaN/infinity tested.
+game:0x06000e85	reimplemented	src/core/gameplay/enemy_factory.cpp	No-animation flag -> zero; parameter 5 binary32 multiply 2.23 then /100 and ordered floor 0.5575; factory tested.
+game:0x060000e3	reimplemented	src/core/gameplay/character_parameter_set.cpp	Enemy key order/growth/maxima into existing owning ParamSet; first duplicate retained, explicit level/maxLevel fields; actual factory tests.
+game:0x060010c9	reimplemented	src/core/gameplay/enemy_factory.cpp	Unsigned index<2; reuse matching character predicate, parameter map integration and boundary tests.

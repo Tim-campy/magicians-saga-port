@@ -124,7 +124,7 @@ game:0x06000dad	traced	docs/subsystems/animation.md
 game:0x06000bef	reimplemented	src/core/gameplay/human_factory.cpp	Complete component sequence/base parameters/Input-or-AI; actual OnStart/CreateSubChara integration, callbacks and failures tested.
 game:0x06000beb	traced	docs/subsystems/animation.md	
 game:0x06000bec	traced	docs/subsystems/animation.md	
-game:0x06000bf0	traced	docs/subsystems/animation.md	
+game:0x06000bf0	reimplemented	src/core/gameplay/enemy_factory.cpp	Full enemy factory: double table lookup, captured/live visual fields, shared component pools and 13 parameters; real boss/normal creation tests.
 game:0x06000bf5	reimplemented	src/core/gameplay/effect_factory.cpp	Effect factory order and core payloads composed with ID registration groups; resource and presentation helpers explicit.
 game:0x06000bf7	traced	docs/subsystems/animation.md	
 game:0x06000e5f	traced	docs/subsystems/animation.md	

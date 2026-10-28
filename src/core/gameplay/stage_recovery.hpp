@@ -17,7 +17,8 @@ public:
     virtual DropEffectWorld* recovery_effect_world()=0;
     virtual std::int32_t invincible_time()=0; // Live HumanComponent.INVINCIBLE_TIME; never guessed.
     virtual void release_recovery_modification(Component*)=0; // After slot-15 removal; includes null.
-    virtual ComponentSlots* create_stage_boss(StageEnemyStart&)=0; // EnemySystem.CreateBoss still required.
+    // Bind the stored receiver to create_boss_enemy (enemy_creation.hpp).
+    virtual ComponentSlots* create_stage_boss(StageEnemyStart&)=0;
     virtual StageObjectWorld* stage_object_world()=0; // Captured before GetZ.
     virtual void play_boss_bgm()=0; // AppData.RESSOUND_BGM_BATTLE_02 +0x23c.
     virtual void play_boss_sound()=0; // AppData.RESSOUND_SE_BATTLE_BOSS +0x288.
@@ -33,7 +34,7 @@ void remove_recovery_modification(ComponentSlots&,StageRecoveryHost&);
 // StageSystem.Retry 0x1162eb8. No reset of stage/state/frame, boss flags, rewards,
 // attack timers or Human.frame; normal dialog caller clears its dialog afterwards.
 void retry_stage(StageStartState&,StageRecoveryHost&);
-// StageSystem.StartBossBattle 0x11641a8. Boss creation remains a required service;
-// actual modifier/fence factory and partial-publication order are implemented.
+// StageSystem.StartBossBattle 0x11641a8. The host binds the stored enemy system
+// to the actual creation kernel; modifier/fence publication retains native order.
 void start_stage_boss_battle(StageStartState&,StageRecoveryHost&);
 } // namespace saga::core

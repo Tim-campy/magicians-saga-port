@@ -5,6 +5,7 @@
 #include "core/gameplay/effect_factory.hpp"
 #include "core/gameplay/animation_pass.hpp"
 #include "core/gameplay/stage_cleanup.hpp"
+#include "core/gameplay/enemy_defeat.hpp"
 #include <cstdlib>
 #include <deque>
 #include <iostream>
@@ -19,6 +20,7 @@ struct Node {
     EntitySprite sprite;EntityPlayback playback;CombatParameterLinks parameters;Component tag;
     CellComponent cell;EntityDepth depth;EntityImage image;EquipmentRecordLinks equipment;HumanAI ai;Component input;
     DropComponent drop;ProjectileModification modification;EffectComponent effect;
+    EnemyRecordLink enemy;DefeatColor color;
     DamageParameter hp{7,8,0,0},energy{9,10,0,0};DamageParameterMap values{{0,&hp},{1,&energy}};
     explicit Node(std::int32_t n,bool full=true):id(n){parameters.values=&values;playback.state={1,-1};sprite.animation={1,36,0};
         if(full)entity.add(0,&position).add(1,&speed).add(2,&sprite).add(10,&playback).add(12,&direction)

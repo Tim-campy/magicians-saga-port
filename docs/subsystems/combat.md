@@ -47,10 +47,50 @@ Equipment getters and attribute bonuses now have portable contracts. Human base 
 | ecs.HumanSystem.ChangedState | game:0x06000ec8 | Speed, idle animation and attack counter | high |
 | ecs.EnemySystem.Defeat | game:0x06000e83 | Death sequence and drop selection (see rewards.md) | high |
 | ecs.EnemyComponent.Check | game:0x06000d47 | Flag test on +0x14 via BitUtil.Check | medium |
+| kairo.unity.ecs.World.CreateEnemy | game:0x06000bf0 | Full enemy component factory with optional direction/playback | high |
+| ecs.EnemySystem.CreateEnemy | game:0x06000e77 | Current-world factory, target publication and Yugami level multiplier | high |
+| ecs.EnemySystem.CreateBoss | game:0x06000e76 | Boss plus additional enemy, captured/live quest fields and modifier | high |
+| ecs.EnemySystem.SearchTarget | game:0x06000e73 | Retain live target, boss-to-hero, otherwise nearest alive member in X/Z | high |
+| ecs.EnemySystem.GetMoveSpeed | game:0x06000e85 | Data flag 1 ->0; otherwise max(binary32(P5*2.23/100),0.5575) | high |
+| parameter.Param.Create(EnemyData,int,int) | game:0x060000e3 | Captured enemy parameter keys, growth, maxima and caller max-level field | high |
+| data.EnemyData.ParamHasMaxValue | game:0x060010c9 | Unsigned parameter key <2 | high |
+| data.EnemyData..cctor | game:0x060010e7 | Independent 13-key and 13-maximum-level arrays | high |
 
 Helpers used but owned elsewhere: `main.AppData.Clamp` (game:0x0600014b, signed clamp), `main.AppData.ClampMin` (game:0x0600014e, signed max), `IntExtension.Clamp` (game:0x06000020), `kairo.unity.graph.Graph.Easing` (kairo:0x06000b58), `kairo.unity.m3d4.util3d.FastMath.Sin` (kairo:0x06000833), `java.lang.JMath.ToRadians` (kairo:0x060001a1).
 
 ## Behaviour
+
+### Enemy creation and initial targeting
+
+World.CreateEnemy (0x1133fc0, 1040 bytes) captures direction/data ID/level/flags/X/Y/Z. A negative ID returns null without querying the table; an ID >= the first Data.enemyData length returns null before allocation. Fetch Data.enemyData again for the indexed row: a replaced shorter array faults, and a null slot is not an invalid-ID no-op. Capture that record for subsequent reads. Component flags 1 or 2 force initial speed Z=0; otherwise call EnemySystem.GetMoveSpeed(record,level). GetMoveSpeed (0x114d870, 196 bytes) returns 0 for record flag 1; otherwise evaluate parameter 5, convert to binary32, multiply by 2.23 then divide by 100, and apply the ordered lower clamp 0.5575. These are separate operations, not a double calculation or an FPS division.
+
+Resolve AppData.GetResourceId(record.res_) before reading clip/frame. Clip is record.seb_ unless it is -1, then wrap32(record.enemySeb_*4); frame -1 becomes 0, other values are retained. Register a type-0 non-temporary entity, then add these slots in order:
+
+| Slot | Payload |
+| --- | --- |
+| 0, 5, 4 | Position from arguments with zero offsets/null parent; actual Cell conversion; Depth(0,10). |
+| 7, 2 | Scalar Image(record.img_,resolved resource,-1,-1,-1,-1); Seb(resource,captured clip,captured frame,layers {-1}). img_ is read after earlier component callbacks, not captured with clip/frame. |
+| 1, 24 | Speed(0,0,captured Z); Enemy(level,component flags,state 0,frame 0,data ID,target null). |
+| 20 | Actual shared AIComponent projection: fresh empty CacheArray and state 0. |
+| 23 | Param.Create(record,level,1000), fresh extras list and owning parameter map. |
+| 6, 32 | Raw Color(255,255,255,255); actual Collision(radius 12,offset 0/5/0,visited false). |
+| 12, 10 | Direction(argument,false) only when argument!=-1; playback(1,-1) only when the captured record's current flag 1 is clear. Re-read that flag after the preceding component notifications. |
+
+No Human, equipment or Player marker is added. Earlier registration/components survive later failures. The same EnemyRecordLink, AI cache, Color, parameter storage, Cell/Image/playback and collision kernels used elsewhere are reused; no second ECS or managed collection implementation is introduced.
+
+Param.Create(EnemyData,level,maxLevel) (0x11785f8, 304 bytes) captures PARAM_IDS and visits keys in order. GetParamValue precedes ParamHasMaxValue; unsigned key <2 uses the value as maximum, others use zero. Store id/value/maximum/caller level/caller maxLevel with all extra/EXP fields zero. Duplicate keys are still evaluated but the first record is retained, matching the already established ParamSet contract. EnemyData..cctor (0x116eee0, 208 bytes) creates independent arrays: keys 0..12; maximum interpolation levels 1000 for keys 0..3 and 200 for keys 4..12. The component factory's caller maxLevel field is 1000 for every entry; it is distinct from these interpolation limits.
+
+EnemySystem.SearchTarget (0x114da7c, 760 bytes) retains an existing target when its entity destroyed byte is zero and a fresh target/Human lookup is alive (state neither 4 nor 5). It does not require membership or compare distances in that path. Otherwise read the current Enemy component flags. Boss flag 1 requires the stored MemberSystem and returns the current global hero directly, including null/dead/out-of-roster heroes. Other enemies capture the stored members list/version and scan it in order: require each entity/Human, skip dead humans, and read member X, enemy X, member Z, enemy Z separately. Compute binary32 dx*dx+dz*dz with separate operations; retain the first strictly smaller distance, starting at FLT_MAX. Ignore Y and HP. NaN, positive infinity and FLT_MAX do not replace the candidate. Empty/no eligible lists return null. This method returns the selection; its caller publishes it.
+
+EnemySystem.CreateEnemy (0x114dd74, 396 bytes) calls the current BaseSystem.world_ factory and requires a nonnull result. Capture its Enemy component before SearchTarget, then store the returned target (including null) on that capture. Read live AppData.systemSave_[SYSSAVEI_YUGAMI] through SecureInt's value contract; when the value differs from 10000, re-read the current Enemy component and replace level with wrap32(level*50). The parameter map and initial movement speed were already built from the original level and are not recomputed here. Unknown save state remains a required input, with no default secure value.
+
+EnemySystem.CreateBoss (0x114e030, 412 bytes) captures quest.bossId_ (+0x70), resolves the current world's player entity for its cache side effect (the null result is allowed), then captures a freshly resolved map.stepX. Compute GetZ(98) through the stored StageSystem, then re-read current quest.bossLevel_ (+0x44). CreateEnemy(direction 2,captured boss ID,current boss level,flags 1) at (captured stepX,0,Z). After that creation, require the stored MemberSystem, resolve the current global hero and capture its X. Compute stored-stage GetZ(96), then create an additional enemy with direction -1, data ID 1, level 1, flags 0, at (hero X,0,Z). Add type-9 modification to that additional enemy, angle 30, scale 1/1, loop true, alpha 255, other fields zero. Return the first boss entity only after all of these operations succeed; a later failure does not remove earlier entities.
+
+Metadata scalar defaults (v31 compressed signed integers) establish EnemyComponent flags BOSS=1, FIXED=2, ACTIVE=4, independently from EnemyData flags NO_ANIMATION=1 and RUN_AWAY=2. The parameter catalog names are HP=0, MP=1, Defense=2, Attack=3, Recovery=4, Speed=5, AttackSpeed=6, HitRate=7, CritialRate=8 (original spelling), EvadeRate=9, Fire=10, Aqua=11 and Thunder=12. These names identify the indices; they do not establish unobserved UI behaviour or saved-value initialization. EnemyComponent+0x10 is level, including the post-factory Yugami transformation above.
+
+Port: [enemy_factory.hpp](../../src/core/gameplay/enemy_factory.hpp) and [enemy_creation.hpp](../../src/core/gameplay/enemy_creation.hpp), their implementations and the enemy overload in [character_parameter_set.cpp](../../src/core/gameplay/character_parameter_set.cpp). [Factory tests](../../tests/test_enemy_factory.cpp) cover complete payload/slot order, invalid IDs/holes, captured-versus-live fields, optional components, parameter ownership and partial failures. [Creation tests](../../tests/test_enemy_creation.cpp) cover cached/nearest/boss target rules, ties/NaN/infinity, captured target stores, current-component level writes, missing secure-save input, quest/world mutation ordering and actual Update -> boss/additional enemy -> fence. The shared stage fixture now uses the actual creation chain rather than a synthetic componentless boss. Map loading, EnemySystem.OnStart/normal stage spawning and production data/storage/frame bindings remain open.
+
+Evidence: local research/exports/enemy-creation/ (World/CreateEnemy), enemy-creation-helpers/ (GetMoveSpeed, SearchTarget, Param.Create and AddEnemy), stage-retry-helpers/F114e030.asm and enemy-parameter-init/EnemyParameterInit.asm. World table queries 0x113406c/0x1134094; resource/clip/frame 0x1134198..0x11341c4; AddEnemy 0x11342c4; Param.Create 0x1134308; final playback gate 0x1134374..0x1134398. Target selection 0x114dafc..0x114dc98; wrapper captured store 0x114de48 and level multiply 0x114deb8..0x114ded4. Speed constants at ELF 0x627974 and 0x62788c; initial arrays resolve relocation-aware metadata FieldRefs at GOT 0x2731ca8/0x2731ca0 (13 int32 each). Scalar flag/parameter names use metadata field defaults, not guesses from class names. Confidence high for these static contracts. Limits: no Android comparison or complete playable frame.
 
 ### Attack timing
 
@@ -326,7 +366,7 @@ Stage Init also registers events 9 and 15; this table is limited to the three co
 
 `EnemySystem.OnHumanDead` (game:0x06000e7f, 0x11511cc, 440 bytes) traverses its live enemy group. It skips null or destroyed entities, requires Enemy slot 24, and compares opponent +0x28 by reference against the event argument (which may be null). For each match it captures the Enemy component, calls SearchTarget(entity) at 0x114da7c, and writes the returned entity (including null) to that captured component's opponent field. It does not change state or attack counters. A replacement of the Enemy component during the search does not redirect the store; a group mutation faults on the next cursor advance, after the store. A search failure leaves that opponent unchanged and propagates.
 
-Port: `combat_event_receivers.hpp/.cpp` implements both receiver bodies over existing component slots and EntitySubset. SearchTarget and destruction are explicit host contracts. Tests cover required-component failures, destruction-before-guard, target identity, captured-component stores, destroyed enemies, search failure and live-group invalidation. This is not a full event bus or complete system Init implementation.
+Port: `combat_event_receivers.hpp/.cpp` implements both receiver bodies over existing component slots and EntitySubset. Its SearchTarget service can now bind search_enemy_target above; destruction remains an explicit host contract. Tests cover required-component failures, destruction-before-guard, target identity, captured-component stores, destroyed enemies, search failure and live-group invalidation. This is not a full event bus or complete system Init implementation.
 
 Evidence: local `research/exports/combat-subscriptions/` bounded exports; `projectile-update/Init.asm` and `stage-damage/M37912_Init.asm`; metadata usage kind-3 targets at ELF GOT 0x2731528/0x2731518/0x2731520 (Enemy), 0x2731668/0x2731660 (Human), 0x27319f0 (Projectile), and 0x2731a20 (Stage human death). Emitter getter at 0x112e268 passes slot 31. Confidence high for these receiver bodies and registration call sites; static delivery order is established in the ECS document; runtime behavior remains unverified.
 
@@ -384,7 +424,7 @@ The shared effect-entity factory used by impact services is now ported over ID c
 
 - Bind BulletData lookup and the impact effect/entity factories, color and Garbage lifetime services to the live world; collision visited/event scheduling remains open. The bounded traversal uses the initialized direction configuration; comparison with a running original is still absent.
 
-1. (blocking) Names/meaning and concrete bindings of parameter indices 0, 1, 2, 6, 7, 8, 9 and `EnemyComponent+0x10`; the human noncritical rate owner is now established above.
+1. (blocking) Bind the named parameter catalog above to production character/equipment/save providers and attack timing; EnemyComponent.level and its Yugami transformation, enemy creation parameters and initial targeting are ported. The human noncritical rate owner is established above.
 2. (blocking) Effective live RNG selection and seeding (see [rng.md](rng.md)); explicit-seed System.Random damage sequences are now reproducible in contract tests.
 3. (blocking) Value of `MyConfig.FPS` and `MyConfig.DEBUG` in release; scheduler cadence consuming the attack interval; writers of `enemy+0x1c`.
 4. Effect tables +0x450/+0x458 and the effect/animation side of `Damage`; other event-15 subscribers.

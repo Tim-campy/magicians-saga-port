@@ -11,6 +11,7 @@ struct StageQuest {
     std::int32_t distance=0,time_limit=0,money_rate=0;
     std::int32_t prisoner_maximum=0,rescued_prisoners=0;
     std::int32_t reward_treasure=0,cleared_reward_treasure=0;
+    std::int32_t boss_id=0,boss_level=0; // QuestData +0x70 / +0x44.
     std::uint8_t completed=0;
     StageScriptGroups events,fixed_treasure;
 };

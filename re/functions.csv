@@ -205,7 +205,7 @@ game:0x060000df,game:0x060000df,data,,1428,0x1177770
 game:0x060000e0,game:0x060000e0,data,,1052,0x1177d04
 game:0x060000e1,game:0x060000e1,data,,440,0x1178120
 game:0x060000e2,parameter.Param.Create,gameplay,reimplemented,352,0x11782d8
-game:0x060000e3,game:0x060000e3,gameplay,,304,0x11785f8
+game:0x060000e3,parameter.Param.Create,gameplay,reimplemented,304,0x11785f8
 game:0x060000e4,game:0x060000e4,gameplay,,1028,0x1178728
 game:0x060000e5,game:0x060000e5,gameplay,,104,0x1178b2c
 game:0x060000e6,game:0x060000e6,gameplay,,8,0x1178b94
@@ -2894,7 +2894,7 @@ game:0x06000bec,kairo.unity.ecs.World.CreateNature,ecs,traced,264,0x11337a0
 game:0x06000bed,kairo.unity.ecs.World.CreateHero,ecs,reimplemented,364,0x11338a8
 game:0x06000bee,kairo.unity.ecs.World.CreateSubChara,ecs,reimplemented,228,0x1133edc
 game:0x06000bef,kairo.unity.ecs.World.CreateHuman,ecs,reimplemented,1224,0x1133a14
-game:0x06000bf0,kairo.unity.ecs.World.CreateEnemy,ecs,traced,1040,0x1133fc0
+game:0x06000bf0,kairo.unity.ecs.World.CreateEnemy,ecs,reimplemented,1040,0x1133fc0
 game:0x06000bf1,game:0x06000bf1,ecs,,572,0x11343d0
 game:0x06000bf2,game:0x06000bf2,ecs,,512,0x113460c
 game:0x06000bf3,game:0x06000bf3,ecs,,540,0x113480c
@@ -3486,11 +3486,11 @@ game:0x06000e6f,game:0x06000e6f,ecs,,4,0x114d840
 game:0x06000e70,game:0x06000e70,ecs,,44,0x114d844
 game:0x06000e71,ecs.EnemySystem.ChangeState,ecs,reimplemented,72,0x114d934
 game:0x06000e72,ecs.EnemySystem.IsAttackTiming,ecs,documented,256,0x114d97c
-game:0x06000e73,game:0x06000e73,ecs,,760,0x114da7c
+game:0x06000e73,ecs.EnemySystem.SearchTarget,ecs,reimplemented,760,0x114da7c
 game:0x06000e74,game:0x06000e74,ecs,,988,0x114cfd4
 game:0x06000e75,game:0x06000e75,ecs,,304,0x114df00
-game:0x06000e76,game:0x06000e76,ecs,,412,0x114e030
-game:0x06000e77,game:0x06000e77,ecs,,396,0x114dd74
+game:0x06000e76,ecs.EnemySystem.CreateBoss,ecs,reimplemented,412,0x114e030
+game:0x06000e77,ecs.EnemySystem.CreateEnemy,ecs,reimplemented,396,0x114dd74
 game:0x06000e78,game:0x06000e78,ecs,,156,0x114c5f0
 game:0x06000e79,game:0x06000e79,ecs,,8,0x114e1cc
 game:0x06000e7a,game:0x06000e7a,ecs,,732,0x114e1d4
@@ -3504,7 +3504,7 @@ game:0x06000e81,game:0x06000e81,ecs,,980,0x1151384
 game:0x06000e82,ecs.EnemySystem.Damage,ecs,documented,3924,0x114fc44
 game:0x06000e83,ecs.EnemySystem.Defeat,ecs,reimplemented,1040,0x1150b98
 game:0x06000e84,ecs.EnemySystem.FlyAway,ecs,reimplemented,548,0x1150fa8
-game:0x06000e85,game:0x06000e85,ecs,,196,0x114d870
+game:0x06000e85,ecs.EnemySystem.GetMoveSpeed,ecs,reimplemented,196,0x114d870
 game:0x06000e86,game:0x06000e86,ecs,,52,0x1151758
 game:0x06000e87,game:0x06000e87,ecs,,4,0x115178c
 game:0x06000e88,game:0x06000e88,ecs,,4,0x1151790
@@ -4084,7 +4084,7 @@ game:0x060010c5,game:0x060010c5,data,,108,0x116e94c
 game:0x060010c6,game:0x060010c6,data,,8,0x116e9b8
 game:0x060010c7,data.EnemyData.GetExp,data,reimplemented,68,0x116e9c0
 game:0x060010c8,data.EnemyData.GetParamValue,data,reimplemented,228,0x116ea04
-game:0x060010c9,game:0x060010c9,data,,12,0x116eae8
+game:0x060010c9,data.EnemyData.ParamHasMaxValue,data,reimplemented,12,0x116eae8
 game:0x060010ca,data.EnemyData.AddDefeatCount,data,reimplemented,120,0x116eaf4
 game:0x060010cb,game:0x060010cb,data,,8,0x116eb6c
 game:0x060010cc,game:0x060010cc,data,,8,0x116eb74
@@ -4114,7 +4114,7 @@ game:0x060010e3,data.EnemyData.Load,data,documented,344,0x116ec2c
 game:0x060010e4,game:0x060010e4,data,,120,0x116ed84
 game:0x060010e5,game:0x060010e5,data,,120,0x116edfc
 game:0x060010e6,game:0x060010e6,data,,108,0x116ee74
-game:0x060010e7,data.EnemyData..cctor,data,traced,208,0x116eee0
+game:0x060010e7,data.EnemyData..cctor,data,reimplemented,208,0x116eee0
 game:0x060010e8,game:0x060010e8,data,,8,0x116efb0
 game:0x060010e9,game:0x060010e9,data,,16,0x116efb8
 game:0x060010ea,game:0x060010ea,data,,8,0x116efc8

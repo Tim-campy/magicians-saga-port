@@ -1,5 +1,5 @@
 #pragma once
-#include "startup_fixture.hpp"
+#include "enemy_fixture.hpp"
 #include "core/gameplay/stage_update.hpp"
 #include "core/gameplay/stage_recovery.hpp"
 #include <algorithm>
@@ -14,7 +14,7 @@ struct PartyCursor {
         auto* e=list->entities()[index++];if(!e)throw std::invalid_argument("null member");return f.entity_id(*e);
     }
 };
-struct UpdateFixture:StartupFixture,StageUpdateHost,StageRecoveryHost,BossNotificationHost,StageFormStack,
+struct UpdateFixture:StartupFixture,StageUpdateHost,StageRecoveryHost,EnemyCreationHost,BossNotificationHost,StageFormStack,
     QuestRewardHost,QuestExperienceHost,QuestReturnHost,MemberFinishHost {
     std::vector<std::string> log;std::string fail;
     std::function<void(std::int32_t)> on_event;std::function<void()> on_result,on_retry,on_make_ad,on_make_notice,on_interval;
@@ -25,6 +25,10 @@ struct UpdateFixture:StartupFixture,StageUpdateHost,StageRecoveryHost,BossNotifi
     std::size_t duration_queries=0;std::int32_t duration=0;
     bool missing_destroy_world=false,missing_object_world=false,missing_boss=false;
     ComponentSlots* made_boss=nullptr;
+    EnemyPoolFixture enemy_pools{*this};EnemyFactoryWorld enemy_factory{ids,enemy_pools};EnemyCreationSystem enemy_system;
+    std::deque<ProjectileModification> modifier_pool;
+    std::int32_t yugami=10000;bool missing_enemy_factory=false;std::size_t yugami_queries=0;
+    std::function<void()> on_enemy_factory,on_enemy_world,on_yugami;
     StageObjectWorld object_world{ids,static_cast<DropFactoryHost&>(*this)};
     std::vector<std::int32_t> events,keys;std::int32_t pulse=0,money=0,crystals=0,retries=0;
     bool event_result=false,affordable=false,null_stack=false,null_retry=false,null_exit=false;
@@ -35,7 +39,7 @@ struct UpdateFixture:StartupFixture,StageUpdateHost,StageRecoveryHost,BossNotifi
     QuestRecord record;QuestRewardResult result;std::function<void()> transition;TownReturnEvent returned{-1,0,0};
     PartyCursor experience_cursor,finish_cursor,sub_cursor;std::size_t treasure_cursor=0;
     UpdateFixture(){human_system.transitions=this;state.quest->events=scripts(std::make_shared<std::vector<EventInstruction>>());
-        duration=initial_human_invincible_time(fps);}
+        state.quest->boss_id=2;state.quest->boss_level=4;duration=initial_human_invincible_time(fps);}
     void call(std::string s){log.push_back(s);if(fail==s)throw std::runtime_error(s);}
     StageGeometry* stage_map()override{return StartupFixture::stage_map();}
     DropPlacementWorld* drop_world()override{return StartupFixture::drop_world();}
@@ -56,11 +60,20 @@ struct UpdateFixture:StartupFixture,StageUpdateHost,StageRecoveryHost,BossNotifi
         if(on_recovery_animation)on_recovery_animation();Fixture::change_animation(e,clip,reset);}
     DropEffectWorld* recovery_effect_world()override{if(on_effect_world)on_effect_world();return &effects;}
     std::int32_t invincible_time()override{++duration_queries;if(on_duration)on_duration(duration_queries);return duration;}
-    ProjectileModification& acquire_modification()override{return StartupFixture::acquire_modification();}
+    ProjectileModification& acquire_modification()override{modifier_pool.emplace_back();return modifier_pool.back();}
     void release_recovery_modification(Component* p)override{returned_modifiers.push_back(p);if(on_release_modifier)on_release_modifier();}
     ComponentSlots* create_stage_boss(StageEnemyStart& receiver)override{
         check(&receiver==state.enemies);call("boss");if(on_boss)on_boss();if(missing_boss)return nullptr;
-        made_boss=&create_entity(ids,0,false,static_cast<DropFactoryHost&>(*this));return made_boss;}
+        made_boss=&create_boss_enemy(enemy_system,*this);return made_boss;}
+    void start_enemies(std::shared_ptr<StageQuest> q)override{
+        enemy_system.quest=q;enemy_system.stage=&state;enemy_system.members=state.members;StartupFixture::start_enemies(std::move(q));}
+    EnemyFactoryWorld* current_enemy_factory()override{if(on_enemy_factory)on_enemy_factory();return missing_enemy_factory?nullptr:&enemy_factory;}
+    PlayerWorldState* enemy_world()override{if(on_enemy_world)on_enemy_world();return current_world();}
+    StageGeometry* enemy_map()override{return stage_map();}
+    StagePlacementHost& enemy_coordinates()override{return static_cast<StageUpdateHost&>(*this);}
+    bool target_destroyed(ComponentSlots& e)override{return node(e).lifetime.destroyed;}
+    std::int32_t system_yugami()override{++yugami_queries;if(on_yugami)on_yugami();return yugami;}
+    AnimationModificationPool& enemy_modifications()override{return static_cast<StageRecoveryHost&>(*this);}
     StageObjectWorld* stage_object_world()override{return missing_object_world?nullptr:&object_world;}
     void play_boss_bgm()override{call("boss-bgm");if(on_boss_bgm)on_boss_bgm();}
     void play_boss_sound()override{call("boss-sound");}
