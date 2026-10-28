@@ -58,6 +58,14 @@ Storage layer (`kairo.unity.io`): `RecordStore..ctor` calls `Storage.Open` (`0x1
 
 ## Behaviour
 
+### Persisted hero level and experience
+
+HumanComponent.Serialize (game:0x06000d6e, 0x1140078, 288 bytes) writes its scripts list, then five int32 scalar fields in order: charaDataId (+0x18), level_ (+0x1c), exp (+0x20), posOffsetX (+0x28), posOffsetZ (+0x2c), followed by five visual-array helper calls for +0x40/+0x48/+0x50/+0x58/+0x60. Deserialize (game:0x06000d6f, 0x1140198, 288 bytes) reads/stores the same sequence. Its second scalar store at 0x1140210 restores level_; the third at 0x1140220 restores exp. It does not copy these values from CharaData and does not write Human.state/frame/attackFrame/opponent/invincibleTime in this body.
+
+The established two-pass entity/component loader invokes component deserialization before World.Deserialize sets the loaded byte to 1; see [ECS lifecycle](ecs.md#lifecycle). MemberSystem.Init skips CreateHero for every nonzero loaded byte, whereas the fresh-world CreateHero path explicitly starts at level 1/EXP 0. These observed paths explain persistent actor restoration on Continue without inventing a CharaData-to-Human copy during StageSystem.Start. Exact fresh/Continue entry-state preparation and the secure save envelope remain open. Script and visual-array wire codecs have not been recovered here, so neither full Human payload method is claimed reimplemented or given a complete byte format.
+
+Evidence: local research/exports/stage-placement/F1140078.asm and F1140198.asm, existing entity-save/lifecycle evidence and hero-bootstrap exports. Confidence high for scalar read/write order; no real-save or Android comparison.
+
 ### LoadGame order (`0x11083f8`, 2056 bytes)
 
 1. `LoadSystem` (`0x1107e8c`).

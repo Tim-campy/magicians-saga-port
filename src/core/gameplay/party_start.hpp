@@ -71,4 +71,7 @@ public:
 // MemberSystem.OnStart 0x115c4a0. Both stored and debug auto-party paths;
 // preserves existing lists, destroys sub-character snapshots and finally InitMembers.
 void start_party(MemberRoster&,PartyStartHost&);
+// Caller-bound quest predicate; evaluated only after DEBUG succeeds. This lets
+// StageSystem.Start retain its original quest argument across field replacement.
+void start_party(MemberRoster&,PartyStartHost&,const std::function<bool()>& auto_party);
 } // namespace saga::core

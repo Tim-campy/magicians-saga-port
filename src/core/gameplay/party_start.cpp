@@ -57,6 +57,9 @@ ComponentSlots& remove_party_collision(ComponentSlots& e,PartyCollisionPool& poo
     auto* c=e.get(32);e.remove(32);pool.release_collision(c);return e;
 }
 void start_party(MemberRoster& state,PartyStartHost& host){
+    start_party(state,host,[&host]{return host.quest_has_auto_party();});
+}
+void start_party(MemberRoster& state,PartyStartHost& host,const std::function<bool()>& auto_party){
     auto& world=required(host.current_world());
     auto& subset=required(world.groups).get(std::make_shared<ComponentGroupFilter>(std::vector<std::int32_t>{14}));
     std::vector<ComponentSlots*> old_subs;
@@ -75,7 +78,7 @@ void start_party(MemberRoster& state,PartyStartHost& host){
     hero=member_hero(host.current_world());
     required(members.get()).append(hero); // Direct List.Add, no duplicate/Player guard.
 
-    if(host.debug_enabled()&&host.quest_has_auto_party()){
+    if(host.debug_enabled()&&auto_party()){
         std::vector<PartyCharacter*> candidates;
         const auto table=host.character_table();
         for(auto* data:required(table.get()))if(data&&character_is_sub(*data))candidates.push_back(data);

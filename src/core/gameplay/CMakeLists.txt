@@ -266,3 +266,8 @@ target_link_libraries(human_factory PUBLIC party_start entity_visual character_p
 
 saga_library(hero_bootstrap hero_bootstrap.cpp)
 target_link_libraries(hero_bootstrap PUBLIC party_start system_initialization)
+
+saga_library(stage_placement stage_placement.cpp)
+target_link_libraries(stage_placement PUBLIC drop_factory game_random)
+saga_library(stage_start stage_start.cpp)
+target_link_libraries(stage_start PUBLIC stage_placement drop_collection stage_cleanup party_start)

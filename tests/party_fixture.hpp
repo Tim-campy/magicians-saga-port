@@ -1,6 +1,8 @@
 #pragma once
 #include "core/gameplay/human_factory.hpp"
 #include "core/gameplay/hero_bootstrap.hpp"
+#include "core/gameplay/drop_factory.hpp"
+#include "core/gameplay/effect_factory.hpp"
 #include "core/gameplay/animation_pass.hpp"
 #include "core/gameplay/stage_cleanup.hpp"
 #include <cstdlib>
@@ -16,12 +18,13 @@ struct Node {
     HumanRecordLink human;ContactPosition position;ContactDirection direction;ProjectileSpeed speed;
     EntitySprite sprite;EntityPlayback playback;CombatParameterLinks parameters;Component tag;
     CellComponent cell;EntityDepth depth;EntityImage image;EquipmentRecordLinks equipment;HumanAI ai;Component input;
+    DropComponent drop;ProjectileModification modification;EffectComponent effect;
     DamageParameter hp{7,8,0,0},energy{9,10,0,0};DamageParameterMap values{{0,&hp},{1,&energy}};
     explicit Node(std::int32_t n,bool full=true):id(n){parameters.values=&values;playback.state={1,-1};sprite.animation={1,36,0};
         if(full)entity.add(0,&position).add(1,&speed).add(2,&sprite).add(10,&playback).add(12,&direction)
               .add(14,&human).add(23,&parameters);}
 };
-struct Fixture final:PartyStartHost,PartyHumanFactory,PartyDistanceSystem,MemberInitializationHost,
+struct Fixture:PartyStartHost,PartyHumanFactory,PartyDistanceSystem,MemberInitializationHost,
                      HumanStateHost,QuestEntityHost,EntityDeletionHost,ComponentObserver,HumanFactoryHost,HeroBootstrapHost {
     std::deque<Node> nodes;std::deque<ProjectileCollision> collisions;std::vector<Component*> released;
     EntityRegistry registry{*this};DynamicSubsets groups{registry,[&](const ComponentSlots& e){return node(e).id;}};

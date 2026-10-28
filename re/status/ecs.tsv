@@ -172,3 +172,5 @@ game:0x06000b6e	reimplemented	src/core/gameplay/visual_components.cpp	Six single
 game:0x06000b6f	reimplemented	src/core/gameplay/visual_components.cpp	Two image arrays forward null crop references; independent defaults and failure effects tested.
 game:0x06000b70	reimplemented	src/core/gameplay/visual_components.cpp	Pooled Image writes retain nonempty array identity, normalize null/empty independently, then add slot 7; tested.
 game:0x06000be0	reimplemented	src/core/gameplay/member_selection.cpp	World player cache queries real And(30) on null, stores first entity and retains stale nonnull references; tested.
+game:0x06000d6e	traced	docs/subsystems/save.md	Persisted actor character/level/EXP/formation scalar write order identified; script and visual-array wire codecs remain open.
+game:0x06000d6f	traced	docs/subsystems/save.md	Persisted actor character/level/EXP/formation scalar read order identified; script and visual-array wire codecs remain open.
