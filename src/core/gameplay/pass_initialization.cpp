@@ -25,4 +25,10 @@ void initialize_collisions(CollisionSystemState& state,PassInitializationWorld* 
 void initialize_garbage(EntitySubset*& destination,PassInitializationWorld* world){
     destination=require(world).subset({22});
 }
+void initialize_parameters(ParameterInitializationWorld* world,std::optional<EventHashes> hashes){
+    if(!world)throw std::invalid_argument("missing parameter initialization world");
+    world->subscribe_dropoff(parameter_dropoff,hashes);
+}
+void parameter_dropoff(ComponentSlots*) noexcept {}
+void update_parameters() noexcept {}
 }

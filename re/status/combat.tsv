@@ -230,3 +230,4 @@ game:0x06001063	reimplemented	src/core/gameplay/bullet_factory.cpp	Nine ordered 
 game:0x06000b28	documented	docs/subsystems/combat.md	Static pool pop-or-construct, dataId store before slot 29 insertion; reached factory path ported/tested, no standalone generic helper claim.
 game:0x06000b51	documented	docs/subsystems/combat.md	Pool acquisition then category/type/interval/frame/maxEmitNum/arg1 stores before slot 31; full factory payload and notification order tested.
 game:0x06000b3f	documented	docs/subsystems/combat.md	Pool acquisition, value/attribute/parent writes before slot 33; reached bullet and impact payloads ported, general helper remains documented.
+game:0x060000fe	reimplemented	src/core/gameplay/parameter_experience.cpp	Capped early return including negative amounts; wrapping level sum/delta with upper-then-lower Clamp; malformed caps/overflow and unchanged-stat tests.

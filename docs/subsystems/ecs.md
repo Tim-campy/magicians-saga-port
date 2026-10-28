@@ -310,6 +310,8 @@ Port: `src/core/ecs/update_scheduler.hpp/.cpp` implements indexed dispatch, all 
 
 ### Entity event delivery
 
+ParameterSystem.Init now binds event 16 to its actual empty single-Entity receiver; Update is also empty. ExpSystem.Init binds the separate Entity/int32 event 21 receiver through an explicit typed host interface, preserving its constructor-created queues across repeated initialization. The per-parameter processing contract and bounded producer investigation are documented in [combat](combat.md#parameter-updates-and-per-parameter-experience). The 120-pass shot/landing/cleanup scenario includes Exp factory index 9 with empty queues and Parameter index 14. This does not extend the Entity-pointer event adapter to other payload types or establish a character-EXP producer.
+
 World's generic one/two-argument wrappers forward to the EventManager at World+0x30. The combat call sites select shared native bodies: World Add wrappers 0x131a398/0x131a640, instance Add 0x131a3e8/0x131a690, EventManager Add 0x12bde40/0x12be754; World Send wrappers 0x131ab08/0x131aeec, instance Send 0x131ab58/0x131af44, EventManager Send 0x12bf744/0x12bfa3c.
 
 EventManager stores one-argument and two-argument callbacks in separate dictionaries at +0x10/+0x18, keyed by int32 event ID. Add wraps the supplied typed callback, combines the existing delegate followed by the new wrapper via System.Delegate.Combine (0x1ea70b8), and stores the result. Duplicates are retained. It also adds tracking records to separate lists at +0x20/+0x28; those carry event ID, original delegate hash and wrapper reference for removal. Null registration is not harmless: the dictionary write precedes a required original-delegate hash read.

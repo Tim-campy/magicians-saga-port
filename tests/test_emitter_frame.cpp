@@ -1,4 +1,5 @@
 #include "modification_fixture.hpp"
+#include "core/gameplay/parameter_experience.hpp"
 #include <limits>
 
 int main()try{
@@ -74,18 +75,20 @@ int main()try{
      auto& human=field<HumanRecordLink>(actor,14);human.state=2;human.opponent=&enemy;human.attack_frame=human_attack_interval(t.host.system,&actor,t.host);
      update_human_attacking(t.host.system,&actor,t.host);auto& bullet=t.f.nodes.back().entity;
      auto* move=t.enemy_world.subset({0,1});LiveCollisions collisions(t);CollisionPass collision;LiveGarbage garbage(t);GarbagePass expiry;bool enabled=true;
-     std::vector<int> order;
+     std::vector<int> order;ParameterExperienceSystem parameter_exp;
+     GameplayUpdate exp(9,enabled,[&](std::int32_t){order.push_back(9);update_parameter_experience(parameter_exp);});
      GameplayUpdate flight(10,enabled,[&](std::int32_t){order.push_back(10);projectiles.pass->update(*projectiles.subset,t.host);});
      GameplayUpdate motion(11,enabled,[&](std::int32_t){order.push_back(11);move_subset(*move);});
      GameplayUpdate contact(12,enabled,[&](std::int32_t){order.push_back(12);collision.update(collisions);});
+     GameplayUpdate parameters(14,enabled,[&](std::int32_t){order.push_back(14);update_parameters();});
      GameplayUpdate emit(15,enabled,[&](std::int32_t){order.push_back(15);em.update();});
      GameplayUpdate modify(18,enabled,[&](std::int32_t){order.push_back(18);modifiers.update();});
      GameplayUpdate anim(19,enabled,[&](std::int32_t){order.push_back(19);update_animations(animation,{false,true});});
      GameplayUpdate collect(31,enabled,[&](std::int32_t){order.push_back(31);expiry.update(garbage);});
-     std::vector<UpdateSystem*> systems{&flight,&motion,&contact,&emit,&modify,&anim,&collect};UpdateSchedule schedule{&systems,nullptr};
+     std::vector<UpdateSystem*> systems{&exp,&flight,&motion,&contact,&parameters,&emit,&modify,&anim,&collect};UpdateSchedule schedule{&systems,nullptr};
      t.f.random.index=0;t.f.random.values={0,5,99,0,0,0};std::size_t peak_particles=0;bool advanced=false;
      int landed=-1,removed=-1;
-     for(int frame=0;frame<120;++frame){order.clear();update_systems(schedule,1);check(order==std::vector<int>{10,11,12,15,18,19,31});
+     for(int frame=0;frame<120;++frame){order.clear();update_systems(schedule,1);check(order==std::vector<int>{9,10,11,12,14,15,18,19,31});
          if(debris_created==3&&landed==-1)landed=frame;
          if(t.f.node(enemy).lifetime.destroyed&&removed==-1)removed=frame;
          auto particles=em.particles();peak_particles=std::max(peak_particles,particles.size());
@@ -93,6 +96,7 @@ int main()try{
      check(hp->value==0&&t.host.defeat_counts[2]==1&&t.f.node(bullet).lifetime.destroyed);
      check(landed>=0&&removed-landed==10&&t.f.node(enemy).lifetime.destroyed&&!enemy.contains(24));
      check(peak_particles>0&&advanced&&em.particles().empty()&&em.state.subset->size()==0&&debris_created==3);
+     for(const auto& queue:*parameter_exp.queues)check(queue->empty()); // No unproven event-21 producer.
      bool experience=false;for(auto& n:t.f.nodes)if(n.entity.contains(34)&&n.drop.type==0&&n.drop.value==10)experience=true;check(experience);
     }
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

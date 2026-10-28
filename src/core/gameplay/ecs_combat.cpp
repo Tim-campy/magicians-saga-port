@@ -47,6 +47,8 @@ std::int32_t EcsDamageHost::parameter(CombatSide side,std::int32_t key) {
     return 0;
 }
 DamageParameter* resolve_combat_parameter(const ComponentSlots& entity,std::int32_t key) {
+    // ParameterComponent.get_Item 0x1140eb8 -> ParamSet.get_Item 0x1179310.
+    // This is the throwing indexer, not ParamSet.Get's nullable missing-key lookup.
     return require(component<CombatParameterLinks>(entity,combat_parameter_slot).values).at(key);
 }
 std::int32_t ecs_member_total_parameter(ComponentSlots& e,std::int32_t key,const CombatRecordTables& records,

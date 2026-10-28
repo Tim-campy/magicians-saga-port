@@ -22,4 +22,13 @@ void initialize_projectiles(ProjectileSystemState&,PassInitializationWorld*,Comb
 void initialize_movement(EntitySubset*& destination,PassInitializationWorld*);
 void initialize_collisions(CollisionSystemState&,PassInitializationWorld*);
 void initialize_garbage(EntitySubset*& destination,PassInitializationWorld*);
+class ParameterInitializationWorld {
+public:
+    virtual ~ParameterInitializationWorld()=default;
+    virtual void subscribe_dropoff(EntityEvents::Single,std::optional<EventHashes>)=0; // Event 16.
+};
+// ParameterSystem.Init 0x115fd8c subscribes only; neither body reads its payload.
+void initialize_parameters(ParameterInitializationWorld*,std::optional<EventHashes> =std::nullopt);
+void parameter_dropoff(ComponentSlots*) noexcept; // OnDropoff 0x115fe50: RET.
+void update_parameters() noexcept; // Update 0x115fe3c: RET; scheduler owns the gate.
 }

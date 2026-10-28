@@ -261,6 +261,8 @@ target_link_libraries(party_start PUBLIC member_roster member_selection quest_re
 
 saga_library(character_parameter_set character_parameter_set.cpp)
 target_link_libraries(character_parameter_set PUBLIC combat_parameters enemy_rewards)
+saga_library(parameter_experience parameter_experience.cpp)
+target_link_libraries(parameter_experience PUBLIC ecs_combat entity_events)
 saga_library(human_factory human_factory.cpp)
 target_link_libraries(human_factory PUBLIC party_start entity_visual character_parameter_set)
 
