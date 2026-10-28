@@ -19,3 +19,6 @@ target_link_libraries(filter_identity PUBLIC entity_subset)
 
 saga_library(dynamic_subsets dynamic_subsets.cpp)
 target_link_libraries(dynamic_subsets PUBLIC filter_identity entity_registration)
+
+saga_library(world_teardown world_teardown.cpp)
+target_link_libraries(world_teardown PUBLIC entity_registration)

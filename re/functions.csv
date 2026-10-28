@@ -2912,7 +2912,7 @@ game:0x06000bfe,game:0x06000bfe,ecs,,8,0x113563c
 game:0x06000bff,game:0x06000bff,ecs,,16,0x1135644
 game:0x06000c00,game:0x06000c00,ecs,,8,0x1135654
 game:0x06000c01,game:0x06000c01,ecs,,152,0x113565c
-game:0x06000c02,kairo.unity.ecs.World.Destroy,ecs,traced,128,0x11356f4
+game:0x06000c02,kairo.unity.ecs.World.Destroy,ecs,reimplemented,128,0x11356f4
 game:0x06000c03,kairo.unity.ecs.World.CreateEntity,ecs,documented,32,0x1133568
 game:0x06000c04,game:0x06000c04,ecs,,32,0x1135774
 game:0x06000c05,kairo.unity.ecs.World.DestroyEntities,ecs,documented,32,0x1135794
@@ -2996,7 +2996,7 @@ game:0x06000c5c,game:0x06000c5c,ecs,,80,0x1137594
 game:0x06000c5d,kairo.unity.ecs.EntityManager.CreateEntity,ecs,reimplemented,372,0x11375e4
 game:0x06000c5e,kairo.unity.ecs.EntityManager.Create,ecs,documented,128,0x11378d0
 game:0x06000c5f,kairo.unity.ecs.EntityManager.DestroyEntity,ecs,reimplemented,152,0x1137950
-game:0x06000c60,kairo.unity.ecs.EntityManager.DestroyAllEntities,ecs,documented,132,0x11379e8
+game:0x06000c60,kairo.unity.ecs.EntityManager.DestroyAllEntities,ecs,reimplemented,132,0x11379e8
 game:0x06000c61,kairo.unity.ecs.EntityManager.DestroyEntities,ecs,documented,756,0x1137a6c
 game:0x06000c62,kairo.unity.ecs.EntityManager.AddEntity,ecs,reimplemented,376,0x1137758
 game:0x06000c63,kairo.unity.ecs.EntityManager.OnEntityComponentAdded,ecs,reimplemented,416,0x1137d60

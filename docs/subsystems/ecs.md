@@ -107,7 +107,7 @@ Call chain from the form layer (see [ui.md](ui.md)): form event 1 → `QuestForm
 | `kairo.unity.ecs.World.CreateEntity` | game:0x06000c03 | Forwards to EntityManager.CreateEntity(…, 0) | high |
 | `kairo.unity.ecs.World.AddSystems` | game:0x06000c06 | Forwards to SystemManager.AddSystems | high |
 | `kairo.unity.ecs.World.Update` | game:0x06000c0a | Forwards pass index to SystemManager.Update | high |
-| `kairo.unity.ecs.World.Destroy` | game:0x06000c02 | Calls RemoveAllSystems | medium |
+| `kairo.unity.ecs.World.Destroy` | game:0x06000c02 | Visible-set clear, entity destruction, systems, event handlers | high |
 | `kairo.unity.ecs.World.Deserialize` | game:0x06000c19 | Entities, then systems, then byte+0x38=1 | high |
 | `ecs.MyEntityManager..ctor` | game:0x06000db5 | Tail call to EntityManager..ctor | high |
 | `ecs.MyEntityManager.Create` | game:0x06000db6 | Tail call to EntityManager.Create | high |
@@ -449,7 +449,19 @@ DynamicSubsets is also the manager's component observer: add/remove enumerate pu
 
 Tests cover ordered population after registry hole reuse, equivalent-filter reuse, stale-key behavior, temporary entities, Change(null), cold hash timing, failed population and reentrant publication. The integration invokes all four real Projectile/Move/Collision/Garbage Init functions against a dynamic directory and real registry, then verifies component writes and temporary entities update the returned groups. Components in this initialization test are markers; motion/damage behavior remains covered by the separate gameplay integration scenarios.
 
-Evidence: the bounded GetSubSet/Filter exports above; manager component handlers in local `research/exports/entity-registration/`; the public dictionary entry/lookup contract and native version differences already recorded under ordered registry Values. Port evidence is `src/core/ecs/dynamic_subsets.cpp` and its contract test. Confidence high for normal paths and tested mutation rules; full manager destruction/group removal and Android comparison remain separate.
+Evidence: the bounded GetSubSet/Filter exports above; manager component handlers in local `research/exports/entity-registration/`; the public dictionary entry/lookup contract and native version differences already recorded under ordered registry Values. Port evidence is `src/core/ecs/dynamic_subsets.cpp` and its contract test. Confidence high for normal paths and tested mutation rules; World.Destroy retention and registered-entity teardown are now ported below; arbitrary directory removal and Android comparison remain separate.
+
+### World teardown and retained groups
+
+World.Destroy (game:0x06000c02, 0x11356f4, 128 bytes) performs four operations, in order: clear World.visibleEntities_ at +0x40 (HashSet<Entity>), call entityManager.DestroyAllEntities, call systemManager.RemoveAllSystems, then eventManager.RemoveAllEventHandlers. It rereads each manager field when reached and faults if absent. Failure prevents later operations; prior effects remain. There is no store resetting World.isLoaded_, entity ID counter, map/player references or the manager's group dictionary in this wrapper. An automatic directory reset would change its behavior.
+
+EntityManager.DestroyAllEntities (game:0x06000c60, 0x11379e8, 132 bytes) captures registry Values and sends Entity.Destroy(false) to every nonnull value (the excluded entity argument is null). This uses the already ported Entity.Destroy guard and manager deletion order: remove components -> dispose component events -> skip individual registry removal -> set destroyed flag. After the cursor finishes/disposes, DestroyAll rereads the registry and clears it. The counter is untouched. A callback changing registry membership invalidates the live cursor on its next advance; final Clear and subsequent world teardown operations are skipped. An entity already marked destroyed is skipped by Entity.Destroy even if components remain; registry Clear still removes its entry on success.
+
+The group dictionary is retained. Component removals update existing groups through live callbacks before entity event disposal. Filters that continue to match an empty entity can keep it, and temporary entities absent from the registry are not traversed by DestroyAll. Do not assume every group becomes empty. Repeated GetSubSet can return the same retained group after teardown. The separate requirement to establish the entry state of Continue/deserialization is not solved by adding an implicit clear here.
+
+Port: `world_teardown.hpp/.cpp` implements the four-step world orchestration and the live-registry destruction/clear pass. Explicit host services bind visible-set clearing, system removal and event teardown; no additional runtime collection implementation is needed. Tests compose the actual registry, dynamic groups, component events, Entity.Destroy/deletion helpers and entity-event teardown. They check retained temporary membership, disposed component notifications, already-destroyed entities, removal failure, registry mutation and replacement of the registry reference before final Clear. Diagnostic host hooks model callbacks; rendering/system implementations remain external.
+
+Evidence: local `research/exports/world-destroy/` bounded World.Destroy and DestroyEntities exports; existing `entity-destruction-load/M37085_DestroyAllEntities.asm`; metadata usage at ELF GOT 0x2730d58 resolves HashSet.Clear, instance 1063, and metadata names World+0x40 visibleEntities_. World calls occur at 0x1135734/0x1135744/0x1135754/0x113576c. DestroyAll passes remove=false at 0x1137a40 and calls registry Clear at 0x1137a64. Confidence high for ordering and retention; no runtime comparison.
 
 ## Evidence
 
@@ -471,9 +483,9 @@ Evidence: the bounded GetSubSet/Filter exports above; manager component handlers
 
 1. (blocking) Entity ID lifetime: identify any writers of `entity+0x28` besides construction and Deserialize; whether IDs stay stable while in groups (they are the HashSet hash). Counter selection and free-ID scanning are now established and ported above.
 2. Exact allocation/capacity limits are not reproduced by the narrow ordering adapter. Public-source slot/version behavior is implemented; revisit capacity only if a concrete gameplay case depends on it.
-3. Bind original Serialize and DestroyAllEntities to the now established Dictionary<int,Entity> slot-order/version cursor; their complete pass contracts remain separately scoped.
+3. Bind original Serialize to the established Dictionary<int,Entity> slot-order/version cursor; DestroyAllEntities now uses it.
 4. Full slot-index → component type table (`ComponentFactory.Create`), and EntityManager deletion callbacks/indirect mutations (`Entity.Destroy` wrapper is now ported; see [rewards.md](rewards.md#member-finalization-and-deferred-town-return)).
-5. Bind dynamic group-directory destruction/reset to EntityManager lifecycle; GetSubSet creation, deduplication, population and live component forwarding are ported.
+5. Continue/deserialization entry-state preparation remains unresolved; World.Destroy retains the group directory and does not reset the counter or loaded flag. Do not add implicit resets to cover this gap.
 6. `Subset.get_entity` helper (`0x12af8d4`), `entitiesCache_`/`dirty_` usage, and delegate disposal of subsets.
 7. Meaning of `World.byte+0x38`; entity+0x2c is the destroyed guard, set after successful manager deletion; who subscribes OnSystemEnabled/Disabled.
 8. Bind initialization/event subscriptions and the remaining update bodies to the established complete system schedule.

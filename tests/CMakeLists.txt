@@ -494,3 +494,8 @@ add_executable(test_dynamic_subsets test_dynamic_subsets.cpp)
 target_link_libraries(test_dynamic_subsets PRIVATE dynamic_subsets pass_initialization)
 project_warnings(test_dynamic_subsets)
 add_test(NAME dynamic_subsets_contract COMMAND test_dynamic_subsets)
+
+add_executable(test_world_teardown test_world_teardown.cpp)
+target_link_libraries(test_world_teardown PRIVATE world_teardown dynamic_subsets stage_cleanup entity_events)
+project_warnings(test_world_teardown)
+add_test(NAME world_teardown_contract COMMAND test_world_teardown)

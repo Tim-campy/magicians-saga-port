@@ -32,7 +32,7 @@ game:0x06000c63	reimplemented	src/core/ecs/dynamic_subsets.cpp	Dynamic filter di
 game:0x06000c64	reimplemented	src/core/ecs/dynamic_subsets.cpp	Dynamic filter directory lookup/population/publication or versioned live component forwarding; integrated Init and mutation tests.
 game:0x06000c65	reimplemented	src/core/ecs/dynamic_subsets.cpp	Dynamic filter directory lookup/population/publication or versioned live component forwarding; integrated Init and mutation tests.
 game:0x06000c5f	reimplemented	src/core/gameplay/stage_cleanup.cpp	RemoveAll callbacks before DisposeEvents and conditional registry erase; failure ordering tested with ComponentSlots
-game:0x06000c60	documented	docs/subsystems/ecs.md	
+game:0x06000c60	reimplemented	src/core/ecs/world_teardown.cpp	Ordered world teardown or live registered-entity destruction then Clear; retained groups, failures and mutation integration tested.
 game:0x06000c61	documented	docs/subsystems/ecs.md	
 game:0x06000c69	documented	docs/subsystems/ecs.md	
 game:0x06000c6a	documented	docs/subsystems/ecs.md	
@@ -87,7 +87,7 @@ game:0x06000cc9	documented	docs/subsystems/ecs.md
 game:0x06000cc0	documented	docs/subsystems/ecs.md	
 game:0x06000cc1	documented	docs/subsystems/ecs.md	
 game:0x06000bfb	traced	docs/subsystems/ecs.md	
-game:0x06000c02	traced	docs/subsystems/ecs.md	
+game:0x06000c02	reimplemented	src/core/ecs/world_teardown.cpp	Ordered world teardown or live registered-entity destruction then Clear; retained groups, failures and mutation integration tested.
 game:0x06000c46	traced	docs/subsystems/ecs.md	
 game:0x06000c47	traced	docs/subsystems/ecs.md	
 game:0x06000bb1	reimplemented	src/core/gameplay/quest_return.cpp	Destroyed guard and manager-before-flag ordering tested, including duplicate destruction and failure
