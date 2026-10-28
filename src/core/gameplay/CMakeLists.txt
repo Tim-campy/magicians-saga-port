@@ -311,3 +311,14 @@ endif()
 
 saga_library(enemy_initialization enemy_initialization.cpp)
 target_link_libraries(enemy_initialization PUBLIC enemy_creation enemy_impact contact_collision combat_event_receivers entity_events)
+
+saga_library(human_frame human_frame.cpp)
+target_link_libraries(human_frame PUBLIC enemy_frame)
+if(MSVC)
+  target_compile_options(human_frame PRIVATE /fp:strict)
+else()
+  target_compile_options(human_frame PRIVATE -ffp-contract=off)
+endif()
+
+saga_library(human_initialization human_initialization.cpp)
+target_link_libraries(human_initialization PUBLIC human_frame human_contact human_impact entity_events)

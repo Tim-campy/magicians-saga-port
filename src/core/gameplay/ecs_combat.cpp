@@ -49,6 +49,10 @@ std::int32_t EcsDamageHost::parameter(CombatSide side,std::int32_t key) {
 DamageParameter* resolve_combat_parameter(const ComponentSlots& entity,std::int32_t key) {
     return require(component<CombatParameterLinks>(entity,combat_parameter_slot).values).at(key);
 }
+std::int32_t ecs_member_total_parameter(ComponentSlots& e,std::int32_t key,const CombatRecordTables& records,
+                                      const CombatSavedLevels& levels,CharacterParameterHost& characters){
+    Member member(e,records,levels,characters);return member_total_parameter(member,key);
+}
 DamageParameter* EcsDamageHost::receiver_parameter_zero(){return resolve_combat_parameter(receiver_,0);}
 std::int32_t EcsDamageHost::attacker_parameter_one_rate(){return damage_parameter_rate(require(resolve_combat_parameter(attacker_,1)));}
 ReceiverDefence EcsDamageHost::receiver_defence() {

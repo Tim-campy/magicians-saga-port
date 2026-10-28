@@ -56,6 +56,11 @@ int main(int argc,char** argv){
     ranged.replace(at,ranged.find('\t',at)-at,"-7");
     const auto ranged_weapons=load_equipment_combat_table(ranged,EquipmentTableKind::weapon_or_shield,false,parse_event_decimal);
     check(ranged_weapons[3]->range==-7&&ranged_weapons[3]->parameters->at(12)->at(1)==1000);
+    std::string firing=gear;
+    for(int token=18;token>=15;--token){std::size_t where=0;for(int i=0;i<token;++i)where=firing.find('\t',where)+1;
+        firing.replace(where,firing.find('\t',where)-where,std::to_string(token));}
+    const auto armed=load_equipment_combat_table(firing,EquipmentTableKind::weapon_or_shield,false,parse_event_decimal);
+    check(armed[3]->distance==15&&armed[3]->burst_count==16&&armed[3]->range==17&&armed[3]->use_mp==18);
     const std::string clothing="1\tHat\t7\tRes\t8\t9\t10\t11\t12\t"+endpoints()+"\tD\t6";
     auto hats=load_equipment_combat_table(clothing,EquipmentTableKind::cloth_or_hat,false,parse_event_decimal);
     check(hats[1]->flags==6&&hats[1]->parameters->at(12)->at(0)==100);

@@ -49,5 +49,8 @@ private:
     EcsCombatPresentation& presentation_;
 };
 DamageParameter* resolve_combat_parameter(const ComponentSlots&,std::int32_t key);
+// Reuse the same live member/equipment/save projection outside damage (movement/recovery).
+std::int32_t ecs_member_total_parameter(ComponentSlots&,std::int32_t,const CombatRecordTables&,
+                                      const CombatSavedLevels&,CharacterParameterHost&);
 void record_ecs_stage_damage(std::int32_t& total,const ComponentSlots&,std::int32_t amount);
 }

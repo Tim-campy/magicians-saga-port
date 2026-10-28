@@ -20,6 +20,7 @@ struct StageStartState:StagePlacementState {
     EventObject area;std::int32_t stage=0,state=0,remaining_time=0,loop_counter=0;
     std::int32_t total_damage=0,frame=0,min_z_rate=0,max_z_rate=0,last_active_button=0;
     bool boss_started=false,move_front_pushed=false,retried=false;
+    std::int32_t attack_attribute=0; // StageSystem.attackAttribute_ +0x70, retained by Start.
     DropCollectionState collection;
     StageHumanStart* humans=nullptr;
     MemberRoster* members=nullptr;

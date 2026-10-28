@@ -18,9 +18,9 @@ kairo:0x060000bc	documented	docs/subsystems/rng.md	NextLong: one draw sign-exten
 kairo:0x060000c2	traced	docs/subsystems/rng.md	slot-5 override used when Logic==2; algorithm not read
 kairo:0x060000c5	traced	docs/subsystems/rng.md	reflection-based init of inherited System.Random state
 game:0x06000dc7	traced	docs/subsystems/combat.md	enumerator drain only, no combat work
-game:0x06000ec5	traced	docs/subsystems/combat.md	target search, ChangeState(2); filters unnamed
-game:0x06000eea	documented	docs/subsystems/combat.md	trunc((GetTotalParamValue(6)+100)/2)
-game:0x06000ee8	documented	docs/subsystems/combat.md	ClampMin(FPS*100/speed, 2)
+game:0x06000ec5	reimplemented	src/core/gameplay/human_frame.cpp	Active/MP gates, captured EnemySystem and Position before distance, actual nearest XYZ then destroyed/dead/fleeing/decorative rejection, target/zero-speed/state 2; tested.
+game:0x06000eea	reimplemented	src/core/gameplay/human_frame.cpp	Actual stored-member total P6, wrapping +100 then truncating signed /2; frame, zero and burst tests.
+game:0x06000ee8	reimplemented	src/core/gameplay/human_frame.cpp	Live FPS before actual stored-member attack speed; ARM SDIV of wrapped FPS*100, floor 2; full frame/state and zero-speed tests.
 game:0x06000f3c	reimplemented	src/core/gameplay/combat_parameters.cpp	Base plus weapon/shield/hat/cloth in order; explicit base and record providers; tested wrapping and failure order
 game:0x06000e72	documented	docs/subsystems/combat.md	enemy+0x1c % ClampMin(FPS/V,1) == 0
 game:0x060000e8	documented	docs/subsystems/combat.md	value_ + extraValue_ (32-bit)
@@ -115,7 +115,7 @@ game:0x06000e0b	reimplemented	src/core/ecs/update_scheduler.cpp	Ordered dispatch
 game:0x06000e0c	reimplemented	src/core/gameplay/collision_pass.cpp	Complete pair selection and deferred delivery; live subset gated scheduler and both real contact receivers composed in tests
 game:0x06000e7f	reimplemented	src/core/gameplay/combat_event_receivers.cpp	Live current-subset retargeting after human death; actual SearchTarget bound in Init tests, including nested landing/death and captured-component stores.
 game:0x06000e67	reimplemented	src/core/gameplay/enemy_initialization.cpp	Supplied-world subset/Gauge/Stage/Member stores, separate zero quota arrays and actual ordered 23/29/30 handlers; failure/repeat/hash and recoil/damage/drop/nested-death integrations tested.
-game:0x06000ebb	traced	docs/subsystems/combat.md	Human group and event 23/29 targets resolved; real Human and Enemy contact delivery composed; complete Init not ported.
+game:0x06000ebb	reimplemented	src/core/gameplay/human_initialization.cpp	Supplied-world subset/map/Stage/Enemy/Member stores, ordered real event 23/29 receivers, nullable results, failure/repeat/hash tests and shared contact integration.
 game:0x06000ed0	reimplemented	src/core/gameplay/human_contact.cpp	Complete human contact receiver composed with real state transitions; guards displacement callbacks and failures tested.
 game:0x06001236	reimplemented	src/core/gameplay/drop_collection.cpp	Boss reward reads inherited int32 flags mask 1; decoded treasure rows and pickup gates tested.
 kairo:0x06000b5a	reimplemented	src/core/gameplay/projectile_motion.cpp	Existing binary32 float curve shared by projectile motion and 31-pass drop collection; endpoint/gating/order integration tested.
@@ -201,3 +201,25 @@ game:0x06000d41	reimplemented	src/core/gameplay/enemy_frame.cpp	Waiting iff BOSS
 game:0x06000d45	reimplemented	src/core/gameplay/enemy_frame.cpp	Alive iff state!=4, including fleeing; negative and out-of-enum states tested.
 game:0x06000d46	reimplemented	src/core/gameplay/enemy_frame.cpp	Dead iff state==4; complements alive across state boundaries, with dead fixed activation scenario.
 kairo:0x06000ed8	reimplemented	src/core/gameplay/enemy_frame.cpp	Narrow activation contract: separate binary32 squared X/Z distance <= squared radius, ignores Y; boundary/negative radius/NaN tested.
+game:0x06000ebd	reimplemented	src/core/gameplay/human_frame.cpp	Full live human state orchestration, captured-component attack/frame counters, position limits and invincibility/pool ordering; required Shoot remains separately unported; integrated tests.
+game:0x06000ebe	reimplemented	src/core/gameplay/human_frame.cpp	Actual attack search first, then sub-only live formation and ordered squared-distance walking transition; tested.
+game:0x06000ebf	reimplemented	src/core/gameplay/human_frame.cpp	Captured hero movement gate, main/sub stat speed and formation quirks, dash/0.7 forward factor and exact one-draw HP/MP recovery; shared ECS stat/factory integration tested.
+game:0x06000ec0	reimplemented	src/core/gameplay/human_frame.cpp	Captured target/Human, active/validity gates, actual interval/wait/burst/MP end gates around required Shoot service; no fake producer, result/counter/replacement/failure tests.
+game:0x06000ec1	reimplemented	src/core/gameplay/human_frame.cpp	0.8 Z damping, fresh dash reset, strict 0.1 settle with required Direction unlock, zero speed and real state 0; contact/frame recovery tested.
+game:0x06000ec4	reimplemented	src/core/gameplay/human_frame.cpp	Zero Z speed, required live clip-0 clock, raw ARM remainder gate, capture Direction before Rand(4), animation 0 without frame reset; draw/failure tests.
+game:0x06000eca	reimplemented	src/core/gameplay/human_frame.cpp	Main -> stored stage attackAttribute; nonmain -> base Character.weaponId equipment attribute, independent of equipped weapon; tested.
+game:0x06000ecb	reimplemented	src/core/gameplay/human_frame.cpp	Independent stored-stage min/max GetZ queries, captured/current Position upper +108 and lower ordered clamps; frame tests.
+game:0x06000edf	reimplemented	src/core/gameplay/human_frame.cpp	Default nonpositive speed but preserve NaN before actual MoveBase; negative Move differs from negative Base teleport; tested.
+game:0x06000ee0	reimplemented	src/core/gameplay/human_frame.cpp	Default tiny nonnegative speed, negative teleport, inclusive arrival or separate binary32 X/Z velocities; preserves Y/velocity on arrival; boundary/NaN tests.
+game:0x06000ee1	reimplemented	src/core/gameplay/human_frame.cpp	Required stored member total P5, wrapping +100/truncating half then separate binary32 *2.23/100; no positive floor; actual ECS and overflow tests.
+game:0x06000ee5	reimplemented	src/core/gameplay/human_frame.cpp	Capture MP total maximum then total value before actual cost; full MP permits over-maximum costs, signed wrapping/extra rules; tested.
+game:0x06000ee6	reimplemented	src/core/gameplay/human_frame.cpp	Current equipped weapon.useMp plus stored-member attribute bonus/4 with int32 wrap; separate from UseMp subtraction; tested.
+game:0x06000ee7	reimplemented	src/core/gameplay/human_frame.cpp	Capture MP before current weapon lookup, then actual Parameter.Sub of only base weapon useMp; gate cost can differ; tested.
+game:0x06000ee9	reimplemented	src/core/gameplay/human_frame.cpp	Live FPS before actual stored-member attack speed; wrapped FPS*10, ARM SDIV and floor 2; recovered burst gate tests.
+game:0x06000eeb	reimplemented	src/core/gameplay/human_frame.cpp	Current weapon burstCount plus live attribute bonus/20, wrapping add and upper-only cap 10; negative/capped and burst tests.
+game:0x06000eec	reimplemented	src/core/gameplay/human_frame.cpp	Current weapon distance, fresh Character/attack attribute, stored-member bonus/30, wrap and upper-only cap 12; negative/capped and target acquisition tests.
+game:0x06000f9a	reimplemented	src/core/gameplay/human_frame.cpp	Required captured button array, first required child with state 1; no stage-state guard, early match skips later nulls; tested.
+game:0x06000e81	reimplemented	src/core/gameplay/human_frame.cpp	Live ordered first-nearest XYZ, inclusive squared wrapped distance*28, state-4/HP gates; fleeing/destroyed/decorative remain for caller; actual factory/NaN/tie/wrap tests.
+game:0x06000c3b	reimplemented	src/core/gameplay/human_frame.cpp	Required XYZ operands and separate binary32 squared differences, X+Y then Z sum; used/tested by real nearest selection including Y/NaN/null origins.
+game:0x060000f8	reimplemented	src/core/gameplay/human_frame.cpp	Wrapping base-value addition reuses Sub lower-first base-maximum-only clamp, stores value and returns excess; HP/MP recovery, extras/zero-max/overflow tested.
+game:0x06000ec9	traced	docs/subsystems/combat.md	Required Shoot producer is reached by the recovered burst gate; target validation/spell selection/projectile construction identified, actual producer/catalog/predicate binding remains unported.
