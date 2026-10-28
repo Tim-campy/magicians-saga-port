@@ -112,7 +112,7 @@ The per-entity counter is separate from the SEB object's own frame; do not merge
 | `ecs.SebComponent.Serialize` / `Deserialize` | game:0x06000dab / dac | Payload with layers | high |
 | `ecs.AnimationComponent..ctor` / `ecs.DirectionComponent..ctor` / `ecs.SebComponent..ctor` | game:0x06000d12 / d35 / dad | Forward to base; no defaults | high |
 | `kairo.unity.ecs.World.CreateHuman` | game:0x06000bef | Complete human component factory, composed with party entry | high |
-| `kairo.unity.ecs.World.CreateMapChip` | game:0x06000beb | Map chip factory | medium |
+| `kairo.unity.ecs.World.CreateMapChip` | game:0x06000beb | Complete map-chip factory, optional playback and mission-load integration ([details](rewards.md#mission-map-construction)) | high |
 | `kairo.unity.ecs.World.CreateNature` | game:0x06000bec | Nature object factory | medium |
 | `kairo.unity.ecs.World.CreateEnemy` | game:0x06000bf0 | Enemy factory | medium |
 | `kairo.unity.ecs.World.CreateEffect` | game:0x06000bf5 | Effect factory | medium |

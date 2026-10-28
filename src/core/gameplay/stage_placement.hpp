@@ -16,6 +16,7 @@ struct StageQuest {
     std::uint8_t completed=0;
     StageScriptGroups events,fixed_treasure;
     StageScriptGroups normal_enemies,fixed_enemies; // +0x60 / +0x68, first group used.
+    EventInstruction chip_images; // QuestData +0x38: start, middle, end, background.
 };
 struct StagePlacementState {std::shared_ptr<StageQuest> quest;};
 struct StageGeometry {std::int32_t step_x=0,step_z=0,height=0;}; // MapComponent +0x20/+0x24/+0x14.

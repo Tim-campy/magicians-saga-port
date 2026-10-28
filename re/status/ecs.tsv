@@ -122,7 +122,7 @@ game:0x06000d12	traced	docs/subsystems/animation.md
 game:0x06000d35	traced	docs/subsystems/animation.md	
 game:0x06000dad	traced	docs/subsystems/animation.md	
 game:0x06000bef	reimplemented	src/core/gameplay/human_factory.cpp	Complete component sequence/base parameters/Input-or-AI; actual OnStart/CreateSubChara integration, callbacks and failures tested.
-game:0x06000beb	traced	docs/subsystems/animation.md	
+game:0x06000beb	reimplemented	src/core/gameplay/mission_map.cpp	Full MapChip factory: wrapped Position, explicit Cell, Seb/layer, Image resource -1, Depth, visitor payload and optional playback; actual mission-load tests.
 game:0x06000bec	traced	docs/subsystems/animation.md	
 game:0x06000bf0	reimplemented	src/core/gameplay/enemy_factory.cpp	Full enemy factory: double table lookup, captured/live visual fields, shared component pools and 13 parameters; real boss/normal creation tests.
 game:0x06000bf5	reimplemented	src/core/gameplay/effect_factory.cpp	Effect factory order and core payloads composed with ID registration groups; resource and presentation helpers explicit.
@@ -176,3 +176,15 @@ game:0x06000d6e	traced	docs/subsystems/save.md	Persisted actor character/level/E
 game:0x06000d6f	traced	docs/subsystems/save.md	Persisted actor character/level/EXP/formation scalar read order identified; script and visual-array wire codecs remain open.
 game:0x06000bfa	reimplemented	src/core/gameplay/entity_visual.cpp	Registered ZObject: Position/Speed/actual Cell/Depth extra 200/Seb, without Image/playback; actual boss fence and cleanup tested.
 game:0x06000b83	reimplemented	src/core/gameplay/projectile_launch.cpp	Complete pooled ModifyAnimation payload before slot 15; existing projectile wrapper delegates; full-field and boss/retry integration tests.
+game:0x06000f26	reimplemented	src/core/gameplay/mission_map.cpp	Capture global-world map result into stored MapSystem field, including null; initialization and actual stage-entry tests.
+game:0x06000f27	reimplemented	src/core/gameplay/mission_map.cpp	Full map dimensions/grid/cursor, ordered images/tiles/depth and live map assignment; actual Start->map->party/enemy->frame scenarios, callbacks and failures tested.
+game:0x06000f28	reimplemented	src/core/gameplay/mission_map.cpp	Footprint-1 range gate then original-map/jagged row/index assignment, including null tile; fallback-versus-original guard and malformed-grid tests.
+game:0x06000f29	reimplemented	src/core/gameplay/mission_map.cpp	Null-map global fallback before negative-coordinate guard, signed wrapped endpoint checks without footprint positivity; bounds/zero/negative/overflow tests.
+game:0x060011e3	reimplemented	src/core/gameplay/mission_map.cpp	Constant width 3, independent of quest fields; getter and real map construction tested.
+game:0x060011e5	reimplemented	src/core/gameplay/mission_map.cpp	Required chipImgs[0]; final-row selection wins for a one-row mission; null/short and full-loader tests.
+game:0x060011e6	reimplemented	src/core/gameplay/mission_map.cpp	Required chipImgs[1]; intermediate center selection in full-loader tests.
+game:0x060011e7	reimplemented	src/core/gameplay/mission_map.cpp	Required chipImgs[2]; first-row selection with live image mutation tested.
+game:0x060011e8	reimplemented	src/core/gameplay/mission_map.cpp	Required chipImgs[3]; intermediate-edge selection and short-array partial failure tested.
+game:0x06000bea	reimplemented	src/core/gameplay/mission_map.cpp	Register entity before optional jagged allocation and shared-map insertion; provided-grid identity, negative-dimension failure and InitWorld-argument scenarios tested.
+game:0x06000b7f	reimplemented	src/core/gameplay/mission_map.cpp	Write captured eight scalars/grid into ComponentFactory singleton then slot 11; retain areas and aliases across map entities; tested.
+game:0x06000b7c	reimplemented	src/core/gameplay/mission_map.cpp	Acquire map chip, write data/staff IDs and fresh int32[5] filled -1 before slot 9; complete factory and pool-failure tests.
