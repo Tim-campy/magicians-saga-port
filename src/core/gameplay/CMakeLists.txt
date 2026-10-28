@@ -258,3 +258,8 @@ target_link_libraries(member_roster PUBLIC combat_state)
 
 saga_library(party_start party_start.cpp)
 target_link_libraries(party_start PUBLIC member_roster member_selection quest_return)
+
+saga_library(character_parameter_set character_parameter_set.cpp)
+target_link_libraries(character_parameter_set PUBLIC combat_parameters)
+saga_library(human_factory human_factory.cpp)
+target_link_libraries(human_factory PUBLIC party_start entity_visual character_parameter_set)

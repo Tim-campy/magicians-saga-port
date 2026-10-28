@@ -41,7 +41,7 @@ Evidence: local `research/exports/combat-record-links/` and `combat-slots/` boun
 
 `World.CreateEntity` (`0x1133568`) forwards to `EntityManager.CreateEntity` (`0x11375e4`) with second argument 0. That calls the manager's virtual factory (vtable slot 4, via class+0x178): `MyEntityManager.Create` (`0x1141a44`, tail call) → `EntityManager.Create` (`0x11378d0`). `Create` returns **null for any type selector ≠ 0**; for selector 0 it allocates `BaseEntity` and calls `BaseEntity..ctor(id, slotCount=manager+0x10, manager)` (`0x1136824`), which allocates the component array. `CreateEntity` treats a null return as an error, then registers the result via `AddEntity`. ID selection, threshold scanning and failure ordering are now recovered and ported as described below.
 
-World.CreateSubChara forwarding and the party-entry collision wrappers are ported as part of [mission-entry assembly](rewards.md#mission-entry-party-assembly); the complete CreateHuman factory remains open. Game factories (`World.CreateHuman/Enemy/MapChip/Nature/Effect/Particle`) build on this and add components explicitly; their animation-relevant arguments are in [animation.md](animation.md).
+World.CreateSubChara forwarding and the party-entry collision wrappers are ported as part of [mission-entry assembly](rewards.md#mission-entry-party-assembly); the complete CreateHuman factory now adds real visual/combat payloads, base parameters and Input/AI with tests; CreateHero/bootstrap remains open. Game factories (`World.CreateHuman/Enemy/MapChip/Nature/Effect/Particle`) build on this and add components explicitly; their animation-relevant arguments are in [animation.md](animation.md).
 
 ### Registration and group maintenance
 

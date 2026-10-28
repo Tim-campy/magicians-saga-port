@@ -139,3 +139,6 @@ game:0x06000f53	reimplemented	src/core/gameplay/party_start.cpp	Null records ski
 game:0x06000f54	reimplemented	src/core/gameplay/party_start.cpp	Check inherited flags mask 0x100 for ordered priority selection; first-eight behavior tested.
 game:0x06000f56	reimplemented	src/core/gameplay/party_start.cpp	Forward captured candidate array and null default to explicit RandomOrDefault service once per missing priority entry; call counts and repeats tested.
 game:0x06000f57	reimplemented	src/core/gameplay/party_start.cpp	Forward buffered character to captured distance-system service; null-system guard, key order and stable sorting tested.
+game:0x060000e2	reimplemented	src/core/gameplay/character_parameter_set.cpp	Captured key order, base growth then maximum predicate/live maximum level; first duplicate retained, owner/payload fields and human factory tested.
+game:0x06001076	reimplemented	src/core/gameplay/character_parameter_set.cpp	Unsigned key below two; negative/other keys have no base maximum; actual parameter creation tested.
+game:0x06000c1d	reimplemented	src/core/gameplay/human_factory.cpp	Require each visited hat, Check flags mask 2; public first-match/default selection and pre-allocation failures tested.

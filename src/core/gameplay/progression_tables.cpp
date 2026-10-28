@@ -22,7 +22,7 @@ CharacterProgressionTable load_character_progression_table(std::string_view text
     // CharaData.Load 0x116dcc4. Consume the entire schema, retaining progression and combat inputs.
     return detail::load_table_records<CharacterProgressionRecord>(text,normalize,parser,[](detail::TableTokens& t){
         CharacterProgressionRecord r;
-        r.id=t.integer();t.take();t.integer();t.take();t.integer();t.take();
+        r.id=t.integer();t.take();t.integer();t.take();r.image=t.integer();t.take();
         r.weapon_id=t.integer();t.integer();t.integer();
         r.initial_level=t.integer();t.integer(); // rank
         r.required_experience_rate=t.integer();

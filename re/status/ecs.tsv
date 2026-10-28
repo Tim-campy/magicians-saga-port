@@ -121,7 +121,7 @@ game:0x06000b54	traced	docs/subsystems/animation.md
 game:0x06000d12	traced	docs/subsystems/animation.md	
 game:0x06000d35	traced	docs/subsystems/animation.md	
 game:0x06000dad	traced	docs/subsystems/animation.md	
-game:0x06000bef	traced	docs/subsystems/animation.md	
+game:0x06000bef	reimplemented	src/core/gameplay/human_factory.cpp	Complete component sequence/base parameters/Input-or-AI; actual OnStart/CreateSubChara integration, callbacks and failures tested.
 game:0x06000beb	traced	docs/subsystems/animation.md	
 game:0x06000bec	traced	docs/subsystems/animation.md	
 game:0x06000bf0	traced	docs/subsystems/animation.md	

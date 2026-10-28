@@ -35,6 +35,11 @@ std::vector<PartyCharacter*> priority_characters(const std::vector<PartyCharacte
     return result;
 }
 }
+PartyCharacter bind_party_character(const CharacterProgressionRecord& record,SavedCharacterProgression saved){
+    PartyCharacter result;result.id=record.id;result.flags=record.flags;result.saved=saved;
+    result.image=record.image;result.weapon_id=record.weapon_id;
+    result.parameters=bind_character_parameters(record,saved.level);return result;
+}
 bool character_is_sub(const PartyCharacter& data){return (static_cast<std::uint32_t>(data.flags)&4U)!=0;}
 ComponentSlots* create_sub_character(std::int32_t x,std::int32_t z,std::int32_t id,PartyCreationHost& host){
     auto& data=character(host,id);

@@ -32,7 +32,7 @@ int main(int argc,char** argv){
     // Strings, two nested arrays, and all fields after the rate must be consumed correctly.
     const std::string character="2\tName\t7\tres\t8\tres2\t1\t2\t3\t4\t5\t150\t1\t2\t11\t12\t6\t7\t8\t-1\t9\t10\r\n";
     auto characters=load_character_progression_table(character,false,parse_event_decimal);
-    check(characters.size()==3&&!characters[1]&&characters[2]->required_experience_rate==150);
+    check(characters.size()==3&&!characters[1]&&characters[2]->required_experience_rate==150&&characters[2]->image==8);
     std::int32_t id=2;TableExperienceHost host(levels,characters,id);
     check(host.next_experience(1)==15); // Uses id, not level_ (999).
     MemberExperience member{1,0};

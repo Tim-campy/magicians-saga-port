@@ -122,7 +122,7 @@ Confidence: high for read/store order from bounded ARM64 instructions and metada
 
 ### Combat table projections
 
-The existing character reader now retains weaponId, initLevel, parameters and the inherited int32 flags as well as the experience rate. It still consumes the full CharaData schema once; it does not duplicate the parser. `bind_character_parameters(record,saved_level)` shares the parameter array, uses the explicitly supplied saved level, and exposes the low flags byte used by `get_isMain`. initLevel is not substituted for saved level.
+The existing character reader now retains img, weaponId, initLevel, parameters and the inherited int32 flags as well as the experience rate. It still consumes the full CharaData schema once; it does not duplicate the parser. `bind_character_parameters(record,saved_level)` shares the parameter array, uses the explicitly supplied saved level, and exposes the low flags byte used by `get_isMain`. initLevel is not substituted for saved level.
 
 Additional loaders in `combat_tables.cpp` consume these schemas (int32 unless marked string or array):
 
@@ -155,7 +155,7 @@ Both English and Japanese shipped tables decode to 83 populated slots. Evidence:
 
 ## Port
 
-`src/core/gameplay/progression_tables.cpp` loads complete level-table records and a character progression projection, preserving id gaps and last-duplicate-wins indexing. It shares token parsing with the event reader and accepts the existing integer-parser callback. `TableExperienceHost` resolves the live character id/rate and level row for the experience kernel. The character projection consumes and validates all fields but retains only id and needExpRate. These fresh-record readers do not expose partial mutation of an existing record on failure; neither original Load method is claimed fully reimplemented. BaseData lifecycle, the general loader, data list and check-script groups remain unported. `tools/audit_game_table_text.py` audits the extracted tables (encoding/line endings) only; `tools/inspect_event_table.py` belongs to the events subsystem.
+`src/core/gameplay/progression_tables.cpp` loads complete level-table records and a character progression projection, preserving id gaps and last-duplicate-wins indexing. It shares token parsing with the event reader and accepts the existing integer-parser callback. `TableExperienceHost` resolves the live character id/rate and level row for the experience kernel. The character projection consumes and validates all fields but retains id, needExpRate, image, weaponId, initLevel, parameters and inherited flags. These fresh-record readers do not expose partial mutation of an existing record on failure; neither original Load method is claimed fully reimplemented. BaseData lifecycle, the general loader, data list and check-script groups remain unported. `tools/audit_game_table_text.py` audits the extracted tables (encoding/line endings) only; `tools/inspect_event_table.py` belongs to the events subsystem.
 
 ## Evidence
 

@@ -8,8 +8,11 @@ namespace saga::core {
 struct PartyCharacter {
     std::int32_t id=0,flags=0;
     SavedCharacterProgression saved;
+    std::int32_t image=0,weapon_id=0;
+    CharacterParameters parameters; // CharaData growth rows; saved level remains separate.
 };
 using PartyCharacters=std::shared_ptr<std::vector<PartyCharacter*>>;
+PartyCharacter bind_party_character(const CharacterProgressionRecord&,SavedCharacterProgression);
 bool character_is_sub(const PartyCharacter&); // CharaData.get_isSub 0x116abdc.
 struct HumanCreation {
     std::int32_t direction=0,character=0,level=0,formation_x=0,formation_z=0,experience=0;
@@ -18,8 +21,7 @@ struct HumanCreation {
 class PartyHumanFactory {
 public:
     virtual ~PartyHumanFactory()=default;
-    // World.CreateHuman remains a separate factory contract, not a stand-in
-    // for entity initialization. The host must create all required components.
+    // Concrete implementation: HumanFactory in human_factory.hpp; storage remains host-owned.
     virtual ComponentSlots* create_human(const HumanCreation&)=0;
 };
 class PartyCreationHost {

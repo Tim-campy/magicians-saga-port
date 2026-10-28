@@ -14,6 +14,7 @@ struct CharacterProgressionRecord {
     std::int32_t id=0, required_experience_rate=0;
     std::int32_t weapon_id=0,initial_level=0,flags=0;
     EventScript parameters;
+    std::int32_t image=0;
 };
 using LevelTable = std::vector<std::optional<LevelTableRecord>>;
 using CharacterProgressionTable = std::vector<std::optional<CharacterProgressionRecord>>;

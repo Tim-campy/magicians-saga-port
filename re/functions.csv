@@ -204,7 +204,7 @@ game:0x060000de,game:0x060000de,data,,104,0x1177708
 game:0x060000df,game:0x060000df,data,,1428,0x1177770
 game:0x060000e0,game:0x060000e0,data,,1052,0x1177d04
 game:0x060000e1,game:0x060000e1,data,,440,0x1178120
-game:0x060000e2,game:0x060000e2,gameplay,,352,0x11782d8
+game:0x060000e2,parameter.Param.Create,gameplay,reimplemented,352,0x11782d8
 game:0x060000e3,game:0x060000e3,gameplay,,304,0x11785f8
 game:0x060000e4,game:0x060000e4,gameplay,,1028,0x1178728
 game:0x060000e5,game:0x060000e5,gameplay,,104,0x1178b2c
@@ -2893,7 +2893,7 @@ game:0x06000beb,kairo.unity.ecs.World.CreateMapChip,ecs,traced,276,0x113368c
 game:0x06000bec,kairo.unity.ecs.World.CreateNature,ecs,traced,264,0x11337a0
 game:0x06000bed,game:0x06000bed,ecs,,364,0x11338a8
 game:0x06000bee,kairo.unity.ecs.World.CreateSubChara,ecs,reimplemented,228,0x1133edc
-game:0x06000bef,kairo.unity.ecs.World.CreateHuman,ecs,traced,1224,0x1133a14
+game:0x06000bef,kairo.unity.ecs.World.CreateHuman,ecs,reimplemented,1224,0x1133a14
 game:0x06000bf0,kairo.unity.ecs.World.CreateEnemy,ecs,traced,1040,0x1133fc0
 game:0x06000bf1,game:0x06000bf1,ecs,,572,0x11343d0
 game:0x06000bf2,game:0x06000bf2,ecs,,512,0x113460c
@@ -2930,7 +2930,7 @@ game:0x06000c19,kairo.unity.ecs.World.Deserialize,ecs,documented,76,0x1135938
 game:0x06000c1a,game:0x06000c1a,unassigned,,92,0x1135984
 game:0x06000c1b,game:0x06000c1b,unassigned,,8,0x11359e0
 game:0x06000c1c,game:0x06000c1c,unassigned,,24,0x11359e8
-game:0x06000c1d,game:0x06000c1d,unassigned,,28,0x1135a00
+game:0x06000c1d,<>c.<CreateHuman>b__24_0,unassigned,reimplemented,28,0x1135a00
 game:0x06000c1e,game:0x06000c1e,unassigned,,8,0x1135a1c
 game:0x06000c1f,game:0x06000c1f,unassigned,,56,0x1135a24
 game:0x06000c20,game:0x06000c20,ecs,,92,0x1135a5c
@@ -4001,7 +4001,7 @@ game:0x06001072,game:0x06001072,data,,8,0x116d778
 game:0x06001073,game:0x06001073,data,,136,0x116d780
 game:0x06001074,game:0x06001074,data,,8,0x116d808
 game:0x06001075,data.CharaData.GetParamValue,data,reimplemented,328,0x116d810
-game:0x06001076,game:0x06001076,data,,12,0x116d958
+game:0x06001076,data.CharaData.ParamHasMaxValue,data,reimplemented,12,0x116d958
 game:0x06001077,game:0x06001077,data,,128,0x116d964
 game:0x06001078,data.CharaData.GetNextExp,data,reimplemented,232,0x116d9e4
 game:0x06001079,data.CharaData.GetExp,data,reimplemented,40,0x116db54

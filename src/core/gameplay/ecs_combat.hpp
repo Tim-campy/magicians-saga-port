@@ -2,7 +2,12 @@
 #include "combat_records.hpp"
 
 namespace saga::core {
-struct CombatParameterLinks final:Component {const DamageParameterMap* values=nullptr;};
+class CharacterParameterSet;
+struct CombatParameterLinks final:Component {
+    const DamageParameterMap* values=nullptr;
+    std::shared_ptr<CharacterParameterSet> storage;
+    std::shared_ptr<std::vector<ComponentSlots*>> extras;
+};
 struct CombatSavedLevels {
     const EventIntegers &characters,&equipment,&hats,&cloth;
 };
