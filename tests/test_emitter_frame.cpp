@@ -1,5 +1,6 @@
 #include "modification_fixture.hpp"
 #include "core/gameplay/parameter_experience.hpp"
+#include "cell_fixture.hpp"
 #include <limits>
 
 int main()try{
@@ -63,6 +64,8 @@ int main()try{
      s.pools.records->at(0)->category=physical?1:0;
      auto& pos=field<ContactPosition>(actor,0);pos.x=0;pos.z=100;field<ProjectileSpeed>(actor,1).z=0;field<ProjectileSpeed>(enemy,1).z=0;
      auto* hp=resolve_combat_parameter(enemy,0);hp->maximum=1;hp->value=1;
+     CellServices cells([&](const auto& all){return &t.f.groups.get(std::make_shared<ComponentGroupFilter>(all));});
+     cells.map.step_x=t.f.active_map->step_x;cells.map.step_z=t.f.active_map->step_z;cells.map.width=quest_map_width();cells.init();
      t.host.parameters=[](ComponentSlots&,std::int32_t k){return k==3?1000:0;};
      t.host.on_impact=[&](ComponentSlots& e,ComponentSlots* parent){create_impact_effect(&e,parent,t.host.records,impacts);};
      t.host.on_read_bullet=[&](ComponentSlots& e){check(impacts.bullet_data(e));};
@@ -82,13 +85,15 @@ int main()try{
      GameplayUpdate contact(12,enabled,[&](std::int32_t){order.push_back(12);collision.update(collisions);});
      GameplayUpdate parameters(14,enabled,[&](std::int32_t){order.push_back(14);update_parameters();});
      GameplayUpdate emit(15,enabled,[&](std::int32_t){order.push_back(15);em.update();});
+     GameplayUpdate cell(17,enabled,[&](std::int32_t){order.push_back(17);update_cells(cells.frame,cells);});
      GameplayUpdate modify(18,enabled,[&](std::int32_t){order.push_back(18);modifiers.update();});
      GameplayUpdate anim(19,enabled,[&](std::int32_t){order.push_back(19);update_animations(animation,{false,true});});
+     GameplayUpdate culling(20,enabled,[&](std::int32_t){order.push_back(20);update_cell_visibility(cells.index,cells);});
      GameplayUpdate collect(31,enabled,[&](std::int32_t){order.push_back(31);expiry.update(garbage);});
-     std::vector<UpdateSystem*> systems{&exp,&flight,&motion,&contact,&parameters,&emit,&modify,&anim,&collect};UpdateSchedule schedule{&systems,nullptr};
+     std::vector<UpdateSystem*> systems{&exp,&flight,&motion,&contact,&parameters,&emit,&cell,&modify,&anim,&culling,&collect};UpdateSchedule schedule{&systems,nullptr};
      t.f.random.index=0;t.f.random.values={0,5,99,0,0,0};std::size_t peak_particles=0;bool advanced=false;
      int landed=-1,removed=-1;
-     for(int frame=0;frame<120;++frame){order.clear();update_systems(schedule,1);check(order==std::vector<int>{9,10,11,12,14,15,18,19,31});
+     for(int frame=0;frame<120;++frame){order.clear();update_systems(schedule,1);check(order==std::vector<int>{9,10,11,12,14,15,17,18,19,31});
          if(debris_created==3&&landed==-1)landed=frame;
          if(t.f.node(enemy).lifetime.destroyed&&removed==-1)removed=frame;
          auto particles=em.particles();peak_particles=std::max(peak_particles,particles.size());
@@ -97,6 +102,13 @@ int main()try{
      check(landed>=0&&removed-landed==10&&t.f.node(enemy).lifetime.destroyed&&!enemy.contains(24));
      check(peak_particles>0&&advanced&&em.particles().empty()&&em.state.subset->size()==0&&debris_created==3);
      for(const auto& queue:*parameter_exp.queues)check(queue->empty()); // No unproven event-21 producer.
+     check(!cells.changes.empty()&&cells.frame.changed->empty());
+     check(cells.visible_count==-1); // The real factory-index20 gate skips nonzero passes.
+     for(auto& n:t.f.nodes)if(n.entity.contains(5)){
+         auto& c=field<CellComponent>(n.entity,5);auto bucket=cell_entities(cells.index,cell_key(&cells.map,c.xi,c.yi));
+         check(bucket&&std::find(bucket->begin(),bucket->end(),&n.entity)!=bucket->end());}
+     for(const auto& [key,bucket]:*cells.index.buckets){static_cast<void>(key);
+         for(auto* e:*bucket)check(e&&e->contains(5));}
      bool experience=false;for(auto& n:t.f.nodes)if(n.entity.contains(34)&&n.drop.type==0&&n.drop.value==10)experience=true;check(experience);
     }
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

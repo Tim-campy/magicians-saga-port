@@ -645,3 +645,9 @@ target_link_libraries(test_parameter_experience PRIVATE parameter_experience pas
 project_warnings(test_parameter_experience)
 add_test(NAME parameter_experience_contract COMMAND test_parameter_experience)
 target_link_libraries(test_emitter_frame PRIVATE parameter_experience)
+
+add_executable(test_cell_system test_cell_system.cpp)
+target_link_libraries(test_cell_system PRIVATE cell_system motion_pass update_scheduler)
+project_warnings(test_cell_system)
+add_test(NAME cell_system_contract COMMAND test_cell_system)
+target_link_libraries(test_emitter_frame PRIVATE cell_system)

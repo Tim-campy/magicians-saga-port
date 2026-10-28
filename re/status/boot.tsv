@@ -37,3 +37,4 @@ kairo:0x060019df	traced	docs/subsystems/ui.md	FormBase.Finish: DoMethod code 5 b
 game:0x0600072e	traced	docs/subsystems/ui.md	FormManager ctor: +0xb0 = MyConfig.static+0x50
 game:0x06000731	traced	docs/subsystems/ui.md	FormManager.Updated: 120 on key masks 0x10/0x20, writes +0xb0 if changed
 game:0x0600023f	reimplemented	src/core/gameplay/animation_resources.cpp	13-field resource selector, default-null IDs and identity tested; feeds effect clip lookup and animation Init.
+game:0x06000217	reimplemented	src/core/gameplay/cell_system.cpp	Shared scratch inverse cell projection; int32 wrap/SDIV/negative truncation, first intermediate store before second-entry bounds fault; identity, overflow and real visibility-host tests.

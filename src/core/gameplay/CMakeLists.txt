@@ -263,6 +263,8 @@ saga_library(character_parameter_set character_parameter_set.cpp)
 target_link_libraries(character_parameter_set PUBLIC combat_parameters enemy_rewards)
 saga_library(parameter_experience parameter_experience.cpp)
 target_link_libraries(parameter_experience PUBLIC ecs_combat entity_events)
+saga_library(cell_system cell_system.cpp)
+target_link_libraries(cell_system PUBLIC cell_component mission_map entity_subset entity_events)
 saga_library(human_factory human_factory.cpp)
 target_link_libraries(human_factory PUBLIC party_start entity_visual character_parameter_set)
 

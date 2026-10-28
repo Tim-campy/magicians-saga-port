@@ -203,3 +203,17 @@ game:0x06000e92	reimplemented	src/core/gameplay/parameter_experience.cpp	Ctor-cr
 game:0x06000e93	reimplemented	src/core/gameplay/parameter_experience.cpp	Fresh required slot23 throwing indexer, max(wrap(EXP-maxEXP),0), AddLevel1 only; cap/negative/overflow/missing-data tests.
 game:0x06000e94	reimplemented	src/core/gameplay/parameter_experience.cpp	Append Entity including nulls/duplicates to required keyed queue without granting/buffering EXP; registered callback and bounds/failure tests.
 game:0x06000d95	reimplemented	src/core/gameplay/ecs_combat.cpp	Required ParameterComponent/ParamSet then existing throwing dictionary indexer; missing-key/null-value/map/component contracts and Exp composition tested.
+game:0x06000e04	reimplemented	src/core/gameplay/cell_system.cpp	Supplied-world And5/0/1 then nullable map store and fresh scratch list; order, replacement and partial-failure tests.
+game:0x06000e06	reimplemented	src/core/gameplay/cell_system.cpp	Centered FCVTZS/int32-wrapping cell conversion, immediate old-key event14 and final current-list clear; 120-pass shot/debris/index cleanup, reentrancy/failure tests.
+game:0x06000df1	reimplemented	src/core/gameplay/cell_system.cpp	Supplied map/new dictionary, And5 added/removed observers, population then current-global-world event14 registration; repeat/partial-failure/live component tests.
+game:0x06000df3	reimplemented	src/core/gameplay/cell_system.cpp	Ordered viewport/origin capture, diagonal cell sweep with live bucket iteration, Invisible exclusion and current visible-set/count services; pass0 gate, dedup/mutation/failure tests.
+game:0x06000df4	reimplemented	src/core/gameplay/cell_system.cpp	Ignore non5 slots before payload/world reads; checked Cell cast, fresh global map key and duplicate/null-preserving vector append; live subset tests.
+game:0x06000df5	reimplemented	src/core/gameplay/cell_system.cpp	Slot5 payload coordinates after component removal, fresh map key, first-pointer removal and retained empty/null buckets; live removal and duplicate tests.
+game:0x06000df6	reimplemented	src/core/gameplay/cell_system.cpp	Old bucket removal before entity/component/global-map validation; append in new current bucket with retained partial effects; tests and actual movement events.
+game:0x06000df7	reimplemented	src/core/gameplay/cell_system.cpp	Current global World.map query before nullable Cell/map validation; wrapping coordinate key, used by population and removal tests.
+game:0x06000df8	reimplemented	src/core/gameplay/cell_system.cpp	Current global World.map for supplied coordinates; wrapping xi+2*yi*width, used by migration and viewport traversal tests.
+game:0x06000df9	reimplemented	src/core/gameplay/cell_system.cpp	Required supplied map and wrapping xi+2*yi*width, no bounds clamp; overflow/negative/null and event-payload tests.
+game:0x06000dfa	reimplemented	src/core/gameplay/cell_system.cpp	Fresh global coordinate key then nullable shared bucket lookup; movement and actual visibility-sweep tests.
+game:0x06000dfb	reimplemented	src/core/gameplay/cell_system.cpp	Required dictionary, null for absent keys or stored null list, preserve shared list identity; index and visibility tests.
+game:0x06000dfc	reimplemented	src/core/gameplay/cell_system.cpp	Single tail branch to actual ChangeCellEntity; typed event14 callback tested with moving entities, duplicates and destruction.
+game:0x06000b77	reimplemented	src/core/gameplay/cell_system.cpp	Concrete entity presence of Invisible slot21; actual visibility sweep excludes tagged entities before visible-set Add, tested.
