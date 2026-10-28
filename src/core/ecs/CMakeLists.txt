@@ -13,3 +13,6 @@ target_link_libraries(entity_creation PUBLIC component_slots)
 
 saga_library(entity_registration entity_registration.cpp)
 target_link_libraries(entity_registration PUBLIC component_slots)
+
+saga_library(filter_identity filter_identity.cpp)
+target_link_libraries(filter_identity PUBLIC entity_subset)

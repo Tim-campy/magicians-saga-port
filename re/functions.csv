@@ -1,5 +1,5 @@
 id,name,group,status,size,address
-game:0x06000001,game:0x06000001,unassigned,,148,0x10ed39c
+game:0x06000001,ArrayExtension.EqualElements,unassigned,documented,148,0x10ed39c
 game:0x06000006,game:0x06000006,unassigned,,92,0x10ed430
 game:0x06000007,game:0x06000007,unassigned,,32,0x10ed48c
 game:0x06000008,game:0x06000008,unassigned,,12,0x10ed4ac
@@ -2918,7 +2918,7 @@ game:0x06000c04,game:0x06000c04,ecs,,32,0x1135774
 game:0x06000c05,kairo.unity.ecs.World.DestroyEntities,ecs,documented,32,0x1135794
 game:0x06000c06,kairo.unity.ecs.World.AddSystems,ecs,documented,40,0x11357b4
 game:0x06000c07,game:0x06000c07,ecs,,40,0x11357dc
-game:0x06000c09,game:0x06000c09,ecs,,28,0x113314c
+game:0x06000c09,kairo.unity.ecs.World.GetSubSet,ecs,documented,28,0x113314c
 game:0x06000c0a,kairo.unity.ecs.World.Update,ecs,documented,100,0x1135804
 game:0x06000c0b,game:0x06000c0b,ecs,,28,0x1135868
 game:0x06000c0c,game:0x06000c0c,ecs,,28,0x1135884
@@ -3002,7 +3002,7 @@ game:0x06000c62,kairo.unity.ecs.EntityManager.AddEntity,ecs,reimplemented,376,0x
 game:0x06000c63,kairo.unity.ecs.EntityManager.OnEntityComponentAdded,ecs,documented,416,0x1137d60
 game:0x06000c64,kairo.unity.ecs.EntityManager.OnEntityComponentRemoved,ecs,documented,416,0x11380b0
 game:0x06000c65,kairo.unity.ecs.EntityManager.OnEntityComponentChanged,ecs,documented,412,0x1138250
-game:0x06000c66,game:0x06000c66,ecs,,508,0x1138408
+game:0x06000c66,kairo.unity.ecs.EntityManager.GetSubSet,ecs,documented,508,0x1138408
 game:0x06000c67,game:0x06000c67,ecs,,88,0x11387a4
 game:0x06000c68,game:0x06000c68,ecs,,148,0x11387fc
 game:0x06000c69,kairo.unity.ecs.EntityManager.Serialize,ecs,documented,792,0x1138890
@@ -3050,9 +3050,9 @@ game:0x06000ca9,kairo.unity.ecs.Filter.kairo.unity.ecs.IComponentFilter.And,ecs,
 game:0x06000caa,kairo.unity.ecs.Filter.kairo.unity.ecs.IComponentFilter.Or,ecs,documented,8,0x113a4cc
 game:0x06000cab,kairo.unity.ecs.Filter.kairo.unity.ecs.IComponentFilter.Nor,ecs,documented,8,0x113a4d4
 game:0x06000cac,kairo.unity.ecs.Filter.Matches,ecs,reimplemented,204,0x113a4dc
-game:0x06000cad,game:0x06000cad,ecs,,340,0x113a5a8
-game:0x06000cae,game:0x06000cae,ecs,,120,0x113a6fc
-game:0x06000caf,game:0x06000caf,ecs,,248,0x113a774
+game:0x06000cad,kairo.unity.ecs.Filter.Equals,ecs,reimplemented,340,0x113a5a8
+game:0x06000cae,kairo.unity.ecs.Filter.GetHashCode,ecs,reimplemented,120,0x113a6fc
+game:0x06000caf,kairo.unity.ecs.Filter.GetComponentTypesArrayHashCode,ecs,reimplemented,248,0x113a774
 game:0x06000cb0,game:0x06000cb0,ecs,,956,0x113a86c
 game:0x06000cb1,game:0x06000cb1,unassigned,,92,0x113ac28
 game:0x06000cb2,game:0x06000cb2,unassigned,,8,0x113ac84

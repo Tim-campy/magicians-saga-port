@@ -32,7 +32,7 @@ Current maintainer priority: game-specific decompilation and gameplay integratio
 
 ### Current gameplay focus
 - [ ] Bind the full system update schedule and event subscriptions around the tested live Projectile -> Move -> Collision passes and final Garbage pass; the 26-system order and all NeedsUpdate gates are now ported/tested; generic Init dispatch and concrete Projectile/Move/Collision/Garbage initialization are ported/tested; other initialization and update bodies remain before composing the complete frame. Entity-event removal and teardown are ported with explicit original/wrapper hash inputs; extend payload bindings only as required by gameplay.
-- [ ] Complete dynamic GetSubSet dedup/population and concrete effect/drop factories on top of the ported ID selection, entity registration and component-event subscriptions. All four gameplay passes now have live group implementations; a complete launch/landing and collision/expiration sequences pass integration tests.
+- [ ] Port the established dynamic GetSubSet lookup/population/publication contract using the new Filter identity and an ordered registry cursor; then complete concrete effect/drop factories on top of the ported ID selection, entity registration and component-event subscriptions. All four gameplay passes now have live group implementations; a complete launch/landing and collision/expiration sequences pass integration tests.
 - [ ] Connect the existing damage/defeat/reward/progression chains to the integrated world and decoded save state, then add a desktop gameplay scenario.
 
 ### 1. Events and scripts

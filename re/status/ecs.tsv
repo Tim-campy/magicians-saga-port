@@ -160,3 +160,9 @@ game:0x06000f86	reimplemented	src/core/ecs/update_scheduler.cpp	Concrete enabled
 game:0x06000f8d	reimplemented	src/core/ecs/update_scheduler.cpp	Concrete enabled/pass gate; tested across all 26 update systems.
 game:0x06000f9c	reimplemented	src/core/ecs/update_scheduler.cpp	Concrete enabled/pass gate; tested across all 26 update systems.
 game:0x06000c95	documented	docs/subsystems/ecs.md	World.Destroy caller; wrapper-hash removal during versioned list enumeration then tracking and dictionary clears; entity projection tested.
+game:0x06000cad	reimplemented	src/core/ecs/filter_identity.cpp	Concrete Filter identity hash/cache and ordered equality; collisions mutation and failure tests.
+game:0x06000cae	reimplemented	src/core/ecs/filter_identity.cpp	Concrete Filter identity hash/cache and ordered equality; collisions mutation and failure tests.
+game:0x06000caf	reimplemented	src/core/ecs/filter_identity.cpp	Concrete Filter identity hash/cache and ordered equality; collisions mutation and failure tests.
+game:0x06000c09	documented	docs/subsystems/ecs.md	GetSubSet forwarding/population/publication or ordered array comparison contract; native bounded evidence.
+game:0x06000c66	documented	docs/subsystems/ecs.md	GetSubSet forwarding/population/publication or ordered array comparison contract; native bounded evidence.
+game:0x06000001	documented	docs/subsystems/ecs.md	GetSubSet forwarding/population/publication or ordered array comparison contract; native bounded evidence.

@@ -56,7 +56,7 @@ Game factories (`World.CreateHuman/Enemy/MapChip/Nature/Effect/Particle`) build 
 `Subset.get_entities` (`0x113942c`) returns `+0x30` directly (no snapshot). `get_count` (`0x11393e4`) reads the set's count (`set+0x20`). `get_entity` (`0x1139434`) returns null when count is 0, else forwards to an unresolved generic helper (`0x12af8d4`).
 `Subset..ctor` (`0x1138604`) stores the filter at `+0x28` and creates the HashSet at `+0x30` with the static `EqualityComparer` instance.
 
-`World.GetSubSet` is called with a `Filter` (e.g. `AnimationSystem.Init`); the full GetSubSet/dedup contract was not exported.
+`World.GetSubSet` is called with a Filter (e.g. AnimationSystem.Init); lookup, population and publication order are established below, with concrete Filter identity now ported.
 
 ### Filters and predicates
 
@@ -415,6 +415,20 @@ Port: `entity_registration.hpp/.cpp`. Tests compose create_entity -> factory nod
 
 Evidence: local `research/exports/entity-registration/M37087_EntityManager_AddEntity.asm`: insert at 0x1137800, added subscription at 0x1137860, removed at 0x113788c and changed at 0x11378c8. `research/exports/entity-load-followup/M36911_DisposeEvents.asm` clears entity+0x10/+0x18/+0x20 directly. The [existing registration research](../archive/reports/37-entity-factory-and-subsets.md) resolves all three callback targets. Confidence high for registration/disposal order; runtime comparison absent.
 
+### Dynamic group lookup and filter identity
+
+World.GetSubSet (game:0x06000c09, 0x113314c, 28 bytes) requires World.entityManager +0x20 and forwards the filter unchanged. EntityManager.GetSubSet (game:0x06000c66, 0x1138408, 508 bytes) looks up its filter-keyed group dictionary at +0x20 with a null default. A nonnull hit returns immediately. Otherwise it constructs Subset(filter), enumerates the current entity dictionary's Values in their original order, and calls the silent Subset.Add(entity) overload on every value. It disposes the enumerator before Dictionary.Add(filter,subset) publishes the group. There is no initial OnEntityAdded notification. Temporary entities absent from the entity dictionary do not participate in this initial population. Subsequent component notifications can still add them to a published group.
+
+Filter.Equals (game:0x06000cad, 0x113a5a8) rejects null or a different concrete runtime type, then compares the other filter's hash before its own hash. Equal hashes are followed by ordered element comparison of AND, OR and NOR lists, short-circuiting in that order. ArrayExtension.EqualElements (game:0x06000001, 0x10ed39c) treats identical references, including null/null, as equal; one null differs from an empty array. Duplicate elements and list order are significant, despite hash collisions.
+
+Filter.GetComponentTypesArrayHashCode (game:0x06000caf, 0x113a774) returns zero for null/empty. For each int32 index it adds uint32(1) << (index & 31), with wrapping sum. Negative and >=32 index values therefore alias other bits for hashing; Matches still applies actual component bounds checks. A list length >=33 emits a diagnostic before hashing; it does not reject the list. Filter.GetHashCode (game:0x06000cae, 0x113a6fc) caches AND_hash XOR OR_hash XOR NOR_hash at +0x28, using -1 as the recomputation sentinel. Each partial AND/OR result is stored before proceeding. List mutation or replacement does not invalidate the cache. A diagnostic failure in a later list can leave a partial non-sentinel cache that future calls return; a final -1 recomputes next time.
+
+Port: `filter_identity.hpp/.cpp` implements the concrete Filter projection over borrowed SubsetFilter lists. Standard vector equality supplies ordered integer comparison; no generic array/runtime utility is reconstructed. Exact runtime type checking is represented by the typed final FilterIdentity API. The caller supplies the oversized-list diagnostic. Tests cover collisions, order, null/empty distinction, masked shifts, wrapping, stale caches, partial failure and the -1 sentinel.
+
+GetSubSet orchestration is documented but not yet ported: it must receive the original registry enumeration order and maintain the filter-keyed group directory. Sorting IDs or iterating the portable unordered_map would change population order and later gameplay traversal. The new identity module makes directory deduplication implementable without guessing; registry enumeration remains an explicit open question.
+
+Evidence: local `research/exports/dynamic-subsets/` bounded ARM64 exports. GetSubSet lookup at 0x11384b0, subset construction at 0x11384d4, silent population call at 0x113852c, dictionary publication at 0x1138564. Filter helper shifts at 0x113a844 and adds at 0x113a848; cached stores at 0x113a730/0x113a74c/0x113a764. Confidence high for normal-path contracts; no runtime comparison.
+
 ## Evidence
 
 - Temporary lifetime: local `research/exports/garbage-lifetime/{Init,NeedsUpdate,Update,AddGarbage}.asm`. Init writes filter value 0x16; AddGarbage writes +0x10 and passes slot 0x16; Update stores the decremented counter at 0x11532e0, then queues on signed <= 0, and calls Entity.Destroy(true) at 0x1153384 only after the first enumeration finishes. Confidence high for arithmetic and call order; Android comparison absent.
@@ -437,7 +451,7 @@ Evidence: local `research/exports/entity-registration/M37087_EntityManager_AddEn
 2. Exact allocation/capacity limits are not reproduced by the narrow ordering adapter. Public-source slot/version behavior is implemented; revisit capacity only if a concrete gameplay case depends on it.
 3. (blocking) Dictionary<int, Entity> (instance 399) enumeration order used by Serialize and DestroyAllEntities.
 4. Full slot-index → component type table (`ComponentFactory.Create`), and EntityManager deletion callbacks/indirect mutations (`Entity.Destroy` wrapper is now ported; see [rewards.md](rewards.md#member-finalization-and-deferred-town-return)).
-5. `World.GetSubSet` contract (dedup of equal filters, initial population of a new subset from existing entities), Filter hash/equality.
+5. Port the established GetSubSet lookup/population/publication contract using an ordered registry cursor and the ported Filter identity; preserve borrowed filter lifetime and cached-key mutation behavior.
 6. `Subset.get_entity` helper (`0x12af8d4`), `entitiesCache_`/`dirty_` usage, and delegate disposal of subsets.
 7. Meaning of `World.byte+0x38`; entity+0x2c is the destroyed guard, set after successful manager deletion; who subscribes OnSystemEnabled/Disabled.
 8. Bind initialization/event subscriptions and the remaining update bodies to the established complete system schedule.
