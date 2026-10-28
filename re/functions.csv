@@ -553,7 +553,7 @@ game:0x0600023b,game:0x0600023b,boot,,32,0x11153dc
 game:0x0600023c,game:0x0600023c,boot,,480,0x11153fc
 game:0x0600023d,game:0x0600023d,boot,,240,0x11155dc
 game:0x0600023e,game:0x0600023e,boot,,260,0x11156cc
-game:0x0600023f,game:0x0600023f,boot,,152,0x1103e90
+game:0x0600023f,main.AppData.GetResourceManager,boot,reimplemented,152,0x1103e90
 game:0x06000240,game:0x06000240,boot,,16,0x11157d0
 game:0x06000241,game:0x06000241,boot,,16,0x11157e0
 game:0x06000242,game:0x06000242,boot,,8,0x11157f0

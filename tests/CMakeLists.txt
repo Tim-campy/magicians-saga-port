@@ -530,3 +530,9 @@ target_link_libraries(test_animation_pass PRIVATE animation_pass update_schedule
 project_warnings(test_animation_pass)
 add_test(NAME animation_pass_contract COMMAND test_animation_pass)
 target_link_libraries(test_effect_factory PRIVATE animation_pass)
+
+add_executable(test_animation_resources test_animation_resources.cpp)
+target_link_libraries(test_animation_resources PRIVATE animation_resources)
+project_warnings(test_animation_resources)
+add_test(NAME animation_resources_contract COMMAND test_animation_resources)
+add_test(NAME animation_scenario_integration COMMAND "${Python3_EXECUTABLE}" -I "${CMAKE_CURRENT_SOURCE_DIR}/test_animation_scenario.py" "$<TARGET_FILE:animation_trace>")

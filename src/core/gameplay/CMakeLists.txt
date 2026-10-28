@@ -238,3 +238,6 @@ target_link_libraries(entity_visual PUBLIC visual_components)
 
 saga_library(animation_pass animation_pass.cpp)
 target_link_libraries(animation_pass PUBLIC entity_visual entity_subset animation_transitions)
+
+saga_library(animation_resources animation_resources.cpp)
+target_link_libraries(animation_resources PUBLIC animation_pass seb)

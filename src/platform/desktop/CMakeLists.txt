@@ -8,6 +8,10 @@ add_executable(event_trace event_trace.cpp)
 target_link_libraries(event_trace PRIVATE event_flow event_dispatch event_catalog event_execution)
 project_warnings(event_trace)
 
+add_executable(animation_trace animation_trace.cpp)
+target_link_libraries(animation_trace PRIVATE animation_resources effect_factory dynamic_subsets)
+project_warnings(animation_trace)
+
 option(SAGA_BUILD_VIEWER "Build the optional desktop PNG research viewer" OFF)
 if(SAGA_BUILD_VIEWER)
   set(FETCHCONTENT_BASE_DIR "${CMAKE_SOURCE_DIR}/build/_deps" CACHE PATH "Local downloaded source dependencies")

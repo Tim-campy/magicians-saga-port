@@ -9,7 +9,7 @@
 | Element | Mode 0 | Mode 1 |
 |---|---|---|
 | Prefix | none (first byte non-negative) | `ff` (signed -1; other negative values = unknown mode) |
-| Header | `group_count:h` (the two bytes read high/low), `header_value:h` | `group_count:h`, `header_value:h` (stored at `this+0x1c`) |
+| Header | `group_count:h` (the two bytes read high/low), `header_value:h` = maxFrame | `group_count:h`, `header_value:h` = maxFrame (stored at `this+0x1c`) |
 | Group | `record_count:h`, `legacy_value:h` (read at 0x1baf7cc, result unused) | `record_count:h` |
 | Record | 10 x `h` -> slots 0..9 (0x1baf918..0x1bafa50) | 4 x `h` -> slots 0,1,6,7; `control:B` -> slot 10; then optional fields |
 
@@ -46,7 +46,8 @@ Sample: `load/copy.seb` (28 bytes, one record) = FrameNo 0, TexId 0, U 0, V 0, W
 
 - `tools/inspect_seb.py` (`parse`/`encode`, stdlib): neutral field names (`values`, `header_value`, `legacy_value`, `control`, `extra_word`, `pair`, `tail_pair`, `flags`); rebuild from scalars only; rejects modes other than 0/1, negative counts, truncation, trailing bytes. `tests/test_seb.py` (6). Inventory SHA-256 `70b8d7c9…61d0a0`.
 - `src/assets/seb.cpp` (`parse_seb`): `std::optional` for absent fields (JSON `null`), contiguous groups/records; `SebLimits` 32 MiB / 32,767 groups / 1,000,000 records; throws `SebError`. Test `tests/test_seb.cpp`. `asset_inspect --seb` matched `dataclasses.asdict(inspect_seb.parse())` on all 303 files.
-- `src/core/gameplay/animation_pass.cpp` implements the shared manual Seb.Frame clock step and the separate ECS entity loop, documented in [animation](../subsystems/animation.md#animationsystemupdate-per-pass). Effective flags and loaded clip clocks are explicit inputs; this does not derive maxFrame from parsed records or implement automatic drawing clocks. The tests preserve ARM signed remainder for divisor zero, negative divisors and INT_MIN/-1, alongside int32 wrapping increments.
+- `src/core/gameplay/animation_pass.cpp` implements the shared manual Seb.Frame clock step and the separate ECS entity loop, documented in [animation](../subsystems/animation.md#animationsystemupdate-per-pass). Effective flags are explicit inputs. `animation_resources.cpp` now constructs clocks directly from parsed SEB headers: `_load` calls Dispose at 0x1baf6bc (frame reset at 0x1ba9efc), then reads a signed short at 0x1baf744 and stores it at +0x1c at 0x1baf74c. Both modes share that store. maxFrame is neither the record count nor the largest FrameNo, and no +1 is added. The reader retains the JSON/API name header_value for compatibility. Automatic drawing clocks and full compact-buffer construction remain separate.
+- `animation_trace` loads a selected SEB, binds its clock to a requested clip slot in the effect resource, creates the actual short-overload effect and advances the live animation group. All 303 manifest-verified files passed a complete period plus two passes through this offline scenario (header maxima 1..101); each yielded effect lifetime maxFrame-1 and matching independent shared/entity counters. Local result: `research/exports/animation-resources/corpus.json`, output SHA-256 `f37b3642583c990c9ef5562a2184640bd78a034767b2ab0765ff067221e1fad3`. This is static-model agreement, not original runtime or pixel verification.
 
 ## Evidence
 
@@ -58,4 +59,4 @@ Sample: `load/copy.seb` (28 bytes, one record) = FrameNo 0, TexId 0, U 0, V 0, W
 1. (blocking) Record combination between neighbouring FrameNo values in `GetSpriteLocal` (interpolation?).
 2. (blocking) TexId -> Image/OPT resolution and `GetOptimizeSeb`; semantics of negative TexId commands (-8 and others) and mode-0 derived colour/control.
 3. Writers of AutoAnimation and `IApplication.static+0x1c`; real tick rate of `Frame`/`OnGUI`.
-4. Meaning of `header_value`, `legacy_value`, `extra_word` and unused flag bits.
+4. Meaning of `legacy_value`, `extra_word` and unused flag bits.

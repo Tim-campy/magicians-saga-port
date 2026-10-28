@@ -92,6 +92,7 @@ The per-entity counter is separate from the SEB object's own frame; do not merge
 | `ecs.AnimationSystem.Init` | game:0x06000dba | Subset And(2,10), 24 ResourceManagers | high |
 | `ecs.AnimationSystem.NeedsUpdate` | game:0x06000dbb | Returns enabled byte +0x18; ignores pass | high |
 | `ecs.AnimationSystem.Update` | game:0x06000dbc | Ordered shared clocks, direct selection, frame/restore/remainder | high |
+| `main.AppData.GetResourceManager(int32)` | game:0x0600023f | Thirteen selected fields; other IDs return null | high |
 | `ecs.AnimationSystem.Pause` | game:0x06000dbe | IPausable.Pause: toggles enabled + hook | high |
 | `ecs.AnimationSystem.ChangeAnimation` | game:0x06000dbf | Set clip (+direction), optional frame reset | high |
 | `ecs.AnimationSystem.CutInAnimation` | game:0x06000dc0 | Set return clip and clip, reset frame | high |
@@ -152,6 +153,34 @@ Port: `visual_components.hpp/.cpp` defines EntityPlayback containing the existin
 
 Evidence: local `research/exports/animation-producers/M36765_AddAnimation.asm` and `research/exports/visual-components/metadata-contract.json`; combined field store at 0x112c594 and slot selection at 0x112c5b0. Confidence high; no runtime comparison.
 
+### Resource preparation and effect durations
+
+AppData.GetResourceManager(int32) (game:0x0600023f, 0x1103e90, 152 bytes) selects only the fields below. The jump table accepts IDs 1..23 but sends the unlisted cases to null; ID 0 and values outside that range also return null. It performs no allocation, loading, fallback or null replacement. Animation Init therefore does not imply 24 nonnull managers.
+
+| ID | Field | AppData offset |
+| --- | --- | --- |
+| 1 | resChara_ | +0xd8 |
+| 2 | resCom_ | +0xe0 |
+| 3 | resEnemy_ | +0xe8 |
+| 4 | resEquipment_ | +0xf0 |
+| 7 | resQuest_ | +0x100 |
+| 8 | resResident_ | +0x108 |
+| 11 | resSelect_ | +0x118 |
+| 18 | resChip_ | +0x140 |
+| 19 | resBullet_ | +0x148 |
+| 20 | resEffect_ | +0x150 |
+| 21 | resHat_ | +0x158 |
+| 22 | resWeapon_ | +0x160 |
+| 23 | resGauge_ | +0x168 |
+
+The frame limit is the signed second SEB header short, for both disk modes; [SEB](../formats/seb.md#reading-it) records the load/reset evidence. No scan of FrameNo records is needed. The effect factory's pre-allocation duration query uses this same selected manager's SEB array and clip +0x1c; a null manager/array/clip or invalid index faults before creating the effect. A successful query gives lifetime wrap32(maxFrame-1), so a zero header gives -1.
+
+`animation_resources.hpp/.cpp` adds the exact AppData selector and clip maximum query, plus PreparedAnimationResource for desktop preparation from already selected/parsed files. It owns contiguous optional clocks and publishes a stable pointer array, retaining null ID gaps without one heap allocation per clock. Each supplied entry is a separate prepared instance; sharing an original loaded instance remains an explicit host binding. The [catalog indexing slice](../formats/inf.md#indexing-selected-rows) now resolves missing/duplicate IDs separately from file/locale selection. These adapters do not implement asynchronous LoadReady/LoadStart or choose a language/path policy.
+
+`src/platform/desktop/animation_trace.cpp` exercises selected SEB -> prepared effect resource 20 at a supplied clip ID -> actual Init/GetSubSet -> CreateEffect -> ordered entity-component notifications -> live animation passes. It emits JSON Lines for the maximum, initial effect lifetime and independent clocks. Position is a diagnostic origin, image override -1, and both global gates are explicit arguments. The scenario does not execute the other systems, expire Garbage, render or run the original game. `tests/test_animation_scenario.py` drives it with synthetic files in CTest; the local corpus audit runs all 303 supplied SEBs for a full period plus two passes with no differences (maxFrame range 1..101). This validates the file-to-rule integration rather than actual catalog selection.
+
+Evidence: local `research/exports/animation-resources/{GetResourceManager,SebDispose}.asm`, `resource-map.json` (23 jump-table bytes at ELF 0x627ac4 resolved to field-offset metadata), `corpus.json`, and existing `seb-readers/Seb_load_18983.asm`. Selector dispatch is 0x1103e90..0x1103eb4; field load 0x1103f1c, default null return 0x1103f20. The effect factory reads the selected SEB array at 0x1134b14, clip maximum at 0x1134b34 and subtracts one at 0x1134b38. Confidence high for these static contracts; Android comparison absent.
+
 ## Port
 
 - Fire/FlyAway projectile and ModifyAnimation payload creation is ported in `projectile_launch`; see [combat.md](combat.md#projectile-launch-payload). ModifyAnimation per-frame execution remains open.
@@ -161,7 +190,7 @@ Evidence: local `research/exports/animation-producers/M36765_AddAnimation.asm` a
 - `src/core/gameplay/visual_components.{hpp,cpp}` links the slot-10 playback payload to `component_slots` and the effect factory. The effect/drop entity factories and projectile trajectory/launch kernels are now ported; their per-frame visual consumers remain incomplete.
 - `src/core/gameplay/animation_pass.{hpp,cpp}` implements initialize_animation, ordered update_animations and the shared manual clock step over explicit loaded resource/clip arrays and effective flag inputs. live_animation projects the actual Sprite/Playback/ContactDirection fields and Human/Monster/Enemy slot predicates (14/16/24) into a borrowed EntityAnimationView. The existing transition algorithms now operate on that view; the optional-value API delegates to the same implementation, preserving partial mutations without copying a failed operation back.
 - `tests/test_animation_pass.cpp` covers Init filter/24 lookups/null managers, reinitialization and partial failures, array replacement, pass/enable gates through GameplayUpdate, direct selection skips/errors, shared/individual ordering, duplicate shared clocks, overshoot/zero-rate restoration, live kind/direction differences, missing-direction partial restoration, int32 wrap and signed/zero/overflow divisors. The effect factory test composes actual ID registration/dynamic And(2,10) group -> effect components -> five animation passes and checks independent shared/entity clocks. These tests provide no Android or pixel comparison.
-- Missing: catalog-to-ResourceManager/SEB clock construction (especially maxFrame derivation), effective flag binding, concrete Pause adapter, other spawn factories, emitter execution and image/rendering consumers.
+- Missing: complete catalog/file/locale selection and production population of the manager fields, effective flag binding, concrete Pause adapter, other spawn factories, emitter execution and image/rendering consumers. Selected-file clock preparation, header maxima and AppData selection are now implemented.
 
 ## Evidence
 
@@ -179,7 +208,7 @@ Evidence: local `research/exports/animation-producers/M36765_AddAnimation.asm` a
 
 ## Open questions
 
-1. (blocking) Populate ResourceManager.seb from decoded catalogs/files with original ID gaps and maxFrame derivation; bind the effective AutoAnimation/application-update flags. Direct Update selection, comparison and remainder behavior are now implemented.
+1. (blocking) Complete catalog/file/locale selection to populate all required AppData manager fields; bind effective AutoAnimation/application-update flags. ID placement, header-derived clocks, AppData selection and the per-pass loop are implemented.
 2. (blocking) Remaining factories' full component sets (CreateEffect/CreateDrop now ported); the enemy resource resolver (record+0x50) and `BaseData.Check(1)` meaning.
 3. Who calls Change/CutIn/Restore from gameplay, with which ids; meaning of the id layout (groups of 4 directions, human base 36).
 4. EmitterComponent fields (+0x10..+0x20), its queue collection, `emitter+0x14` values 1 and 2; CreateParticle semantics; callers that decide `anim`/`rotate`. Projectile trajectory math is now ported in gameplay.

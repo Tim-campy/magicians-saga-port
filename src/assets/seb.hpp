@@ -28,7 +28,7 @@ struct SebGroup {
 };
 struct Seb {
     std::uint8_t mode;
-    std::int16_t header_value;
+    std::int16_t header_value; // Runtime Seb.maxFrame +0x1c, in both supported disk modes.
     std::vector<SebGroup> groups;
     std::vector<SebRecord> records;
 };
