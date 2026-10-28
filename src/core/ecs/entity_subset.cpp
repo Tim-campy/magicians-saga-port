@@ -46,6 +46,12 @@ std::optional<ComponentSlots*> EntitySubset::Cursor::next(){
     while(index_<owner_.slots_.size())if(auto* e=owner_.slots_[index_++].entity)return e;
     return std::nullopt;
 }
+ComponentSlots* EntitySubset::first_entity()const{
+    if(size()==0)return nullptr;
+    auto iterator=cursor();const auto first=iterator.next();
+    if(!first)throw std::runtime_error("nonempty subset has no first entity");
+    return *first;
+}
 void SubsetMembership::added(ComponentSlots& e,std::int32_t index,Component* c){
     for(auto* group:groups_){if(!group)throw std::invalid_argument("missing entity subset");if(!group->add(&e,index,c))group->remove(&e,index,c);}
 }

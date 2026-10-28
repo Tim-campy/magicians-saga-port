@@ -249,3 +249,6 @@ if(MSVC)
 else()
   target_compile_options(drop_collection PRIVATE -ffp-contract=off)
 endif()
+
+saga_library(member_selection member_selection.cpp)
+target_link_libraries(member_selection PUBLIC dynamic_subsets projectile_launch)

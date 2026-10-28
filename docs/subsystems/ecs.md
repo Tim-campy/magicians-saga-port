@@ -53,7 +53,7 @@ Game factories (`World.CreateHuman/Enemy/MapChip/Nature/Effect/Particle`) build 
 `Subset.Add(entity, index, component)` (`0x1137f00`): calls `IFilter.Matches(entity)` on `+0x28` (entity already mutated). If true: `HashSet.Add` on `+0x30` (**result ignored**), clear `+0x38`, invoke OnEntityAdded (`+0x10`) if present — even when the HashSet already held the entity. Returns the Matches result.
 `Subset.Remove` (`0x1138018`): `HashSet.Remove`; invoke `+0x18` only if it returned true; clear `+0x38` **after** the callback (also on the unsuccessful path), so an exception in the callback skips the clear.
 `Subset.Add(entity)` overload (`0x11386c0`): Matches → HashSet.Add → clear `+0x38`, **no notification**. Do not substitute one overload for the other.
-`Subset.get_entities` (`0x113942c`) returns `+0x30` directly (no snapshot). `get_count` (`0x11393e4`) reads the set's count (`set+0x20`). `get_entity` (`0x1139434`) returns null when count is 0, else forwards to an unresolved generic helper (`0x12af8d4`).
+`Subset.get_entities` (`0x113942c`) returns `+0x30` directly (no snapshot). `get_count` (`0x11393e4`) reads the set's count (`set+0x20`). `get_entity` (`0x1139434`) returns null when count is 0, else forwards to the metadata-resolved public Enumerable.First helper (`0x12af8d4`). EntitySubset::first_entity now uses the existing ordered cursor for that result and leaves entitiesCache_ untouched; see [member/player selection](rewards.md#front-line-member-and-hero-selection).
 `Subset..ctor` (`0x1138604`) stores the filter at `+0x28` and creates the HashSet at `+0x30` with the static `EqualityComparer` instance.
 
 `World.GetSubSet` is called with a Filter (e.g. AnimationSystem.Init); lookup, population and publication order are established below, with concrete Filter identity now ported.
@@ -109,6 +109,7 @@ Call chain from the form layer (see [ui.md](ui.md)): form event 1 → `QuestForm
 | `kairo.unity.ecs.World.Update` | game:0x06000c0a | Forwards pass index to SystemManager.Update | high |
 | `kairo.unity.ecs.World.Destroy` | game:0x06000c02 | Visible-set clear, entity destruction, systems, event handlers | high |
 | `kairo.unity.ecs.World.Deserialize` | game:0x06000c19 | Entities, then systems, then byte+0x38=1 | high |
+| `kairo.unity.ecs.World.get_playerEntity` | game:0x06000be0 | Lazy And(30) first entity, retained cache +0x18 | high |
 | `kairo.unity.ecs.Entity.AddCell` | game:0x06000b32 | Pooled coordinates/parent, fresh children, slot 5 insertion | high |
 | `kairo.unity.ecs.Entity.AddImage` (six scalars) | game:0x06000b6e | Six fresh singleton arrays, forward | high |
 | `kairo.unity.ecs.Entity.AddImage` (two arrays) | game:0x06000b6f | Forward null U/V/W/H | high |
@@ -239,7 +240,7 @@ Entity.AddGarbage (0x112eccc) pops from the Garbage pool if available, otherwise
 
 ### Live gameplay subsets
 
-`EntitySubset` ports the two Add overloads, Remove, ChangeComponent and count over the existing filter predicate. The filter descriptor and its lists remain borrowed/live. Notification Add returns Matches even for a duplicate, clears the cache before notification, and notifies on every matching call; silent Add never notifies. Remove only notifies after a successful removal and clears the cache afterwards, so callback failure retains the cache pointer. Change only forwards the notification, including for entities outside the group; it never reevaluates membership. Cache production and get_entity are not implemented.
+`EntitySubset` ports the two Add overloads, Remove, ChangeComponent and count over the existing filter predicate. The filter descriptor and its lists remain borrowed/live. Notification Add returns Matches even for a duplicate, clears the cache before notification, and notifies on every matching call; silent Add never notifies. Remove only notifies after a successful removal and clears the cache afterwards, so callback failure retains the cache pointer. Change only forwards the notification, including for entities outside the group; it never reevaluates membership. get_entity is now implemented through first_entity; cache production remains open.
 
 For lookup the port uses std::unordered_map, keyed by captured masked ID hash and entity reference. A separate vector preserves slot order and LIFO hole reuse; growth does not move logical indices. Duplicate insertion and absent removal do not change the cursor version; successful mutations do. Emptying a group resets its used-slot limit/free list. Cursors scan occupied slots and reject version changes, even after exhaustion. Equal IDs do not collapse distinct entities. Supplying a changed ID changes lookup while the old captured hash remains stored, matching the original mutable-key hazard; actual ID allocation remains a registry responsibility.
 
@@ -535,7 +536,7 @@ Evidence: local `research/exports/effect-factory/kairo_unity_ecs_Entity_AddImage
 3. Bind original Serialize to the established Dictionary<int,Entity> slot-order/version cursor; DestroyAllEntities now uses it.
 4. Full slot-index → component type table (`ComponentFactory.Create`), and EntityManager deletion callbacks/indirect mutations (`Entity.Destroy` wrapper is now ported; see [rewards.md](rewards.md#member-finalization-and-deferred-town-return)).
 5. Continue/deserialization entry-state preparation remains unresolved; World.Destroy retains the group directory and does not reset the counter or loaded flag. Do not add implicit resets to cover this gap.
-6. `Subset.get_entity` helper (`0x12af8d4`), `entitiesCache_`/`dirty_` usage, and delegate disposal of subsets.
+6. `entitiesCache_`/`dirty_` production and delegate disposal of subsets; get_entity is now resolved to public Enumerable.First and ported above.
 7. Meaning of `World.byte+0x38`; entity+0x2c is the destroyed guard, set after successful manager deletion; who subscribes OnSystemEnabled/Disabled.
 8. Bind initialization/event subscriptions and the remaining update bodies to the established complete system schedule.
 9. Remaining SystemManager collections (`+0x38,+0x40,+0x50,+0x58,+0x60`) and BaseSystem ctor / SetWorld initial state.

@@ -119,3 +119,5 @@ game:0x06000ebb	traced	docs/subsystems/combat.md	Human group and event 23/29 tar
 game:0x06000ed0	reimplemented	src/core/gameplay/human_contact.cpp	Complete human contact receiver composed with real state transitions; guards displacement callbacks and failures tested.
 game:0x06001236	reimplemented	src/core/gameplay/drop_collection.cpp	Boss reward reads inherited int32 flags mask 1; decoded treasure rows and pickup gates tested.
 kairo:0x06000b5a	reimplemented	src/core/gameplay/projectile_motion.cpp	Existing binary32 float curve shared by projectile motion and 31-pass drop collection; endpoint/gating/order integration tested.
+game:0x06000fa9	reimplemented	src/core/gameplay/member_selection.cpp	Strict minimum-Z party scan from FLT_MAX, first tie, no death/HP filter; actual collection binding and exceptional coordinates tested.
+game:0x06000f2d	reimplemented	src/core/gameplay/member_selection.cpp	Current-world forwarding to the concrete player cache; real group lookup and collection hero targeting tested.

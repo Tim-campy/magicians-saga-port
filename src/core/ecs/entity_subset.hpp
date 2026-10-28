@@ -34,6 +34,8 @@ public:
         const EntitySubset& owner_;std::uint32_t version_;std::size_t index_=0;
     };
     Cursor cursor()const{return Cursor(*this);}
+    // Subset.get_entity 0x1139434: empty -> null, otherwise public Enumerable.First.
+    ComponentSlots* first_entity()const;
 private:
     struct Key {
         ComponentSlots* entity;std::uint32_t hash;

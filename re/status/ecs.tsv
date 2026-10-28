@@ -92,7 +92,7 @@ game:0x06000c46	traced	docs/subsystems/ecs.md
 game:0x06000c47	traced	docs/subsystems/ecs.md	
 game:0x06000bb1	reimplemented	src/core/gameplay/quest_return.cpp	Destroyed guard and manager-before-flag ordering tested, including duplicate destruction and failure
 game:0x06000db8	traced	docs/subsystems/ecs.md	
-game:0x06000c78	traced	docs/subsystems/ecs.md	
+game:0x06000c78	reimplemented	src/core/ecs/entity_subset.cpp	Empty-null or public First contract over the ordered cursor; player query and untouched-cache tests.
 game:0x06000fea	traced	docs/subsystems/ecs.md	
 game:0x06000cdc	traced	docs/subsystems/ecs.md	
 game:0x06000cde	traced	docs/subsystems/ecs.md	
@@ -171,3 +171,4 @@ game:0x06000b32	reimplemented	src/core/gameplay/cell_component.cpp	Pooled Cell c
 game:0x06000b6e	reimplemented	src/core/gameplay/visual_components.cpp	Six singleton image arrays before pooled acquisition and slot 7; scalar factory integration tested.
 game:0x06000b6f	reimplemented	src/core/gameplay/visual_components.cpp	Two image arrays forward null crop references; independent defaults and failure effects tested.
 game:0x06000b70	reimplemented	src/core/gameplay/visual_components.cpp	Pooled Image writes retain nonempty array identity, normalize null/empty independently, then add slot 7; tested.
+game:0x06000be0	reimplemented	src/core/gameplay/member_selection.cpp	World player cache queries real And(30) on null, stores first entity and retains stale nonnull references; tested.

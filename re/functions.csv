@@ -2884,7 +2884,7 @@ game:0x06000bdc,game:0x06000bdc,ecs,,96,0x1132ffc
 game:0x06000bdd,game:0x06000bdd,ecs,,92,0x113305c
 game:0x06000bde,game:0x06000bde,ecs,,148,0x11330b8
 game:0x06000bdf,game:0x06000bdf,ecs,,168,0x1133168
-game:0x06000be0,game:0x06000be0,ecs,,160,0x1133210
+game:0x06000be0,kairo.unity.ecs.World.get_playerEntity,ecs,reimplemented,160,0x1133210
 game:0x06000be1,kairo.unity.ecs.World..cctor,ecs,documented,252,0x11332b0
 game:0x06000be2,game:0x06000be2,ecs,,88,0x11334c8
 game:0x06000be9,game:0x06000be9,ecs,,72,0x1133520
@@ -3020,7 +3020,7 @@ game:0x06000c74,game:0x06000c74,ecs,,156,0x1139348
 game:0x06000c75,kairo.unity.ecs.Subset..ctor,ecs,documented,188,0x1138604
 game:0x06000c76,kairo.unity.ecs.Subset.get_count,ecs,reimplemented,72,0x11393e4
 game:0x06000c77,kairo.unity.ecs.Subset.get_entities,ecs,documented,8,0x113942c
-game:0x06000c78,kairo.unity.ecs.Subset.get_entity,ecs,traced,116,0x1139434
+game:0x06000c78,kairo.unity.ecs.Subset.get_entity,ecs,reimplemented,116,0x1139434
 game:0x06000c79,kairo.unity.ecs.Subset.Add,ecs,reimplemented,228,0x11386c0
 game:0x06000c7a,kairo.unity.ecs.Subset.Add,ecs,reimplemented,280,0x1137f00
 game:0x06000c7b,kairo.unity.ecs.Subset.Remove,ecs,reimplemented,152,0x1138018
@@ -3672,7 +3672,7 @@ game:0x06000f29,game:0x06000f29,ecs,,208,0x115c09c
 game:0x06000f2a,game:0x06000f2a,ecs,,8,0x115c16c
 game:0x06000f2b,game:0x06000f2b,ecs,,8,0x115c174
 game:0x06000f2c,game:0x06000f2c,ecs,,88,0x115c17c
-game:0x06000f2d,game:0x06000f2d,ecs,,100,0x1156370
+game:0x06000f2d,ecs.MemberSystem.get_hero,ecs,reimplemented,100,0x1156370
 game:0x06000f2e,game:0x06000f2e,ecs,,8,0x115c1d4
 game:0x06000f2f,game:0x06000f2f,ecs,,8,0x115c1dc
 game:0x06000f30,game:0x06000f30,ecs,,8,0x115c1e4
@@ -3796,7 +3796,7 @@ game:0x06000fa5,ecs.StageSystem.UpdateCollectingDrops,ecs,reimplemented,528,0x11
 game:0x06000fa6,game:0x06000fa6,ecs,,376,0x1163e28
 game:0x06000fa7,game:0x06000fa7,ecs,,56,0x1164170
 game:0x06000fa8,game:0x06000fa8,ecs,,308,0x1165c6c
-game:0x06000fa9,game:0x06000fa9,ecs,,452,0x11657c4
+game:0x06000fa9,ecs.StageSystem.GetFrontLineHuman,ecs,reimplemented,452,0x11657c4
 game:0x06000faa,game:0x06000faa,ecs,,32,0x1165708
 game:0x06000fab,game:0x06000fab,ecs,,408,0x1165da0
 game:0x06000fac,game:0x06000fac,ecs,,648,0x1165f38
