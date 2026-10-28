@@ -3,6 +3,7 @@
 #include "cell_fixture.hpp"
 #include "quest_camera_fixture.hpp"
 #include "render_fixture.hpp"
+#include "render_draw_fixture.hpp"
 #include <limits>
 
 int main()try{
@@ -70,6 +71,13 @@ int main()try{
      cells.map.step_x=t.f.active_map->step_x;cells.map.step_z=t.f.active_map->step_z;cells.map.width=quest_map_width();cells.init();
      CameraServices camera(t,cells.map);camera.init();cells.view=&camera.cell_view;
      RenderServices renderer(t,camera,cells);renderer.resource_provider=[&](std::int32_t id){return id==19?&em.pools.bullet_clips:get_animation_resource(renderer.catalog,id);};
+     RenderDrawServices drawing;drawing.state.queue=&renderer.output;drawing.supplied=renderer.bounds;
+     // Explicit synthetic image slots cover this fixture's clothing/weapon/bullet IDs (up to 700).
+     drawing.catalog.images->assign(1024,&drawing.first_image);
+     RenderDrawServices::Resource bullet_images{&em.pools.bullet_clips,drawing.catalog.images};
+     drawing.catalog.animations=&renderer.resource;
+     drawing.resource_provider=[&](std::int32_t id){return id==19?&bullet_images:&drawing.catalog;};
+     drawing.global_provider=drawing.resource_provider;
      t.host.parameters=[](ComponentSlots&,std::int32_t k){return k==3?1000:0;};
      t.host.on_impact=[&](ComponentSlots& e,ComponentSlots* parent){create_impact_effect(&e,parent,t.host.records,impacts);};
      t.host.on_read_bullet=[&](ComponentSlots& e){check(impacts.bullet_data(e));};
@@ -102,6 +110,8 @@ int main()try{
      std::int32_t peak_commands=0;
      for(int frame=0;frame<120;++frame){order.clear();clear_render_queue(renderer.output);update_systems(schedule,0);check(order==std::vector<int>{8,9,10,11,12,14,15,17,18,19,20,21,31});
          check(renderer.errors.empty());peak_commands=std::max(peak_commands,renderer.output.counts->at(0));
+         drawing.draws.clear();drawing.calls.clear();drawing.draw();
+         check(drawing.draws.size()==static_cast<std::size_t>(renderer.output.counts->at(0))&&drawing.missing.empty()&&drawing.invalid.empty());
          for(int i=1;i<renderer.output.counts->at(0);++i)check(renderer.row(static_cast<std::size_t>(i-1)).at(render_depth)<=renderer.row(static_cast<std::size_t>(i)).at(render_depth));
          if(debris_created==3&&landed==-1)landed=frame;
          if(t.f.node(enemy).lifetime.destroyed&&removed==-1)removed=frame;

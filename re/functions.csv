@@ -567,7 +567,7 @@ game:0x06000249,main.AppData.Zsort,boot,reimplemented,100,0x1115bac
 game:0x0600024a,main.AppData.QuickSort,boot,reimplemented,180,0x1115c10
 game:0x0600024b,main.AppData.Pivot,boot,reimplemented,140,0x1115cc4
 game:0x0600024c,main.AppData.Partition,boot,reimplemented,260,0x1115d50
-game:0x0600024d,game:0x0600024d,boot,,2548,0x1115e54
+game:0x0600024d,main.AppData.DrawZSortObjects,boot,reimplemented,2548,0x1115e54
 game:0x0600024e,game:0x0600024e,boot,,68,0x1116848
 game:0x0600024f,game:0x0600024f,boot,,28,0x111688c
 game:0x06000250,game:0x06000250,boot,,284,0x11168a8

@@ -1,4 +1,5 @@
 #include "render_fixture.hpp"
+#include "render_draw_fixture.hpp"
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -22,7 +23,10 @@ int main()try{
      r.resource_provider=[&](std::int32_t id){return id==1?&loaded.resource():nullptr;};auto& e=r.object();r.visible.add(&e);r.update();
      check(r.errors.empty()&&r.output.counts->at(0)==1&&r.row().at(render_u)==7&&r.row().at(render_width)==82);
      field<EntitySprite>(e,2).animation.frame=1;clear_render_queue(r.output);r.update();
-     check(r.errors.empty()&&r.row().at(render_width)==84&&r.row().at(render_frame)==1);}
+     check(r.errors.empty()&&r.row().at(render_width)==84&&r.row().at(render_frame)==1);
+     RenderDrawServices drawing;drawing.catalog.animations=&loaded.resource();drawing.state.queue=&r.output;drawing.draw();
+     check(drawing.draws.size()==1&&drawing.draws[0].width==84&&drawing.draws[0].x==-37&&drawing.draws[0].y==4);
+     check(drawing.draws[0].image==&drawing.first_image&&!drawing.draws[0].scaled);}
     {Setup s;auto& r=s.render;auto& e=r.object();e.remove(5);field<EntityDepth>(e,4).value=17;field<EntitySprite>(e,2).layers=std::make_shared<EventIntegers>(EventIntegers{0});r.visible.add(&e);r.update();
      check(r.row().at(render_depth)==17&&r.row().at(render_alpha)==255&&r.errors.empty());}
     {Setup s;auto& r=s.render;auto& hidden=r.object();Component invisible;hidden.add(21,&invisible);hidden.remove(0);
