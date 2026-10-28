@@ -28,9 +28,9 @@ game:0x06000c59	documented	docs/subsystems/ecs.md
 game:0x06000c5d	reimplemented	src/core/ecs/entity_creation.cpp	Wrapping counter, threshold/free-ID scan, temporary override and ordered factory/registration; tested failure effects.
 game:0x06000c5e	documented	docs/subsystems/ecs.md	
 game:0x06000c62	reimplemented	src/core/ecs/entity_registration.cpp	Ordered registry/subscription or channel disposal; ordered Values cursor with native version timing and live creation/group integration tested.
-game:0x06000c63	documented	docs/subsystems/ecs.md	
-game:0x06000c64	documented	docs/subsystems/ecs.md	
-game:0x06000c65	documented	docs/subsystems/ecs.md	
+game:0x06000c63	reimplemented	src/core/ecs/dynamic_subsets.cpp	Dynamic filter directory lookup/population/publication or versioned live component forwarding; integrated Init and mutation tests.
+game:0x06000c64	reimplemented	src/core/ecs/dynamic_subsets.cpp	Dynamic filter directory lookup/population/publication or versioned live component forwarding; integrated Init and mutation tests.
+game:0x06000c65	reimplemented	src/core/ecs/dynamic_subsets.cpp	Dynamic filter directory lookup/population/publication or versioned live component forwarding; integrated Init and mutation tests.
 game:0x06000c5f	reimplemented	src/core/gameplay/stage_cleanup.cpp	RemoveAll callbacks before DisposeEvents and conditional registry erase; failure ordering tested with ComponentSlots
 game:0x06000c60	documented	docs/subsystems/ecs.md	
 game:0x06000c61	documented	docs/subsystems/ecs.md	
@@ -164,5 +164,5 @@ game:0x06000cad	reimplemented	src/core/ecs/filter_identity.cpp	Concrete Filter i
 game:0x06000cae	reimplemented	src/core/ecs/filter_identity.cpp	Concrete Filter identity hash/cache and ordered equality; collisions mutation and failure tests.
 game:0x06000caf	reimplemented	src/core/ecs/filter_identity.cpp	Concrete Filter identity hash/cache and ordered equality; collisions mutation and failure tests.
 game:0x06000c09	documented	docs/subsystems/ecs.md	GetSubSet forwarding/population/publication or ordered array comparison contract; native bounded evidence.
-game:0x06000c66	documented	docs/subsystems/ecs.md	GetSubSet forwarding/population/publication or ordered array comparison contract; native bounded evidence.
+game:0x06000c66	reimplemented	src/core/ecs/dynamic_subsets.cpp	Dynamic filter directory lookup/population/publication or versioned live component forwarding; integrated Init and mutation tests.
 game:0x06000001	documented	docs/subsystems/ecs.md	GetSubSet forwarding/population/publication or ordered array comparison contract; native bounded evidence.

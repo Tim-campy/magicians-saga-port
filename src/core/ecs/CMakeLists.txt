@@ -16,3 +16,6 @@ target_link_libraries(entity_registration PUBLIC component_slots)
 
 saga_library(filter_identity filter_identity.cpp)
 target_link_libraries(filter_identity PUBLIC entity_subset)
+
+saga_library(dynamic_subsets dynamic_subsets.cpp)
+target_link_libraries(dynamic_subsets PUBLIC filter_identity entity_registration)

@@ -2,12 +2,15 @@
 #include <stdexcept>
 
 namespace saga::core {
+EntitySubset::EntitySubset(Predicate predicate,Identity identity):identity_(std::move(identity)),predicate_(std::move(predicate)){
+    if(!predicate_)throw std::invalid_argument("missing subset predicate");
+}
 // Slot reuse/order follows public Microsoft HashSet reference source; std::unordered_map
 // handles membership. See docs/subsystems/ecs.md and third_party/licenses/dotnet-referencesource.txt.
 EntitySubset::Key EntitySubset::key(ComponentSlots* e)const{
     return {e,e?(static_cast<std::uint32_t>(identity_(*e))&0x7fffffffU):0U};
 }
-bool EntitySubset::matches(ComponentSlots* e)const{return matches_component_filter(e,filter_.all,filter_.any,filter_.none);}
+bool EntitySubset::matches(ComponentSlots* e)const{return predicate_?predicate_(e):matches_component_filter(e,filter_->all,filter_->any,filter_->none);}
 void EntitySubset::insert(ComponentSlots* e){
     const auto k=key(e);const auto slot=free_==no_slot?slots_.size():free_;
     const auto result=lookup_.emplace(k,slot);if(!result.second)return;

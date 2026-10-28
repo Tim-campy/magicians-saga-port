@@ -12,8 +12,10 @@ struct SubsetFilter {
 class EntitySubset {
 public:
     // IDs are supplied by the registry; allocation/restoration policy is not invented here.
+    using Predicate=std::function<bool(ComponentSlots*)>;
     using Identity=std::function<std::int32_t(const ComponentSlots&)>;
-    EntitySubset(const SubsetFilter& filter,Identity identity):filter_(filter),identity_(std::move(identity)){}
+    EntitySubset(const SubsetFilter& filter,Identity identity):filter_(&filter),identity_(std::move(identity)){}
+    EntitySubset(Predicate predicate,Identity identity);
     EntitySubset(const EntitySubset&)=delete;
     EntitySubset& operator=(const EntitySubset&)=delete;
     ComponentObserver* notifications=nullptr;
@@ -40,7 +42,7 @@ private:
     struct Hash {std::size_t operator()(const Key& k)const{return std::hash<ComponentSlots*>{}(k.entity)^static_cast<std::size_t>(k.hash);}};
     static constexpr auto no_slot=std::numeric_limits<std::size_t>::max();
     struct Slot {ComponentSlots* entity;std::size_t next_free=no_slot;};
-    const SubsetFilter& filter_;Identity identity_;
+    const SubsetFilter* filter_=nullptr;Identity identity_;Predicate predicate_;
     std::unordered_map<Key,std::size_t,Hash> lookup_;
     std::vector<Slot> slots_;std::size_t free_=no_slot;std::uint32_t version_=0;
     Key key(ComponentSlots*)const;

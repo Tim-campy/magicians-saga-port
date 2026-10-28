@@ -2999,10 +2999,10 @@ game:0x06000c5f,kairo.unity.ecs.EntityManager.DestroyEntity,ecs,reimplemented,15
 game:0x06000c60,kairo.unity.ecs.EntityManager.DestroyAllEntities,ecs,documented,132,0x11379e8
 game:0x06000c61,kairo.unity.ecs.EntityManager.DestroyEntities,ecs,documented,756,0x1137a6c
 game:0x06000c62,kairo.unity.ecs.EntityManager.AddEntity,ecs,reimplemented,376,0x1137758
-game:0x06000c63,kairo.unity.ecs.EntityManager.OnEntityComponentAdded,ecs,documented,416,0x1137d60
-game:0x06000c64,kairo.unity.ecs.EntityManager.OnEntityComponentRemoved,ecs,documented,416,0x11380b0
-game:0x06000c65,kairo.unity.ecs.EntityManager.OnEntityComponentChanged,ecs,documented,412,0x1138250
-game:0x06000c66,kairo.unity.ecs.EntityManager.GetSubSet,ecs,documented,508,0x1138408
+game:0x06000c63,kairo.unity.ecs.EntityManager.OnEntityComponentAdded,ecs,reimplemented,416,0x1137d60
+game:0x06000c64,kairo.unity.ecs.EntityManager.OnEntityComponentRemoved,ecs,reimplemented,416,0x11380b0
+game:0x06000c65,kairo.unity.ecs.EntityManager.OnEntityComponentChanged,ecs,reimplemented,412,0x1138250
+game:0x06000c66,kairo.unity.ecs.EntityManager.GetSubSet,ecs,reimplemented,508,0x1138408
 game:0x06000c67,game:0x06000c67,ecs,,88,0x11387a4
 game:0x06000c68,game:0x06000c68,ecs,,148,0x11387fc
 game:0x06000c69,kairo.unity.ecs.EntityManager.Serialize,ecs,documented,792,0x1138890

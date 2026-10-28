@@ -32,7 +32,7 @@ Current maintainer priority: game-specific decompilation and gameplay integratio
 
 ### Current gameplay focus
 - [ ] Bind the full system update schedule and event subscriptions around the tested live Projectile -> Move -> Collision passes and final Garbage pass; the 26-system order and all NeedsUpdate gates are now ported/tested; generic Init dispatch and concrete Projectile/Move/Collision/Garbage initialization are ported/tested; other initialization and update bodies remain before composing the complete frame. Entity-event removal and teardown are ported with explicit original/wrapper hash inputs; extend payload bindings only as required by gameplay.
-- [ ] Port the established dynamic GetSubSet lookup/population/publication contract using the ported Filter identity and ordered registry cursor; then complete concrete effect/drop factories on top of the ported ID selection, entity registration and component-event subscriptions. All four gameplay passes now have live group implementations; a complete launch/landing and collision/expiration sequences pass integration tests.
+- [ ] Bind dynamic group-directory lifecycle/reset and complete concrete effect/drop factories; GetSubSet creation/dedup/population and component forwarding now use the ported Filter identity and ordered registry cursor on top of the ported ID selection, entity registration and component-event subscriptions. All four gameplay passes now have live group implementations; a complete launch/landing and collision/expiration sequences pass integration tests.
 - [ ] Connect the existing damage/defeat/reward/progression chains to the integrated world and decoded save state, then add a desktop gameplay scenario.
 
 ### 1. Events and scripts
@@ -57,7 +57,7 @@ Current maintainer priority: game-specific decompilation and gameplay integratio
 - [ ] Build the slot index → component type table (`ComponentFactory.Create`) and recover the payloads and Extra hooks of the remaining components (blocking for an entity reader).
 - [ ] What guarantees an empty ECS world before `World.Deserialize` on Continue (`World.Destroy` has no direct caller) (blocking).
 - [ ] Bind registry consumers to the ported ordered Values cursor and audit remaining writers of `entity+0x28`; counter allocation/free-ID scanning are ported.
-- [ ] Port dynamic GetSubSet dedup/population on top of the ported EntitySubset, entity registration and ID-selection orchestration; fixed collision/garbage groups already use real membership notifications.
+- [ ] Bind dynamic directory reset/destruction to the manager lifecycle; GetSubSet dedup/population now uses the ported EntitySubset, entity registration and ID-selection orchestration; fixed collision/garbage groups already use real membership notifications.
 - [ ] Close `AnimationSystem.Update` (Seb selection by res/id, maxFrame comparison and modulo); port the loop on top of `animation_transitions`.
 - [ ] Bind World.GetSubSet and system initialization to the established IUpdateSystem/IPausable lists and tested update dispatcher.
 

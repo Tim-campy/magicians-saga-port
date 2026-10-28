@@ -489,3 +489,8 @@ add_executable(test_filter_identity test_filter_identity.cpp)
 target_link_libraries(test_filter_identity PRIVATE filter_identity)
 project_warnings(test_filter_identity)
 add_test(NAME filter_identity_contract COMMAND test_filter_identity)
+
+add_executable(test_dynamic_subsets test_dynamic_subsets.cpp)
+target_link_libraries(test_dynamic_subsets PRIVATE dynamic_subsets pass_initialization)
+project_warnings(test_dynamic_subsets)
+add_test(NAME dynamic_subsets_contract COMMAND test_dynamic_subsets)
