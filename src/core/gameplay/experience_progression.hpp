@@ -7,7 +7,7 @@ std::int32_t character_witch_experience(const std::vector<std::int32_t>&);
 std::int32_t scaled_level_experience(std::int32_t base,std::int32_t rate);
 std::int32_t next_character_experience(std::int32_t level,std::int32_t need_exp_rate,
                                       const std::vector<std::optional<std::int32_t>>& table_exp);
-struct MemberExperience {std::int32_t level,experience;};
+struct MemberExperience {std::int32_t level=0,experience=0;};
 class ExperienceProgressionHost {
 public:
     virtual ~ExperienceProgressionHost() = default;

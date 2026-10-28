@@ -8,7 +8,7 @@ struct Draws final:RandomSource {
     std::int32_t next()override{if(on_draw)on_draw(index);const auto value=index<values.size()?values[index]:fallback;++index;return value;}
 };
 inline StageScriptGroups scripts(EventScript first){return std::make_shared<std::vector<EventScript>>(1,std::move(first));}
-struct StartupFixture final:Fixture,DropFactoryHost,EffectFactoryHost,DropCollectionHost,StageStartHost,
+struct StartupFixture:Fixture,DropFactoryHost,EffectFactoryHost,DropCollectionHost,StageStartHost,
                             StageCleanupHost,StageMapLoader,StageEnemyStart {
     StageStartState state;StageHumanStart human_system;StageQuestForm form;
     StageGeometry geometry{100,24},other_geometry{200,48};StageGeometry* active_map=&geometry;

@@ -7,14 +7,15 @@
 namespace saga::core {
 struct AttackButtonState {std::int32_t state=0,frame=0;};
 void change_attack_button_state(AttackButtonState&,std::int32_t);
-struct StageHumanStart {}; // Identity checked by Start; empty OnStart was inlined away.
+struct StageHumanStart {HumanStateHost* transitions=nullptr;}; // Stored HumanSystem, not a fresh world lookup.
+struct StageDialog;
 class StageMapLoader {
 public:virtual ~StageMapLoader()=default;virtual void load_map(std::shared_ptr<StageQuest>)=0;
 };
 class StageEnemyStart {
 public:virtual ~StageEnemyStart()=default;virtual void start_enemies(std::shared_ptr<StageQuest>)=0;
 };
-struct StageQuestForm {std::int32_t scale=0;}; // QuestForm.scale_ +0x1dc.
+struct StageQuestForm {std::int32_t scale=0,fade_frame=0;}; // +0x1dc / +0x128.
 struct StageStartState:StagePlacementState {
     EventObject area;std::int32_t stage=0,state=0,remaining_time=0,loop_counter=0;
     std::int32_t total_damage=0,frame=0,min_z_rate=0,max_z_rate=0,last_active_button=0;
@@ -25,6 +26,7 @@ struct StageStartState:StagePlacementState {
     StageEnemyStart* enemies=nullptr;
     std::shared_ptr<std::vector<AttackButtonState*>> attack_buttons;
     std::shared_ptr<std::vector<std::uint8_t>> event_states;
+    std::shared_ptr<StageDialog> dialog; // StageSystem.dialog_ +0x60.
     // Use this operation for every drop_ reference replacement so collection
     // always reads the same current object as stage startup/result accounting.
     void replace_rewards(std::shared_ptr<StageRewards> value){rewards_=std::move(value);collection.rewards=rewards_.get();}

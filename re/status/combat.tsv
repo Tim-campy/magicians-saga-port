@@ -38,11 +38,11 @@ game:0x06000fa4	reimplemented	src/core/gameplay/drop_collection.cpp	Live drop qu
 game:0x06000fa5	reimplemented	src/core/gameplay/drop_collection.cpp	Captured hero target, live indexed list, reused float curve, 31-pass credit and current-list removal; real factory/expiry integration.
 game:0x06000fb9	reimplemented	src/core/gameplay/drop_collection.cpp	Accumulator then actual number/common effect factories, Garbage(0), explicit sound; partial failures and unknown types tested.
 game:0x06000d36	reimplemented	src/core/gameplay/drop_collection.cpp	Signed frame >=0 predicate used by tested live collection pass.
-game:0x06000f9d	traced	docs/subsystems/rewards.md	stage state machine 0..6; several states partial
+game:0x06000f9d	reimplemented	src/core/gameplay/stage_update.cpp	Dialog prelude and all seven states; real entry/collection/grants/equipment/completion/return scenario; required boss/retry/UI/storage services remain explicit.
 game:0x06000fa0	documented	docs/subsystems/rewards.md	Reward pipeline composed and tested across inventory/currency/records/member EXP; ECS storage and presentation binding pending
 game:0x06000fb1	reimplemented	src/core/gameplay/quest_return.cpp	Non-clear records, cleanup interface, member finalization and transition scheduling tested
 game:0x06000fda	reimplemented	src/core/gameplay/quest_return.cpp	Deferred live area/stage snapshot, form switch then event 31 tested
-game:0x06000fb7	traced	docs/subsystems/rewards.md	retry flag and code -> state 5/6 or dialog; retry path unread
+game:0x06000fb7	reimplemented	src/core/gameplay/stage_update.cpp	Retried reason selects state 5/6 or required retry form; stop BGM then captured-manager defeat form; tested.
 game:0x06000fb6	reimplemented	src/core/gameplay/human_impact.cpp	Live human record isMain mask 2 invokes game-over reason 1; landing integration tested
 game:0x06000f9b	traced	docs/subsystems/rewards.md	subscribes OnDamage to event 15; rest of Init not read
 game:0x06000f9e	reimplemented	src/core/gameplay/stage_start.cpp	Complete stage-entry ordering and partial failures; real party/drop/31-pass credit composed; map/enemy/pause/audio services explicit.
@@ -161,3 +161,13 @@ game:0x06000f4c	reimplemented	src/core/gameplay/stage_placement.cpp	Current Stag
 game:0x060011e4	reimplemented	src/core/gameplay/stage_placement.cpp	Wrapping quest distance plus two; GetZ/party/drop composition and negative distance tested.
 game:0x060011ea	reimplemented	src/core/gameplay/stage_placement.cpp	Max of wrapping prisoner maximum minus rescued count and zero; clamped trials/overflow tested.
 game:0x060011eb	reimplemented	src/core/gameplay/stage_placement.cpp	Whole completion byte equals zero; fixed chance and final reward re-query tested.
+game:0x06000fa6	reimplemented	src/core/gameplay/stage_update.cpp	Captured event rows, live consumed flags, progress thresholds and ordered nonnull-result aggregation; replacement/failure tests.
+game:0x06000fa7	reimplemented	src/core/gameplay/stage_update.cpp	Front-line Position.z forwarding; null front returns zero; tested through stage progress/events.
+game:0x06000fa8	reimplemented	src/core/gameplay/stage_update.cpp	Two live map reads, wrapping distance/percentage, FCVTZS edge cases and direct ARM SDIV semantics; tested.
+game:0x06000faf	reimplemented	src/core/gameplay/stage_update.cpp	Captured buttons, wrapping increment and upper-only frame cap 4; partial/null/overflow contract.
+game:0x06000fb8	reimplemented	src/core/gameplay/stage_update.cpp	Required cost-100 presentation form, reason store and dialog kind 98; failures retain prior caller state; tested.
+game:0x06000d6b	reimplemented	src/core/gameplay/stage_update.cpp	Alive excludes exactly states 4/5 without HP; actual celebration transitions tested.
+game:0x060010ad	reimplemented	src/core/gameplay/stage_update.cpp	Cloth level wraps addition by argument then upper-clamps at 100; ordered real-hero result binding tested.
+game:0x060010f1	reimplemented	src/core/gameplay/stage_update.cpp	Equipment level wraps increment then upper-clamps at 100; no lower clamp; result failures preserve earlier increase.
+game:0x0600117a	reimplemented	src/core/gameplay/stage_update.cpp	Hat level wraps increment then upper-clamps at 100; freshly re-read hero equipment IDs; tested.
+game:0x060011ef	reimplemented	src/core/gameplay/stage_update.cpp	Completed byte becomes 1 before ReturnTown(0); actual grant/writeback/town event scenario tested.

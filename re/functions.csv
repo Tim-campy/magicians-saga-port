@@ -3222,7 +3222,7 @@ game:0x06000d67,game:0x06000d67,ecs,,640,0x113fd34
 game:0x06000d68,game:0x06000d68,ecs,,8,0x113ffb4
 game:0x06000d69,game:0x06000d69,ecs,,8,0x113ffbc
 game:0x06000d6a,ecs.HumanComponent.get_data,ecs,reimplemented,124,0x113ffc4
-game:0x06000d6b,game:0x06000d6b,ecs,,20,0x1140040
+game:0x06000d6b,ecs.HumanComponent.get_isAlive,ecs,reimplemented,20,0x1140040
 game:0x06000d6c,game:0x06000d6c,ecs,,20,0x1140054
 game:0x06000d6d,game:0x06000d6d,ecs,,16,0x1140068
 game:0x06000d6e,ecs.HumanComponent.Serialize,ecs,traced,288,0x1140078
@@ -3784,7 +3784,7 @@ game:0x06000f99,game:0x06000f99,ecs,,8,0x1162290
 game:0x06000f9a,game:0x06000f9a,ecs,,104,0x115651c
 game:0x06000f9b,ecs.StageSystem.Init,ecs,traced,840,0x1162298
 game:0x06000f9c,ecs.StageSystem.NeedsUpdate,ecs,reimplemented,8,0x11625e0
-game:0x06000f9d,ecs.StageSystem.Update,ecs,traced,2012,0x11625e8
+game:0x06000f9d,ecs.StageSystem.Update,ecs,reimplemented,2012,0x11625e8
 game:0x06000f9e,ecs.StageSystem.Start,ecs,reimplemented,800,0x1165198
 game:0x06000f9f,game:0x06000f9f,ecs,,1884,0x1162eb8
 game:0x06000fa0,ecs.StageSystem.ShowQuestResult,ecs,documented,3152,0x1164548
@@ -3793,16 +3793,16 @@ game:0x06000fa2,game:0x06000fa2,ecs,,112,0x115bbf0
 game:0x06000fa3,ecs.StageSystem.GetZ,ecs,reimplemented,232,0x1157428
 game:0x06000fa4,ecs.StageSystem.CollectDrop,ecs,reimplemented,1248,0x1163738
 game:0x06000fa5,ecs.StageSystem.UpdateCollectingDrops,ecs,reimplemented,528,0x1163c18
-game:0x06000fa6,game:0x06000fa6,ecs,,376,0x1163e28
-game:0x06000fa7,game:0x06000fa7,ecs,,56,0x1164170
-game:0x06000fa8,game:0x06000fa8,ecs,,308,0x1165c6c
+game:0x06000fa6,ecs.StageSystem.ExecEvent,ecs,reimplemented,376,0x1163e28
+game:0x06000fa7,ecs.StageSystem.GetProgressRate,ecs,reimplemented,56,0x1164170
+game:0x06000fa8,ecs.StageSystem.GetProgressRate,ecs,reimplemented,308,0x1165c6c
 game:0x06000fa9,ecs.StageSystem.GetFrontLineHuman,ecs,reimplemented,452,0x11657c4
 game:0x06000faa,ecs.StageSystem.PlaceDrops,ecs,reimplemented,32,0x1165708
 game:0x06000fab,ecs.StageSystem.PlaceMoney,ecs,reimplemented,408,0x1165da0
 game:0x06000fac,ecs.StageSystem.PlaceTreasureBoxes,ecs,reimplemented,648,0x1165f38
 game:0x06000fad,ecs.StageSystem.PlacePrisoners,ecs,reimplemented,356,0x11661c0
 game:0x06000fae,ecs.StageSystem.PlacePrisoner,ecs,reimplemented,192,0x1166324
-game:0x06000faf,game:0x06000faf,ecs,,180,0x1164378
+game:0x06000faf,ecs.StageSystem.UpdateAttackButton,ecs,reimplemented,180,0x1164378
 game:0x06000fb0,game:0x06000fb0,ecs,,12,0x116372c
 game:0x06000fb1,ecs.StageSystem.ReturnTown,ecs,reimplemented,244,0x1162dc4
 game:0x06000fb2,ecs.StageSystem.UpdateQuestRecord,ecs,reimplemented,156,0x1165728
@@ -3810,8 +3810,8 @@ game:0x06000fb3,ecs.StageSystem.CleanUp,ecs,reimplemented,476,0x11654b8
 game:0x06000fb4,game:0x06000fb4,ecs,,464,0x11641a8
 game:0x06000fb5,ecs.StageSystem.OnBossDefeat,ecs,reimplemented,304,0x11663e4
 game:0x06000fb6,ecs.StageSystem.OnHumanDead,ecs,reimplemented,80,0x1166514
-game:0x06000fb7,ecs.StageSystem.OnGameOver,ecs,traced,284,0x116442c
-game:0x06000fb8,game:0x06000fb8,ecs,,280,0x1163614
+game:0x06000fb7,ecs.StageSystem.OnGameOver,ecs,reimplemented,284,0x116442c
+game:0x06000fb8,ecs.StageSystem.MakeRetryDialog,ecs,reimplemented,280,0x1163614
 game:0x06000fb9,ecs.StageSystem.OnCollectedDrop,ecs,reimplemented,740,0x1165988
 game:0x06000fba,game:0x06000fba,ecs,,404,0x1166564
 game:0x06000fbb,ecs.StageSystem.OnDamage,ecs,reimplemented,64,0x11666f8
@@ -4056,7 +4056,7 @@ game:0x060010a9,data.ClothData.NewGame,data,traced,60,0x116e458
 game:0x060010aa,data.ClothData.AddStock,data,reimplemented,140,0x116e494
 game:0x060010ab,game:0x060010ab,data,,116,0x116e520
 game:0x060010ac,data.ClothData.GetParamValue,data,reimplemented,92,0x116e594
-game:0x060010ad,game:0x060010ad,data,,116,0x116e5f0
+game:0x060010ad,data.ClothData.LevelUp,data,reimplemented,116,0x116e5f0
 game:0x060010ae,game:0x060010ae,data,,8,0x116e664
 game:0x060010af,game:0x060010af,data,,8,0x116e66c
 game:0x060010b0,game:0x060010b0,data,,8,0x116e674
@@ -4124,7 +4124,7 @@ game:0x060010ed,data.EquipmentData.NewGame,data,traced,60,0x116f0c8
 game:0x060010ee,data.EquipmentData.AddStock,data,reimplemented,140,0x116f104
 game:0x060010ef,game:0x060010ef,data,,116,0x116f190
 game:0x060010f0,data.EquipmentData.GetParamValue,data,reimplemented,92,0x116f204
-game:0x060010f1,game:0x060010f1,data,,104,0x116f260
+game:0x060010f1,data.EquipmentData.LevelUp,data,reimplemented,104,0x116f260
 game:0x060010f2,game:0x060010f2,data,,8,0x116f2c8
 game:0x060010f3,game:0x060010f3,data,,8,0x116f2d0
 game:0x060010f4,game:0x060010f4,data,,8,0x116f2d8
@@ -4256,7 +4256,7 @@ game:0x06001176,data.HatData.NewGame,data,traced,60,0x1171894
 game:0x06001177,data.HatData.AddStock,data,reimplemented,140,0x11718d0
 game:0x06001178,game:0x06001178,data,,116,0x117195c
 game:0x06001179,data.HatData.GetParamValue,data,reimplemented,92,0x11719d0
-game:0x0600117a,game:0x0600117a,data,,104,0x1171a2c
+game:0x0600117a,data.HatData.LevelUp,data,reimplemented,104,0x1171a2c
 game:0x0600117b,game:0x0600117b,data,,136,0x1171a94
 game:0x0600117c,game:0x0600117c,data,,136,0x1171b1c
 game:0x0600117d,game:0x0600117d,data,,108,0x1171ba4
@@ -4373,7 +4373,7 @@ game:0x060011eb,data.QuestData.get_isNoncompletion,data,reimplemented,16,0x1172e
 game:0x060011ec,data.QuestData.get_isCompleted,data,documented,32,0x116c3b4
 game:0x060011ed,game:0x060011ed,data,,8,0x1172e80
 game:0x060011ee,data.QuestData.NewGame,data,traced,120,0x1172e88
-game:0x060011ef,game:0x060011ef,data,,12,0x1172f00
+game:0x060011ef,data.QuestData.Complete,data,reimplemented,12,0x1172f00
 game:0x060011f0,data.QuestData.Find,data,reimplemented,28,0x1172f0c
 game:0x060011f1,data.QuestData.AddRescuedPrisoner,data,documented,16,0x1172f28
 game:0x060011f2,game:0x060011f2,data,,8,0x1172f38

@@ -48,12 +48,20 @@ ReturnTown(code) ── [code!=0] UpdateQuestRecord(code,0,0) ── CleanUp ─
 | ecs.StageSystem.OnCollectedDrop | game:0x06000fb9 | Accumulator mutation + effects/SE | high |
 | ecs.DropComponent.get_isCollecting | game:0x06000d36 | `frame >= 0` | high |
 | data.TreasureData.get_isBossReward | game:0x06001236 | Inherited BaseData.flag_ mask 1 | high |
-| ecs.StageSystem.Update | game:0x06000f9d | Stage state machine 0..6 | medium |
+| ecs.StageSystem.Update | game:0x06000f9d | Dialog prelude and seven stage states, composed with collection/result/return | high |
+| ecs.StageSystem.ExecEvent | game:0x06000fa6 | Ordered progress thresholds, live consumed flags, OR of nonnull dispatch results | high |
+| ecs.StageSystem.GetProgressRate (both overloads) | game:0x06000fa7 / game:0x06000fa8 | Front-line Z and two map reads -> wrapping integer percentage | high |
+| ecs.StageSystem.UpdateAttackButton | game:0x06000faf | Captured button array; wrap32(frame+1), upper cap 4 | high |
+| ecs.StageSystem.MakeRetryDialog | game:0x06000fb8 | Cost 100 through presentation service; reason and kind 98 | high |
+| ecs.HumanComponent.get_isAlive | game:0x06000d6b | State is neither 4 nor 5; HP is not consulted | high |
+| data.EquipmentData.LevelUp / data.HatData.LevelUp | game:0x060010f1 / game:0x0600117a | Upper-cap wrap32(level+1) at 100 | high |
+| data.ClothData.LevelUp | game:0x060010ad | Upper-cap wrap32(level+amount) at 100 | high |
+| data.QuestData.Complete | game:0x060011ef | Set completed byte +0xa4 to 1 | high |
 | ecs.StageSystem.ShowQuestResult | game:0x06000fa0 | Grant totals, EXP/levels, treasures | high |
 | resultCharacter_t..ctor | game:0x060007de | Result display state from entity and entry snapshots | high |
 | ecs.StageSystem.ReturnTown | game:0x06000fb1 | Record, CleanUp, OnFinish, transition | high |
 | <>c__DisplayClass75_0.<ReturnTown>b__0 | game:0x06000fda | Form switch, send event 31 | medium |
-| ecs.StageSystem.OnGameOver | game:0x06000fb7 | Retry flag / code -> state 5/6 or dialog | medium |
+| ecs.StageSystem.OnGameOver | game:0x06000fb7 | Retry flag / reason -> state 5/6 or dialog, then stop BGM and push defeat | high |
 | ecs.StageSystem.OnHumanDead | game:0x06000fb6 | Main character death -> OnGameOver(1) | high |
 | ecs.StageSystem.Init | game:0x06000f9b | Subscribes OnDamage to event 15 | medium |
 | ecs.StageSystem.Start | game:0x06000f9e | Complete stage-entry order through map/party/enemies/drops/UI/audio services | high |
@@ -271,7 +279,30 @@ Evidence: local research/exports/stage-damage-total/M37915_Start.asm; stage-star
 
 ### Stage state machine (`StageSystem.Update`, 0x11625e8)
 
-Jump table 0x645c36 relative to 0x1162718 (×4): 0 wait for external condition -> 1; 1 CollectDrop, UpdateCollectingDrops, ExecEvent, stage progression; 2 pause/resume and exit dialog; 3 wait `CheckKeyPulse(0x100000)`, `ShowQuestResult` (0x11628a8), update hero equipment, -> 4; 4 quest method then `ReturnTown(0)`; 5 `ReturnTown(1)`; 6 `ReturnTown(2)`.
+The dialog prelude runs before the counter and state dispatch. Kind 98 uses answer 0 for the crystal path: CheckCrystal(100), then a fresh AppData.SubCrystal(100), Retry and clear dialog. A failed check re-reads the current dialog reason, replaces it with MakeRetryDialog(reason), pushes that dialog, captures the current form manager, creates the insufficient-crystals notice and pushes it. Answer 1 captures the current form manager, creates/pushes MakeInterstitialAd, then calls Retry immediately; no ad success or payment fallback is assumed. Other answers choose state 6 for reason 2, otherwise 5, and reset frame. All kind-98 paths return without counter advancement. Kind 99 answer 0 calls ReturnTown(3), clears the dialog only after success and returns; other kinds/answers clear it and continue normally. Retry failures retain the dialog and preceding crystal/UI side effects.
+
+Before dispatch, loopCounter becomes signed remainder wrap32(loopCounter+1) % INT_MAX. Invalid states still advance this counter but leave frame untouched. Jump table 0x645c36 relative to 0x1162718 (×4):
+
+| State | Operations and transition |
+| --- | --- |
+| 0 | Current AppData.frmQuest_.fadeFrame_ (+0x128) >=20 -> state 1/frame 0; otherwise return. |
+| 1 | CollectDrop -> UpdateCollectingDrops -> ExecEvent. A nonnull event result releases movement and returns before boss, buttons or time. Otherwise, when not boss-started and progress>=90, call StartBossBattle. Boss defeated plus final box picked up visits a captured/versioned members list, changes every alive human to state 6 through the stored HumanSystem and only then sets stage state 3/frame 0. Otherwise update attack buttons, decrement/clamp time only while boss is not defeated, call OnGameOver(2) at zero, then test pause key 0x2000000. A pause calls current-world PauseSystems(true) before state 2/frame 0. |
+| 2 | Resume key 0x4000000 has priority: current-world PauseSystems(false), state 1/frame 0. Otherwise exit key 0x8000000 constructs the Japanese/translated exit dialog, publishes it, sets kind 99 and pushes it. Creating the dialog leaves state/frame unchanged. |
+| 3 | Increment frame with int32 wrap before key 0x100000. On pulse, ShowQuestResult, require the stored MemberSystem, resolve the current global hero once, then re-read its EquipComponent separately for weapon, hat and cloth. LevelUp weapon/hat, LevelUp(1) cloth; only after all succeed set state 4/frame 0. Shield is untouched. |
+| 4 | Require current quest, Complete (completed byte=1), then ReturnTown(0). |
+| 5 / 6 | ReturnTown(1) / ReturnTown(2). |
+
+Equipment/Hat LevelUp uses min(wrap32(level+1),100); Cloth uses min(wrap32(level+amount),100). There is no lower clamp. Human.isAlive is `(uint32(state)&0xfffffffe)!=4`: exactly states 4 and 5 are excluded, without checking HP. Celebration preserves earlier human changes if a later entity, transition or collection-version check fails; it does not publish state 3 on failure.
+
+ExecEvent (0x1163e28, 376 bytes) first skips completed quests (flags bit 1 or completed byte). Capture events_[0], then scan its rows in order, re-reading eventStates_ each time. An unconsumed row requires [event ID, minimum progress]; call GetProgressRate for that row and dispatch AppData.ExecEvent when reached. Re-read current eventStates_ after dispatch and mark the row consumed even if the result is null. Process all matching rows, OR-ing nonnull results. A throwing dispatch does not consume that row; replacement of events_ does not redirect the captured row array.
+
+GetProgressRate() (0x1164170, 56 bytes) returns zero for no front-line member; otherwise use its Position.z. The float overload (0x1165c6c, 308 bytes) captures quest height, reads two current maps and their stepZ values independently, computes base=wrap32(firstStepZ*(height-3)), distance=max(wrap32(base-convertZ+trunc(secondStepZ/2)),0), then max(SDIV(wrap32(distance*100),base),0). No upper percentage clamp exists. convertZ is FCVTZS with the explicit positive-infinity -> INT_MIN override; NaN ->0 and finite overflow saturates. Direct ARM64 SDIV gives zero for base 0 and INT_MIN for INT_MIN/-1. UpdateAttackButton captures the array once and writes min(wrap32(frame+1),4) in array order.
+
+OnGameOver (0x116442c, 284 bytes) uses retried to choose an immediate 5/6 transition (frame 0); otherwise it publishes/pushes MakeRetryDialog. Both paths then stop BGM, capture the current form manager, construct MakeDefeat(reason) and push it. MakeRetryDialog (0x1163614, 280 bytes) binds cost 100 to the presentation formatter/factory, requires its result, stores reason +0x170 and kind 98 +0x240. Dialog text/locale, secure crystal storage and ad creation remain required services.
+
+Port: [stage_update.hpp](../../src/core/gameplay/stage_update.hpp) and its implementation supply this full control flow, progress/event/button helpers, game-over orchestration and completion/equipment rules. The same StageStartState owns collection, quest and dialog state. HumanRecordLink shares its actual level/EXP fields with MemberExperience, allowing the existing result and finish kernels to mutate/write back the actual human instead of a copied projection. [Tests](../../tests/test_stage_update.cpp) compose real Start -> intro -> drop collection -> boss/box gate -> celebration -> permanent reward grants/member EXP -> equipment increments -> Complete -> cleanup/member writeback -> deferred town event 31. Inputs are synthetic; boss startup, Retry, dialog/ad factories and result presentation remain explicit required host services. Tests also cover event consumption/replacement, timer suppression/wrap, pause/resume priority, all return reasons, crystal/ad ordering, retained side effects on failures, equipment re-reads, list invalidation and numeric edge cases.
+
+Evidence: existing local research/exports/stage-exits/M37914.asm and quest-result/M37940_OnGameOver.asm; new bounded helper exports in research/exports/stage-update/ and stage-update-helpers/. Update dialog branches 0x11626a4..0x11626c8, counter 0x11626cc..0x11626f8, intro field 0x1162748, result/equipment calls 0x11628a8..0x1162928, event early return 0x1162934..0x1162954, celebration 0x1162a2c..0x1162ab0, timer 0x1162bac..0x1162be0. Metadata field offsets establish QuestForm.fadeFrame_ +0x128, EquipmentData.level_ +0x28, HatData.level_ +0x60 and ClothData.level_ +0x20. Confidence high for static control flow. Limits: Android comparison, production system bindings and a complete desktop frame remain absent.
 - State 1 -> 3 requires both `isBossDefeated_` and `isRewardTreasureBoxPickedUp_` (after a member state pass). Killing the boss alone is not enough.
 - While the boss is alive, state 1 decrements `remainingTime_` (floor 0); at 0 -> `OnGameOver(2)`. `OnHumanDead`: if `CharaData.get_isMain` -> `OnGameOver(1)`. So 1 = main character died, 2 = time out.
 - `OnGameOver`: if `isRetried_`, code 2 -> state 6, else state 5; before a retry, opens a dialog whose non-retry choice picks 5/6 by stored code. Retry path not ported. Dialog with `+0x240 == 99` and answer `+0xc8 == 0` (prepared in state 2) -> `ReturnTown(3)` (voluntary exit). Button labels unknown.
@@ -399,7 +430,7 @@ There is no already-defeated guard, HP check, reward grant, stage-state transiti
 - [quest_return.cpp](../../src/core/gameplay/quest_return.cpp) ports OnFinish, the destroyed-flag wrapper, saved-level clamp and ReturnTown scheduling/callback order. [Tests](../../tests/test_quest_return.cpp) cover duplicate/order behavior, repeat human lookups, delayed null checks, clamped levels/unclamped EXP, manager/clear failures, live callback payload and event ordering. The reward test additionally runs grant -> member finalization and confirms EXP is copied without being granted twice.
 - [stage_cleanup.cpp](../../src/core/gameplay/stage_cleanup.cpp) ports cleanup and the manager deletion sequence. [Tests](../../tests/test_stage_cleanup.cpp) use the existing ComponentSlots implementation to verify notifications before event disposal, live group changes versus snapshots, registry removal, null/already-destroyed entries and failure boundaries. The ReturnTown test binds this cleanup before member writeback.
 - [enemy_rewards.cpp](../../src/core/gameplay/enemy_rewards.cpp) reads EnemyData, computes level EXP and selects pending reward drops through explicit creation/RNG interfaces. [Tests](../../tests/test_enemy_rewards.cpp) cover binary32 differences, null/short data, nested lengths, lookup/draw order, first-success behavior, partial spawn failures and collection into stage totals.
-- Missing: image resource/rendering consumers and saved defeat-counter restoration, production StageSystem.Update/party creation/audio binding and collection cadence, ECS/storage binding and presentation for ShowQuestResult, AddMoney/AddCrystal storage helpers, transition timing, event-31 consumers and high score. Collection/credit/effects and later Garbage removal now compose through real drop entities in tests.
+- Missing: image resource/rendering consumers and saved defeat-counter restoration, production map/enemy/boss/retry/audio bindings and collection cadence, ECS/storage binding and presentation for ShowQuestResult, AddMoney/AddCrystal storage helpers, transition timing, event-31 consumers and high score. Stage entry/update now compose collection/credit/effects, grants, equipment changes and return through real core modules with synthetic host data.
 
 ### Pending drop entity factory
 
@@ -438,11 +469,11 @@ Evidence: existing local `research/exports/defeat-helpers/M36982_World_CreateDro
 
 ## Open questions
 
-1. (blocking) Compose production StageSystem.Update with decoded world/save state and permanent quest results. Start now composes actual cleanup, hero/party entry, placed items and collection credit; MapSystem.LoadMap and EnemySystem.OnStart remain required services, and no complete frame joins entry to permanent rewards.
+1. (blocking) Bind the ported Start/Update/result/return chain to decoded world/save state and a complete production system frame. MapSystem.LoadMap, EnemySystem.OnStart, StartBossBattle and Retry remain required gameplay services; UI/audio/ad services and original secure storage have no success fallback. The synthetic scenario reaches actual grants and in-memory character writeback, but does not establish playable integration.
 2. (blocking) Effective live RNG configuration/seed for Hits1000 drop rolls (see [rng.md](rng.md)); an explicit-seed, source-matched System.Random route and drop integration are now tested.
 3. Contracts of the AddMoney/AddCrystal value helpers (SecureLong-like? limits) and save persistence of money, records and high score.
 4. Bind decoded QuestData event/fixed-treasure groups and live RNG configuration to the now-ported money/treasure/prisoner placement chain.
-5. Retry path of `OnGameOver`; the quest method in state 4; hero equipment update in state 3; concrete world/subset bindings for the ported cleanup.
+5. Recover the complete Retry body (0x1162eb8, 1884 bytes) and bind it to the established crystal/ad dialog branches; port StartBossBattle before claiming the boss-entry scenario. Retry and boss bounded exports are available locally; neither is counted as reimplemented by Update.
 6. Event 1133 content, `SelectForm` return-flag consumers, other event-31/event-15 subscribers.
 7. Meaning of EnemyData flag bit 1 and EnemyComponent flag bit 1 (boss/minion?), and guards preventing double Defeat.
 8. Scheduler cadence of `StageSystem.Update` (31-tick collection, remainingTime_ units).

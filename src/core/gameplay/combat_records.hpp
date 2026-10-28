@@ -1,15 +1,18 @@
 #pragma once
 #include "combat_tables.hpp"
+#include "experience_progression.hpp"
 #include "../ecs/component_slots.hpp"
 
 namespace saga::core {
 // Portable component projections, not binary layouts. Only recovered fields are included.
-struct HumanRecordLink final:Component {
+struct HumanRecordLink final:Component,MemberExperience {
     std::int32_t character_id=0,state=0,invincible_time=0; // +0x18/+0x24/+0x70.
     std::int32_t attack_frame=0,frame=0; // +0x30/+0x68.
     ComponentSlots* opponent=nullptr; // +0x38.
     std::int32_t formation_x=0,formation_z=0,formation_index=0; // +0x28/+0x2c/+0x74.
-    std::int32_t level=0,experience=0;float dash_speed=0; // +0x1c/+0x20/+0x78.
+    // MemberExperience borrows the actual level/EXP fields (+0x1c/+0x20),
+    // so result grants and OnFinish never operate on a copied actor snapshot.
+    float dash_speed=0; // +0x78.
     // Opaque script references until the component script interpreter is bound.
     std::shared_ptr<std::vector<std::shared_ptr<void>>> scripts; // +0x10.
 };
