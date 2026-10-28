@@ -536,3 +536,8 @@ target_link_libraries(test_animation_resources PRIVATE animation_resources)
 project_warnings(test_animation_resources)
 add_test(NAME animation_resources_contract COMMAND test_animation_resources)
 add_test(NAME animation_scenario_integration COMMAND "${Python3_EXECUTABLE}" -I "${CMAKE_CURRENT_SOURCE_DIR}/test_animation_scenario.py" "$<TARGET_FILE:animation_trace>")
+
+add_executable(test_drop_collection test_drop_collection.cpp)
+target_link_libraries(test_drop_collection PRIVATE drop_collection enemy_rewards dynamic_subsets subset_cursors stage_cleanup)
+project_warnings(test_drop_collection)
+add_test(NAME drop_collection_contract COMMAND test_drop_collection)

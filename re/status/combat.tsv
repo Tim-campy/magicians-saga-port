@@ -33,11 +33,11 @@ game:0x06000e83	reimplemented	src/core/gameplay/enemy_defeat.cpp	Complete motion
 game:0x06000d47	traced	docs/subsystems/rewards.md	flag +0x14 via BitUtil.Check; bit meaning unknown
 game:0x060010ca	reimplemented	src/core/gameplay/enemy_defeat.cpp	Wrapping int32 addition then clamp at zero; overflow and negative increment tests
 game:0x060010c7	reimplemented	src/core/gameplay/enemy_rewards.cpp	Binary32 zero-amplitude interpolation with wrapped progress/difference; synthetic edges and full local table audit
-game:0x06000bf9	reimplemented	src/core/gameplay/drop_factory.cpp	All four pending-drop branches and core payloads; registry/groups and reward suffix integration tested; Cell/Image explicit.
-game:0x06000fa4	documented	docs/subsystems/rewards.md	start collection / boss reward pickup
-game:0x06000fa5	documented	docs/subsystems/rewards.md	31-tick interpolation then OnCollectedDrop
-game:0x06000fb9	documented	docs/subsystems/rewards.md	accumulator switch ported in src/core/gameplay/stage_rewards.cpp; effects/SE not ported
-game:0x06000d36	documented	docs/subsystems/rewards.md	frame >= 0
+game:0x06000bf9	reimplemented	src/core/gameplay/drop_factory.cpp	All four pending-drop branches with actual Cell/Image payloads; registry/reward suffix/collection integration tested.
+game:0x06000fa4	reimplemented	src/core/gameplay/drop_collection.cpp	Live drop query, ordered range/boss gates, immediate boss credit or queued start; mutations and failure effects tested.
+game:0x06000fa5	reimplemented	src/core/gameplay/drop_collection.cpp	Captured hero target, live indexed list, reused float curve, 31-pass credit and current-list removal; real factory/expiry integration.
+game:0x06000fb9	reimplemented	src/core/gameplay/drop_collection.cpp	Accumulator then actual number/common effect factories, Garbage(0), explicit sound; partial failures and unknown types tested.
+game:0x06000d36	reimplemented	src/core/gameplay/drop_collection.cpp	Signed frame >=0 predicate used by tested live collection pass.
 game:0x06000f9d	traced	docs/subsystems/rewards.md	stage state machine 0..6; several states partial
 game:0x06000fa0	documented	docs/subsystems/rewards.md	Reward pipeline composed and tested across inventory/currency/records/member EXP; ECS storage and presentation binding pending
 game:0x06000fb1	reimplemented	src/core/gameplay/quest_return.cpp	Non-clear records, cleanup interface, member finalization and transition scheduling tested
@@ -117,3 +117,5 @@ game:0x06000e7f	reimplemented	src/core/gameplay/combat_event_receivers.cpp	Live 
 game:0x06000e67	traced	docs/subsystems/combat.md	Enemy group and event 23/29/30 targets resolved; registration slice bound with ordered delivery; complete Init not ported.
 game:0x06000ebb	traced	docs/subsystems/combat.md	Human group and event 23/29 targets resolved; real Human and Enemy contact delivery composed; complete Init not ported.
 game:0x06000ed0	reimplemented	src/core/gameplay/human_contact.cpp	Complete human contact receiver composed with real state transitions; guards displacement callbacks and failures tested.
+game:0x06001236	reimplemented	src/core/gameplay/drop_collection.cpp	Boss reward reads inherited int32 flags mask 1; decoded treasure rows and pickup gates tested.
+kairo:0x06000b5a	reimplemented	src/core/gameplay/projectile_motion.cpp	Existing binary32 float curve shared by projectile motion and 31-pass drop collection; endpoint/gating/order integration tested.

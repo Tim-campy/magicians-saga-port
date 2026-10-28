@@ -2,6 +2,8 @@
 #include "projectile_launch.hpp"
 
 namespace saga::core {
+// Shared float Graph.Easing 0x1c5e15c, also used by drop collection.
+float easing_float(float start,float end,float duration,float progress,float amplitude);
 class ProjectileMotionHost {
 public:
     virtual ~ProjectileMotionHost()=default;

@@ -3169,7 +3169,7 @@ game:0x06000d32,game:0x06000d32,ecs,,8,0x113ece8
 game:0x06000d33,ecs.DirectionComponent.Serialize,ecs,reimplemented,124,0x113ecf0
 game:0x06000d34,ecs.DirectionComponent.Deserialize,ecs,reimplemented,132,0x113ed6c
 game:0x06000d35,ecs.DirectionComponent..ctor,ecs,traced,8,0x113edf0
-game:0x06000d36,ecs.DropComponent.get_isCollecting,ecs,documented,16,0x113edf8
+game:0x06000d36,ecs.DropComponent.get_isCollecting,ecs,reimplemented,16,0x113edf8
 game:0x06000d37,game:0x06000d37,ecs,,4,0x113ee08
 game:0x06000d38,game:0x06000d38,ecs,,4,0x113ee0c
 game:0x06000d39,game:0x06000d39,ecs,,8,0x113ee10
@@ -3791,8 +3791,8 @@ game:0x06000fa0,ecs.StageSystem.ShowQuestResult,ecs,documented,3152,0x1164548
 game:0x06000fa1,game:0x06000fa1,ecs,,116,0x1165694
 game:0x06000fa2,game:0x06000fa2,ecs,,112,0x115bbf0
 game:0x06000fa3,game:0x06000fa3,ecs,,232,0x1157428
-game:0x06000fa4,ecs.StageSystem.CollectDrop,ecs,documented,1248,0x1163738
-game:0x06000fa5,ecs.StageSystem.UpdateCollectingDrops,ecs,documented,528,0x1163c18
+game:0x06000fa4,ecs.StageSystem.CollectDrop,ecs,reimplemented,1248,0x1163738
+game:0x06000fa5,ecs.StageSystem.UpdateCollectingDrops,ecs,reimplemented,528,0x1163c18
 game:0x06000fa6,game:0x06000fa6,ecs,,376,0x1163e28
 game:0x06000fa7,game:0x06000fa7,ecs,,56,0x1164170
 game:0x06000fa8,game:0x06000fa8,ecs,,308,0x1165c6c
@@ -3812,7 +3812,7 @@ game:0x06000fb5,ecs.StageSystem.OnBossDefeat,ecs,reimplemented,304,0x11663e4
 game:0x06000fb6,ecs.StageSystem.OnHumanDead,ecs,reimplemented,80,0x1166514
 game:0x06000fb7,ecs.StageSystem.OnGameOver,ecs,traced,284,0x116442c
 game:0x06000fb8,game:0x06000fb8,ecs,,280,0x1163614
-game:0x06000fb9,ecs.StageSystem.OnCollectedDrop,ecs,documented,740,0x1165988
+game:0x06000fb9,ecs.StageSystem.OnCollectedDrop,ecs,reimplemented,740,0x1165988
 game:0x06000fba,game:0x06000fba,ecs,,404,0x1166564
 game:0x06000fbb,ecs.StageSystem.OnDamage,ecs,reimplemented,64,0x11666f8
 game:0x06000fbc,game:0x06000fbc,ecs,,8,0x1166738
@@ -4444,7 +4444,7 @@ game:0x06001232,game:0x06001232,data,,8,0x117378c
 game:0x06001233,game:0x06001233,data,,8,0x1173794
 game:0x06001234,game:0x06001234,data,,8,0x117379c
 game:0x06001235,data.TreasureData.Load,data,documented,312,0x11737a4
-game:0x06001236,game:0x06001236,data,,12,0x11738dc
+game:0x06001236,data.TreasureData.get_isBossReward,data,reimplemented,12,0x11738dc
 game:0x06001237,game:0x06001237,data,,4,0x11738e8
 game:0x06001238,game:0x06001238,data,,4,0x11738ec
 game:0x06001239,game:0x06001239,data,,108,0x11738f0
@@ -7153,7 +7153,7 @@ kairo:0x06000b56,kairo:0x06000b56,graphics,,288,0x1c5de14
 kairo:0x06000b57,kairo:0x06000b57,graphics,,104,0x1c5df34
 kairo:0x06000b58,kairo.unity.graph.Graph.Easing,graphics,reimplemented,224,0x1c5df9c
 kairo:0x06000b59,kairo:0x06000b59,graphics,,224,0x1c5e07c
-kairo:0x06000b5a,kairo:0x06000b5a,graphics,,184,0x1c5e15c
+kairo:0x06000b5a,kairo.unity.graph.Graph.Easing,graphics,reimplemented,184,0x1c5e15c
 kairo:0x06000b60,kairo:0x06000b60,util,,44,0x1c5e214
 kairo:0x06000b61,kairo:0x06000b61,util,,164,0x1c5e240
 kairo:0x06000b62,kairo:0x06000b62,util,,52,0x1c5e2e4

@@ -14,7 +14,8 @@ ProjectileLink& projectile(ComponentSlots& e){return component<ProjectileLink>(e
 ContactPosition& position(ComponentSlots& e){return component<ContactPosition>(e,contact_position_slot);}
 ProjectileSpeed& speed(ComponentSlots& e){return component<ProjectileSpeed>(e,projectile_speed_slot);}
 std::int32_t bits(std::uint32_t v){return static_cast<std::int32_t>(v<=0x7fffffffU?static_cast<std::int64_t>(v):static_cast<std::int64_t>(v)-0x100000000LL);}
-float curve(float start,float end,float duration,float progress,float amplitude){
+}
+float easing_float(float start,float end,float duration,float progress,float amplitude){
     if(progress<0)return start;
     if(progress>=duration)return end;
     const float ratio=progress/duration;
@@ -33,6 +34,7 @@ float curve(float start,float end,float duration,float progress,float amplitude)
     else{if(result>start)result=start;if(result<end)result=end;}
     return result;
 }
+namespace {
 std::int32_t angle(float x,float y){
     const double radians=std::atan2(static_cast<double>(y),static_cast<double>(x));
     const double product=radians*180.0;
@@ -59,8 +61,8 @@ bool advance_projectile(ComponentSlots& e,ProjectileMotionHost& host){
     const float peak=projectile(e).start.y+static_cast<float>(projectile(e).max_height);
     const float from=descending?peak:projectile(e).start.y;
     const float to=descending?projectile(e).end.y:peak;
-    position(e).y=curve(from,to,static_cast<float>(half),static_cast<float>(progress),descending?-80.0F:80.0F);
-    const float following=curve(from,to,static_cast<float>(half),static_cast<float>(next),descending?-80.0F:80.0F);
+    position(e).y=easing_float(from,to,static_cast<float>(half),static_cast<float>(progress),descending?-80.0F:80.0F);
+    const float following=easing_float(from,to,static_cast<float>(half),static_cast<float>(next),descending?-80.0F:80.0F);
     const float current=position(e).y;
     const float vertical=following-current;
     speed(e).x=nx*static_cast<float>(velocity);

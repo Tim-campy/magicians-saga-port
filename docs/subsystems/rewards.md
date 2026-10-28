@@ -21,13 +21,14 @@ ReturnTown(code) ── [code!=0] UpdateQuestRecord(code,0,0) ── CleanUp ─
 | data.EnemyData.AddDefeatCount | game:0x060010ca | wrap32 add then Clamp(0, INT_MAX) | high |
 | data.TreasureData.Load | game:0x06001235 | Twelve-field treasure record reader | high |
 | data.EnemyData.GetExp | game:0x060010c7 | Easing(exp_[0], exp_[1], 999, level-1, 0) | high |
-| kairo.unity.ecs.World.CreateDrop | game:0x06000bf9 | Drop entity; type 3 forces scale 100 | medium |
+| kairo.unity.ecs.World.CreateDrop | game:0x06000bf9 | Drop entity; type 3 forces scale 100 | high |
 | ecs.StageSystem.OnBossDefeat | game:0x06000fb5 | Boss state, victory form and movement release | high |
 | ecs.StageSystem.ReleaseMoveKeys | game:0x06000fca | Ordered key release and captured-control touch events | high |
 | ecs.StageSystem.CollectDrop | game:0x06000fa4 | Start collection / boss reward pickup | high |
 | ecs.StageSystem.UpdateCollectingDrops | game:0x06000fa5 | 31-tick fly-to-hero, then credit | high |
 | ecs.StageSystem.OnCollectedDrop | game:0x06000fb9 | Accumulator mutation + effects/SE | high |
 | ecs.DropComponent.get_isCollecting | game:0x06000d36 | `frame >= 0` | high |
+| data.TreasureData.get_isBossReward | game:0x06001236 | Inherited BaseData.flag_ mask 1 | high |
 | ecs.StageSystem.Update | game:0x06000f9d | Stage state machine 0..6 | medium |
 | ecs.StageSystem.ShowQuestResult | game:0x06000fa0 | Grant totals, EXP/levels, treasures | high |
 | resultCharacter_t..ctor | game:0x060007de | Result display state from entity and entry snapshots | high |
@@ -77,9 +78,27 @@ No local "already defeated" guard; null/short arrays fault (do not turn into "no
 
 `DropComponent`: type +0x10, value +0x14, x0 +0x18, z0 +0x1c, frame +0x20. Accumulator `StageSystem.drop_` (+0x40): exp +0x10, money +0x14, prisonersNum +0x18, treasureIds +0x20 (list).
 
-- `CollectDrop` (0x1163738): front = `GetFrontLineHuman`; iterate the drop group (component 34), skip drops with frame >= 0. Treasure (type 3) with `TreasureData.get_isBossReward`: requires front.z <= drop.z and `isBossDefeated_` (+0x85); calls `OnCollectedDrop` directly, sets `isRewardTreasureBoxPickedUp_` (+0x86), plays a jingle. All others: requires front.z <= drop.z + 100; sets frame = 0 and appends to `collectingDrops_` (+0x98). No credit yet.
-- `UpdateCollectingDrops` (0x1163c18): target = `MemberSystem.get_hero`; x/z interpolated from x0/z0 with float Easing (duration 30, progress frame, amplitude -80); frame += 1 (32-bit); if frame >= 31 -> `OnCollectedDrop`, remove by index (index adjusted). 31 passes from frame 0; cadence per frame is unverified.
-- `OnCollectedDrop` (0x1165988), jump table 0x645c3d `[0,6,53,59]` relative to 0x1165a34: type 0 exp += value; 1 money += value; 2 prisonersNum += 1 (value ignored); 3 append value to treasureIds (order and duplicates kept); others: no mutation. All wrap32. Types 0/1 then create a number effect; every type gets another effect, `Entity.AddGarbage(0)`, `AppData.PlaySe`. No dedup.
+`CollectDrop` (0x1163738) captures GetFrontLineHuman before requesting the current World.GetSubSet(And({34})); it enumerates that live group with its existing version checks. A null front entity is tolerated until a pending drop needs its Position; an empty group or collecting-only group does not require it. Every drop requires its component; frame >= 0 skips it before treasure/position work. There is no destroyed/HP guard, X-distance test or circular pickup radius in this method.
+
+For type 3, it resolves TreasureData by value and tests inherited BaseData.flag_ (+0x1c) mask 1, not a guessed property of the image or reward amount. The decoded TreasureRecord.flags is that inherited field. Boss reward pickup requires ordered front.z <= drop.z, then isBossDefeated_ (+0x85). It calls OnCollectedDrop immediately, stores isRewardTreasureBoxPickedUp_ (+0x86) = true, then plays the jingle. It neither queues the drop nor changes its frame; another explicit CollectDrop call before Garbage removes it can credit it again. The method has no local reward-box dedup guard.
+
+Other drops, including non-boss treasures and unknown types, require ordered front.z <= binary32(drop.z + 100). Equality is accepted; NaN in either operand is rejected (FCMP/B.HI). The method stores frame = 0 before appending to collectingDrops_ (+0x98); a missing list or append failure retains that store. No reward is credited on this path yet. Treasure lookup or callback-driven membership changes can leave a processed prefix before the next live cursor advance faults.
+
+`UpdateCollectingDrops` (0x1163c18) first requires MemberSystem.get_hero and captures its Position.x/z for the whole pass, even if the collecting list is empty. It walks that list by live index, re-reading the state field/count after callbacks; it does not use a list enumerator or a snapshot. For each entry it writes Position.x, then Position.z from the existing float Graph.Easing(x0/z0, captured hero coordinate, duration 30, progress binary32(frame), amplitude -80). Position.y, x0/z0, Speed and visual modifiers are unchanged. It increments frame with int32 wrap and tests the new signed value >= 31. Starting at 0, calls 1..30 retain the entry; call 31 reaches the target and calls OnCollectedDrop, then removes that index from the current list and adjusts the index so the next entry is not skipped. Callback replacement of the list redirects removal and subsequent traversal.
+
+`OnCollectedDrop` (0x1165988), jump table 0x645c3d `[0,6,53,59]` relative to 0x1165a34, performs the existing accumulator switch first: type 0 exp += value; 1 money += value; 2 prisonersNum += 1 (value ignored); 3 append value to treasureIds (order/duplicates retained); unknown types do not require or mutate the accumulator. Sums wrap at int32. It then performs these ordered effects:
+
+1. For types 0/1 only: capture the effect world, then current x/y/z; create a full effect at (x,binary32(y+20),z), type 3/value, resource 2/clip 58, depth=false, loop=false, maxFrame=30, frame=0, parent=null, image=-1, anim=false.
+2. For every type: capture the world again and re-read position; call the short effect factory with clip 0, image override 25, loop=false (resource 20, depth/playback enabled and maximum resolved from the clip).
+3. AddGarbage(0) to the source, using the real pool/write/add helper; then play the collection sound. No source destruction occurs here; the later Garbage pass removes it.
+
+World capture precedes position reads, but its null check follows them. Sound uses the effective AppData static SE field +0x258; boss jingle uses +0x27c, both explicit host actions rather than invented numeric IDs. Failure preserves all earlier credit, frame/position writes, created entities and component additions. In particular, failure after credit but before list removal keeps a frame >=31 entry queued; a successful retry can credit it again. Failure in the jingle leaves the already stored reward-box flag true. These are retained partial states, not rollback transactions. Collection credits StageRewards only; ShowQuestResult still performs permanent grants.
+
+Port: `drop_collection.hpp/.cpp` supplies the three complete methods over DropCollectionState and narrow front/hero/subset/table/effect/audio bindings. Its effects call the actual factories, and its shared float curve is the existing projectile easing kernel exposed as easing_float; no second math or collection implementation was added. The host supplies initialized reward/component storage and list lengths fitting int32. Frame-call cadence and Android libm agreement remain unverified.
+
+`tests/test_drop_collection.cpp` composes decoded-style enemy rewards -> actual EXP/treasure factories and registry/groups -> collection start -> 31 live passes -> stage totals -> actual number/common effects -> Garbage cursor/deferred destruction and registry removal. It also checks boss eligibility/immediate pickup, duplicate pickup before expiry, exact range/NaN gates, null-front empty groups, missing-list frame commit, effect/sound/jingle failure boundaries, retry credit, list replacement, live group invalidation and counter wrap. It does not run the complete StageSystem.Update or grant persistent player inventory.
+
+Evidence: local `research/exports/drop-collection/{M37921_CollectDrop,M37922_UpdateCollectingDrops,M37942_OnCollectedDrop}.asm`, `drop-pickup-helpers/{TreasureBossReward,FloatEasing}.asm`, existing projectile easing evidence and field metadata in [data](data.md#treasure-records). CollectDrop stores frame at 0x1163a44 before list access 0x1163a48; boss credit/flag/jingle occur at 0x11639a0/0x11639a4/0x11639f0. Collection position stores are 0x1163d44/0x1163da0, increment 0x1163db8, credit 0x1163ddc and current-list removal 0x1163df4. Number/common effects are 0x1165b00/0x1165c08, Garbage 0x1165c18 and sound tail 0x1165c64. Boss predicate reads +0x1c and masks 1 at 0x11738dc..0x11738e4. Confidence high for static order; no runtime comparison.
 
 ### Stage state machine (`StageSystem.Update`, 0x11625e8)
 
@@ -211,7 +230,7 @@ There is no already-defeated guard, HP check, reward grant, stage-state transiti
 - [quest_return.cpp](../../src/core/gameplay/quest_return.cpp) ports OnFinish, the destroyed-flag wrapper, saved-level clamp and ReturnTown scheduling/callback order. [Tests](../../tests/test_quest_return.cpp) cover duplicate/order behavior, repeat human lookups, delayed null checks, clamped levels/unclamped EXP, manager/clear failures, live callback payload and event ordering. The reward test additionally runs grant -> member finalization and confirms EXP is copied without being granted twice.
 - [stage_cleanup.cpp](../../src/core/gameplay/stage_cleanup.cpp) ports cleanup and the manager deletion sequence. [Tests](../../tests/test_stage_cleanup.cpp) use the existing ComponentSlots implementation to verify notifications before event disposal, live group changes versus snapshots, registry removal, null/already-destroyed entries and failure boundaries. The ReturnTown test binds this cleanup before member writeback.
 - [enemy_rewards.cpp](../../src/core/gameplay/enemy_rewards.cpp) reads EnemyData, computes level EXP and selects pending reward drops through explicit creation/RNG interfaces. [Tests](../../tests/test_enemy_rewards.cpp) cover binary32 differences, null/short data, nested lengths, lookup/draw order, first-success behavior, partial spawn failures and collection into stage totals.
-- Missing: image resource/rendering consumers and saved defeat-counter restoration, collection cadence, ECS/storage binding and presentation for ShowQuestResult, AddMoney/AddCrystal storage helpers, transition timing, event-31 consumers and high score.
+- Missing: image resource/rendering consumers and saved defeat-counter restoration, actual StageSystem.Update/front/hero/audio binding and collection cadence, ECS/storage binding and presentation for ShowQuestResult, AddMoney/AddCrystal storage helpers, transition timing, event-31 consumers and high score. Collection/credit/effects and later Garbage removal now compose through real drop entities in tests.
 
 ### Pending drop entity factory
 
@@ -250,10 +269,10 @@ Evidence: existing local `research/exports/defeat-helpers/M36982_World_CreateDro
 
 ## Open questions
 
-1. (blocking) Concrete ECS/drop-creation bindings for the ported enemy reward suffix. EnemyData, TreasureData, CharaData.needExpRate_ and TableData.exp_ are decoded; the reward pipeline is ported with explicit ECS/storage hosts. Complete stage binding remains.
+1. (blocking) Complete production StageSystem.Update/MemberSystem front/hero and saved-state bindings. Enemy reward spawning, real drop/effect creation, 31-pass collection and Garbage removal now compose in tests; the full stage and permanent reward pipeline are not connected end to end.
 2. (blocking) Effective live RNG configuration/seed for Hits1000 drop rolls (see [rng.md](rng.md)); an explicit-seed, source-matched System.Random route and drop integration are now tested.
 3. Contracts of the AddMoney/AddCrystal value helpers (SecureLong-like? limits) and save persistence of money, records and high score.
-4. `TreasureData.get_isBossReward` semantics and producers of money/prisoner drops; all CreateDrop jump targets are now ported.
+4. Producers of money/prisoner drops; all CreateDrop jump targets and the inherited boss-reward mask are now ported.
 5. Retry path of `OnGameOver`; the quest method in state 4; hero equipment update in state 3; concrete world/subset bindings for the ported cleanup.
 6. Event 1133 content, `SelectForm` return-flag consumers, other event-31/event-15 subscribers.
 7. Meaning of EnemyData flag bit 1 and EnemyComponent flag bit 1 (boss/minion?), and guards preventing double Defeat.

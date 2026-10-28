@@ -33,7 +33,7 @@ Current maintainer priority: game-specific decompilation and gameplay integratio
 ### Current gameplay focus
 - [ ] Bind the full system update schedule and event subscriptions around the tested live Projectile -> Move -> Collision passes and final Garbage pass; the 26-system order and all NeedsUpdate gates are now ported/tested; generic Init dispatch and concrete Projectile/Move/Collision/Garbage/Animation initialization are ported/tested; other initialization and update bodies remain before composing the complete frame. Entity-event removal and teardown are ported with explicit original/wrapper hash inputs; extend payload bindings only as required by gameplay.
 - [ ] Complete catalog/file/locale selection and populate production manager fields, bind effective global frame flags and implement image rendering around the ported effect/drop factories; missing/duplicate-ID placement, header-derived clocks and AppData resource selection are now ported, with a selected-file desktop scenario validated on all 303 SEBs; Cell and Image initialization now use actual payloads in both factories, and effects insert actual slot-10 playback; the reward suffix creates pending EXP/treasure entities through the concrete drop factory in tests. World.Destroy and registered-entity teardown preserve the group directory, with GetSubSet creation/dedup/population and live forwarding ported on top of ID selection, entity registration and component-event subscriptions. Projectile/Move/Collision/Garbage and Animation now have live group passes; effect creation feeds five tested animation passes; launch/landing and collision/expiration sequences pass integration tests.
-- [ ] Connect the existing damage/defeat/reward/progression chains to the integrated world and decoded save state, then add a desktop gameplay scenario.
+- [ ] Connect the existing damage/defeat/reward/progression chains to production StageSystem.Update/MemberSystem front/hero services and decoded save state, then add a desktop gameplay scenario; enemy reward suffix -> real drops -> 31-pass collection -> stage totals/effects -> Garbage removal now passes integration tests.
 
 ### 1. Events and scripts
 - [ ] Bind decoded billing-item/catalog providers and complete notification manager adapters, preserving task execution gates.
@@ -50,7 +50,7 @@ Current maintainer priority: game-specific decompilation and gameplay integratio
 ### 3. Combat, RNG and rewards
 - [ ] Resolve effective live `JRandom.Logic` and seeding/reseeding; seeded System.Random and the replay fix_ gate are established. Inspect alternative generators only if the gameplay configuration selects them.
 - [ ] Name and bind parameter indices 0/1/2/6/7/8/9, equipment contributions and attribute bonus; resolve `MyConfig.FPS`/`DEBUG` for the composed damage host and attack timing.
-- [ ] Bind the ported enemy reward suffix and ShowQuestResult pipeline to ECS/drop creation/storage/UI; enemy, treasure, character-rate and level-cost records are decoded/tested.
+- [ ] Bind the tested enemy reward/drop/collection pipeline to production stage updates and permanent ShowQuestResult storage/UI; enemy, treasure, character-rate and level-cost records are decoded/tested.
 - [ ] Read `OnGameOver`'s retry path, resolve the state-4 quest method and event 1133.
 
 ### 4. ECS world and animation

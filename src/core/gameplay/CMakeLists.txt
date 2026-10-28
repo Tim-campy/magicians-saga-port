@@ -241,3 +241,11 @@ target_link_libraries(animation_pass PUBLIC entity_visual entity_subset animatio
 
 saga_library(animation_resources animation_resources.cpp)
 target_link_libraries(animation_resources PUBLIC animation_pass seb)
+
+saga_library(drop_collection drop_collection.cpp)
+target_link_libraries(drop_collection PUBLIC drop_factory effect_factory projectile_motion stage_rewards)
+if(MSVC)
+  target_compile_options(drop_collection PRIVATE /fp:strict)
+else()
+  target_compile_options(drop_collection PRIVATE -ffp-contract=off)
+endif()
