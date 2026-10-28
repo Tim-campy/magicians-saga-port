@@ -208,3 +208,11 @@ endif()
 
 saga_library(pass_initialization pass_initialization.cpp)
 target_link_libraries(pass_initialization PUBLIC motion_pass collision_pass combat_event_receivers entity_events)
+
+saga_library(effect_factory effect_factory.cpp)
+target_link_libraries(effect_factory PUBLIC projectile_launch garbage_lifetime entity_creation)
+if(MSVC)
+  target_compile_options(effect_factory PRIVATE /fp:strict)
+else()
+  target_compile_options(effect_factory PRIVATE -ffp-contract=off)
+endif()

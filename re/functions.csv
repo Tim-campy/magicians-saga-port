@@ -2898,8 +2898,8 @@ game:0x06000bf0,kairo.unity.ecs.World.CreateEnemy,ecs,traced,1040,0x1133fc0
 game:0x06000bf1,game:0x06000bf1,ecs,,572,0x11343d0
 game:0x06000bf2,game:0x06000bf2,ecs,,512,0x113460c
 game:0x06000bf3,game:0x06000bf3,ecs,,540,0x113480c
-game:0x06000bf4,game:0x06000bf4,ecs,,72,0x1134a28
-game:0x06000bf5,kairo.unity.ecs.World.CreateEffect,ecs,traced,588,0x1134a70
+game:0x06000bf4,kairo.unity.ecs.World.CreateEffect,ecs,reimplemented,72,0x1134a28
+game:0x06000bf5,kairo.unity.ecs.World.CreateEffect,ecs,reimplemented,588,0x1134a70
 game:0x06000bf6,game:0x06000bf6,ecs,,648,0x1134cbc
 game:0x06000bf7,kairo.unity.ecs.World.CreateParticle,ecs,traced,600,0x1134f44
 game:0x06000bf8,game:0x06000bf8,ecs,,252,0x113519c

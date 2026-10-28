@@ -125,7 +125,7 @@ game:0x06000bef	traced	docs/subsystems/animation.md
 game:0x06000beb	traced	docs/subsystems/animation.md	
 game:0x06000bec	traced	docs/subsystems/animation.md	
 game:0x06000bf0	traced	docs/subsystems/animation.md	
-game:0x06000bf5	traced	docs/subsystems/animation.md	
+game:0x06000bf5	reimplemented	src/core/gameplay/effect_factory.cpp	Effect factory order and core payloads composed with ID registration groups; resource and presentation helpers explicit.
 game:0x06000bf7	traced	docs/subsystems/animation.md	
 game:0x06000e5f	traced	docs/subsystems/animation.md	
 game:0x06000f81	reimplemented	src/core/gameplay/projectile_launch.cpp	Binary32 distance and int32 duration height; ordered projectile modification animation additions
@@ -166,3 +166,4 @@ game:0x06000caf	reimplemented	src/core/ecs/filter_identity.cpp	Concrete Filter i
 game:0x06000c09	documented	docs/subsystems/ecs.md	GetSubSet forwarding/population/publication or ordered array comparison contract; native bounded evidence.
 game:0x06000c66	reimplemented	src/core/ecs/dynamic_subsets.cpp	Dynamic filter directory lookup/population/publication or versioned live component forwarding; integrated Init and mutation tests.
 game:0x06000001	documented	docs/subsystems/ecs.md	GetSubSet forwarding/population/publication or ordered array comparison contract; native bounded evidence.
+game:0x06000bf4	reimplemented	src/core/gameplay/effect_factory.cpp	Effect factory wrapper defaults and ordered construction tested.

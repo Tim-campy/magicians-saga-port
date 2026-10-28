@@ -499,3 +499,8 @@ add_executable(test_world_teardown test_world_teardown.cpp)
 target_link_libraries(test_world_teardown PRIVATE world_teardown dynamic_subsets stage_cleanup entity_events)
 project_warnings(test_world_teardown)
 add_test(NAME world_teardown_contract COMMAND test_world_teardown)
+
+add_executable(test_effect_factory test_effect_factory.cpp)
+target_link_libraries(test_effect_factory PRIVATE effect_factory dynamic_subsets)
+project_warnings(test_effect_factory)
+add_test(NAME effect_factory_contract COMMAND test_effect_factory)

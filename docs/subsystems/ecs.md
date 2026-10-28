@@ -463,6 +463,27 @@ Port: `world_teardown.hpp/.cpp` implements the four-step world orchestration and
 
 Evidence: local `research/exports/world-destroy/` bounded World.Destroy and DestroyEntities exports; existing `entity-destruction-load/M37085_DestroyAllEntities.asm`; metadata usage at ELF GOT 0x2730d58 resolves HashSet.Clear, instance 1063, and metadata names World+0x40 visibleEntities_. World calls occur at 0x1135734/0x1135744/0x1135754/0x113576c. DestroyAll passes remove=false at 0x1137a40 and calls registry Clear at 0x1137a64. Confidence high for ordering and retention; no runtime comparison.
 
+### Effect entity factory
+
+World.CreateEffect's full overload (game:0x06000bf5, 0x1134a70, 588 bytes) takes position x/y/z, int32 type/value/resource/clip, depth and loop booleans, maxFrame/frame, parent, image ID and anim. Arguments are captured by value. If maxFrame == 0 and loop is false, it first resolves the resource's clip record and uses its int32 +0x1c minus one, wrapping. A failed lookup occurs before entity creation/ID consumption. A zero record value gives -1; no clamp is added. Other maxFrame values and loop=true skip this lookup.
+
+It then creates type-0, non-temporary entity and adds components in this order:
+
+1. Effect slot 26: type +0x10, value +0x14, depth byte +0x18, frame +0x1c, maxFrame +0x20, parent +0x28.
+2. Position slot 0: supplied x/y/z, zero offsets and null position-parent (distinct from Effect.parent).
+3. Speed slot 1: zero x/y/z.
+4. Seb slot 2: resource/clip/frame and a fresh one-element layer array {-1}.
+5. If depth: Cell slot 5 with (trunc(x)/24, trunc(z)/24), null cell parent and fresh relation list; then Depth slot 4 with value 0 and extra 40. Integer conversion is ARM FCVTZS followed by signed integer /24, with the explicit positive-infinity override yielding INT_MIN/24; NaN yields zero.
+6. If not loop: AddGarbage(maxFrame), using the existing acquire/write/add implementation.
+7. If image != -1: AddImage(image,resource,-1,-1,-1,-1).
+8. If anim: AddAnimation(1,-1).
+
+Every add uses existing ComponentSlots semantics, including ignored insertion into an occupied slot after pool acquisition/payload writes. Component callbacks observe this construction order; late failures retain the registered entity and earlier components. The short overload (game:0x06000bf4, 0x1134a28, 72 bytes) supplies type/value/frame=0, resource=20, depth=true, maxFrame=0, parent=null, anim=true and forwards position/clip/image/loop.
+
+Port: `effect_factory.hpp/.cpp` implements both overloads through the ported entity-creation orchestration, actual Effect/Position/Speed/Seb/Depth payloads and Garbage lifetime helper. Pools, resource-record lookup, Cell relation setup, Image payload construction and playback insertion remain explicit EffectFactoryHost services. This does not complete rendering or those three component helpers. Tests compose real ID creation/registration/dynamic group entry with the factory; check call order, payloads, loop gates, zero-duration behavior, exceptional coordinates, argument capture and resource/image failures. Image/playback/Cell services in these tests are markers, not their full payload implementations.
+
+Evidence: existing local `research/exports/animation-spawn/M36978_CreateEffect.asm`; bounded helper/short-overload exports in `research/exports/effect-factory/`; metadata parameter names for methods 36977/36978. Full factory resolves lifetime before creation at 0x1134b3c, adds Effect at 0x1134b68, Position at 0x1134b8c, Speed at 0x1134ba0, Seb at 0x1134bb8, Cell/Depth at 0x1134c20/0x1134c30, Garbage at 0x1134c44, Image at 0x1134c70 and playback at 0x1134c8c. Confidence high for factory/payload ordering; Android comparison absent.
+
 ## Evidence
 
 - Temporary lifetime: local `research/exports/garbage-lifetime/{Init,NeedsUpdate,Update,AddGarbage}.asm`. Init writes filter value 0x16; AddGarbage writes +0x10 and passes slot 0x16; Update stores the decremented counter at 0x11532e0, then queues on signed <= 0, and calls Entity.Destroy(true) at 0x1153384 only after the first enumeration finishes. Confidence high for arithmetic and call order; Android comparison absent.
@@ -480,6 +501,8 @@ Evidence: local `research/exports/world-destroy/` bounded World.Destroy and Dest
 - Local exports under `build/research/`: `entity-components/`, `entity-component-followup/`, `entity-create/`, `entity-factory/`, `entity-registration/`, `subset-mutations/`, `subset-filters/`, `filter-predicates/`, `collection-operations/`, `collection-add-core/`, `entity-enumeration*/`, `entity-set-capacity/`, `entity-destruction-load/`, `entity-load-followup/`, `ecs-order/` (incl. `interface-dispatch.json`, `factory-order.json`), `ecs-lifecycle/`, `pause-hooks/`.
 
 ## Open questions
+
+- Effect factory host bindings: resource clip lookup, Cell relation list, Image payloads and playback insertion. Before porting AddCell, follow its prologue branch at 0x112d000 to 0x25fe1d8; the bounded helper export records its continuation stores but not that target.
 
 1. (blocking) Entity ID lifetime: identify any writers of `entity+0x28` besides construction and Deserialize; whether IDs stay stable while in groups (they are the HashSet hash). Counter selection and free-ID scanning are now established and ported above.
 2. Exact allocation/capacity limits are not reproduced by the narrow ordering adapter. Public-source slot/version behavior is implemented; revisit capacity only if a concrete gameplay case depends on it.

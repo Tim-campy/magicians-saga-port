@@ -320,6 +320,8 @@ Port: `combat_event_receivers.hpp/.cpp` implements both receiver bodies over exi
 
 Evidence: local `research/exports/combat-subscriptions/` bounded exports; `projectile-update/Init.asm` and `stage-damage/M37912_Init.asm`; metadata usage kind-3 targets at ELF GOT 0x2731528/0x2731518/0x2731520 (Enemy), 0x2731668/0x2731660 (Human), 0x27319f0 (Projectile), and 0x2731a20 (Stage human death). Emitter getter at 0x112e268 passes slot 31. Confidence high for these receiver bodies and registration call sites; static delivery order is established in the ECS document; runtime behavior remains unverified.
 
+The shared effect-entity factory used by impact services is now ported over ID creation, component slots and pools; see [effect entity factory](ecs.md#effect-entity-factory). Resource lookup, Cell/Image/playback host bindings and complete rendering remain open.
+
 ## Evidence
 
 - Collision traversal: local `research/exports/collision-pass/{Init,NeedsUpdate,Update,HasEffect,ParameterValue}.asm`. Visited reset/store are at 0x114609c/0x1146108; gates span 0x1146170..0x11462dc; geometry spans 0x11462e0..0x1146468; queue append precedes event-29 delivery at 0x1146754 and final clear at 0x1146784. Parameter.get_value (0x1178ba4) adds +0x14 and +0x1c with int32 wrapping. Confidence high for normal-path ordering and failure retention; no runtime comparison.
