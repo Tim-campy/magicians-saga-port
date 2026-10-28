@@ -37,7 +37,7 @@ ComponentSlots& create_bullet(BulletCreation r,BulletFactoryHost& host){
     const auto step_z=required(host.bullet_global_map()).step_z;
     host.add_cell(e,factory_cell_coordinate(r.position.x,step_x),factory_cell_coordinate(r.position.z,step_z));
     auto& speed=host.acquire_speed();speed.x=0;speed.y=0;speed.z=0;e.add(1,&speed);
-    auto& sprite=host.acquire_sprite();sprite.animation={19,0,0};sprite.layers={-1};e.add(2,&sprite);
+    auto& sprite=host.acquire_sprite();sprite.animation={19,0,0};sprite.layers=std::make_shared<std::vector<std::int32_t>>(1,-1);e.add(2,&sprite);
     host.add_image(e,{{required(record).image,19,-1,-1,-1,-1}});
     auto& depth=host.acquire_depth();depth.value=0;depth.extra=0;e.add(4,&depth);
     auto& emitter=host.acquire_emitter();emitter.category=0;emitter.type=0;emitter.interval=2;

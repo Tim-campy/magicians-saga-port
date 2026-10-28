@@ -7,7 +7,8 @@
 #include "../ecs/entity_creation.hpp"
 #include "../animation/animation_transitions.hpp"
 namespace saga::core {
-struct EntitySprite final:Component {SpriteAnimation animation;std::vector<std::int32_t> layers;};
+// SebComponent's int[] keeps its identity when callbacks replace the component field.
+struct EntitySprite final:Component {SpriteAnimation animation;ImageArray layers;};
 using EffectSprite=EntitySprite;
 using EffectDepth=EntityDepth;
 class EntityVisualHost:public EntityCreationHost,public CellPool,public ImagePool {

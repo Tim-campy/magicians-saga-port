@@ -17,7 +17,7 @@ int main()try{
      check(*n.image.arrays.textures==EventIntegers({200,51,51,-2,604}));
      check(*n.image.arrays.resources==EventIntegers({1,1,1,21,22}));
      check(n.image.arrays.u!=n.image.arrays.v&&*n.image.arrays.u==EventIntegers{-1});
-     check(n.sprite.animation.clip==39&&n.sprite.animation.frame==0&&n.sprite.layers==EventIntegers{-1});
+     check(n.sprite.animation.clip==39&&n.sprite.animation.frame==0&&*n.sprite.layers==EventIntegers{-1});
      check(n.speed.x==0&&n.speed.y==0&&n.speed.z==0&&n.playback.state.rate==1&&n.playback.state.return_clip==-1);
      check(n.direction.direction==3&&!n.direction.locked);
      check(n.human.character_id==1&&n.human.level==7&&n.human.experience==99&&n.human.formation_x==36&&n.human.formation_z==72);

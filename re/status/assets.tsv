@@ -76,3 +76,13 @@ kairo:0x060016a4	traced	docs/formats/seb.md	Sprite.get_ReverseU slot 8
 kairo:0x060016a5	traced	docs/formats/seb.md	Sprite.get_ReverseV slot 9
 kairo:0x060016a6	traced	docs/formats/seb.md	Sprite.get_Blend slot 10
 kairo:0x060016a7	traced	docs/formats/seb.md	Sprite.get_Color slot 11
+game:0x06000244	reimplemented	src/core/gameplay/render_frame.cpp	Binary32 x-z projection, native conversion performed by RenderSystem; direct and integrated tests.
+game:0x06000245	reimplemented	src/core/gameplay/render_frame.cpp	Binary32 add before half multiplication; overflow remains infinity; direct and render integration tests.
+game:0x06000246	reimplemented	src/core/gameplay/render_queue.cpp	Clear all count entries without releasing or reordering retained row buffers; reuse tested.
+game:0x06000247	reimplemented	src/core/gameplay/render_queue.cpp	Nineteen sequential int32 cells, category selection, 128-row growth preserving shared row identity, published-growth and partial-write faults; tests.
+game:0x06000248	reimplemented	src/core/gameplay/render_queue.cpp	Sort category0 before category1 with original private depth partition contract; integrated visible commands tested.
+game:0x06000249	reimplemented	src/core/gameplay/render_queue.cpp	Signed wrapping count-minus-one gate and inclusive quicksort range with required outer-buffer access; empty/null/singleton boundaries tested.
+game:0x0600024a	reimplemented	src/core/gameplay/render_queue.cpp	Private game quicksort recurses left and iterates right; equal-depth swap order retained and duplicate-depth cases tested.
+game:0x0600024b	reimplemented	src/core/gameplay/render_queue.cpp	First unequal depth selects larger value index; all-equal range returns minus1 without reorder; tests.
+game:0x0600024c	reimplemented	src/core/gameplay/render_queue.cpp	Private ascending partition uses less-than left and greater-or-equal right scans with row-reference swaps; exact unequal/equal-depth identity tested.
+kairo:0x06001355	reimplemented	src/core/gameplay/render_frame.cpp	Three-channel clamp to 0..255 and packed ffRRGGBB int32; modifier/color packet and boundary tests.

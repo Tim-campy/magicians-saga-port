@@ -41,7 +41,7 @@ int main(){
         check(h.effect.type==101&&h.effect.value==9&&h.effect.depth&&h.effect.frame==3&&h.effect.max_frame==7&&h.effect.parent==&h.entity);
         check(h.position.x==-47.9F&&!h.position.parent&&h.speed.z==0&&h.cell.xi==-1&&h.cell.yi==2);
         check(cells.size()==1&&h.entity.get(5)==&h.cell&&!h.cell.parent&&h.cell.children&&h.cell.children->empty());
-        check(h.sprite.animation.resource==20&&h.sprite.animation.clip==7&&h.sprite.animation.frame==3&&h.sprite.layers==std::vector<std::int32_t>{-1});
+        check(h.sprite.animation.resource==20&&h.sprite.animation.clip==7&&h.sprite.animation.frame==3&&*h.sprite.layers==std::vector<std::int32_t>{-1});
         check(h.depth.value==0&&h.depth.extra==40&&h.garbage.frames==7);
         check(animated_images.size()==1&&h.entity.get(7)==&h.image&&h.entity.get(10)==&h.playback);
         check(*h.image.arrays.textures==std::vector<std::int32_t>{4}&&*h.image.arrays.resources==std::vector<std::int32_t>{20});

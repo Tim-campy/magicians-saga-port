@@ -1,6 +1,6 @@
 # Assets and resource pipeline
 
-All shipped resources of the 1.4.0 APK (SHA-256 `d58943e6…6eead`) are catalogued and extracted: 38 TextAssets (30 XOR-obfuscated JarInflater containers holding 1,963 members) plus Unity textures, FSB5 audio and TrueType fonts. The on-disk JarInflater, SEB (modes 0/1) and regular OPT formats are proven by assembly and byte-exact round trips, and each has a C++17 reader in `src/assets/` with contract tests. The runtime resolution chain (INF catalog -> ResourceManager ID -> Image/OPT -> Seb sprite) is mapped statically but not closed end to end; there is no scene renderer, no audio playback and no runtime comparison with Android.
+All shipped resources of the 1.4.0 APK (SHA-256 `d58943e6…6eead`) are catalogued and extracted: 38 TextAssets (30 XOR-obfuscated JarInflater containers holding 1,963 members) plus Unity textures, FSB5 audio and TrueType fonts. The on-disk JarInflater, SEB (modes 0/1) and regular OPT formats are proven by assembly and byte-exact round trips, and each has a C++17 reader in `src/assets/` with contract tests. Visible-entity draw-command production and the game's depth-sort queues are ported and composed with the combat/camera/visibility test. The runtime resolution chain (INF catalog -> ResourceManager ID -> Image/OPT -> Seb sprite) is not closed end to end; scene pixels, audio playback and comparison with Android remain open.
 
 ## Overview
 
@@ -50,6 +50,18 @@ Extracted corpus (local, never distributed, `data/extracted/manifest.json` schem
 
 OPT- and SEB-specific methods (Image.LoadOptimize/GetOptimize, Seb._load, ConvBufferToSprite, GetSpriteLocal, Frame, PushThisFrameRender, Sprite getters, ...) are described in [opt](../formats/opt.md) and [seb](../formats/seb.md); their ids and statuses are in `re/status/assets.tsv`.
 
+| Method | Registry id | Role | Confidence |
+|---|---|---|---|
+| `ecs.RenderSystem.Init` | game:0x06000f85 | Store supplied world's map and allocate 32 layer indices | high |
+| `ecs.RenderSystem.Update` | game:0x06000f87 | Enumerate visible entities, project coordinates, produce commands, catch loop faults and sort retained commands | high |
+| `ecs.RenderSystem..cctor` | game:0x06000f8b | Set static extra-depth rate to 100; exposed as a host input in the port | high |
+| `AppData.TransormIsometricViewX/Y` (binary32 overloads) | game:0x06000244 / game:0x06000245 | `x-z` and `(x+z)*0.5`, respectively | high |
+| `AppData.ClearZSortObjects` | game:0x06000246 | Clear counts without releasing row buffers | high |
+| `AppData.InsertZSortObject` | game:0x06000247 | Write 19 int32 fields; grow selected row buffer by 128 | high |
+| `AppData.Zsort` (both overloads) | game:0x06000248 / game:0x06000249 | Sort category 0 then category 1, or one supplied category | high |
+| `AppData.QuickSort/Pivot/Partition` | game:0x0600024a / game:0x0600024b / game:0x0600024c | Ascending depth with observable game-specific tie order | high |
+| `Graphics.GetColorOfRGB` (three arguments) | kairo:0x06001355 | Clamp each channel to 0..255, return packed `0xffRRGGBB` | high |
+
 ## Behaviour
 
 **Key derivation (method, no key bytes).** `main.AppData.Init` (0x1100298) allocates an 11-element int array (0x110062c), fills it with `RuntimeHelpers.InitializeArray` (0x1100640), expands the eleven ints into 44 little-endian bytes (loop to 0x11006c0) and calls `SetEncryptionKey` at 0x11006e4. Other `SetEncryptionKey` call sites exist in `ApplicationManager`; the key is not proven global/immutable. The initializer is metadata field 24349 (`<PrivateImplementationDetails>`, offset 4557992, length 44, default-data index 188696), resolved via code ref 0x272fa50 -> reloc 0x27ea1c0 (value 0x800000f5, usage 4 / fieldRef 122, type index 8809); its SHA-256 matches its generated name. The extractor reads it from the hash-verified user metadata and embeds no key.
@@ -64,22 +76,59 @@ OPT- and SEB-specific methods (Image.LoadOptimize/GetOptimize, Seb._load, ConvBu
 
 **Unity media.** 23 `AudioClip` stream ranges into `.resource` files, all FSB5 Vorbis; 5 TTF fonts; 73 Texture2D (68 exportable, 5 empty font textures). TimeManager: fixed timestep ~0.02 s, max 0.333333 s, time scale 1 (engine settings, not proof of a 50 Hz game tick).
 
+### Visible-entity commands
+
+`RenderSystem.Init` (0x1160ca8, 108 bytes) requires the supplied world, stores its nullable map at +0x28, then stores a fresh int32[32] scratch at +0x30. It does not clear the draw queue or register a subset. `Update` (0x1160d30, 4,124 bytes) obtains current QuestForm camera offsets, calls the current width and a freshly obtained form's height, and discards both dimensions. These calls are outside its entity-loop catch. Scheduler gating is already established in [ecs](ecs.md); the renderer itself does not clear the queues.
+
+The loop uses World's visible HashSet (+0x40), preserving slot order and version invalidation through the existing public-HashSet adapter. It skips Invisible slot 21 or absent Position slot 0. Screen coordinates are native int32 conversions of binary32 `x-z` and `(x+z)*0.5-y`. Each conversion preserves the original positive-infinity result of INT32_MIN. For Cell slot 5 it requires Cell twice, then updates Depth slot 4 with binary32 `y+x+z+extra+overlay`: `extra` is signed `wrap32(rate*depth.extra)/100`, rate initially 100; overlay is 9,999,999.0F for Fukidashi slot 18 or Gauge slot 19, otherwise zero. Without Cell, existing Depth.value is retained. The map stored by Init is unused by this body.
+
+Resource selection captures current AppData and fresh Seb slot 2 resource ID, obtains the selected ResourceManager's clip array, and indexes a freshly read Seb clip ID. SyncAnimation slot 13 selects the shared clip clock; otherwise it captures the entity's Seb frame. A single layer value -1 requests all layers through `Seb.GetLayersNum`, filling the persistent 32-cell scratch without growth; count 33 fails after storing indices 0..31. Other layer arrays keep their original reference and captured length; later callbacks may replace the component's array without replacing the captured array. Elements remain live, and -1 entries are skipped. Image slot 7 is captured once before layer processing.
+
+Each layer calls `Seb.GetSprite(frame,layer)` and reads U/V/W/H at result indices 2..5. This result is a runtime sprite, not a direct crop of the PNG or a disk SEB record. Image overrides apply in this order: texture ID, image-resource ID, resource -2 early skip, U/V/W/H arrays, texture -2 late skip. Singleton arrays apply to every layer; crop -1 preserves the sprite value; shorter arrays fall back. Required null arrays and negative indexed layers fault.
+
+Base alpha comes from Color slot 6 or 255. ModifyAnimation slot 15 scales width/height with binary32 multiplication and native conversion, adds modifier x to screen x, and adds modifier y plus the original-minus-scaled height to screen y. Anchor bit 2 additionally adds half the width difference; bit 32 subtracts half the height difference; signed division truncates toward zero. **These x/y changes accumulate across layers**, rather than resetting for each sprite. Modifier alpha <=254 becomes `wrap32(alpha+1000)`; larger values retain base alpha. Type 9 sends angle as skew; other types send zero. Modifier z is unused here.
+
+Immediately before insertion the body captures current AppData again, then reads fresh Seb resource, Depth.value, Seb clip and Color RGB. Missing Color produces color -1. Camera offsets and frame retain their earlier captured values. All arithmetic on int32 positions/depth wraps.
+
+`InsertZSortObject` (0x111586c, 800 bytes) takes 20 arguments: the following 19 cells plus `type`, which selects an outer queue. RenderSystem always selects type 0.
+
+| Cell | Meaning |
+|---|---|
+| 0 / 1 | Texture override / Seb resource ID |
+| 2 / 3 / 4 | Depth plus layer / Seb clip ID / captured frame |
+| 5 / 6 | Screen x minus camera x / screen y minus camera y |
+| 7 / 8 | Scaled width / scaled height |
+| 9 / 10 | U / V |
+| 11 / 12 | Source width / source height after Image overrides |
+| 13 / 14 / 15 | Layer / alpha / packed RGB or -1 |
+| 16 / 17 / 18 | Angle / image-resource override / skew |
+
+AppData +0x3d0 holds counts and +0x3d8 holds row buffers. Insertion grows the selected buffer by 128 rows, preserving old row references and allocating new int32[19] rows; it publishes growth before accessing the count-selected row. Each field writes sequentially, and the count increments only after all writes. A malformed short row retains its written prefix. Clear resets counts only; subsequent commands reuse rows. This is application behavior, not a reason to reconstruct a managed allocator.
+
+`Zsort()` (0x1115b8c) sorts category 0 before 1. The typed overload (0x1115bac) computes `wrap32(count-1)`, skips a negative end, and otherwise calls QuickSort (0x1115c10). Pivot (0x1115cc4) scans from left+1 for the first depth unequal to the left depth, choosing the larger depth's index; equal ranges return -1 unchanged. Partition (0x1115d50) scans left while depth is less than pivot and right while depth is greater than or equal, swapping row references. QuickSort recurses left and iterates right. Ties therefore are **not stable**: depths `[2(A),1(B),1(C)]` become `[1(C),1(B),2(A)]`. These small private game helpers are retained because `std::sort` and `std::stable_sort` promise neither this exact order nor its row reuse; storage and swaps use the standard C++ library.
+
+The native LSDA resolves the loop catch to `System.Exception`: visible-cursor acquisition, enumeration, component reads, sprite queries and insertion are inside; viewport queries and final `Zsort()` are outside. A caught failure stops the entire loop, logs the current entity when nonnull, retains already queued commands, then sorts that prefix. Logging failure propagates before sorting. A version change at the next cursor step still names the last entity. A failure before selecting an entity is not logged. No queue rollback or implicit clear occurs.
+
 ## Port
 
 - `src/assets/jar_archive.{hpp,cpp}` — `parse_jar`, decoded container index, BE32, contiguous members, flags must be 0; test `tests/test_jar_archive.cpp` (`jar_archive_contract`). Differential: 30 containers / 1,963 members identical to the Python extractor.
 - `src/assets/opt_grid.{hpp,cpp}` — `parse_opt`, regular OPT; test `tests/test_opt_grid.cpp`. Differential: 286 files / 2,559 cells / 2,481 pieces.
 - `src/assets/seb.{hpp,cpp}` — `parse_seb`, disk modes 0/1; test `tests/test_seb.cpp`. Differential: 303 files / 452 groups / 2,686 records.
+- `src/core/gameplay/render_frame.{hpp,cpp}` and `render_queue.{hpp,cpp}` — visible draw-command selection, binary32 projection, image/modifier overrides, retained-failure prefix and native queue growth/sorting. Contracts: `tests/test_render_frame.cpp` and `tests/test_render_queue.cpp`. `tests/test_emitter_frame.cpp` composes Render factory index 21 after CellCulling 20 and before Garbage 31 in both 120-pass shot/landing/cleanup scenarios. Explicit host inputs provide current application, shared clips, sprite bounds, extra-depth rate and viewport. Sprite bounds in these tests are synthetic; real sprite evaluation and command consumption to pixels remain open. `EntitySprite.layers` now retains shared managed-array identity, with factories allocating fresh singleton arrays.
 - `src/platform/desktop/asset_inspect.cpp` — JSON dumper: `asset_inspect <decoded-container>`, `--opt <file>`, `--seb <file>`; exit 1 invalid input, 2 usage; Windows `wmain` UTF-16 paths. Build `tools\build-desktop.cmd` (MSVC + CMake/Ninja + CTest, no external deps, `/W4 /permissive-` or `-Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion`). Linux commands documented but never run.
 - `src/platform/desktop/asset_viewer.cpp` — optional technical viewer (`SAGA_BUILD_VIEWER=OFF` default; `tools\build-viewer.cmd`). SDL3 release-3.4.18 and stb_image commit 003501f6 fetched into `build/_deps` with SHA-256 checked by CMake. Loads a static PNG (<= 64 MiB, <= 8,192 px/axis, <= 16,777,216 px, 16-bit rejected) to RGBA8; window mode (nearest, letterbox, Esc) compiled but never run interactively; `--headless --capture out.bmp` uses `SDL_CreateSoftwareRenderer`, `SDL_BLENDMODE_NONE`, refuses existing targets. `--opt file.opt` composes pieces on an occupied-bounds canvas (selector -1 only, overlap rejected via occupancy mask, int64 arithmetic checked to int32, budget 65,536 pieces); prints JSON (`canvas_kind`, `occupied_bounds`, `canvas_size`, `grid_domain`, `piece_count`, `pieces_outside_grid`, `assigned_pixels`, `padding_convention`). Validated: synthetic 7x5 RGBA and `title.png` 600x320 byte-identical; 286/286 OPT compositions identical to the Python harness.
 - Tools (Python): `tools/inspect_unity_assets.py` (catalogue, UnityPy 1.25.4 pinned under `.tools/unitypy-libs`, no media export); `tools/extract_assets.py` (PEP 723, hash-locked to 1.4.0; `--out`, `--check`, `--unity-media`; refuses to overwrite differing outputs; manifest with origin, path ID, original name, transform, sizes, hashes; numeric output prefixes against Windows case collisions); `tools/inspect_seb.py`, `tools/inspect_opt.py` (strict parse + encoder); `tools/render_opt_reference.py` (research-only occupied-bounds PNGs, outputs only under `build/research`, `--select`, `--strict-grid`); `tools/audit_resource_catalogs.py` (INF audit, candidates only). Tests: `tests/test_extract_assets.py` (6), `test_seb.py` (6), `test_opt.py` (5 + 3 harness), `test_resource_catalogs.py` (3).
-- Missing: XOR decode and Unity media extraction in C++ (desktop relies on the Python extractor output); complete INF text/locale loading and file selection (ID placement and AppData selection are ported in animation_resources); name alias rules (`Config`/`JarInflater.ConvertExtension`, language candidates); Image dimension logic; SEB runtime compaction, sprite conversion and automatic drawing-clock advancement (manual Seb.Frame is ported in the gameplay animation pass); OPT FF variant; any renderer, audio or font path; Linux/3DS builds.
+- Missing: XOR decode and Unity media extraction in C++ (desktop relies on the Python extractor output); complete INF text/locale loading and file selection (ID placement and AppData selection are ported in animation_resources); name alias rules (`Config`/`JarInflater.ConvertExtension`, language candidates); Image dimension logic; SEB runtime compaction, sprite conversion and automatic drawing-clock advancement (manual Seb.Frame is ported in the gameplay animation pass); OPT FF variant; scene pixel rendering, audio or font path; demonstrated Linux/3DS execution.
 
 ## Evidence
 
 - [10-unity-assets](../archive/reports/10-unity-assets.md), [11-resource-reader](../archive/reports/11-resource-reader.md), [12-asset-extraction](../archive/reports/12-asset-extraction.md), [13-animation-formats](../archive/reports/13-animation-formats.md), [14-unity-media](../archive/reports/14-unity-media.md), [15-native-assets](../archive/reports/15-native-assets.md), [16-sprite-layout](../archive/reports/16-sprite-layout.md), [18-optimized-textures](../archive/reports/18-optimized-textures.md), [19-asset-viewer](../archive/reports/19-asset-viewer.md), [21-image-resource-mapping](../archive/reports/21-image-resource-mapping.md), [25-resource-catalog-audit](../archive/reports/25-resource-catalog-audit.md), [26-resource-aliases](../archive/reports/26-resource-aliases.md), [29-seb-animation-timing](../archive/reports/29-seb-animation-timing.md)
 - Local (gitignored): `research/local/unity-assets.json`, `research/local/extracted-image-budgets.json`; `build/research/asset-reader*`, `jar-load/`, `image-resource-{bounded,followup,final}/`, `image-unityload/`, `resource-aliases/`, `resource-alias-followup/`, `frame-policy*/`, `native-differential.json`, `viewer-validation/`, `viewer-opt/report.json`, `resource-catalogs.json`.
+- Render evidence (local, gitignored): `research/exports/render-system/` (Init/Update/cctor), `render-bindings/` (InsertZSortObject, binary32 projection, unported Seb.GetSprite), `render-queue/` (clear/sort/RGB), `render-sort/QueueSort.asm` and `render-order/` (Pivot/Partition). The Update LSDA report is `render-system/exception-callsites.json`: width 0x1160e10 and height 0x1160e30 are outside, visible enumeration 0x1160e6c/0x1160ea4 and insertion 0x1161838 are inside, final sort 0x1161908 is outside. Catch type resolves through 0x272f548 to System.Exception. Rate 100 is stored by cctor 0x1161db4; overlay binary32 is at 0x6279c8. Confidence high for static contracts; no Android comparison or playable scene is claimed.
 
 ## Open questions
+
+The next rendering blocker is `Seb.GetSprite`'s runtime selection/interpolation/cache and the `AppData.DrawZSortObjects` consumer: bind those to actual Image/OPT resources and the existing SDL backend before claiming mission pixels. The command producer is implemented independently; synthetic sprite bounds do not resolve this question.
 
 1. (blocking) Full ResourceManager resolution: which ResourceManager/catalog serves each Seb, TexId -> `img.inf` ID -> Image, and the delegate bodies dispatched by `LoadStart`/`AssetReader` via `RunOnUiThread`.
 2. (blocking) Language precedence and candidate order in `AssetReader.GetAccessFilesList`; how `English.lproj/` and `zh-CN/` catalogs override the root.

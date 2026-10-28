@@ -39,7 +39,7 @@ ComponentSlots& create_map_chip(MapChipCreation r,EntityIdState& ids,MapFactoryH
     p.x=static_cast<float>(multiply(r.step_x,r.column));p.y=static_cast<float>(r.y);p.z=static_cast<float>(multiply(r.step_z,r.row));
     p.offset_x=0;p.offset_y=0;p.offset_z=0;p.parent=nullptr;e.add(0,&p);
     host.add_cell(e,r.column,r.row);
-    auto& sprite=host.acquire_sprite();sprite.animation={r.resource,r.clip,r.frame};sprite.layers={r.layer};e.add(2,&sprite);
+    auto& sprite=host.acquire_sprite();sprite.animation={r.resource,r.clip,r.frame};sprite.layers=std::make_shared<std::vector<std::int32_t>>(1,r.layer);e.add(2,&sprite);
     host.add_image(e,{{r.texture,-1,-1,-1,-1,-1}});
     auto& depth=host.acquire_depth();depth.value=0;depth.extra=r.extra_depth;e.add(4,&depth);
     add_map_chip_component(e,r.data_id,-1,host);

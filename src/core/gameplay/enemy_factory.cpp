@@ -34,7 +34,7 @@ ComponentSlots* create_enemy(EnemyCreation args,EntityIdState& ids,EnemyFactoryH
     host.add_cell(e,factory_cell_coordinate(args.position.x),factory_cell_coordinate(args.position.z));
     auto& depth=host.acquire_depth();depth.value=0;depth.extra=10;e.add(4,&depth);
     host.add_image(e,{{data->image,resource,-1,-1,-1,-1}});
-    auto& sprite=host.acquire_sprite();sprite.animation={resource,clip,frame};sprite.layers={-1};e.add(2,&sprite);
+    auto& sprite=host.acquire_sprite();sprite.animation={resource,clip,frame};sprite.layers=std::make_shared<std::vector<std::int32_t>>(1,-1);e.add(2,&sprite);
     auto& speed=host.acquire_speed();speed.x=0;speed.y=0;speed.z=speed_z;e.add(1,&speed);
     auto& enemy=host.acquire_enemy();enemy.level=args.level;enemy.flags=args.flags;enemy.state=0;enemy.frame=0;
     enemy.enemy_id=args.id;enemy.opponent=nullptr;e.add(24,&enemy);

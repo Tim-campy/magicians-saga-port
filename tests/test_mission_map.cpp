@@ -58,7 +58,7 @@ int main()try{
      check(slots==EventIntegers{0,5,2,7,4,9,10}&&!e.contains(1));
      auto& p=field<ContactPosition>(e,0);check(p.x==288&&p.y==-7&&p.z==288&&p.offset_x==0&&!p.parent);
      auto& c=field<CellComponent>(e,5);check(c.xi==2&&c.yi==3&&!c.parent&&c.children&&c.children->empty());
-     auto& s=field<EntitySprite>(e,2);check(s.animation.resource==18&&s.animation.clip==5&&s.animation.frame==4&&s.layers==EventIntegers{9});
+     auto& s=field<EntitySprite>(e,2);check(s.animation.resource==18&&s.animation.clip==5&&s.animation.frame==4&&*s.layers==EventIntegers{9});
      auto& image=field<EntityImage>(e,7);check(*image.arrays.textures==EventIntegers{77}&&*image.arrays.resources==EventIntegers{-1});
      check(field<EntityDepth>(e,4).value==0&&field<EntityDepth>(e,4).extra==-8);
      auto& chip=field<MapChipComponent>(e,9);check(chip.data_id==123&&chip.staff_id==-1&&*chip.visiting_human_ids==EventIntegers(5,-1));

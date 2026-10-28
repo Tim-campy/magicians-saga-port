@@ -10,7 +10,7 @@ int main()try{
      check(order==EventIntegers({0,5,4,7,2,1,24,20,23,6,32,12,10}));
      auto& n=f.node(*e);check(n.enemy.enemy_id==2&&n.enemy.level==4&&n.enemy.flags==0&&n.enemy.state==0&&n.enemy.frame==0&&!n.enemy.opponent);
      check(n.position.x==-25&&n.position.y==8&&n.position.z==49&&n.cell.xi==-1&&n.cell.yi==2&&n.depth.extra==10);
-     check(n.sprite.animation.resource==3&&n.sprite.animation.clip==8&&n.sprite.animation.frame==0&&n.sprite.layers==EventIntegers{-1});
+     check(n.sprite.animation.resource==3&&n.sprite.animation.clip==8&&n.sprite.animation.frame==0&&*n.sprite.layers==EventIntegers{-1});
      check(n.image.arrays.textures->at(0)==90&&n.image.arrays.resources->at(0)==3&&n.image.arrays.textures->size()==1);
      check(std::fabs(n.speed.z-2.3415F)<0.000001F&&n.speed.x==0&&n.speed.y==0);
      check(n.ai.state==0&&n.ai.scripts&&n.ai.scripts->array->empty()&&n.ai.scripts->count==0);

@@ -23,6 +23,7 @@ struct CellServices final:saga::core::CellInitializationWorld,saga::core::CellVi
     saga::core::EventInstruction origin=std::make_shared<saga::core::EventIntegers>(2,0);
     std::unordered_set<Entity*> visible;std::vector<Entity*> visibility_calls;
     saga::core::CellVisibilityView* view=nullptr; // Optional real QuestForm camera/viewport bridge.
+    Group* ordered_visible=nullptr; // Reuse the established native HashSet slot/version adapter.
     struct Observer final:saga::core::ComponentObserver {
         ComponentReceiver callback;bool adding;
         Observer(ComponentReceiver f,bool a):callback(std::move(f)),adding(a){}
@@ -53,13 +54,13 @@ struct CellServices final:saga::core::CellInitializationWorld,saga::core::CellVi
         changes.emplace_back(e,key);step("send14");
         const auto captured=receivers;for(const auto& f:captured)f(e,key);
     }
-    void clear_cell_visibility()override{step("clear-visible");visible.clear();}
+    void clear_cell_visibility()override{step("clear-visible");visible.clear();if(ordered_visible)ordered_visible->clear_entities();}
     std::int32_t cell_game_width()override{step("view-width");return view?view->cell_game_width():game_width;}
     std::int32_t cell_game_height()override{step("view-height");return view?view->cell_game_height():game_height;}
     saga::core::EventInstruction cell_view_origin(std::int32_t sx,std::int32_t sz)override{
         step("view-origin");return view?view->cell_view_origin(sx,sz):saga::core::project_cell_location(origin,camera_x,camera_y,sx,sz);
     }
-    void add_cell_visibility(Entity& e)override{step("add-visible");visibility_calls.push_back(&e);visible.insert(&e);}
+    void add_cell_visibility(Entity& e)override{step("add-visible");visibility_calls.push_back(&e);visible.insert(&e);if(ordered_visible)ordered_visible->add(&e);}
     std::int32_t cell_visibility_count()override{step("visible-count");return static_cast<std::int32_t>(visible.size());}
     void store_cell_visibility_count(std::int32_t count)override{step("store-count");visible_count=count;}
     void init(){saga::core::initialize_cells(frame,this);saga::core::initialize_cell_index(index,this,*this);}

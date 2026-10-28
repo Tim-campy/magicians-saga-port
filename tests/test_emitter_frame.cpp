@@ -2,6 +2,7 @@
 #include "core/gameplay/parameter_experience.hpp"
 #include "cell_fixture.hpp"
 #include "quest_camera_fixture.hpp"
+#include "render_fixture.hpp"
 #include <limits>
 
 int main()try{
@@ -68,6 +69,7 @@ int main()try{
      CellServices cells([&](const auto& all){return &t.f.groups.get(std::make_shared<ComponentGroupFilter>(all));});
      cells.map.step_x=t.f.active_map->step_x;cells.map.step_z=t.f.active_map->step_z;cells.map.width=quest_map_width();cells.init();
      CameraServices camera(t,cells.map);camera.init();cells.view=&camera.cell_view;
+     RenderServices renderer(t,camera,cells);renderer.resource_provider=[&](std::int32_t id){return id==19?&em.pools.bullet_clips:get_animation_resource(renderer.catalog,id);};
      t.host.parameters=[](ComponentSlots&,std::int32_t k){return k==3?1000:0;};
      t.host.on_impact=[&](ComponentSlots& e,ComponentSlots* parent){create_impact_effect(&e,parent,t.host.records,impacts);};
      t.host.on_read_bullet=[&](ComponentSlots& e){check(impacts.bullet_data(e));};
@@ -92,11 +94,15 @@ int main()try{
      GameplayUpdate modify(18,enabled,[&](std::int32_t){order.push_back(18);modifiers.update();});
      GameplayUpdate anim(19,enabled,[&](std::int32_t){order.push_back(19);update_animations(animation,{false,true});});
      GameplayUpdate culling(20,enabled,[&](std::int32_t){order.push_back(20);update_cell_visibility(cells.index,cells);});
+     GameplayUpdate render(21,enabled,[&](std::int32_t){order.push_back(21);renderer.update();});
      GameplayUpdate collect(31,enabled,[&](std::int32_t){order.push_back(31);expiry.update(garbage);});
-     std::vector<UpdateSystem*> systems{&camera_frame,&exp,&flight,&motion,&contact,&parameters,&emit,&cell,&modify,&anim,&culling,&collect};UpdateSchedule schedule{&systems,&camera.clock};
+     std::vector<UpdateSystem*> systems{&camera_frame,&exp,&flight,&motion,&contact,&parameters,&emit,&cell,&modify,&anim,&culling,&render,&collect};UpdateSchedule schedule{&systems,&camera.clock};
      t.f.random.index=0;t.f.random.values={0,5,99,0,0,0};std::size_t peak_particles=0;bool advanced=false;
      int landed=-1,removed=-1;
-     for(int frame=0;frame<120;++frame){order.clear();update_systems(schedule,0);check(order==std::vector<int>{8,9,10,11,12,14,15,17,18,19,20,31});
+     std::int32_t peak_commands=0;
+     for(int frame=0;frame<120;++frame){order.clear();clear_render_queue(renderer.output);update_systems(schedule,0);check(order==std::vector<int>{8,9,10,11,12,14,15,17,18,19,20,21,31});
+         check(renderer.errors.empty());peak_commands=std::max(peak_commands,renderer.output.counts->at(0));
+         for(int i=1;i<renderer.output.counts->at(0);++i)check(renderer.row(static_cast<std::size_t>(i-1)).at(render_depth)<=renderer.row(static_cast<std::size_t>(i)).at(render_depth));
          if(debris_created==3&&landed==-1)landed=frame;
          if(t.f.node(enemy).lifetime.destroyed&&removed==-1)removed=frame;
          auto particles=em.particles();peak_particles=std::max(peak_particles,particles.size());
@@ -107,6 +113,7 @@ int main()try{
      for(const auto& queue:*parameter_exp.queues)check(queue->empty()); // No unproven event-21 producer.
      check(!cells.changes.empty()&&cells.frame.changed->empty());
      check(cells.visible_count>=0&&camera.clock.stops==120*static_cast<int>(systems.size()));
+     check(peak_commands>0&&!renderer.queries.empty());
      for(auto& n:t.f.nodes)if(n.entity.contains(5)){
          auto& c=field<CellComponent>(n.entity,5);auto bucket=cell_entities(cells.index,cell_key(&cells.map,c.xi,c.yi));
          check(bucket&&std::find(bucket->begin(),bucket->end(),&n.entity)!=bucket->end());}

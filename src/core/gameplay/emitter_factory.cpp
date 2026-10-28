@@ -26,7 +26,7 @@ ComponentSlots& create_particle(ParticleCreation r,ParticleFactoryHost& host){
     const auto step_x=required(host.particle_global_map()).step_x;
     const auto step_z=required(host.particle_global_map()).step_z;
     host.add_cell(e,factory_cell_coordinate(r.position.x,step_x),factory_cell_coordinate(r.position.z,step_z));
-    auto& sprite=host.acquire_sprite();sprite.animation={r.resource,r.clip,0};sprite.layers={-1};e.add(2,&sprite);
+    auto& sprite=host.acquire_sprite();sprite.animation={r.resource,r.clip,0};sprite.layers=std::make_shared<std::vector<std::int32_t>>(1,-1);e.add(2,&sprite);
     host.add_image(e,{{r.image,r.resource,-1,-1,-1,-1}});
     auto& depth=host.acquire_depth();depth.value=0;depth.extra=0;e.add(4,&depth);
     add_garbage_lifetime(e,decrement(maximum),host);return e;

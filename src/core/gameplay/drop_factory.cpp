@@ -19,7 +19,7 @@ ComponentSlots* create_drop(std::int32_t type,std::int32_t value,ProjectilePoint
     auto& speed=host.acquire_speed();speed.x=0;speed.y=0;speed.z=0;entity.add(1,&speed);
     host.add_cell(entity,factory_cell_coordinate(p.x),factory_cell_coordinate(p.z));
     auto& depth=host.acquire_depth();depth.value=0;depth.extra=10;entity.add(4,&depth);
-    auto& sprite=host.acquire_sprite();sprite.animation={7,clip,0};sprite.layers={-1};entity.add(2,&sprite);
+    auto& sprite=host.acquire_sprite();sprite.animation={7,clip,0};sprite.layers=std::make_shared<std::vector<std::int32_t>>(1,-1);entity.add(2,&sprite);
     host.add_image(entity,{{image,7,-1,-1,-1,-1}}); // Invoked even for image -1.
     auto& modification=host.acquire_modification();modification.type=10;
     modification.x=0;modification.y=0;modification.z=0;modification.scale_x=static_cast<float>(scale)/100.0F;modification.scale_y=modification.scale_x;

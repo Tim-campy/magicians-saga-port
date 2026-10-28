@@ -657,3 +657,13 @@ target_link_libraries(test_quest_camera PRIVATE quest_camera human_initializatio
 project_warnings(test_quest_camera)
 add_test(NAME quest_camera_contract COMMAND test_quest_camera)
 target_link_libraries(test_emitter_frame PRIVATE quest_camera)
+
+add_executable(test_render_queue test_render_queue.cpp)
+target_link_libraries(test_render_queue PRIVATE render_queue)
+project_warnings(test_render_queue)
+add_test(NAME render_queue_contract COMMAND test_render_queue)
+add_executable(test_render_frame test_render_frame.cpp)
+target_link_libraries(test_render_frame PRIVATE render_frame human_initialization enemy_initialization pass_initialization motion_pass update_scheduler hero_bootstrap human_factory animation_pass)
+project_warnings(test_render_frame)
+add_test(NAME render_frame_contract COMMAND test_render_frame)
+target_link_libraries(test_emitter_frame PRIVATE render_frame)

@@ -26,6 +26,9 @@ public:
     void remove(ComponentSlots*,std::int32_t,Component*);
     void change(ComponentSlots&,std::int32_t,Component*,Component*);
     std::size_t size()const{return lookup_.size();}
+    // Host primitive for World's visible HashSet.Clear, without subset callbacks.
+    // Reuses this adapter's established public HashSet slot/version contract.
+    void clear_entities();
     class Cursor {
     public:
         explicit Cursor(const EntitySubset& owner):owner_(owner),version_(owner.version_){}

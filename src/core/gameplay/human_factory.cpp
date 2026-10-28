@@ -30,7 +30,7 @@ ComponentSlots& create_human(const HumanCreation& args,EntityIdState& ids,HumanF
     host.add_cell(entity,factory_cell_coordinate(args.x),factory_cell_coordinate(args.z));
     auto& depth=host.acquire_depth();depth.value=0;depth.extra=10;entity.add(4,&depth);
     add_image_component(entity,textures,resources,host);
-    auto& sprite=host.acquire_sprite();sprite.animation={1,word(static_cast<std::uint32_t>(args.direction)+36U),0};sprite.layers={-1};entity.add(2,&sprite);
+    auto& sprite=host.acquire_sprite();sprite.animation={1,word(static_cast<std::uint32_t>(args.direction)+36U),0};sprite.layers=std::make_shared<std::vector<std::int32_t>>(1,-1);entity.add(2,&sprite);
     auto& speed=host.acquire_speed();speed.x=0;speed.y=0;speed.z=0;entity.add(1,&speed);
     add_animation_component(entity,1,-1,host);
     auto& direction=host.acquire_direction();direction.direction=args.direction;direction.locked=false;entity.add(12,&direction);

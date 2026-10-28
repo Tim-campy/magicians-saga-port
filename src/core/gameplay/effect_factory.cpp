@@ -17,7 +17,7 @@ ComponentSlots& create_effect(EffectRequest r,EntityIdState& ids,EffectFactoryHo
     auto& position=host.acquire_position();position.x=r.position.x;position.y=r.position.y;position.z=r.position.z;
     position.offset_x=0;position.offset_y=0;position.offset_z=0;position.parent=nullptr;entity.add(0,&position);
     auto& speed=host.acquire_speed();speed.x=0;speed.y=0;speed.z=0;entity.add(1,&speed);
-    auto& sprite=host.acquire_sprite();sprite.animation={r.resource,r.clip,r.frame};sprite.layers={-1};entity.add(2,&sprite);
+    auto& sprite=host.acquire_sprite();sprite.animation={r.resource,r.clip,r.frame};sprite.layers=std::make_shared<std::vector<std::int32_t>>(1,-1);entity.add(2,&sprite);
     if(r.depth){
         host.add_cell(entity,factory_cell_coordinate(r.position.x),factory_cell_coordinate(r.position.z));
         auto& depth=host.acquire_depth();depth.value=0;depth.extra=40;entity.add(4,&depth);

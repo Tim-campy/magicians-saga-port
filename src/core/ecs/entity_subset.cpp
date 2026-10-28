@@ -46,6 +46,9 @@ std::optional<ComponentSlots*> EntitySubset::Cursor::next(){
     while(index_<owner_.slots_.size())if(auto* e=owner_.slots_[index_++].entity)return e;
     return std::nullopt;
 }
+void EntitySubset::clear_entities(){
+    lookup_.clear();slots_.clear();free_=no_slot;++version_;cached_entities=nullptr;
+}
 ComponentSlots* EntitySubset::first_entity()const{
     if(size()==0)return nullptr;
     auto iterator=cursor();const auto first=iterator.next();

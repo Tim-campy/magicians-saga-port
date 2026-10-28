@@ -21,7 +21,7 @@ ComponentSlots& create_z_object(ProjectilePoint point,std::int32_t resource,std:
     auto& speed=host.acquire_speed();speed.x=0;speed.y=0;speed.z=0;entity.add(1,&speed);
     host.add_cell(entity,factory_cell_coordinate(point.x),factory_cell_coordinate(point.z));
     auto& depth=host.acquire_depth();depth.value=0;depth.extra=200;entity.add(4,&depth);
-    auto& sprite=host.acquire_sprite();sprite.animation={resource,clip,0};sprite.layers={-1};entity.add(2,&sprite);
+    auto& sprite=host.acquire_sprite();sprite.animation={resource,clip,0};sprite.layers=std::make_shared<std::vector<std::int32_t>>(1,-1);entity.add(2,&sprite);
     return entity;
 }
 }
