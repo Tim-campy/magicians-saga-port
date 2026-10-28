@@ -10,7 +10,7 @@ void check(bool v){if(!v)std::abort();}
 struct Node {
     int id;ComponentEvents events;ComponentSlots entity{35,&events};EntityRegistration registration{id,&entity,&events};
     DropComponent drop;ContactPosition position;ProjectileSpeed speed;EntityDepth depth;EntitySprite sprite;ProjectileModification modification;
-    Component cell;std::array<std::int32_t,6> image{};int cell_x=0,cell_z=0;explicit Node(int n):id(n){}
+    CellComponent cell;std::array<std::int32_t,6> image{};explicit Node(int n):id(n){}
 };
 struct Host final:DropFactoryHost,ComponentObserver {
     std::deque<Node> nodes;Component sync;EntityRegistry registry{*this};std::vector<int> calls;bool fail_image=false;
@@ -28,7 +28,7 @@ struct Host final:DropFactoryHost,ComponentObserver {
     EntitySprite& acquire_sprite()override{return nodes.back().sprite;}
     ProjectileModification& acquire_modification()override{return nodes.back().modification;}
     Component* sync_animation()override{return &sync;}
-    void add_cell(ComponentSlots& e,std::int32_t x,std::int32_t z)override{nodes.back().cell_x=x;nodes.back().cell_z=z;e.add(5,&nodes.back().cell);}
+    CellComponent& acquire_cell()override{return nodes.back().cell;}
     void add_image(ComponentSlots&,const std::array<std::int32_t,6>& args)override{calls.push_back(-2);nodes.back().image=args;if(fail_image)throw std::runtime_error("image");}
 };
 struct Rewards final:EnemyRewardHost {
@@ -48,11 +48,13 @@ template<class F>void fails(F f){bool caught=false;try{f();}catch(const std::exc
 int main(){
     for(int type=0;type<4;++type){Host h;EntityIdState ids;TreasureTable treasures{TreasureRecord{}};treasures[0]->image=87;
         auto& group=h.groups.get(std::make_shared<ComponentGroupFilter>(std::vector<std::int32_t>{34}));
+        auto& cells=h.groups.get(std::make_shared<ComponentGroupFilter>(std::vector<std::int32_t>{5}));
         auto* entity=create_drop(type,0,{-47.9F,3,48.9F},25,treasures,ids,h);auto& n=h.nodes.back();
         check(entity==&n.entity&&ids.counter==1&&group.size()==1&&h.registry.find(0)==entity);
         auto expected=std::vector<int>{-1,34,0,1,5,4,2,-2,15};if(type!=3)expected.push_back(13);check(h.calls==expected);
         check(n.drop.type==type&&n.drop.value==0&&n.drop.frame==-1&&n.drop.x0==-47.9F&&n.drop.z0==48.9F);
-        check(n.cell_x==-1&&n.cell_z==2&&n.depth.extra==10&&!n.position.parent&&n.speed.z==0);
+        check(n.cell.xi==-1&&n.cell.yi==2&&n.depth.extra==10&&!n.position.parent&&n.speed.z==0);
+        check(cells.size()==1&&entity->get(5)==&n.cell&&!n.cell.parent&&n.cell.children&&n.cell.children->empty());
         check(n.sprite.animation.resource==7&&n.sprite.animation.clip==(type==2?43:type==3?41:42));
         check(n.image[0]==(type==0?98:type==1?105:type==2?-1:87)&&n.image[1]==7);
         check(n.modification.type==10&&n.modification.anchor==34&&n.modification.loop&&!n.modification.destroy&&n.modification.alpha==255);

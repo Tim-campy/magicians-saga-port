@@ -167,3 +167,4 @@ game:0x06000c09	documented	docs/subsystems/ecs.md	GetSubSet forwarding/populatio
 game:0x06000c66	reimplemented	src/core/ecs/dynamic_subsets.cpp	Dynamic filter directory lookup/population/publication or versioned live component forwarding; integrated Init and mutation tests.
 game:0x06000001	documented	docs/subsystems/ecs.md	GetSubSet forwarding/population/publication or ordered array comparison contract; native bounded evidence.
 game:0x06000bf4	reimplemented	src/core/gameplay/effect_factory.cpp	Effect factory wrapper defaults and ordered construction tested.
+game:0x06000b32	reimplemented	src/core/gameplay/cell_component.cpp	Pooled Cell coordinates and parent, fresh children identity, then slot 5; integrated effect/drop tests.

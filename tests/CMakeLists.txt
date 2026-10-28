@@ -514,3 +514,8 @@ add_executable(test_entity_visual test_entity_visual.cpp)
 target_link_libraries(test_entity_visual PRIVATE entity_visual)
 project_warnings(test_entity_visual)
 add_test(NAME entity_visual_contract COMMAND test_entity_visual)
+
+add_executable(test_cell_component test_cell_component.cpp)
+target_link_libraries(test_cell_component PRIVATE cell_component)
+project_warnings(test_cell_component)
+add_test(NAME cell_component_contract COMMAND test_cell_component)

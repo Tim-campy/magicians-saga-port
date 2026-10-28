@@ -227,3 +227,7 @@ if(MSVC)
 else()
   target_compile_options(drop_factory PRIVATE -ffp-contract=off)
 endif()
+
+saga_library(cell_component cell_component.cpp)
+target_link_libraries(cell_component PUBLIC component_slots)
+target_link_libraries(entity_visual PUBLIC cell_component)

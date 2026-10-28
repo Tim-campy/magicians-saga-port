@@ -1,6 +1,6 @@
 # ECS (entities, components, systems)
 
-The game runs on Kairosoft's own ECS (`kairo.unity.ecs`, KairoLibrary) specialised by `ecs.*` types in Assembly-CSharp. Statically established: the world/manager construction, the concrete entity factory (one `BaseEntity` type with 35 component slots), slot storage and its notifications, subset (group) maintenance through `IFilter.Matches`, the `HashSet<Entity>` storage and its enumeration order, system registration and Update/Init/Pause dispatch, enable/pause/remove-all/serialize lifecycle, and the two-pass entity load and destroy order. Port: component slot storage, `ContainsAll/ContainsAny` and the `Filter.Matches` predicate are reimplemented and tested; subset membership and observable slot ordering are now ported with live collision/garbage cursors; entity ID selection and creation orchestration are now ported with explicit registry/factory services; entity insertion/component subscriptions are now connected; dynamic group creation/dedup and the complete system schedule remain open. Nothing was compared against a running original.
+The game runs on Kairosoft's own ECS (`kairo.unity.ecs`, KairoLibrary) specialised by `ecs.*` types in Assembly-CSharp. Statically established: the world/manager construction, the concrete entity factory (one `BaseEntity` type with 35 component slots), slot storage and its notifications, subset (group) maintenance through `IFilter.Matches`, the `HashSet<Entity>` storage and its enumeration order, system registration and Update/Init/Pause dispatch, enable/pause/remove-all/serialize lifecycle, and the two-pass entity load and destroy order. Port: slots/predicates, live groups and their dynamic creation/dedup/population, ID selection, entity registration/component subscriptions and world teardown are implemented with tests. The 26-system update schedule/gates and generic Init dispatch are ported; concrete initialization and live passes cover Projectile/Move/Collision/Garbage. Effect/drop factories now use concrete Cell initialization. Remaining system bodies, presentation bindings and persistence integration are needed for a complete frame. Nothing was compared against a running original.
 
 All addresses are ELF VAs (load bias 0; Ghidra exports add `0x100000`). Numbers like `37083` in the evidence are IL2CPP metadata method indices, not registry ids.
 
@@ -109,6 +109,7 @@ Call chain from the form layer (see [ui.md](ui.md)): form event 1 → `QuestForm
 | `kairo.unity.ecs.World.Update` | game:0x06000c0a | Forwards pass index to SystemManager.Update | high |
 | `kairo.unity.ecs.World.Destroy` | game:0x06000c02 | Visible-set clear, entity destruction, systems, event handlers | high |
 | `kairo.unity.ecs.World.Deserialize` | game:0x06000c19 | Entities, then systems, then byte+0x38=1 | high |
+| `kairo.unity.ecs.Entity.AddCell` | game:0x06000b32 | Pooled coordinates/parent, fresh children, slot 5 insertion | high |
 | `ecs.MyEntityManager..ctor` | game:0x06000db5 | Tail call to EntityManager..ctor | high |
 | `ecs.MyEntityManager.Create` | game:0x06000db6 | Tail call to EntityManager.Create | high |
 | `kairo.unity.ecs.EntityManager..ctor` | game:0x06000c59 | +0x10 slot count, +0x14 = 0, collections | high |
@@ -480,9 +481,19 @@ It then creates type-0, non-temporary entity and adds components in this order:
 
 Every add uses existing ComponentSlots semantics, including ignored insertion into an occupied slot after pool acquisition/payload writes. Component callbacks observe this construction order; late failures retain the registered entity and earlier components. The short overload (game:0x06000bf4, 0x1134a28, 72 bytes) supplies type/value/frame=0, resource=20, depth=true, maxFrame=0, parent=null, anim=true and forwards position/clip/image/loop.
 
-Shared entity_visual now supplies the Sprite/Depth payloads and cell conversion used by this factory and [CreateDrop](rewards.md#pending-drop-entity-factory). Port: `effect_factory.hpp/.cpp` implements both overloads through the ported entity-creation orchestration, actual Effect/Position/Speed/Seb/Depth payloads and Garbage lifetime helper. Pools, resource-record lookup, Cell relation setup, Image payload construction and playback insertion remain explicit EffectFactoryHost services. This does not complete rendering or those three component helpers. Tests compose real ID creation/registration/dynamic group entry with the factory; check call order, payloads, loop gates, zero-duration behavior, exceptional coordinates, argument capture and resource/image failures. Image/playback/Cell services in these tests are markers, not their full payload implementations.
+Shared entity_visual now supplies the Sprite/Depth payloads, cell conversion and concrete Cell insertion used by this factory and [CreateDrop](rewards.md#pending-drop-entity-factory). Port: `effect_factory.hpp/.cpp` implements both overloads through the ported entity-creation orchestration, actual Effect/Position/Speed/Seb/Cell/Depth payloads and Garbage lifetime helper. Pools, resource-record lookup, Image payload construction and playback insertion remain explicit EffectFactoryHost services. Tests compose real ID creation/registration/dynamic group entry with the factory; check call order, payloads, loop gates, zero-duration behavior, exceptional coordinates, argument capture and resource/image failures. Image/playback services in these tests are markers; Cell uses the implementation below. Rendering remains open.
 
 Evidence: existing local `research/exports/animation-spawn/M36978_CreateEffect.asm`; bounded helper/short-overload exports in `research/exports/effect-factory/`; metadata parameter names for methods 36977/36978. Full factory resolves lifetime before creation at 0x1134b3c, adds Effect at 0x1134b68, Position at 0x1134b8c, Speed at 0x1134ba0, Seb at 0x1134bb8, Cell/Depth at 0x1134c20/0x1134c30, Garbage at 0x1134c44, Image at 0x1134c70 and playback at 0x1134c8c. Confidence high for factory/payload ordering; Android comparison absent.
+
+### Cell creation and factory binding
+
+Entity.AddCell (game:0x06000b32, 0x112cfe4, 356 bytes) acquires a pooled CellComponent or constructs one, writes int32 xi/yi at +0x10/+0x14 and the parent Entity reference at +0x18, creates a fresh List<Entity> for children at +0x20, then calls AddComponent with slot 5. Its prologue branch at 0x112d000 reaches an eight-byte island at 0x25fe1d8: load the pool/factory type reference, then branch back to 0x112d004. It adds no other state transition.
+
+The parent need not have a Cell and may be the entity itself. AddCell does not append to the parent's children or establish reciprocal relations; later CellSystem behavior is separate. Effect/drop callers pass a null parent and the shared signed X/Z-to-cell conversion. Every invocation replaces children with a new empty list, including pool reuse and occupied-slot calls. Previously retained lists remain unchanged. Payload/list writes precede slot insertion; an ignored insertion can still mutate an already-installed pooled object, while a notification failure leaves the inserted component and initialized payload intact.
+
+Port: `src/core/gameplay/cell_component.hpp/.cpp` implements the payload and acquire/write/new-list/add order through CellPool and ComponentSlots. A shared list object preserves identity across replacement without reproducing public List internals. EntityVisualHost uses this helper by default; effect/drop factory tests now use actual Cell payloads and live slot-5 group entry. Contract tests cover prior-list survival, reuse, occupied slots, self-parenting, pool failure and failure after insertion. CellSystem updates/culling and component serialization are outside this helper.
+
+Evidence: local `research/exports/effect-factory/kairo_unity_ecs_Entity_AddCell.asm` and `AddCellIsland.asm`; v31 metadata CellComponent type 4415 and AddCell parameter types identify parent/children as Entity references. Coordinates are stored at 0x112d0d4, parent at 0x112d0d8, fresh children at 0x112d0f8, and slot 5 is selected at 0x112d118. Confidence high; no Android comparison.
 
 ## Evidence
 
@@ -502,7 +513,7 @@ Evidence: existing local `research/exports/animation-spawn/M36978_CreateEffect.a
 
 ## Open questions
 
-- Effect factory host bindings: resource clip lookup, Cell relation list, Image payloads and playback insertion. Before porting AddCell, follow its prologue branch at 0x112d000 to 0x25fe1d8; the bounded helper export records its continuation stores but not that target.
+- Effect factory host bindings: resource clip lookup, Image payloads and playback insertion. Cell initialization is now implemented; CellSystem relation maintenance remains separate.
 
 1. (blocking) Entity ID lifetime: identify any writers of `entity+0x28` besides construction and Deserialize; whether IDs stay stable while in groups (they are the HashSet hash). Counter selection and free-ID scanning are now established and ported above.
 2. Exact allocation/capacity limits are not reproduced by the narrow ordering adapter. Public-source slot/version behavior is implemented; revisit capacity only if a concrete gameplay case depends on it.
