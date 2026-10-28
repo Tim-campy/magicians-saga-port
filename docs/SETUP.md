@@ -107,3 +107,11 @@ After a successful collation manifest check, `build/desktop/test_collation_table
 `build/desktop/test_collation_index.exe extracted/collation-indexers/collation/indexers.bin extracted/collation-indexers/collation/collation.core.bin extracted/collation-indexers/collation/collation.tailoring.bin` checks the seven original configurations and every UTF-16 unit against category/weight table bounds. This is static integration validation, not an Android comparison.
 
 The runtime Hashtable table is loaded with `load_hashtable_primes(extracted_root)` and shared by `RuntimeCallContextHost`. After its manifest check, run `build/desktop/test_runtime_data.exe extracted/runtime` to exercise growth and full mutable-context copying with local data. The host requires an explicit correlation-value clone callback; scheduler/TLS state is not inferred. See [runtime table format](formats/runtime-hashtable-primes.md).
+
+The selected-sprite technical preview uses the existing SDL viewer:
+
+```powershell
+build/viewer/asset_viewer.exe <selected.png> --sprite <selected.seb> <frame> <layer> <texture-slot> --canvas <width> <height> --origin <x> <y> --opt <selected.opt> --headless --capture <new-output.bmp>
+```
+
+`--opt` and `--origin` are optional; `--standard <width> <height>` supplies explicit Image standard dimensions (zero by default). Supply the PNG matching the selected SEB TexId yourself: this tool does not infer catalogs, locale precedence or mission image slots. Canvas is required and limited to 8,192 pixels/axis and 16,777,216 pixels total. The profile is an identity screen matrix, no atlas, zero destination expansion, replace RGBA and no UI overlays; JSON reports the selected sprite and emitted quad count. Unbound matrix/flip/material/external-image paths fail before capture. Captures must target new files. `sprite_preview_pixels` is registered in CTest when SAGA_BUILD_VIEWER=ON; its PNG/SEB/OPT fixtures are synthetic and use only Python's standard library. For this mode, `--headless` uses an invisible graphics-backed window plus SDL readback: a desktop video/graphics driver is required. SDL 3.4.18 software geometry truncates source UV texels and is refused here; ordinary PNG/occupied-bounds OPT capture still uses its original software path. No Android comparison or playable mission is implied.

@@ -1,10 +1,13 @@
-// Technical PNG/OPT inspection only: no scene layout, game loop or gameplay model.
+// Technical PNG/OPT and explicitly bound SEB previews; no playable mission yet.
 #include "assets/opt_grid.hpp"
+#include "sprite_preview.hpp"
+#include "sdl_bitmap.hpp"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <charconv>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -123,7 +126,8 @@ Composition compose_geometry(const std::string& filename, int png_width, int png
     return result;
 }
 
-int view(const std::string& filename, bool headless, const std::string& capture, const std::string& opt_file) {
+int view(const std::string& filename, bool headless, const std::string& capture, const std::string& opt_file,
+         const std::optional<saga::desktop::SpritePreviewOptions>& sprite_options) {
     if (!capture.empty()) {
         const auto target = std::filesystem::u8path(capture);
         if (std::filesystem::exists(target)) throw std::runtime_error("Capture destination already exists");
@@ -142,21 +146,39 @@ int view(const std::string& filename, bool headless, const std::string& capture,
     std::unique_ptr<stbi_uc, decltype(&stbi_image_free)> pixels(
         stbi_load_from_memory(encoded.data(), byte_count, &width, &height, &channels, 4), stbi_image_free);
     if (!pixels) throw std::runtime_error(std::string("PNG decode failed: ") + stbi_failure_reason());
-    const bool opt_mode = !opt_file.empty();
+    const bool sprite_mode=sprite_options.has_value();
+    const bool opt_mode = !opt_file.empty()&&!sprite_mode;
     const auto composition = opt_mode ? compose_geometry(opt_file, width, height) : Composition{};
-    const auto target_width = opt_mode ? composition.width : width;
-    const auto target_height = opt_mode ? composition.height : height;
+    const auto target_width = sprite_mode?sprite_options->width:(opt_mode ? composition.width : width);
+    const auto target_height = sprite_mode?sprite_options->height:(opt_mode ? composition.height : height);
+    saga::desktop::SpritePreview preview;
+    if(sprite_mode){
+        const auto bytes=read_file(sprite_options->seb,saga::assets::SebLimits{}.max_bytes,1);
+        const auto file=saga::assets::parse_seb(bytes.data(),bytes.size());
+        std::optional<saga::assets::OptGrid> opt;
+        if(!opt_file.empty()){
+            const auto opt_bytes=read_file(opt_file,saga::assets::OptLimits{}.max_bytes,1);
+            opt=saga::assets::parse_opt(opt_bytes.data(),opt_bytes.size());
+        }
+        preview=saga::desktop::prepare_sprite_preview(*sprite_options,file,opt?&*opt:nullptr,width,height);
+    }
 
-    require(SDL_Init(headless ? 0U : SDL_INIT_VIDEO), "SDL_Init");
+    // SDL's software QueueGeometry truncates source UV texels before interpolation
+    // in 3.4.18. Selected native inset geometry requires a floating-UV renderer;
+    // headless sprite capture therefore uses an invisible GPU-backed window.
+    const bool software_capture=headless&&!sprite_mode;
+    require(SDL_Init(software_capture ? 0U : SDL_INIT_VIDEO), "SDL_Init");
     QuitSDL quit;
     Surface source(SDL_CreateSurfaceFrom(width, height, SDL_PIXELFORMAT_RGBA32, pixels.get(), width * 4), SDL_DestroySurface);
     require(source != nullptr, "SDL_CreateSurfaceFrom");
-    Surface target(headless ? SDL_CreateSurface(target_width, target_height, SDL_PIXELFORMAT_RGBA32) : nullptr, SDL_DestroySurface);
-    if (headless) require(target != nullptr, "SDL_CreateSurface");
-    Window window(headless ? nullptr : SDL_CreateWindow("Magician's Saga - research occupied bounds / PNG", target_width, target_height, SDL_WINDOW_RESIZABLE), SDL_DestroyWindow);
-    if (!headless) require(window != nullptr, "SDL_CreateWindow");
-    Renderer renderer(headless ? SDL_CreateSoftwareRenderer(target.get()) : SDL_CreateRenderer(window.get(), nullptr), SDL_DestroyRenderer);
+    Surface target(software_capture ? SDL_CreateSurface(target_width, target_height, SDL_PIXELFORMAT_RGBA32) : nullptr, SDL_DestroySurface);
+    if (software_capture) require(target != nullptr, "SDL_CreateSurface");
+    Window window(software_capture ? nullptr : SDL_CreateWindow("Magician's Saga - technical asset preview", target_width, target_height, headless?SDL_WINDOW_HIDDEN:SDL_WINDOW_RESIZABLE), SDL_DestroyWindow);
+    if (!software_capture) require(window != nullptr, "SDL_CreateWindow");
+    Renderer renderer(software_capture ? SDL_CreateSoftwareRenderer(target.get()) : SDL_CreateRenderer(window.get(), nullptr), SDL_DestroyRenderer);
     require(renderer != nullptr, "SDL_CreateRenderer");
+    if(sprite_mode&&std::string(SDL_GetRendererName(renderer.get()))=="software")
+        throw std::runtime_error("selected sprite UVs require a floating-UV graphics renderer; software fallback refused");
     Texture texture(SDL_CreateTextureFromSurface(renderer.get(), source.get()), SDL_DestroyTexture);
     require(texture != nullptr, "SDL_CreateTextureFromSurface");
     require(SDL_SetTextureScaleMode(texture.get(), SDL_SCALEMODE_NEAREST), "SDL_SetTextureScaleMode");
@@ -170,7 +192,10 @@ int view(const std::string& filename, bool headless, const std::string& capture,
         }
         require(SDL_SetRenderDrawColor(renderer.get(), 0, 0, 0, 0), "SDL_SetRenderDrawColor");
         require(SDL_RenderClear(renderer.get()), "SDL_RenderClear");
-        if (opt_mode) {
+        if(sprite_mode){
+            for(const auto& quad:preview.quads)
+                require(saga::desktop::render_preview_quad(renderer.get(),texture.get(),quad,static_cast<float>(target_height)),"SDL_RenderGeometry sprite");
+        } else if (opt_mode) {
             for (const auto& piece : composition.pieces) {
                 const SDL_FRect from{static_cast<float>(piece.u), static_cast<float>(piece.v),
                     static_cast<float>(piece.width), static_cast<float>(piece.height)};
@@ -179,13 +204,25 @@ int view(const std::string& filename, bool headless, const std::string& capture,
                 require(SDL_RenderTexture(renderer.get(), texture.get(), &from, &to), "SDL_RenderTexture OPT piece");
             }
         } else require(SDL_RenderTexture(renderer.get(), texture.get(), nullptr, nullptr), "SDL_RenderTexture");
+        Surface readback(headless&&sprite_mode?SDL_RenderReadPixels(renderer.get(),nullptr):nullptr,SDL_DestroySurface);
+        if(headless&&sprite_mode)require(readback!=nullptr,"SDL_RenderReadPixels");
         require(SDL_RenderPresent(renderer.get()), "SDL_RenderPresent");
         if (headless) {
-            require(SDL_SaveBMP(target.get(), capture.c_str()), "SDL_SaveBMP");
+            // Readback format is backend-selected; explicitly retain four channels.
+            Surface rgba(sprite_mode?SDL_ConvertSurface(readback.get(),SDL_PIXELFORMAT_RGBA32):nullptr,SDL_DestroySurface);
+            if(sprite_mode)require(rgba!=nullptr,"SDL_ConvertSurface RGBA");
+            require(SDL_SaveBMP(sprite_mode?rgba.get():target.get(), capture.c_str()), "SDL_SaveBMP");
             running = false;
         } else SDL_Delay(16);
     }
-    if (opt_mode) {
+    if(sprite_mode){
+        std::cout<<"{\"canvas_kind\":\"explicit_selected_sprite\",\"canvas_size\":["<<target_width<<','<<target_height
+                 <<"],\"frame\":"<<sprite_options->frame<<",\"layer\":"<<sprite_options->layer<<",\"texture_slot\":"<<sprite_options->texture
+                 <<",\"quad_count\":"<<preview.quads.size()<<",\"sprite\":";
+        if(preview.sprite){std::cout<<'[';for(std::size_t i=0;i<12;++i){if(i)std::cout<<',';std::cout<<preview.sprite->at(i);}std::cout<<']';}
+        else std::cout<<"null";
+        std::cout<<",\"profile\":\"identity matrix, no atlas, zero expansion, replace RGBA, no UI overlays\"}\n";
+    } else if (opt_mode) {
         std::cout << "{\"canvas_kind\":\"occupied_bounds_not_original_dimensions\",\"occupied_bounds\":["
                   << composition.x0 << ',' << composition.y0 << ',' << composition.x1 << ',' << composition.y1
                   << "],\"canvas_size\":[" << target_width << ',' << target_height
@@ -201,20 +238,42 @@ int view(const std::string& filename, bool headless, const std::string& capture,
 int main(int argc, char** argv) {
     try {
         std::string filename, capture, opt_file;
+        std::optional<saga::desktop::SpritePreviewOptions> sprite;
+        std::optional<std::array<std::int32_t,2>> canvas,origin,standard;
+        const auto number=[](const char* text){
+            const std::string value(text);std::int32_t result=0;
+            const auto parsed=std::from_chars(value.data(),value.data()+value.size(),result);
+            if(parsed.ec!=std::errc{}||parsed.ptr!=value.data()+value.size())throw std::invalid_argument("invalid int32 preview argument");
+            return result;
+        };
         bool headless = false;
         for (int i = 1; i < argc; ++i) {
             const std::string argument = argv[i];
             if (argument == "--headless" && !headless) headless = true;
             else if (argument == "--capture" && capture.empty() && i + 1 < argc) capture = argv[++i];
             else if (argument == "--opt" && opt_file.empty() && i + 1 < argc) opt_file = argv[++i];
+            else if(argument=="--sprite"&&!sprite&&i+4<argc){
+                sprite.emplace();sprite->seb=argv[++i];sprite->frame=number(argv[++i]);sprite->layer=number(argv[++i]);sprite->texture=number(argv[++i]);
+            }
+            else if(argument=="--canvas"&&!canvas&&i+2<argc){const auto w=number(argv[++i]),h=number(argv[++i]);canvas=std::array<std::int32_t,2>{w,h};}
+            else if(argument=="--origin"&&!origin&&i+2<argc){const auto x=number(argv[++i]),y=number(argv[++i]);origin=std::array<std::int32_t,2>{x,y};}
+            else if(argument=="--standard"&&!standard&&i+2<argc){const auto w=number(argv[++i]),h=number(argv[++i]);standard=std::array<std::int32_t,2>{w,h};}
             else if (filename.empty() && argument.rfind("--", 0) != 0) filename = argument;
             else throw std::runtime_error("Invalid or duplicate argument");
         }
         if (filename.empty() || headless != !capture.empty()) {
-            std::cerr << "Usage: asset_viewer image.png [--opt file.opt] [--headless --capture output.bmp]\n";
+            std::cerr << "Usage: asset_viewer image.png [--opt file.opt] [--sprite file.seb frame layer texture-slot --canvas width height [--origin x y] [--standard width height]] [--headless --capture output.bmp]\n";
             return 2;
         }
-        return view(filename, headless, capture, opt_file);
+        if(sprite){
+            if(!canvas||(*canvas)[0]<=0||(*canvas)[1]<=0||(*canvas)[0]>8192||(*canvas)[1]>8192||
+               static_cast<std::uint64_t>((*canvas)[0])*static_cast<std::uint64_t>((*canvas)[1])>max_pixels)
+                throw std::invalid_argument("sprite requires explicit canvas within 8192/axis, 16 Mi pixels");
+            sprite->width=(*canvas)[0];sprite->height=(*canvas)[1];
+            if(origin){sprite->x=(*origin)[0];sprite->y=(*origin)[1];}
+            if(standard){sprite->standard_width=(*standard)[0];sprite->standard_height=(*standard)[1];}
+        }else if(canvas||origin||standard)throw std::invalid_argument("canvas/origin/standard require --sprite");
+        return view(filename, headless, capture, opt_file,sprite);
     } catch (const std::exception& error) {
         std::cerr << "asset_viewer: " << error.what() << '\n';
         return 1;
