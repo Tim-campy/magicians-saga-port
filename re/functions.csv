@@ -9076,11 +9076,11 @@ kairo:0x06001307,kairo:0x06001307,ui,,5380,0x1b616e0
 kairo:0x06001308,kairo:0x06001308,ui,,36,0x1b63328
 kairo:0x06001309,kairo:0x06001309,ui,,552,0x1b6334c
 kairo:0x0600130a,kairo:0x0600130a,ui,,584,0x1b63574
-kairo:0x0600130b,kairo:0x0600130b,ui,,304,0x1b64c90
-kairo:0x0600130c,kairo:0x0600130c,ui,,324,0x1b64dc0
+kairo:0x0600130b,kairo.unity.ui.Graphics.DrawImage,ui,reimplemented,304,0x1b64c90
+kairo:0x0600130c,kairo.unity.ui.Graphics.DrawScaledImage,ui,reimplemented,324,0x1b64dc0
 kairo:0x0600130d,kairo:0x0600130d,ui,,280,0x1b64f04
 kairo:0x0600130e,kairo:0x0600130e,ui,,3576,0x1b6501c
-kairo:0x0600130f,kairo:0x0600130f,ui,,5332,0x1b637bc
+kairo:0x0600130f,kairo.unity.ui.Graphics._drawImage,ui,reimplemented,5332,0x1b637bc
 kairo:0x06001310,kairo:0x06001310,ui,,7480,0x1b66080
 kairo:0x06001311,kairo:0x06001311,ui,,20,0x1b62be4
 kairo:0x06001312,kairo:0x06001312,ui,,112,0x1b68254

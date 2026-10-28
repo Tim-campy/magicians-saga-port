@@ -1,5 +1,6 @@
 #include "render_fixture.hpp"
 #include "render_draw_fixture.hpp"
+#include "image_draw_fixture.hpp"
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -9,6 +10,20 @@ struct Setup {
     CellServices cells{[this](const auto& all){return &t.f.groups.get(std::make_shared<ComponentGroupFilter>(all));}};
     CameraServices camera{t,cells.map};RenderServices render{t,camera,cells};
     Setup(){cells.init();camera.init();}
+};
+// Identity-transform integration; this adapter records bitmap primitives, not pixels.
+struct PixelRenderServices:RenderDrawServices {
+    ImageDrawServices pixels;
+    void draw_image(const RenderImageDraw& draw)override{
+        RenderDrawServices::draw_image(draw);auto* image=dynamic_cast<PixelImage*>(draw.image);
+        if(draw.image&&!image)throw std::invalid_argument("unbound pixel image");
+        pixels.state.flip=reverse;
+        try{
+            if(draw.scaled)draw_scaled_image_rect(pixels.state,image,draw.x,draw.y,draw.width,draw.height,draw.u,draw.v,draw.source_width,draw.source_height,pixels);
+            else draw_image_rect(pixels.state,image,draw.x,draw.y,draw.u,draw.v,draw.source_width,draw.source_height,pixels);
+        }catch(...){reverse=pixels.state.flip;throw;}
+        reverse=pixels.state.flip;
+    }
 };
 int main()try{
     {Setup s;auto& r=s.render;auto& e=r.object();s.camera.form.x=3;s.camera.form.y=4;r.visible.add(&e);r.update();
@@ -27,6 +42,14 @@ int main()try{
      RenderDrawServices drawing;drawing.catalog.animations=&loaded.resource();drawing.state.queue=&r.output;drawing.draw();
      check(drawing.draws.size()==1&&drawing.draws[0].width==84&&drawing.draws[0].x==-37&&drawing.draws[0].y==4);
      check(drawing.draws[0].image==&drawing.first_image&&!drawing.draws[0].scaled);}
+    {Setup s;auto& r=s.render;saga::assets::SebRecord record;record.value_count=10;record.values={0,0,0,30,30,30,-15,0,0,0};
+     saga::assets::Seb file{0,1,{{0,1,std::int16_t{0}}},{record}};PreparedAnimationResource loaded(index_resource_catalog({2}),{&file});
+     r.resource_provider=[&](std::int32_t){return &loaded.resource();};auto& e=r.object();r.visible.add(&e);r.update();
+     saga::assets::OptGrid grid{30,30,1,2,{{0,1},{1,1}},{{{-1,4,4,20,0,19,15}},{{-1,4,5,0,0,20,15}}}};
+     PreparedOptImage image(grid);image.width=39;image.height=15;PixelRenderServices drawing;
+     drawing.state.queue=&r.output;drawing.catalog.animations=&loaded.resource();drawing.catalog.images->at(0)=&image;drawing.draw();
+     check(r.errors.empty()&&drawing.pixels.bitmaps.size()==1);const auto& bitmap=drawing.pixels.bitmaps[0].second;
+     check(bitmap.x==-7&&bitmap.y==9&&bitmap.width==20&&bitmap.height==15&&bitmap.u==0&&bitmap.v==0&&bitmap.source_width==20);}
     {Setup s;auto& r=s.render;auto& e=r.object();e.remove(5);field<EntityDepth>(e,4).value=17;field<EntitySprite>(e,2).layers=std::make_shared<EventIntegers>(EventIntegers{0});r.visible.add(&e);r.update();
      check(r.row().at(render_depth)==17&&r.row().at(render_alpha)==255&&r.errors.empty());}
     {Setup s;auto& r=s.render;auto& hidden=r.object();Component invisible;hidden.add(21,&invisible);hidden.remove(0);
