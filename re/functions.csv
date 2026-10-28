@@ -2821,7 +2821,7 @@ game:0x06000b94,game:0x06000b94,ecs,,168,0x1130cb0
 game:0x06000b95,game:0x06000b95,ecs,,136,0x1130d58
 game:0x06000b96,game:0x06000b96,ecs,,16,0x1130de0
 game:0x06000b97,game:0x06000b97,ecs,,372,0x1130df0
-game:0x06000b98,game:0x06000b98,ecs,,180,0x1130f64
+game:0x06000b98,kairo.unity.ecs.Entity.RemoveProjectile,ecs,reimplemented,180,0x1130f64
 game:0x06000b99,kairo.unity.ecs.Entity.get_seb,ecs,traced,136,0x1131018
 game:0x06000b9a,game:0x06000b9a,ecs,,16,0x11310a0
 game:0x06000b9b,kairo.unity.ecs.Entity.AddSeb,ecs,documented,152,0x11310b0
@@ -2901,8 +2901,8 @@ game:0x06000bf3,game:0x06000bf3,ecs,,540,0x113480c
 game:0x06000bf4,kairo.unity.ecs.World.CreateEffect,ecs,reimplemented,72,0x1134a28
 game:0x06000bf5,kairo.unity.ecs.World.CreateEffect,ecs,reimplemented,588,0x1134a70
 game:0x06000bf6,kairo.unity.ecs.World.CreateBullet,ecs,reimplemented,648,0x1134cbc
-game:0x06000bf7,kairo.unity.ecs.World.CreateParticle,ecs,traced,600,0x1134f44
-game:0x06000bf8,game:0x06000bf8,ecs,,252,0x113519c
+game:0x06000bf7,kairo.unity.ecs.World.CreateParticle,ecs,reimplemented,600,0x1134f44
+game:0x06000bf8,kairo.unity.ecs.World.CreateEmitter,ecs,reimplemented,252,0x113519c
 game:0x06000bf9,kairo.unity.ecs.World.CreateDrop,ecs,reimplemented,664,0x1135298
 game:0x06000bfa,kairo.unity.ecs.World.CreateZObject,ecs,reimplemented,252,0x1135530
 game:0x06000bfb,kairo.unity.ecs.World..ctor,ecs,traced,284,0x11333ac
@@ -3137,7 +3137,7 @@ game:0x06000d12,ecs.AnimationComponent..ctor,ecs,traced,8,0x113e4a8
 game:0x06000d13,game:0x06000d13,ecs,,16,0x113e4b0
 game:0x06000d14,game:0x06000d14,ecs,,28,0x113e4c0
 game:0x06000d15,game:0x06000d15,ecs,,8,0x113e4dc
-game:0x06000d16,game:0x06000d16,ecs,,124,0x113e4e4
+game:0x06000d16,ecs.BulletComponent.get_data,ecs,reimplemented,124,0x113e4e4
 game:0x06000d17,game:0x06000d17,ecs,,4,0x113e560
 game:0x06000d18,game:0x06000d18,ecs,,4,0x113e564
 game:0x06000d19,game:0x06000d19,ecs,,8,0x113e568
@@ -3464,9 +3464,9 @@ game:0x06000e59,game:0x06000e59,ecs,,84,0x114b838
 game:0x06000e5a,game:0x06000e5a,ecs,,140,0x114b88c
 game:0x06000e5b,game:0x06000e5b,unassigned,,8,0x114b360
 game:0x06000e5c,game:0x06000e5c,unassigned,,56,0x114b918
-game:0x06000e5d,game:0x06000e5d,ecs,,208,0x114b950
+game:0x06000e5d,ecs.EmitterSystem.Init,ecs,reimplemented,208,0x114b950
 game:0x06000e5e,ecs.EmitterSystem.NeedsUpdate,ecs,reimplemented,8,0x114ba20
-game:0x06000e5f,ecs.EmitterSystem.Update,ecs,traced,2132,0x114ba28
+game:0x06000e5f,ecs.EmitterSystem.Update,ecs,reimplemented,2132,0x114ba28
 game:0x06000e60,game:0x06000e60,ecs,,52,0x114c27c
 game:0x06000e61,game:0x06000e61,ecs,,4,0x114c2b0
 game:0x06000e62,game:0x06000e62,ecs,,4,0x114c2b4

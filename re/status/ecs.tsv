@@ -126,8 +126,8 @@ game:0x06000beb	reimplemented	src/core/gameplay/mission_map.cpp	Full MapChip fac
 game:0x06000bec	traced	docs/subsystems/animation.md	
 game:0x06000bf0	reimplemented	src/core/gameplay/enemy_factory.cpp	Full enemy factory: double table lookup, captured/live visual fields, shared component pools and 13 parameters; real boss/normal creation tests.
 game:0x06000bf5	reimplemented	src/core/gameplay/effect_factory.cpp	Effect factory order and core payloads composed with ID registration groups; resource and presentation helpers explicit.
-game:0x06000bf7	traced	docs/subsystems/animation.md	
-game:0x06000e5f	traced	docs/subsystems/animation.md	
+game:0x06000bf7	reimplemented	src/core/gameplay/emitter_factory.cpp	Captured resource clock before global registration; complete ordered particle payload, separate live map divisors and wrapped lifetime; factory and real emitter/animation/expiry tests.
+game:0x06000e5f	reimplemented	src/core/gameplay/emitter_frame.cpp	Complete cadence/type dispatch, live bullet trail copies, finite emissions and persistent versioned expiry queue; 120-pass attack/death/landing-debris integration tested.
 game:0x06000f81	reimplemented	src/core/gameplay/projectile_launch.cpp	Binary32 distance and int32 duration height; ordered projectile modification animation additions
 game:0x06000c05	documented	docs/subsystems/ecs.md	World wrapper forwards collection and excluded entity, forces manager registry removal true
 game:0x06000f6f	reimplemented	src/core/gameplay/motion_pass.cpp	Live And 0 1 group iteration and complete movement kernel; parent order and group reinsertion tested
@@ -188,3 +188,7 @@ game:0x060011e8	reimplemented	src/core/gameplay/mission_map.cpp	Required chipImg
 game:0x06000bea	reimplemented	src/core/gameplay/mission_map.cpp	Register entity before optional jagged allocation and shared-map insertion; provided-grid identity, negative-dimension failure and InitWorld-argument scenarios tested.
 game:0x06000b7f	reimplemented	src/core/gameplay/mission_map.cpp	Write captured eight scalars/grid into ComponentFactory singleton then slot 11; retain areas and aliases across map entities; tested.
 game:0x06000b7c	reimplemented	src/core/gameplay/mission_map.cpp	Acquire map chip, write data/staff IDs and fresh int32[5] filled -1 before slot 9; complete factory and pool-failure tests.
+game:0x06000e5d	reimplemented	src/core/gameplay/emitter_frame.cpp	Supplied-world And31 lookup, nullable subset store and fresh persistent queue, no loop-counter reset; repeat/failure and concrete integration tested.
+game:0x06000bf8	reimplemented	src/core/gameplay/emitter_factory.cpp	Current-global-world type0 registration then full Emitter, Position and zero Speed; factory ordering and actual landing debris/flight/expiry tested.
+game:0x06000d16	reimplemented	src/core/gameplay/bullet_factory.cpp	Fresh bullet catalog before current component dataId; bounds-checked nullable row with no -1 sentinel; mutation/invalid/empty and emitter integration tests.
+game:0x06000b98	reimplemented	src/core/gameplay/projectile_motion.cpp	Generated remover null-getter return after impact, otherwise current capture/removal/pool; corrected prior required-component assumption; direct, pass and actual destroyed-emitter landing tests.

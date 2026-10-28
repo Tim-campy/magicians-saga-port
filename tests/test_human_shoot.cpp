@@ -1,18 +1,6 @@
 #include "bullet_fixture.hpp"
 #include "core/gameplay/motion_pass.hpp"
 
-struct LiveCollisions final:CollisionPassHost {
-    HumanFixture& t;explicit LiveCollisions(HumanFixture& value):t(value){}
-    struct Cursor final:CollisionCursor {
-        EntitySubset::Cursor cursor;explicit Cursor(EntitySubset& s):cursor(s.cursor()){}
-        std::optional<ComponentSlots*> next()override{return cursor.next();}
-    };
-    std::unique_ptr<CollisionCursor> open_collision_cursor()override{
-        return std::make_unique<Cursor>(t.f.groups.get(std::make_shared<ComponentGroupFilter>(EventIntegers{32,0})));
-    }
-    void send_collision(std::int32_t id,ComponentSlots& a,ComponentSlots& b)override{t.host.events.send(id,&a,&b);}
-};
-
 int main()try{
     {HumanFixture t;Shooter s(t);check(!s.shoot(nullptr)&&s.pools.queries==0);auto& enemy=t.enemy_at();
      t.f.node(enemy).lifetime.destroyed=true;check(!s.shoot(&enemy)&&s.pools.queries==0);

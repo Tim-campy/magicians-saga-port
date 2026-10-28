@@ -21,6 +21,8 @@ struct Services:EnemyImpactHost,ContactCollisionHost,CombatEventHost,EnemyDefeat
     std::function<void(ComponentSlots&,ComponentSlots*)> on_impact;
     std::function<void(ComponentSlots&)> on_read_bullet;
     std::function<void(ComponentSlots&,ComponentSlots&)> on_bullet_impact;
+    std::function<ComponentSlots*(std::int32_t,std::int32_t,std::int32_t,ProjectilePoint)> on_create_effect;
+    std::function<ComponentSlots*(std::int32_t,std::int32_t,std::int32_t,std::int32_t,std::int32_t,ProjectilePoint)> on_create_emitter;
     EnemyEventServices bindings{records,f.enemy_pools.maxima,f.random,*this,*this,*this};
     explicit Services(UpdateFixture& fixture):f(fixture){
         for(std::size_t i=0;i<characters.size();++i){characters[i].emplace();characters[i]->flags=i==0?2:4;
@@ -51,8 +53,10 @@ struct Services:EnemyImpactHost,ContactCollisionHost,CombatEventHost,EnemyDefeat
     void read_bullet_data(ComponentSlots& e)override{if(on_read_bullet)on_read_bullet(e);else unbound();}
     void create_bullet_impact(ComponentSlots& e,ComponentSlots& parent)override{if(on_bullet_impact)on_bullet_impact(e,parent);else unbound();}
     void bullet_hit(ComponentSlots& source,ComponentSlots* target)override{on_projectile_hit(&source,target,*this);}
-    ComponentSlots* create_effect(std::int32_t,std::int32_t,std::int32_t,ProjectilePoint)override{unbound();}
-    ComponentSlots* create_emitter(std::int32_t,std::int32_t,std::int32_t,std::int32_t,std::int32_t,ProjectilePoint)override{unbound();}
+    ComponentSlots* create_effect(std::int32_t a,std::int32_t b,std::int32_t c,ProjectilePoint p)override{
+        if(on_create_effect)return on_create_effect(a,b,c,p);unbound();}
+    ComponentSlots* create_emitter(std::int32_t a,std::int32_t b,std::int32_t c,std::int32_t d,std::int32_t e,ProjectilePoint p)override{
+        if(on_create_emitter)return on_create_emitter(a,b,c,d,e,p);unbound();}
     void boss_defeated(ComponentSlots&)override{unbound();}
     bool collision_blocked(ComponentSlots& e)override{return destroyed(e);}
     void cut_in_animation(ComponentSlots& e,std::int32_t clip,std::int32_t backup)override{saga::core::cut_in_animation(live_animation(e),clip,backup);}

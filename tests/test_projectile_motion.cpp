@@ -51,9 +51,9 @@ int main(){
         check(!advance_projectile(f.e,f.host)&&f.e.contains(27));}
     {Fixture f;f.host.p.frame=std::numeric_limits<std::int32_t>::max();f.host.p.max_height=0;
         check(advance_projectile(f.e,f.host)&&f.host.p.frame==std::numeric_limits<std::int32_t>::min());}
-    {Fixture f;f.host.impact=[](ComponentSlots& e){e.remove(27);};bool failed=false;
-        try{finish_projectile(f.e,f.host);}catch(const std::invalid_argument&){failed=true;}
-        check(failed&&f.host.calls==std::vector<std::string>{"impact","remove27"});}
+    {Fixture f;f.host.impact=[](ComponentSlots& e){e.remove(27);};
+        finish_projectile(f.e,f.host);
+        check(!f.e.contains(27)&&f.host.calls==std::vector<std::string>{"impact","remove27"});}
     {Fixture f;f.e.remove(projectile_speed_slot);bool failed=false;
         f.host.p.frame=2;try{advance_projectile(f.e,f.host);}catch(const std::invalid_argument&){failed=true;}
         check(failed&&f.pos.y>0&&f.host.p.frame==2);}

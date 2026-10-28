@@ -86,6 +86,9 @@ bool advance_projectile(ComponentSlots& e,ProjectileMotionHost& host){
 }
 void finish_projectile(ComponentSlots& e,ProjectileMotionHost& host){
     host.send_impact(e);
+    // Entity.RemoveProjectile 0x1130f64 returns if its first getter is null.
+    // The impact event can destroy an emitter and remove all its components.
+    if(!e.get(projectile_slot))return;
     auto* old=&projectile(e);e.remove(projectile_slot);host.return_component(projectile_slot,old);
 }
 }

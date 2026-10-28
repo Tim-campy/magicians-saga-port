@@ -20,9 +20,13 @@ struct EmitterComponent final:Component { // Slot 31, +0x10..+0x24.
     std::int32_t category=0,type=0,interval=0,frame=0,maximum=0,argument=0;
 };
 struct BulletFactoryWorld {EntityIdState& ids;EntityCreationHost& entities;};
-class BulletFactoryHost:public EntityVisualHost {
+class BulletCatalogHost {
 public:
+    virtual ~BulletCatalogHost()=default;
     virtual BulletRecords bullet_records()=0; // Data.instance_.bulletData_, fresh per query.
+};
+class BulletFactoryHost:public EntityVisualHost,public BulletCatalogHost {
+public:
     virtual BulletFactoryWorld* bullet_global_world()=0; // World.world_, independent of factory receiver.
     virtual StageGeometry* bullet_global_map()=0; // Fresh World.world_.map lookup, including its lazy cache contract.
     virtual BulletComponent& acquire_bullet()=0;
@@ -35,5 +39,7 @@ struct BulletCreation {std::int32_t id=0,damage=0,attribute=0;ComponentSlots* pa
 // World.CreateBullet 0x1134cbc. Invalid IDs fault; a null row faults after Seb insertion.
 ComponentSlots& create_bullet(BulletCreation,BulletFactoryHost&);
 // EquipmentData.get_bullet 0x116efd8; -1 avoids even querying the catalog.
-const BulletRecord* equipment_bullet(const EquipmentCombatRecord*,BulletFactoryHost&);
+const BulletRecord* equipment_bullet(const EquipmentCombatRecord*,BulletCatalogHost&);
+// BulletComponent.get_data 0x113e4e4; table queried before current data_id is read.
+const BulletRecord* resolve_bullet_record(const BulletComponent&,BulletCatalogHost&);
 }

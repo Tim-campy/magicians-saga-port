@@ -83,3 +83,14 @@ struct BulletImpactServices final:ImpactEffectHost {
         auto& color=s.pools.acquire_bullet_color();color.values={{a,b,c,d}};e.add(6,&color);
     }
 };
+struct LiveCollisions final:CollisionPassHost {
+    HumanFixture& t;explicit LiveCollisions(HumanFixture& value):t(value){}
+    struct Cursor final:CollisionCursor {
+        EntitySubset::Cursor cursor;explicit Cursor(EntitySubset& s):cursor(s.cursor()){}
+        std::optional<ComponentSlots*> next()override{return cursor.next();}
+    };
+    std::unique_ptr<CollisionCursor> open_collision_cursor()override{
+        return std::make_unique<Cursor>(t.f.groups.get(std::make_shared<ComponentGroupFilter>(EventIntegers{32,0})));
+    }
+    void send_collision(std::int32_t id,ComponentSlots& a,ComponentSlots& b)override{t.host.events.send(id,&a,&b);}
+};

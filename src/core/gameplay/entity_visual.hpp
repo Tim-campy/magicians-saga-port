@@ -21,6 +21,8 @@ public:
 };
 // Shared factory conversion at 0x1134bc8 / 0x11353fc: FCVTZS, positive-infinity override, signed /24.
 std::int32_t factory_cell_coordinate(float);
+// Same conversion with an explicit live map divisor, used by Bullet/Particle factories.
+std::int32_t factory_cell_coordinate(float,std::int32_t step);
 // World.CreateZObject 0x1135530. Registered world object with depth 200;
 // Position/Speed/Cell/Depth/Seb only, without Image or playback.
 ComponentSlots& create_z_object(ProjectilePoint,std::int32_t resource,std::int32_t clip,EntityIdState&,EntityVisualHost&);

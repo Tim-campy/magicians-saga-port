@@ -14,6 +14,7 @@ public:
 // Writes y and velocities; horizontal position integration is a separate system.
 // True means append to the system's completion queue, preserving group iteration order.
 bool advance_projectile(ComponentSlots&,ProjectileMotionHost&);
-// Run after the complete group pass, for each queued entity. No hasProjectile guard.
+// Run after the complete group pass. After event 23, the generated remover's
+// null-getter guard permits callbacks that already removed/destroyed the entity.
 void finish_projectile(ComponentSlots&,ProjectileMotionHost&);
 }

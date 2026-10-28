@@ -3,10 +3,16 @@
 #include <limits>
 namespace saga::core {
 std::int32_t factory_cell_coordinate(float v){
-    if(std::isnan(v))return 0;
-    if(v==std::numeric_limits<float>::infinity()||v<=-2147483648.0F)return std::numeric_limits<std::int32_t>::min()/24;
-    if(v>=2147483648.0F)return std::numeric_limits<std::int32_t>::max()/24;
-    return static_cast<std::int32_t>(v)/24;
+    return factory_cell_coordinate(v,24);
+}
+std::int32_t factory_cell_coordinate(float v,std::int32_t step){
+    std::int32_t integer=0;
+    if(v==std::numeric_limits<float>::infinity()||v<=-2147483648.0F)integer=std::numeric_limits<std::int32_t>::min();
+    else if(v>=2147483648.0F)integer=std::numeric_limits<std::int32_t>::max();
+    else if(!std::isnan(v))integer=static_cast<std::int32_t>(v);
+    if(!step)return 0;
+    if(step==-1&&integer==std::numeric_limits<std::int32_t>::min())return integer;
+    return integer/step;
 }
 ComponentSlots& create_z_object(ProjectilePoint point,std::int32_t resource,std::int32_t clip,EntityIdState& ids,EntityVisualHost& host){
     auto& entity=create_entity(ids,0,false,host);

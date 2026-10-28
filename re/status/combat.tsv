@@ -99,7 +99,7 @@ game:0x06000ec6	reimplemented	src/core/gameplay/combat_state.cpp	Human pre/store
 game:0x06000ec7	reimplemented	src/core/gameplay/combat_state.cpp	1-to-2 direction and animation before state mutation
 game:0x06000ec8	reimplemented	src/core/gameplay/combat_state.cpp	Ordered speed idle-animation and strict attack-counter reset
 game:0x06000e84	reimplemented	src/core/gameplay/projectile_launch.cpp	Ordered position reads RNG draws Fire and modification replacement; contact integration tested
-game:0x06000f7e	reimplemented	src/core/gameplay/motion_pass.cpp	Live projectile group motion then persistent completion queue delivery; failure retention callbacks and launch integration tested
+game:0x06000f7e	reimplemented	src/core/gameplay/motion_pass.cpp	Live projectile group motion then persistent completion queue delivery; callback removal uses native null-getter return; failure retention, launch and destroyed-emitter landing integration tested
 game:0x06000f7c	reimplemented	src/core/gameplay/pass_initialization.cpp	Concrete subset request/store, queue reset or event registration; failure and live trajectory integration tests.
 game:0x06000f80	reimplemented	src/core/gameplay/combat_event_receivers.cpp	Emitter destruction and required-reference receiver; tested.
 game:0x06000ecf	reimplemented	src/core/gameplay/human_impact.cpp	Cell Human state-4 guards; animation effect state-5 then event 30; callbacks and failures tested

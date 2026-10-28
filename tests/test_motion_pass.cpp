@@ -85,7 +85,8 @@ int main(){
         bool failed=false;try{pass.update(w.projectiles,w);}catch(const std::runtime_error&){failed=true;}
         check(failed&&w.impacts.empty()&&w.links[0].frame==2&&w.links[1].frame==1);
         w.a.remove(1);w.on_pool=nullptr;pass.update(w.projectiles,w);check(w.impacts==std::vector<int>{0});}
-    {World w;ProjectilePass pass;w.launch(0,true);w.on_impact=[](ComponentSlots& e){e.remove(27);};bool failed=false;
-        try{pass.update(w.projectiles,w);}catch(const std::invalid_argument&){failed=true;}
-        check(failed&&w.projectiles.size()==0&&w.impacts==std::vector<int>{0});}
+    {World w;ProjectilePass pass;w.launch(0,true);w.on_impact=[](ComponentSlots& e){e.remove(27);};
+        pass.update(w.projectiles,w);
+        check(w.projectiles.size()==0&&w.impacts==std::vector<int>{0});
+        pass.update(w.projectiles,w);check(w.impacts==std::vector<int>{0});} // Successful drain cleared its queue.
 }

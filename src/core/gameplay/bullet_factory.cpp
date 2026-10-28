@@ -1,19 +1,10 @@
 #include "bullet_factory.hpp"
 #include "table_catalog.hpp"
-#include <cmath>
-#include <limits>
 #include <stdexcept>
 
 namespace saga::core {
 namespace {
 template<class T>T& required(T* p){if(!p)throw std::invalid_argument("missing bullet factory input");return *p;}
-std::int32_t integer(float v){
-    if(std::isnan(v))return 0;
-    if(v==std::numeric_limits<float>::infinity()||v<=-2147483648.0F)return std::numeric_limits<std::int32_t>::min();
-    if(v>=2147483648.0F)return std::numeric_limits<std::int32_t>::max();
-    return static_cast<std::int32_t>(v);
-}
-std::int32_t divide(std::int32_t a,std::int32_t b){if(!b)return 0;if(b==-1&&a==std::numeric_limits<std::int32_t>::min())return a;return a/b;}
 void read_record(BulletRecord& r,detail::TableTokens& t){
     r.id=t.integer();r.category=t.integer();r.attribute=t.integer();r.resource=t.take();
     r.image=t.integer();r.trail_image=t.integer();r.impact_resource=t.take();r.effect_image=t.integer();r.flags=t.integer();
@@ -27,10 +18,13 @@ BulletTable load_bullet_table(std::string_view text,bool normalize,const EventIn
         BulletRecord r;read_record(r,t);return r;
     });
 }
-const BulletRecord* equipment_bullet(const EquipmentCombatRecord* weapon,BulletFactoryHost& host){
+const BulletRecord* equipment_bullet(const EquipmentCombatRecord* weapon,BulletCatalogHost& host){
     if(required(weapon).bullet_id==-1)return nullptr;
     const auto table=host.bullet_records();auto& row=required(table.get()).at(static_cast<std::size_t>(weapon->bullet_id));
     return row?&*row:nullptr;
+}
+const BulletRecord* resolve_bullet_record(const BulletComponent& bullet,BulletCatalogHost& host){
+    const auto table=host.bullet_records();auto& row=required(table.get()).at(static_cast<std::size_t>(bullet.data_id));return row?&*row:nullptr;
 }
 ComponentSlots& create_bullet(BulletCreation r,BulletFactoryHost& host){
     const auto table=host.bullet_records();auto& row=required(table.get()).at(static_cast<std::size_t>(r.id));
@@ -41,7 +35,7 @@ ComponentSlots& create_bullet(BulletCreation r,BulletFactoryHost& host){
     p.offset_x=0;p.offset_y=0;p.offset_z=0;p.parent=nullptr;e.add(0,&p);
     const auto step_x=required(host.bullet_global_map()).step_x;
     const auto step_z=required(host.bullet_global_map()).step_z;
-    host.add_cell(e,divide(integer(r.position.x),step_x),divide(integer(r.position.z),step_z));
+    host.add_cell(e,factory_cell_coordinate(r.position.x,step_x),factory_cell_coordinate(r.position.z,step_z));
     auto& speed=host.acquire_speed();speed.x=0;speed.y=0;speed.z=0;e.add(1,&speed);
     auto& sprite=host.acquire_sprite();sprite.animation={19,0,0};sprite.layers={-1};e.add(2,&sprite);
     host.add_image(e,{{required(record).image,19,-1,-1,-1,-1}});
