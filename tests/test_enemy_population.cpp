@@ -37,7 +37,7 @@ int main()try{
      for(std::size_t i=0;i<10;++i)check(s.maximum_by_section->at(i)==(i<7?12:99999)&&s.created_by_section->at(i)==0);
      auto cursor=s.subset->cursor();auto* first=*cursor.next();auto* second=*cursor.next();auto* initial=*cursor.next();
      check(field<EnemyRecordLink>(*first,24).enemy_id==1&&field<EnemyRecordLink>(*first,24).flags==2&&field<EnemyRecordLink>(*first,24).level==7);
-     check(field<ContactPosition>(*first,0).z==98&&field<ContactPosition>(*second,0).z==141);
+     check(field<ContactPosition>(*first,0).z==70&&field<ContactPosition>(*second,0).z==27);
      check(field<EnemyRecordLink>(*initial,24).enemy_id==0&&field<EnemyRecordLink>(*initial,24).level==1&&!initial->contains(12));
      check(field<ContactPosition>(*initial,0).x==100&&field<ContactPosition>(*initial,0).z==34);
      auto& m=field<ProjectileModification>(*initial,15);check(m.type==9&&m.angle==30&&m.loop&&m.max_frame==0);}
@@ -70,7 +70,7 @@ int main()try{
     {UpdateFixture f;f.begin();auto& s=f.enemy_system;f.random.index=0;f.random.values={0,2};
      auto* e=create_normal_enemy(s,f);check(e&&s.created_enemies==1&&s.created_by_section->at(0)==1&&f.random.index==2);
      check(field<EnemyRecordLink>(*e,24).enemy_id==2&&field<EnemyRecordLink>(*e,24).level==3&&field<EnemyRecordLink>(*e,24).state==1);
-     check(field<ContactPosition>(*e,0).x==136&&field<ContactPosition>(*e,0).z==156&&field<EnemyRecordLink>(*e,24).opponent==member_hero(&f.world));}
+     check(field<ContactPosition>(*e,0).x==136&&field<ContactPosition>(*e,0).z==108&&field<EnemyRecordLink>(*e,24).opponent==member_hero(&f.world));}
     {UpdateFixture f;f.begin();f.enemy_system.quest->normal_enemies=scripts(rows({}));f.random.index=0;
      check(!create_normal_enemy(f.enemy_system,f)&&f.enemy_system.created_enemies==1&&f.random.index==0&&f.enemy_system.created_by_section->at(0)==0);
      f.enemy_system.quest->normal_enemies=scripts(rows({{1,300},{2}}));

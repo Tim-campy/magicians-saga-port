@@ -11,7 +11,7 @@ inline StageScriptGroups scripts(EventScript first){return std::make_shared<std:
 struct StartupFixture:Fixture,DropFactoryHost,EffectFactoryHost,DropCollectionHost,StageStartHost,
                             StageCleanupHost,StageMapLoader,StageEnemyStart {
     StageStartState state;StageHumanStart human_system;StageQuestForm form;
-    StageGeometry geometry{100,24},other_geometry{200,48};StageGeometry* active_map=&geometry;
+    StageGeometry geometry{100,24,6},other_geometry{200,48,6};StageGeometry* active_map=&geometry;
     TreasureTable treasures{TreasureRecord{},TreasureRecord{},TreasureRecord{}};
     DropPlacementWorld placement{ids,static_cast<DropFactoryHost&>(*this),treasures};
     DropEffectWorld effects{ids,static_cast<EffectFactoryHost&>(*this)};

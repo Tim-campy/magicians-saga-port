@@ -19,7 +19,8 @@ std::int32_t stage_z(StagePlacementState& state,std::int32_t rate,StagePlacement
     const auto step_z=required(host.stage_map()).step_z;
     const auto second_step=required(host.stage_map()).step_z;
     const auto base=multiply(step_z,add(height,-3));
-    return add(add(base,multiply(base,rate)/100),second_step/2);
+    // 0x11574d8..0x11574fc uses signed magic 0xae147ae1: divide by -100.
+    return add(add(base,-(multiply(base,rate)/100)),second_step/2);
 }
 std::int32_t stage_formation_left(StagePlacementHost& host){return add(required(host.stage_map()).step_x,-72);}
 std::int32_t stage_formation_top(StagePlacementState& state,StagePlacementHost& host){return stage_z(state,0,host);}

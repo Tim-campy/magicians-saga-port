@@ -599,3 +599,8 @@ add_executable(test_enemy_population test_enemy_population.cpp)
 target_link_libraries(test_enemy_population PRIVATE enemy_population hero_bootstrap human_factory animation_pass)
 project_warnings(test_enemy_population)
 add_test(NAME enemy_population_contract COMMAND test_enemy_population)
+
+add_executable(test_enemy_frame test_enemy_frame.cpp)
+target_link_libraries(test_enemy_frame PRIVATE enemy_frame motion_pass update_scheduler hero_bootstrap human_factory animation_pass)
+project_warnings(test_enemy_frame)
+add_test(NAME enemy_frame_contract COMMAND test_enemy_frame)

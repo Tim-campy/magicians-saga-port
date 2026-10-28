@@ -18,6 +18,8 @@ int main()try{
      check(f.trace==std::vector<std::string>({"cleanup","fps","map-system","map","party","enemies","form","drop","paused","resume","bgm","start-sound"}));
      check(f.mapped==q&&f.enemy_quest==q&&f.form.scale==100&&f.state.event_states->size()==2&&!f.paused&&f.random.index==81);
      check(f.buttons[0].state==1&&f.buttons[0].frame==4&&f.buttons[1].state==0&&f.buttons[2].frame==4&&f.state.last_active_button==0);
+     // Advance the party to the final box; corrected GetZ(100) places it ahead of the entry formation.
+     f.node(*member_hero(&f.world)).position.z=12;
      collect_drops(f.state.collection,f);check(f.state.collection.collecting->size()==1);
      for(int i=0;i<31;++i)update_collecting_drops(f.state.collection,f);
      check(f.state.rewards()->treasure_ids==EventIntegers{0}&&f.sounds==1&&f.state.collection.collecting->empty()&&!f.garbage.empty());}

@@ -18,7 +18,7 @@ struct StageQuest {
     StageScriptGroups normal_enemies,fixed_enemies; // +0x60 / +0x68, first group used.
 };
 struct StagePlacementState {std::shared_ptr<StageQuest> quest;};
-struct StageGeometry {std::int32_t step_x=0,step_z=0;}; // MapComponent +0x20/+0x24.
+struct StageGeometry {std::int32_t step_x=0,step_z=0,height=0;}; // MapComponent +0x20/+0x24/+0x14.
 struct DropPlacementWorld {EntityIdState& ids;DropFactoryHost& factory;const TreasureTable& treasures;};
 class StagePlacementHost {
 public:

@@ -14,7 +14,7 @@ The game is a Unity 6 / IL2CPP build: its logic is ARM64 code in `libil2cpp.so`,
 
 <sub>Percentages count the 10,959 methods with native code in the two game assemblies (`re/functions.csv`) and the formats in `re/formats.csv`, at the `documented` stage. Unity, mscorlib and other third-party assemblies are not counted.</sub>
 
-Milestone **M3** (first playable loop) is current. No playable build exists yet: the C++ modules reproduce documented contracts with both unit and composed gameplay tests on Windows and, in CI, on Linux. Projectile/movement and collision/expiration sequences use live entity groups; synthetic stage scenarios join actual enemy preparation/population, collection, retry, boss/enemy creation and targeting, results and town return. Map loading, the complete per-enemy update pass, production data and the full frame loop are not integrated.
+Milestone **M3** (first playable loop) is current. No playable build exists yet: the C++ modules reproduce documented contracts with both unit and composed gameplay tests on Windows and, in CI, on Linux. Projectile/movement and collision/expiration sequences use live entity groups; synthetic stage scenarios join actual enemy preparation/population, collection, retry, boss/enemy creation and targeting, results and town return. Full enemy updates now run HP blink, walking/recoil/fleeing and culling/activation, with a tested Enemy -> Move schedule. Stage placement uses the corrected native division by -100, so increasing progress moves toward decreasing Z. Map loading, system-event initialization, production data and the full frame loop are not integrated.
 
 | Work package | State |
 | --- | --- |

@@ -72,8 +72,8 @@ int main()try{
      check(s.boss_started&&s.min_z_rate==75&&s.max_z_rate==95&&f.made_boss&&s.boss_fence);
      auto& boss=part<ProjectileModification>(*f.made_boss,15);auto& fence=*s.boss_fence;
      check(boss.type==0&&boss.max_frame==30&&boss.scale_x==1&&boss.scale_y==0);
-     check(part<ContactPosition>(fence,0).x==140&&part<ContactPosition>(fence,0).z==276);
-     check(part<CellComponent>(fence,5).xi==5&&part<CellComponent>(fence,5).yi==11);
+     check(part<ContactPosition>(fence,0).x==140&&part<ContactPosition>(fence,0).z==168);
+     check(part<CellComponent>(fence,5).xi==5&&part<CellComponent>(fence,5).yi==7);
      check(part<EntityDepth>(fence,4).extra==200&&part<EntitySprite>(fence,2).animation.clip==44);
      check(!fence.contains(7)&&!fence.contains(10)&&!fence.contains(26));
      check(part<ProjectileModification>(fence,15).max_frame==20&&part<ProjectileModification>(fence,15).scale_y==0);

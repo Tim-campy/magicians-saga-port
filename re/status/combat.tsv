@@ -150,7 +150,7 @@ game:0x06000c1c	reimplemented	src/core/gameplay/hero_bootstrap.cpp	Null characte
 game:0x06000fa1	reimplemented	src/core/gameplay/stage_start.cpp	Capture timeLimit then live FPS, wrapping product and no clamp; field replacement/failure tested.
 game:0x06000fd5	reimplemented	src/core/gameplay/stage_start.cpp	Store int32 state and frame zero; Start then writes frame four, partial button pass tested.
 game:0x06000fcf	reimplemented	src/core/gameplay/stage_start.cpp	Fresh zero reward accumulator and independent treasure list published before cleanup; collection alias and retained old owner tested.
-game:0x06000fa3	reimplemented	src/core/gameplay/stage_placement.cpp	Captured height, two current-map stepZ reads, wrapping products/additions and signed division; replacement/negative/overflow tested.
+game:0x06000fa3	reimplemented	src/core/gameplay/stage_placement.cpp	Captured height/two map reads; signed magic 0xae147ae1 divides wrapped product by -100 (corrected direction); negative/wrap/progress-inverse tests.
 game:0x06000faa	reimplemented	src/core/gameplay/stage_placement.cpp	Money then treasure then prisoner placement through actual drop factory; ordering and partial failure tested.
 game:0x06000fab	reimplemented	src/core/gameplay/stage_placement.cpp	Rates 10..90, live chance, captured stepX, inclusive offset/GetZ/coin roll, actual money drop and depth -10; RNG/order tests.
 game:0x06000fac	reimplemented	src/core/gameplay/stage_placement.cpp	Captured first fixed-treasure group/chance, row-before-roll, actual boxes and mandatory current completion reward; mutation/draw tests.
@@ -192,4 +192,12 @@ game:0x06000e7b	reimplemented	src/core/gameplay/enemy_population.cpp	Publish que
 game:0x06000e74	reimplemented	src/core/gameplay/enemy_population.cpp	Attempt-before-validation, full weight projection, exact Lot then column draw, captured player/maps, actual spawn, late section increment then walking; tested.
 game:0x06000e8d	reimplemented	src/core/gameplay/enemy_population.cpp	Required entity/Enemy/data, count iff record NO_ANIMATION is clear; does not filter dead state; population cap tests.
 game:0x06000e8e	reimplemented	src/core/gameplay/enemy_population.cpp	Required second row integer before weighted draw; short later rows fault before selection even if earlier weight saturates the table; tested.
-game:0x06000e6a	traced	docs/subsystems/combat.md	Full prefix gating is documented/ported/tested; remaining per-enemy Update/HP/color/state/motion body remains unported, so method is only traced.
+game:0x06000e6a	reimplemented	src/core/gameplay/enemy_frame.cpp	Full population/live pass, captured HP/Enemy, blink and wrapping counter, actual state helpers, culling and fixed activation; same-frame spawn and Enemy->Move tests.
+game:0x06000e6c	reimplemented	src/core/gameplay/enemy_frame.cpp	Live speed, target X following only within strict 150 Z, destroyed-target gate and boss hero-Z clamp; binary32 boundaries/NaN and movement composition tested.
+game:0x06000e6e	reimplemented	src/core/gameplay/enemy_frame.cpp	0.8 damping/strict 0.1 settle, direction unlock, boss/stage/data gates, exact 20-percent draw and remove/pool/3FPS/remaining/state ordering; tested.
+game:0x06000e70	reimplemented	src/core/gameplay/enemy_frame.cpp	Required entity/Speed, Z=-10, no frame or position advance; helper and full-frame fleeing transition tested.
+game:0x06000d42	reimplemented	src/core/gameplay/enemy_frame.cpp	Normal iff neither BOSS nor FIXED, ignores ACTIVE; flag boundaries and normal culling scenarios tested.
+game:0x06000d41	reimplemented	src/core/gameplay/enemy_frame.cpp	Waiting iff BOSS or FIXED, independent of ACTIVE; flag and inclusive activation scenarios tested.
+game:0x06000d45	reimplemented	src/core/gameplay/enemy_frame.cpp	Alive iff state!=4, including fleeing; negative and out-of-enum states tested.
+game:0x06000d46	reimplemented	src/core/gameplay/enemy_frame.cpp	Dead iff state==4; complements alive across state boundaries, with dead fixed activation scenario.
+kairo:0x06000ed8	reimplemented	src/core/gameplay/enemy_frame.cpp	Narrow activation contract: separate binary32 squared X/Z distance <= squared radius, ignores Y; boundary/negative radius/NaN tested.

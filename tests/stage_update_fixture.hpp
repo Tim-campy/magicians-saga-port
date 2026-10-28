@@ -3,6 +3,7 @@
 #include "core/gameplay/stage_update.hpp"
 #include "core/gameplay/stage_recovery.hpp"
 #include "core/gameplay/enemy_population.hpp"
+#include "core/gameplay/enemy_frame.hpp"
 #include <algorithm>
 #include <limits>
 
@@ -15,7 +16,7 @@ struct PartyCursor {
         auto* e=list->entities()[index++];if(!e)throw std::invalid_argument("null member");return f.entity_id(*e);
     }
 };
-struct UpdateFixture:StartupFixture,StageUpdateHost,StageRecoveryHost,EnemyPopulationHost,BossNotificationHost,StageFormStack,
+struct UpdateFixture:StartupFixture,StageUpdateHost,StageRecoveryHost,EnemyFrameHost,BossNotificationHost,StageFormStack,
     QuestRewardHost,QuestExperienceHost,QuestReturnHost,MemberFinishHost {
     std::vector<std::string> log;std::string fail;
     std::function<void(std::int32_t)> on_event;std::function<void()> on_result,on_retry,on_make_ad,on_make_notice,on_interval;
@@ -31,6 +32,8 @@ struct UpdateFixture:StartupFixture,StageUpdateHost,StageRecoveryHost,EnemyPopul
     std::deque<ProjectileModification> modifier_pool;
     std::int32_t yugami=10000;bool missing_enemy_factory=false;std::size_t yugami_queries=0;
     std::function<void()> on_enemy_factory,on_enemy_world,on_yugami;
+    std::function<void()> on_enemy_fps,on_garbage_release;
+    std::vector<Component*> returned_garbage;
     StageObjectWorld object_world{ids,static_cast<DropFactoryHost&>(*this)};
     std::vector<std::int32_t> events,keys;std::int32_t pulse=0,money=0,crystals=0,retries=0;
     bool event_result=false,affordable=false,null_stack=false,null_retry=false,null_exit=false;
@@ -78,6 +81,10 @@ struct UpdateFixture:StartupFixture,StageUpdateHost,StageRecoveryHost,EnemyPopul
     RandomSource& population_random()override{return random;}
     WeightedLotteryState& population_lottery()override{return lottery;}
     EnemyRecords population_records()override{return enemy_pools.enemy_records();}
+    const ParameterMaximumLevels& frame_enemy_maximum_levels()override{return enemy_pools.maxima;}
+    std::int32_t enemy_frames_per_second()override{if(on_enemy_fps)on_enemy_fps();return fps;}
+    void release_enemy_garbage(Component* p)override{returned_garbage.push_back(p);if(on_garbage_release)on_garbage_release();}
+    GarbageLifetime& acquire_garbage()override{return StartupFixture::acquire_garbage();}
     EnemyFactoryWorld* current_enemy_factory()override{if(on_enemy_factory)on_enemy_factory();return missing_enemy_factory?nullptr:&enemy_factory;}
     PlayerWorldState* enemy_world()override{if(on_enemy_world)on_enemy_world();return current_world();}
     StageGeometry* enemy_map()override{return stage_map();}

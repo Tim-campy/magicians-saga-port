@@ -5,10 +5,10 @@ template<class T>T& field(ComponentSlots& e,std::int32_t slot){auto* p=dynamic_c
 int main()try{
     {UpdateFixture f;f.begin();const auto calls=f.yugami_queries;auto& boss=create_boss_enemy(f.enemy_system,f);auto& b=field<EnemyRecordLink>(boss,24);
      auto* hero=member_hero(&f.world);check(b.enemy_id==2&&b.level==4&&b.flags==1&&b.opponent==hero&&f.yugami_queries==calls+2);
-     check(field<ContactPosition>(boss,0).x==100&&field<ContactPosition>(boss,0).z==154&&field<ProjectileSpeed>(boss,1).z==0);
+     check(field<ContactPosition>(boss,0).x==100&&field<ContactPosition>(boss,0).z==14&&field<ProjectileSpeed>(boss,1).z==0);
      auto& extra=f.nodes.back().entity;auto& e=field<EnemyRecordLink>(extra,24);
      check(&extra!=&boss&&e.enemy_id==1&&e.level==1&&e.flags==0&&e.opponent==hero&&!extra.contains(12));
-     check(field<ContactPosition>(extra,0).x==100&&field<ContactPosition>(extra,0).z==153);
+     check(field<ContactPosition>(extra,0).x==100&&field<ContactPosition>(extra,0).z==15);
      auto& modifier=field<ProjectileModification>(extra,15);check(modifier.type==9&&modifier.angle==30&&modifier.loop&&modifier.max_frame==0);
      check(!boss.contains(15));}
     // Yugami changes only the EnemyComponent level after factory stats/target selection.

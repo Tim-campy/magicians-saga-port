@@ -297,3 +297,11 @@ endif()
 
 saga_library(enemy_population enemy_population.cpp)
 target_link_libraries(enemy_population PUBLIC enemy_creation stage_update)
+
+saga_library(enemy_frame enemy_frame.cpp)
+target_link_libraries(enemy_frame PUBLIC enemy_population)
+if(MSVC)
+  target_compile_options(enemy_frame PRIVATE /fp:strict)
+else()
+  target_compile_options(enemy_frame PRIVATE -ffp-contract=off)
+endif()
