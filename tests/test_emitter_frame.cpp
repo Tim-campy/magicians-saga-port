@@ -1,4 +1,4 @@
-#include "emitter_fixture.hpp"
+#include "modification_fixture.hpp"
 #include <limits>
 
 int main()try{
@@ -58,7 +58,8 @@ int main()try{
     {HumanFixture t;Shooter s(t);EmitterServices h(s);h.emitter(1,1,0);h.emitter(1);bool added=false;
      h.on_effect_world=[&]{if(!added){added=true;h.emitter(2);}};fails([&]{h.update();});check(h.state.expired->size()==1&&h.destroyed.empty());}
     // Actual shots, trails, collision/death/EXP, landing debris and expiry in recovered partial schedule order.
-    {HumanFixture t;Shooter s(t);EmitterServices em(s);BulletImpactServices impacts(s);auto& actor=t.hero();auto& enemy=t.enemy_at({0,0,0});
+    for(const bool physical:{false,true}){HumanFixture t;Shooter s(t);EmitterServices em(s);ModificationServices modifiers(t);BulletImpactServices impacts(s);auto& actor=t.hero();auto& enemy=t.enemy_at({0,0,0});
+     s.pools.records->at(0)->category=physical?1:0;
      auto& pos=field<ContactPosition>(actor,0);pos.x=0;pos.z=100;field<ProjectileSpeed>(actor,1).z=0;field<ProjectileSpeed>(enemy,1).z=0;
      auto* hp=resolve_combat_parameter(enemy,0);hp->maximum=1;hp->value=1;
      t.host.parameters=[](ComponentSlots&,std::int32_t k){return k==3?1000:0;};
@@ -78,14 +79,19 @@ int main()try{
      GameplayUpdate motion(11,enabled,[&](std::int32_t){order.push_back(11);move_subset(*move);});
      GameplayUpdate contact(12,enabled,[&](std::int32_t){order.push_back(12);collision.update(collisions);});
      GameplayUpdate emit(15,enabled,[&](std::int32_t){order.push_back(15);em.update();});
+     GameplayUpdate modify(18,enabled,[&](std::int32_t){order.push_back(18);modifiers.update();});
      GameplayUpdate anim(19,enabled,[&](std::int32_t){order.push_back(19);update_animations(animation,{false,true});});
      GameplayUpdate collect(31,enabled,[&](std::int32_t){order.push_back(31);expiry.update(garbage);});
-     std::vector<UpdateSystem*> systems{&flight,&motion,&contact,&emit,&anim,&collect};UpdateSchedule schedule{&systems,nullptr};
+     std::vector<UpdateSystem*> systems{&flight,&motion,&contact,&emit,&modify,&anim,&collect};UpdateSchedule schedule{&systems,nullptr};
      t.f.random.index=0;t.f.random.values={0,5,99,0,0,0};std::size_t peak_particles=0;bool advanced=false;
-     for(int frame=0;frame<120;++frame){order.clear();update_systems(schedule,1);check(order==std::vector<int>{10,11,12,15,19,31});
+     int landed=-1,removed=-1;
+     for(int frame=0;frame<120;++frame){order.clear();update_systems(schedule,1);check(order==std::vector<int>{10,11,12,15,18,19,31});
+         if(debris_created==3&&landed==-1)landed=frame;
+         if(t.f.node(enemy).lifetime.destroyed&&removed==-1)removed=frame;
          auto particles=em.particles();peak_particles=std::max(peak_particles,particles.size());
          for(auto* p:particles)if(field<EntitySprite>(*p,2).animation.frame>0)advanced=true;}
      check(hp->value==0&&t.host.defeat_counts[2]==1&&t.f.node(bullet).lifetime.destroyed);
+     check(landed>=0&&removed-landed==10&&t.f.node(enemy).lifetime.destroyed&&!enemy.contains(24));
      check(peak_particles>0&&advanced&&em.particles().empty()&&em.state.subset->size()==0&&debris_created==3);
      bool experience=false;for(auto& n:t.f.nodes)if(n.entity.contains(34)&&n.drop.type==0&&n.drop.value==10)experience=true;check(experience);
     }

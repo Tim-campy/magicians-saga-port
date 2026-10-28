@@ -1,4 +1,5 @@
 #include "projectile_motion.hpp"
+#include "combat_rules.hpp"
 #include <cmath>
 #include <limits>
 #include <stdexcept>
@@ -22,8 +23,7 @@ float easing_float(float start,float end,float duration,float progress,float amp
     const float pi=ratio*0x1.921fb6p+1F;
     const float degrees=pi*180.0F;
     const float angle=degrees/0x1.921fb6p+1F;
-    const double product=static_cast<double>(angle)*0x1.921fb54442d18p+1;
-    const float sine=static_cast<float>(std::sin(product/180.0));
+    const float sine=sine_degrees(angle);
     const float difference=end-start;
     const float weight=amplitude/314.159271240234375F;
     const float correction=weight*sine;

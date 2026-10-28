@@ -4,6 +4,11 @@
 #include <cmath>
 
 namespace saga::core {
+float sine_degrees(float angle){
+    const volatile double product=static_cast<double>(angle)*0x1.921fb54442d18p+1;
+    const volatile double radians=product/180.0;
+    return static_cast<float>(std::sin(radians));
+}
 std::int32_t easing(std::int32_t start,std::int32_t end,std::int32_t duration,
                    std::int32_t progress,std::int32_t amplitude) {
     if(amplitude==0)return easing_zero_amplitude(start,end,duration,progress);
@@ -13,9 +18,7 @@ std::int32_t easing(std::int32_t start,std::int32_t end,std::int32_t duration,
     const volatile float angle_pi=ratio*0x1.921fb6p+1F;
     const volatile float angle_degrees=angle_pi*180.0F;
     const volatile float angle=angle_degrees/0x1.921fb6p+1F;
-    const volatile double radians_product=static_cast<double>(angle)*0x1.921fb54442d18p+1;
-    const volatile double radians=radians_product/180.0;
-    const volatile float sine=static_cast<float>(std::sin(radians));
+    const volatile float sine=sine_degrees(angle);
     const volatile float weight=static_cast<float>(amplitude)/314.159271240234375F;
     const volatile float correction=weight*sine;
     const volatile float curved=ratio+correction;

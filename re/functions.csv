@@ -3730,9 +3730,9 @@ game:0x06000f63,game:0x06000f63,ecs,,8,0x115eed8
 game:0x06000f64,game:0x06000f64,ecs,,8,0x115eee0
 game:0x06000f65,game:0x06000f65,ecs,,88,0x115eee8
 game:0x06000f66,game:0x06000f66,ecs,,664,0x115ef40
-game:0x06000f67,game:0x06000f67,ecs,,212,0x115f1d8
+game:0x06000f67,ecs.ModifyAnimatinSystem.Init,ecs,reimplemented,212,0x115f1d8
 game:0x06000f68,ecs.ModifyAnimatinSystem.NeedsUpdate,ecs,reimplemented,8,0x115f2ac
-game:0x06000f69,game:0x06000f69,ecs,,1776,0x115f2b4
+game:0x06000f69,ecs.ModifyAnimatinSystem.Update,ecs,reimplemented,1776,0x115f2b4
 game:0x06000f6a,game:0x06000f6a,ecs,,8,0x115f9a4
 game:0x06000f6b,game:0x06000f6b,ecs,,8,0x115f9ac
 game:0x06000f6c,game:0x06000f6c,ecs,,88,0x115f9b4

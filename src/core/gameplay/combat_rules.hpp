@@ -3,6 +3,8 @@
 #include <array>
 
 namespace saga::core {
+// FastMath.Sin 0x1c3d290: binary32 degrees -> binary64 (angle*pi)/180 -> sin -> binary32.
+float sine_degrees(float);
 // Graph.Easing: ordered binary32 arithmetic and binary64 degree-to-radian sine.
 // Host libm is used; bitwise agreement with Android libm awaits runtime comparison.
 std::int32_t easing(std::int32_t start,std::int32_t end,std::int32_t duration,
