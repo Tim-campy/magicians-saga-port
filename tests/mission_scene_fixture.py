@@ -34,6 +34,8 @@ def make_table_scene(root, valid_png=True, human_frame=False, shoot=False, rewar
     if boss_entry:
         tables['Enemy.txt'] += '\n' + tables['Enemy.txt'].replace('4\tEnemy', '1\tExtra', 1)
     if stage_entry:
+        # Subcharacters use EquipmentData.bullet by id; the main hero selects Bullet0 by attribute.
+        if shoot:tables['Bullet.txt'] += '\n' + tables['Bullet.txt'].replace('0\t', '3\t', 1)
         tables['Enemy.txt'] += '\n' + tables['Enemy.txt'].replace('4\tEnemy', '0\tInitial', 1)
         sub = tables['Chara.txt'].split('\t');sub[0],sub[-1] = '3','4'
         tables['Chara.txt'] += '\n' + '\t'.join(sub)
@@ -126,3 +128,22 @@ def make_gauge_scene(root, defeats=6):
         ('img.inf', b'1\tbar.png,bin'), ('seb.inf', b'0\tbar.seb'),
         ('bar.seb', seb([(0, 1, 0, 0, 12, 8, 0, 0, 0, 0)])), ('bar.png', png(12, 8, colors))]))
     return text + 'resource 23 "gauges.bin" "English.lproj" 0\nglobal_alias 23 23\nruntime 25 0 system 42\nenemy_gauges\n'
+
+
+def make_native_entry_scene(root):
+    """Table-selected native Stage.Start with explicit decoded saved inputs."""
+    text=make_boss_scene(root,stage_entry=True)
+    replacements={'geometry 312 312 12':'geometry quest','human_system 10 0 95 0 0':'human_system quest 0 95 0 0',
+                  'enemy_system 10000 0 10 25 7':'enemy_system quest 10000','enemy_pool 0\n':'',
+                  'stage_notifications 1 0 0 2 0 0 -1':'stage_notifications 1 0 0 quest 1 0 -1',
+                  'stage_events fresh 0':'stage_events quest','stage_loop 5000 0 20 hold':'stage_loop quest 0 20 hold',
+                  'stage_boss 4 7':'stage_boss quest','mission_map fresh 0 1 2 3':'mission_map quest'}
+    for before,after in replacements.items():
+        assert before in text,before
+        text=text.replace(before,after)
+    return text+('quest 2 0\nsystem_init 1\nstage_start 0 null\n'
+                 'party_formation 2 3 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1\n'
+                 'progress 3 1 0\nsorties 2 7\nsorties 3 9\n'
+                 'result_wallet 10 20 0\nresult_record 0 0 0 0 0 0 0\n'
+                 'result_inventory equipment 0 0 0\nresult_inventory cloth 0 0 0\n'
+                 'result_inventory hat 0 0 0\nresult_recruits 0 0 0\n')

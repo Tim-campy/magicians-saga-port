@@ -8,27 +8,53 @@ import unittest
 
 EXE = Path(sys.argv.pop(1)).resolve() if len(sys.argv) > 1 else None
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from mission_scene_fixture import make_table_scene, make_shoot_scene, with_mission_map, make_boss_scene, make_gauge_scene
+from mission_scene_fixture import make_table_scene, make_shoot_scene, with_mission_map, make_boss_scene, make_gauge_scene, make_native_entry_scene
 
 
 @unittest.skipUnless(EXE, 'saga_mission supplied by CTest')
 class MissionProfileTests(unittest.TestCase):
+    def test_native_quest_frames_intro_and_fast_forward_passes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);scene=root/'scene.txt';replay=root/'frames.txt'
+            text=make_native_entry_scene(root).replace('stage_loop quest 0 20 hold','stage_loop quest 0 0 hold')+'system_construct empty_manager\n'
+            scene.write_text(text+'quest_frame 0 0\n',encoding='utf-8')
+            replay.write_text('1 keys 16\n',encoding='ascii')
+            def run(frames):
+                r=self.run_host(scene,'--replay',str(replay),frames=frames)
+                self.assertEqual(r.returncode,0,r.stderr);return json.loads(r.stdout)
+            before=run(20);self.assertEqual(before['stage_state'],0);self.assertEqual(before['remaining_time'],5000)
+            self.assertEqual(before['quest_form_fade_frame'],20);self.assertEqual(before['world_update_calls'],20)
+            intro=run(21);self.assertEqual(intro['stage_state'],1);self.assertEqual(intro['quest_form_fade_frame'],0)
+            self.assertFalse(intro['quest_form_result']);self.assertEqual(intro['quest_form_fade_type'],-1)
+            after=run(22);self.assertEqual(after['frames'],22);self.assertEqual(after['remaining_time'],4999)
+            self.assertEqual(after['quest_form_update'],21);self.assertEqual(after['quest_form_frame'],22)
+            self.assertEqual(after['image_clock_resets'],1);self.assertEqual(after['image_clock_updates'],22)
+            scene.write_text(text+'quest_frame 1 0\n',encoding='utf-8')
+            fast=run(22)
+            self.assertEqual(fast['world_update_calls'],66);self.assertEqual(fast['stage_steps'],66)
+            self.assertEqual(fast['last_world_passes'],[0,1,2]);self.assertEqual(fast['input_steps'],22)
+            self.assertEqual(fast['camera_steps'],22);self.assertEqual(fast['cell_steps'],66)
+            self.assertEqual(fast['remaining_time'],4995);self.assertEqual(fast['image_clock_updates'],22)
+            self.assertEqual(fast['last_update_order'].count(21),1);self.assertEqual(fast['last_update_order'].count(19),3)
+            replay.write_text('1 keys 16\n23 pulse 33554432\n24 pulse 134217728\n27 answer -1\n28 pulse 67108864\n',encoding='ascii')
+            waiting=run(26)
+            self.assertTrue(waiting['exit_dialog_pending']);self.assertEqual(waiting['last_world_passes'],[0])
+            self.assertEqual(waiting['world_update_calls'],72);self.assertEqual(waiting['input_steps'],26)
+            resumed=run(28)
+            self.assertFalse(resumed['init_manager_paused']);self.assertEqual(resumed['stage_state'],1)
+            self.assertEqual(resumed['world_update_calls'],78);self.assertEqual(resumed['input_steps'],28)
+            self.assertEqual(resumed['movement_steps'],69);self.assertEqual(resumed['battle_steps'],69)
+            self.assertEqual(resumed['remaining_time'],4992);self.assertEqual(resumed['last_world_passes'],[0,1,2])
+            self.assertEqual(run(28),resumed)
+            for bad in [text+'quest_frame 2 0\n',text+'quest_frame 0 0 extra\n',text+'quest_frame 0 0\nquest_frame 1 0\n',
+                        text.replace('system_construct empty_manager\n','')+'quest_frame 0 0\n',
+                        text.replace('stage_loop quest 0 0 hold','stage_loop quest 0 20 hold')+'quest_frame 0 0\n']:
+                scene.write_text(bad,encoding='utf-8');self.assertNotEqual(self.run_host(scene).returncode,0)
+
     def test_factory_construction_runs_enable_hooks_before_init_and_keeps_menu_duplicates(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);scene=root/'scene.txt';replay=root/'construct.txt'
-            text=make_boss_scene(root,stage_entry=True)
-            replacements={'geometry 312 312 12':'geometry quest','human_system 10 0 95 0 0':'human_system quest 0 95 0 0',
-                          'enemy_system 10000 0 10 25 7':'enemy_system quest 10000','enemy_pool 0\n':'',
-                          'stage_notifications 1 0 0 2 0 0 -1':'stage_notifications 1 0 0 quest 1 0 -1',
-                          'stage_events fresh 0':'stage_events quest','stage_loop 5000 0 20 hold':'stage_loop quest 0 20 hold',
-                          'stage_boss 4 7':'stage_boss quest','mission_map fresh 0 1 2 3':'mission_map quest'}
-            for before,after in replacements.items():self.assertIn(before,text);text=text.replace(before,after)
-            text+=('quest 2 0\nsystem_init 1\nstage_start 0 null\n'
-                   'party_formation 2 3 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1\n'
-                   'progress 3 1 0\nsorties 2 7\nsorties 3 9\n'
-                   'result_wallet 10 20 0\nresult_record 0 0 0 0 0 0 0\n'
-                   'result_inventory equipment 0 0 0\nresult_inventory cloth 0 0 0\n'
-                   'result_inventory hat 0 0 0\nresult_recruits 0 0 0\n')
+            text=make_native_entry_scene(root)
             scene.write_text(text,encoding='utf-8');baseline=self.run_host(scene,frames=1)
             self.assertEqual(baseline.returncode,0,baseline.stderr);old=json.loads(baseline.stdout)
             scene.write_text(text+'system_construct empty_manager\n',encoding='utf-8')

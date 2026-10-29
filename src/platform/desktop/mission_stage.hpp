@@ -21,7 +21,10 @@ class MissionStage final:private core::StageUpdateHost,private core::StageBossHo
 public:
     MissionStage(MissionHumans&,MissionStageScenario);
     bool advance(std::int32_t pass,bool enabled);
-    void pulse(std::uint32_t mask){pending_pulse_|=mask;}
+    void pulse(std::uint32_t mask){if(frame_pulse_)*frame_pulse_|=mask;else pending_pulse_|=mask;}
+    void begin_frame(std::uint64_t);
+    void end_frame(){frame_pulse_.reset();}
+    bool frame_key_pulse(std::uint32_t mask)const{return (frame_pulse_.value_or(0)&mask)!=0;}
     void bind_pause(std::function<void(bool)> callback){pause_=std::move(callback);}
     bool exit_dialog_pending()const;
     void answer_dialog(std::int32_t);
@@ -91,6 +94,7 @@ private:
     core::StageObjectWorld objects_;
     std::uint64_t boss_creation_calls_=0;
     std::uint64_t steps_=0;std::uint32_t pulse_=0,pending_pulse_=0;
+    std::optional<std::uint32_t> frame_pulse_;
     core::StageMapLoader* map_loader_=nullptr;
     std::function<bool()> paused_;std::function<void()> resume_;
     std::function<void(bool)> pause_;

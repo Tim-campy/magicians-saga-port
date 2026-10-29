@@ -79,6 +79,7 @@ public:
     void advance_input(std::int32_t pass=0,bool enabled=true);
     void set_input_keys(std::uint32_t);
     void set_input_movement(bool up,bool down){set_input_keys((held_keys_&~0xa0000U)|(up?0x20000U:0U)|(down?0x80000U:0U));}
+    void set_input_fast_forward(bool on){set_input_keys((held_keys_&~0x10U)|(on?0x10U:0U));}
     void select_input_attack(std::int32_t);
     void observe_input_touch(std::function<void(const core::InputTouch*)>);
     void send_logical_touch(std::int32_t type,std::int32_t group,std::int32_t value);
@@ -90,7 +91,15 @@ public:
     void construct_member_roster(){members_=core::MemberRoster{};} // MemberSystem ctor post-base lists/formation.
     std::int32_t stage_state()const{return stage_.state;}
     bool exit_dialog_pending()const;
+    bool has_stage_dialog()const{return static_cast<bool>(stage_.dialog);}
     void answer_stage_dialog(std::int32_t);
+    void begin_stage_frame(std::uint64_t);
+    void end_stage_frame();
+    bool stage_frame_pulse(std::uint32_t)const;
+    bool stage_frame_key(std::uint32_t mask)const{return (held_keys_&mask)!=0;}
+    void debug_show_result();
+    void debug_defeat_form(std::int32_t);
+    void debug_victory_form(std::int32_t,bool);
 private:
     core::StageHumanStart* initialization_humans()override{return &system_;}
     core::MemberRoster* initialization_members()override{return &members_;}

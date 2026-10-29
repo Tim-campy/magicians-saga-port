@@ -103,6 +103,13 @@ void MissionProfile::construct_systems(){
     }
     construction_pause_=initialization_.paused;constructing_systems_=false;construction_complete_=true;
 }
+void MissionProfile::reset_image_clocks(){reset_image_animations(*image_clocks_);++image_clock_resets_;}
+void MissionProfile::advance_image_clocks(){advance_image_animations(*image_clocks_);++image_clock_updates_;}
+// SAGA_STUB(mission-image-clock-registration): clock kernels execute, resource animation rows are not registered yet.
+void MissionProfile::update_world(std::int32_t pass){
+    refresh_enabled();last_world_passes_.push_back(pass);++world_update_calls_;
+    UpdateSchedule schedule{&update_list_,&timer_};update_systems(schedule,pass);
+}
 void MissionProfile::resize_viewport(std::int32_t width,std::int32_t height){
     if(!offscreen_camera_||!has_view)throw std::invalid_argument("viewport resize requires mission_presentation");
     const auto matrix=bitmap_projection(width,height,*offscreen_camera_);
@@ -112,7 +119,12 @@ void MissionProfile::resize_viewport(std::int32_t width,std::int32_t height){
 void MissionProfile::bind_schedule(){
     const auto bind=[&](std::int32_t id,bool enabled,std::function<void(std::int32_t)> body){
         const auto index=static_cast<std::size_t>(id);configured_[index]=enabled;
-        updates_[index]=std::make_unique<GameplayUpdate>(id,enabled_[index],[this,id,body=std::move(body)](std::int32_t pass){last_updates_.push_back(id);body(pass);});
+        updates_[index]=std::make_unique<GameplayUpdate>(id,enabled_[index],[this,id,body=std::move(body)](std::int32_t pass){
+            last_updates_.push_back(id);
+            try{body(pass);}catch(const std::out_of_range& error){
+                throw std::out_of_range("mission factory"+std::to_string(id)+" pass"+std::to_string(pass)+": "+error.what());
+            }
+        });
     };
     bind(0,humans&&humans->input_enabled(),[this](auto pass){humans->advance_input(pass);});
     bind(2,true,[this](auto pass){mission->advance_battle(pass);});
@@ -138,7 +150,7 @@ void MissionProfile::bind_schedule(){
     bind(21,true,[this](auto){queue=mission->render();if(!mission->faults().empty())throw std::invalid_argument("entity render fault: "+mission->faults().front().message);});
     bind(22,true,[this](auto pass){
         const auto at=gauge_creations_.find(logic_steps+1);
-        if(at!=gauge_creations_.end())for(const auto args:at->second)entity_world->gauge(args,gauge_scratch_,*this);
+        if(pass==0&&at!=gauge_creations_.end())for(const auto args:at->second)entity_world->gauge(args,gauge_scratch_,*this);
         mission->advance_gauges(gauge_scratch_,*this,pass);
     });
     bind(23,true,[this](auto pass){mission->advance_effects(pass);});
@@ -298,6 +310,11 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             std::string mode;
             if(construct_systems_||!(row>>mode)||mode!="empty_manager")throw std::invalid_argument("system_construct requires one explicit empty_manager entry");
             end(row);construct_systems_=true;continue;
+        }
+        if(operation=="quest_frame"){
+            std::int32_t debug=0,orientation=0;
+            if(quest_frame_||!(row>>debug>>orientation)||(debug!=0&&debug!=1))throw std::invalid_argument("quest_frame requires Config debug0/1 and saved orientation int32");
+            end(row);quest_frame_=QuestFrameConfig{debug!=0,orientation};continue;
         }
         if(operation=="menu_visible"){
             std::int32_t value=0;
@@ -535,6 +552,8 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     if(construct_systems_&&(!initialized_loaded_||!stage_entry||menu_snapshot||std::find(enabled_rows.begin(),enabled_rows.end(),true)!=enabled_rows.end()))
         throw std::invalid_argument("system_construct requires system_init and stage_start without system_enabled/menu_visible snapshot overrides");
     if(menu_snapshot&&!initialized_loaded_)throw std::invalid_argument("menu_visible snapshot requires system_init");
+    if(quest_frame_&&(!construct_systems_||!stage_entry||!stage_loop||stage_scenario.fade_frame!=0))
+        throw std::invalid_argument("quest_frame requires system_construct, stage_start and explicit stage_loop fade0");
     if(std::find(enabled_rows.begin(),enabled_rows.end(),true)!=enabled_rows.end()&&!initialized_loaded_)
         throw std::invalid_argument("system_enabled snapshot requires system_init");
     if(offscreen_camera_&&(!initialized_loaded_||!map_images))throw std::invalid_argument("mission_presentation requires system_init and mission_map");
@@ -682,8 +701,13 @@ bool MissionProfile::step(){
         else humans->send_logical_touch(action.x,action.y,action.z);
         ++replay_applied_;
     }
-    refresh_enabled();last_updates_.clear();halted_=false;
-    UpdateSchedule schedule{&update_list_,&timer_};update_systems(schedule,0);
+    last_updates_.clear();last_world_passes_.clear();halted_=false;
+    if(quest_frame_){
+        humans->begin_stage_frame(logic_steps+1);
+        try{quest_frame_result_=update_quest_frame(quest_frame_state_,humans->quest_form().fade_frame,*this);}
+        catch(...){humans->end_stage_frame();throw;}
+        humans->end_stage_frame();
+    }else update_world(0);
     if(halted_)return false;
     ++logic_steps;return true;
 }
@@ -698,6 +722,14 @@ void MissionProfile::write_actor_parameters(ComponentSlots& actor,std::ostream& 
     if(const auto* enemy=dynamic_cast<EnemyRecordLink*>(actor.get(24)))out<<",\"enemy_state\":"<<enemy->state<<",\"enemy_frame\":"<<enemy->frame<<",\"enemy_flags\":"<<enemy->flags;
 }
 void MissionProfile::write_combat_report(std::ostream& out){
+    out<<",\"quest_frame_enabled\":"<<(quest_frame_?"true":"false")<<",\"world_update_calls\":"<<world_update_calls_<<",\"last_world_passes\":[";
+    for(std::size_t i=0;i<last_world_passes_.size();++i){if(i)out<<',';out<<last_world_passes_[i];}out<<']';
+    if(quest_frame_){
+        out<<",\"quest_form_update\":"<<parent_update_counter_<<",\"quest_form_frame\":"<<quest_frame_state_.frame
+           <<",\"quest_form_fade_frame\":"<<humans->quest_form().fade_frame<<",\"quest_form_fade_type\":"<<quest_frame_state_.fade_type
+           <<",\"quest_form_pinch_frame\":"<<quest_frame_state_.pinch_frame<<",\"quest_form_result\":"<<(quest_frame_result_?"true":"false")
+           <<",\"image_clock_resets\":"<<image_clock_resets_<<",\"image_clock_updates\":"<<image_clock_updates_;
+    }
     out<<",\"system_construction_complete\":"<<(construction_complete_?"true":"false")<<",\"construction_pause_before_init\":";
     if(construction_pause_)out<<(*construction_pause_?"true":"false");else out<<"null";
     out<<",\"construction_order\":[";for(std::size_t i=0;i<construction_order_.size();++i){if(i)out<<',';out<<construction_order_[i];}out<<']';

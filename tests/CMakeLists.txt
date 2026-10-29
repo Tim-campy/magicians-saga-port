@@ -503,6 +503,11 @@ target_link_libraries(test_update_scheduler PRIVATE update_scheduler)
 project_warnings(test_update_scheduler)
 add_test(NAME update_scheduler_contract COMMAND test_update_scheduler)
 
+add_executable(test_quest_frame test_quest_frame.cpp)
+target_link_libraries(test_quest_frame PRIVATE quest_render select_prelude)
+project_warnings(test_quest_frame)
+add_test(NAME quest_frame_contract COMMAND test_quest_frame)
+
 add_executable(test_combat_event_receivers test_combat_event_receivers.cpp)
 target_link_libraries(test_combat_event_receivers PRIVATE combat_event_receivers)
 project_warnings(test_combat_event_receivers)

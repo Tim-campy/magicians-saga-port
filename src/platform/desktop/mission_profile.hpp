@@ -4,6 +4,8 @@
 #include "mission_humans.hpp"
 #include "mission_spatial.hpp"
 #include "core/ecs/update_scheduler.hpp"
+#include "core/gameplay/quest_frame.hpp"
+#include "core/gameplay/select_prelude.hpp"
 #include <chrono>
 #include <filesystem>
 #include <tuple>
@@ -20,7 +22,8 @@ struct MissionSelection {
 };
 // Shared strict scenario loader. An empty decoder decodes only images needed by Gauge22 logic.
 // Scenario state remains explicit; selecting a table row does not perform Stage.Start.
-class MissionProfile:private core::GaugeDrawingHost,private core::AuxiliaryInitializationWorld,private core::TownInitializationWorld,private core::SystemPauseManager {
+class MissionProfile:private core::GaugeDrawingHost,private core::AuxiliaryInitializationWorld,private core::TownInitializationWorld,private core::SystemPauseManager,
+    private core::QuestFrameHost,private core::SelectPreludeHost {
 public:
     MissionProfile(const std::filesystem::path&,bool native,ArchiveImageSet::Decoder = {},std::optional<MissionRuntimeConfig> = std::nullopt,std::optional<std::filesystem::path> replay =std::nullopt,MissionSelection = {});
     MissionProfile(const MissionProfile&)=delete;
@@ -56,7 +59,40 @@ public:
     std::unique_ptr<MissionSpatial> spatial;
     bool accepts_live_input()const{return humans&&humans->input_enabled()&&!humans->transition_pending()&&!replay_bound_;}
     bool native_stage_controls()const{return initialization_complete_&&humans&&humans->stage_input_enabled();}
+    bool accepts_fast_forward()const{return quest_frame_&&quest_frame_->debug_controls;}
 private:
+    struct QuestFrameConfig {bool debug_controls;std::int32_t orientation;};
+    std::optional<QuestFrameConfig> quest_frame_;
+    core::QuestFrameState quest_frame_state_; // SAGA_STUB(mission-form-fade-draw): timing is bound, fade overlay is not.
+    std::int32_t parent_update_counter_=-1; // MyFormBase.Init +0xc8.
+    std::shared_ptr<core::ImageAnimationValues> image_clocks_=std::make_shared<core::ImageAnimationValues>();
+    std::uint64_t world_update_calls_=0,image_clock_resets_=0,image_clock_updates_=0;
+    std::vector<std::int32_t> last_world_passes_;
+    bool quest_frame_result_=true,debug_modal_=false;
+    void base_update()override{core::update_my_form_base(parent_update_counter_,*this);}
+    bool flag_check(std::uint32_t)override{return false;} // SAGA_STUB(mission-application-flags): Init clears flag0x100; subsequent producers are unbound.
+    void flag_off(std::uint32_t)override{}
+    void reset_image_clocks()override;
+    void advance_image_clocks()override;
+    bool config_debug_controls()override{return quest_frame_->debug_controls;}
+    bool key_state(std::uint32_t mask)override{return humans->stage_frame_key(mask);}
+    bool key_pulse(std::uint32_t mask)override{return humans->stage_frame_pulse(mask);}
+    bool engine_key_down(std::int32_t)override{return false;} // SAGA_STUB(mission-engine-debug-keys): no Unity key source.
+    void debug_show_result()override{humans->debug_show_result();}
+    void debug_complete_quest()override{core::complete_stage_quest(*humans->quest());}
+    void queue_debug_return()override{throw std::logic_error("mission DEBUG UI-thread town callback is unbound");}
+    void push_debug_defeat(std::int32_t reason)override{humans->debug_defeat_form(reason);debug_modal_=true;}
+    void push_debug_victory(std::int32_t enemy,bool completed)override{humans->debug_victory_form(enemy,completed);debug_modal_=true;}
+    bool active()override{return is_top_form();}
+    bool is_top_form()override{return !debug_modal_&&!humans->has_stage_dialog()&&!humans->transition_pending();} // SAGA_STUB(mission-form-top).
+    void update_world(std::int32_t pass)override;
+    void change_state(std::int32_t)override{throw std::logic_error("mission native form layout transition is unbound");}
+    std::int32_t saved_orientation()override{return quest_frame_->orientation;}
+    bool enable_landscape()override{throw std::logic_error("mission saved landscape-unlock condition is unbound");}
+    void set_orientation(std::int32_t value)override{quest_frame_->orientation=value;}
+    std::int32_t game_width()override{return view.width;}
+    std::int32_t view_x()override{return view.margin_x;}
+    std::shared_ptr<core::ImageAnimationValues> image_animation_values()override{return image_clocks_;}
     void initialize_loaded_world();
     void pause_systems(bool)override;
     void construct_systems();

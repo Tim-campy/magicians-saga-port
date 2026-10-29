@@ -1,6 +1,6 @@
 # UI forms
 
-The game's screens are forms (`kairo.unity.form.FormBase` → `LibraryFormBase` → `form.MyFormBase` → concrete forms such as `QuestForm`) run by a singleton `form.FormManager : FormManagerBase`. The manager dispatches six virtual form events through `DoMethod` (0 Init, 1 Update, 2 Draw, 3 Resume, 4 Suspend, 5 Finish), runs a per-frame number of Update passes derived from the form's requested rate and the manager's target FPS, and supplies the target FPS that `main.Main` hands to Unity. These contracts are established from bounded assembly; concrete form overrides, the form stack and the first form are not reconstructed, and the portable port currently covers form-push wrappers and the SelectForm event block, not the manager/frame loop.
+The game's screens are forms (`kairo.unity.form.FormBase` → `LibraryFormBase` → `form.MyFormBase` → concrete forms such as `QuestForm`) run by a singleton `form.FormManager : FormManagerBase`. The manager dispatches six virtual form events through `DoMethod` (0 Init, 1 Update, 2 Draw, 3 Resume, 4 Suspend, 5 Finish), runs a per-frame number of Update passes derived from the form's requested rate and the manager's target FPS, and supplies the target FPS that `main.Main` hands to Unity. These contracts are established from bounded assembly; full form ownership, the form stack and the first form remain open; the portable port covers form-push wrappers, the SelectForm event block and the mission-specific QuestForm.Update controller. The enclosing manager/frame loop remains open.
 
 ## Overview
 
@@ -64,6 +64,7 @@ The game's screens are forms (`kairo.unity.form.FormBase` → `LibraryFormBase` 
 | `form.QuestForm.GetGameWidth / GetGameHeight` | `game:0x060007c0` / `game:0x060007c1` | GameView dimension minus VIEW_X/Y, wrapping times 100, signed division by form scale | high |
 | `form.QuestForm.SetCursor / SetCameraPosition` | `game:0x060007b9` / `game:0x060007ba` | Normal-save center slots 17/18 and live QuestForm camX/camY, with distinct ordering | high |
 | `form.QuestForm.DynamicRender / StaticRender` | `game:0x0600079a` / `game:0x0600079b` | Offscreen callback gates, temporary logical viewport, sprite/world draw and cleanup; static callback is a gate only | high |
+| `form.QuestForm.Update` | `game:0x06000791` | Parent/image clocks, debug shortcuts, gated world passes and shared intro fade | high |
 | `form.QuestForm.DrawOffscreen / UpdateStaticRender` | `game:0x06000796` / `game:0x06000797` | Composite offscreen image into VIEW rectangle; mark static content dirty | high |
 | `kairo.unity.ecs.World.CreateCamera / Entity.AddCamera / Entity.get_camera` | `game:0x06000be9` / `game:0x06000b2f` / `game:0x06000b2e` | Registered position-only camera factory and fresh checked slot-3 component | high |
 | `ecs.MemberSystem.GetFormationX(int) / GetFormationZ(int)` | `game:0x06000f49` / `game:0x06000f4a` | Fresh hero position minus formation offset plus signed indexed 36-unit grid | high |
@@ -306,6 +307,22 @@ Port: [bubble_frame.hpp](../../src/core/gameplay/bubble_frame.hpp), [implementat
 
 Port: the DebugVisualizationState/DebugPathVisualization contracts in [pass_initialization.hpp](../../src/core/gameplay/pass_initialization.hpp), [implementation](../../src/core/gameplay/pass_initialization.cpp) and the bubble/debug contract test. MissionScene initializes the group and runs30 after Button26/before Garbage31. It reuses the profile's explicit bool DEBUG; render-only profiles with no runtime declare a diagnostic defaultfalse, with the same inert outcome. BaseSystem enable/disable dispatch and actual diagnostic drawing remain separate; no Astar algorithm is reconstructed.
 
+### Quest mission frame controller
+
+`QuestForm.Update` (`0x11daee4`,1264 bytes) is the current ECS caller. Its order is MyFormBase.Update -> test/clear AppData flag0x100 -> reset image animation clocks only when loopCounter==0 -> advance those clocks -> increment loopCounter and copy it into frame -> clear MyFormBase.dialog_ -> debug shortcuts -> World.Update passes -> pinch clock -> fade clock. The increment wraps as int32 before signed remainder by INT32_MAX. MyFormBase.dialog_ (`+0xc0`) is distinct from StageSystem.dialog and clearing it does not answer a stage dialog.
+
+The pass count is3 only when Config's static byte at `+0x10` is true and Canvas.KeyState(0x10) is true; otherwise it is1. This configuration byte is distinct from the application's numeric-damage DEBUG input. Before each shortcut the configuration byte is read again. Canvas pulses0x20/0x40/0x80/0x100 short-circuit the corresponding Unity Input.GetKeyDown(Alpha5/6/7/8). The actions are ShowQuestResult; Complete followed by a queued town callback; push defeat with reason1; push victory with enemy65 and completed=true. All actions precede the world passes.
+
+Pass0 always calls the stored world's Update. Each later pass first queries Active; false skips that pass. If active, a separate top-form identity check can return false before the remaining world, pinch and fade work. MyFormBase.Active (`0x11d7478`,32 bytes) forwards to AppData.IsTopForm. Native input/camera/culling/render pass-zero gates remain in the individual ECS systems; increasing the pass count must not repeat every system indiscriminately. Image clocks advance once per form frame, not once per world pass.
+
+When isPinch is false and pinchScaleFrame<=39, increment that int32 once. If fadeType!=-1, increment fadeFrame with int32 wrapping. At fadeFrame>=21, reset it to0. Type1 writes type2, calls ChangeState(fadeState), then writes fadeState=-1; any other type writes type=-1 and returns false. The return value belongs to form dispatch; it is not a request to terminate the desktop game. Exceptions retain preceding writes, including the type2 store before a failing layout callback.
+
+QuestForm.Init (`0x11d9878`,2484 bytes) establishes loopCounter0, fadeFrame0, fadeType0 and fadeState0; MyFormBase.Init (`0x11d0548`,432 bytes) establishes its separate update counter=-1. The fade frame aliases the value StageSystem.Update reads. At one pass per frame, Stage state0 sees fade0..19 on frames1..20; frame21 sees20 and enters state1, then the form resets the fade and returns false. The stage timer starts decreasing on frame22. With three passes, frame21's later passes already run state1 and decrease the timer twice.
+
+The entry caller reads decoded SecureProperty integer slots8/9 to select area/stage, invokes AppData.StartExplore (`0x11151f0`,444 bytes), and supplies AreaData, QuestData and the stage index to StageSystem.Start. StartExplore resets the legacy exploration ledger and creates a game.Witch; SetDefaultStatus (`0x11da28c`,508 bytes) snapshots UI coordinates for matching legacy objects rather than providing missing game defaults. QuestForm._update (`0x11db3d4`,5776 bytes) is a separate legacy exploration path, with no direct call from this Update; reconstructing its Witch/magic logic is not required to bind the observed ECS caller. Save/configuration restoration and original current-world selection remain the A1 entry problem.
+
+Port: [quest_frame.hpp](../../src/core/gameplay/quest_frame.hpp), [implementation](../../src/core/gameplay/quest_frame.cpp) and [contract](../../tests/test_quest_frame.cpp) preserve fresh queries, debug ordering, pass gates, shared fade storage, wrapping and partial failure. MissionProfile's opt-in quest_frame row binds this controller and the existing MyFormBase/image-clock kernels to the real system scheduler. The image-animation registry is an explicitly empty presentation stub until resource registration is bound; entity SEB/AnimationSystem updates are separate. See [integration](integration.md#native-quest-form-frames-s1-a1a3) for host services, real-data observations and remaining form/drawing limits.
+
 ### Quest mission render callbacks
 
 `QuestForm.DynamicRender` (0x11df6e4, 824 bytes) first requires the stored FormManager. Capturing (`+0x5c`) bypasses pause/activity checks. Otherwise pause (`+0x32`) returns false; when unpaused, draw only if `shouldDrawInBack_` (`+0xd4`), the supplied Offscreen's `isEmpty_` (`+0x40`), or `MyFormBase.Active` is true, in that short-circuit order. `StaticRender` (0x11dfa1c, 56 bytes) implements only the latter three-way predicate: it does not draw or consult manager pause/capture. Background drawing can bypass a null surface at the gate, but DynamicRender still requires that surface later.
@@ -327,6 +344,8 @@ Port: [quest_render.hpp](../../src/core/gameplay/quest_render.hpp) and its imple
 [quest_camera.hpp](../../src/core/gameplay/quest_camera.hpp) and its implementation cover camera factory/init/update, nullable getter, cursor/position and viewport paths, zoom limits/range, delta history and the cell-visibility bridge. Indexed formation overloads extend the existing stage_recovery module. tests/test_quest_camera.cpp covers ordering, replacement, partial failure, separate scales, history reuse, native grid coordinates and viewport selection; tests/test_emitter_frame.cpp composes 120 pass-zero updates. Remaining form-loop work includes FormManager/DoMethod, FPS/execution scheduling and complete form/UI ownership; normalized SDL input and archive-backed camera/cell rendering are bound in the selected scene. ECS pause dispatch belongs to the ECS module.
 
 ## Evidence
+
+- Quest frame/entry: complete bounded ignored exports in `research/exports/mission-original-entry/`, `mission-explore-entry/` and `mission-frame-inputs/`; library SHA256 `17a6cf3a3cef9bd7b387c4b9627df113a8b214f0deb07e1778585dac1143526f`, printed addresses include Ghidra base0x100000. Registered field-offset table0x277ece8 establishes QuestForm fade/frame/pinch and MyFormBase dialog/counters. Init stores at ELF0x11d9e1c/0x11d9e20 zero fadeFrame/type/state;0x11d9e8c zeros loopCounter. MyFormBase.Init writes update_=-1. The literal pair at0x626ed0 is scale75/min50, not fade state. Code-map metadata resolves the debug engine call to UnityEngine.Input.GetKeyDown and ChangeState's label call to FormBase.SetSoftLabel. Confidence high for Update and these initial values; Android scheduling remains unverified.
 
 - Speech/debug contracts: complete ignored bounded exports in `research/exports/mission-remaining/`, `mission-remaining2/`, `system-initializers/{FukidashiSystem,DebugVisualizeSystem}.asm` and `mission-info/DebugUpdate.asm`. ELF SHA256 `17a6cf3a3cef9bd7b387c4b9627df113a8b214f0deb07e1778585dac1143526f`; printed addresses include Ghidra base `0x100000`. Reverse: GOT `0x2731640` -> usage `0xc001c181` -> method spec57536 -> Enumerable.Reverse<Entity>; Contains: GOT `0x27313f0` -> usage `0xc001af4d` -> spec55206 -> List<Entity>.Contains. Entity/BaseEntity metadata have no equality overrides. Astar: GOT `0x27305e0` -> cell `0x27c4e90` -> usage `0x200047f9` -> native type9212 -> metadata type4341; field offsets confirm visualize `+0x20`, waitMillis `+0x28`. Confidence high for static contracts; original runtime rendering remains unverified.
 
@@ -352,6 +371,8 @@ Port: [quest_render.hpp](../../src/core/gameplay/quest_render.hpp) and its imple
 
 ## Open questions
 
+- Bind original QuestForm.Init area/stage/save/configuration sources and current-world ownership without a diagnostic scene. Resource image-animation registration, fade overlay/layout and full FormManager top/close timing remain separate host services. Resolve live Config byte+0x10 and orientation/landscape eligibility from the original runtime before treating scenario values as production defaults.
+
 - Bind original Fukidashi producers, content lookup and DrawDynamic text output; establish initial Cell-index registration/visibility before treating diagnostic CreateZObject composition as original game behavior. Init and full nonempty Update are host-reachable.
 - Bind the recovered Debug OnEnabled/OnDisabled hooks through actual BaseSystem enabled-property dispatch before enabling debug overlays; native Update remains inert.
 - Bind native quest entity-button producers, Button.Draw/DrawDynamic images/text and physical Surface hit testing. Entity Button26 lifecycle/event routing is host-reachable through explicit scenario rows.
@@ -366,7 +387,7 @@ Port: [quest_render.hpp](../../src/core/gameplay/quest_render.hpp) and its imple
 
 1. (blocking) First form passed by Main.OnCreate and the form stack/transition protocol (`ChangeCurrentForm`, states 1..4, `+0xd8` thread object).
 2. (blocking) Writers of `manager+0x88/+0x90/+0x98`, `form+0x48/+0x50`; identity of the static object that suppresses Update.
-3. Concrete slot-19 (Update) overrides for boot/menu forms and the first gameplay form.
+3. Concrete slot-19 (Update) overrides for boot/menu forms; QuestForm.Update is ported separately from the enclosing dispatcher.
 4. How `+0xb4` (GetFps) is computed.
 5. Body of `FormManagerBase.OnDraw` and how DoMethod code 2 (Draw) is used.
-6. Which BasePauseSystem-derived systems are toggled by menus; `BaseSystem..ctor`/`SetWorld` initial state.
+6. Bind original current-world selection/SetWorld ownership to the native entry; the pause cohort and constructor enable hooks are established in [ECS lifecycle](ecs-lifecycle.md).

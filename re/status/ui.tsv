@@ -126,3 +126,4 @@ game:0x06000fe5	reimplemented	src/core/gameplay/pass_initialization.cpp	Native e
 game:0x06000f58	reimplemented	src/core/gameplay/pass_initialization.cpp	Native menu row-shape validation before event11/27 subscriptions, retaining partial failures
 game:0x06000f5f	reimplemented	src/core/gameplay/pass_initialization.cpp	Native visible gate and group35/type5 hide service, with null/early-return contract
 game:0x06000fdb	reimplemented	src/core/gameplay/pass_initialization.cpp	Proven single-return status-render initializer
+game:0x06000791	reimplemented	src/core/gameplay/quest_frame.cpp	Native parent/clocks/debug/world passes/pinch/fade controller; tests/test_quest_frame.cpp and host integration

@@ -34,7 +34,7 @@ Tasks:
 - [ ] Bind retry/defeat/victory form answers and modal form lifecycle to Stage Update without automatic crystal or ad choices (A4).
 - [ ] Bind remaining QuestForm touch/cursor widgets and gesture routing to SDL input events (A2).
 - [ ] Bind Retry recovery and quest event dispatch to the live mission host before result/return (A4).
-- [ ] Bind complete World.DynamicDraw order/gates and Human/Stage HUD to the existing bitmap backend (A3).
+- [ ] Bind resource image-animation clocks, complete World.DynamicDraw order/gates and Human/Stage HUD to the existing bitmap backend (A3).
 - [ ] Group `src/core/gameplay/` (138 files) into subdirectories by subsystem (`combat/`, `mission/`, `town/`, `render/`, `events/`, `text/`, `runtime/`) without behaviour changes; CMake targets and tests keep their names.
 
 ### S2 — Town ↔ mission loop
