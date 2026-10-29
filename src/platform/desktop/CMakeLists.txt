@@ -14,6 +14,8 @@ project_warnings(animation_trace)
 
 saga_library(resource_archive resource_archive.cpp)
 target_link_libraries(resource_archive PUBLIC jar_archive opt_grid animation_resources resource_lookup resource_catalog event_catalog)
+saga_library(archive_resource_manager archive_resource_manager.cpp)
+target_link_libraries(archive_resource_manager PUBLIC resource_archive image_draw)
 
 option(SAGA_BUILD_VIEWER "Build the optional desktop PNG research viewer" OFF)
 if(SAGA_BUILD_VIEWER)
@@ -47,7 +49,7 @@ if(SAGA_BUILD_VIEWER)
   add_executable(asset_viewer asset_viewer.cpp sprite_preview.cpp sdl_bitmap.cpp)
   target_compile_features(asset_viewer PRIVATE cxx_std_17)
   target_include_directories(asset_viewer SYSTEM PRIVATE "${STB_DIR}")
-  target_link_libraries(asset_viewer PRIVATE SDL3::SDL3-static bitmap_geometry animation_resources render_transform render_colors material_queue resource_archive)
+  target_link_libraries(asset_viewer PRIVATE SDL3::SDL3-static bitmap_geometry animation_resources render_transform render_colors material_queue archive_resource_manager)
   project_warnings(asset_viewer)
 endif()
 

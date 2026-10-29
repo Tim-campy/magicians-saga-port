@@ -26,4 +26,7 @@ struct SpritePreview {
 // Unsupported special material/UI services fail, never silently approximate.
 SpritePreview prepare_sprite_preview(const SpritePreviewOptions&,const assets::Seb&,const assets::OptGrid*,
                                      std::int32_t png_width,std::int32_t png_height,std::int32_t alpha_type);
+// Ready catalog manager: preserve its clip ID, clocks and cache instances.
+SpritePreview prepare_sprite_preview(const SpritePreviewOptions&,core::RenderDrawResource&,std::int32_t clip,
+                                     std::int32_t png_width,std::int32_t png_height,std::int32_t alpha_type);
 } // namespace saga::desktop

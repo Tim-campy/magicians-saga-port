@@ -2,6 +2,11 @@
 #include <limits>
 
 namespace saga::core {
+SebSpriteState clone_seb_sprites(const SebSpriteState& source){
+    SebSpriteState result;
+    result.groups=source.groups;result.frames=source.frames;result.packed=source.packed;result.extended=source.extended;
+    return result;
+}
 namespace {
 template<class T>T& required(T* p){if(!p)throw std::invalid_argument("missing SEB runtime array");return *p;}
 template<class T>T& at(const std::shared_ptr<std::vector<T>>& array,std::int32_t i){return required(array.get()).at(static_cast<std::size_t>(i));}

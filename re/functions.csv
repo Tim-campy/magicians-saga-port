@@ -10178,7 +10178,7 @@ kairo:0x0600175b,kairo:0x0600175b,ui,,8,0x1baf594
 kairo:0x0600175c,kairo:0x0600175c,ui,,4,0x1baf59c
 kairo:0x0600175d,kairo:0x0600175d,ui,,244,0x1ba5da0
 kairo:0x0600175e,kairo:0x0600175e,ui,,244,0x1ba5c54
-kairo:0x0600175f,kairo:0x0600175f,ui,,352,0x1bab9fc
+kairo:0x0600175f,kairo.unity.ui.Seb..ctor,ui,documented,352,0x1bab9fc
 kairo:0x06001760,kairo:0x06001760,ui,,96,0x1ba9ef4
 kairo:0x06001761,kairo.unity.ui.Seb._load,ui,traced,248,0x1bb0a98
 kairo:0x06001762,kairo.unity.ui.Seb._load,ui,documented,5368,0x1baf5a0

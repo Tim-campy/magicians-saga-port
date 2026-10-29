@@ -45,6 +45,8 @@ struct ResourceArchive::Impl final : JarResourceHost, ResourceNameHost, Resource
     JarResourceLookup jar{this};
     std::map<std::u16string,std::size_t> members;
     ArchiveCatalog image_catalog, animation_catalog;
+    std::map<std::int32_t,ArchiveAnimation> animation_cache;
+    std::map<std::int32_t,ArchiveImage> image_cache;
 
     Impl(std::vector<std::uint8_t> data, ResourceProfile selected)
         : bytes(std::move(data)), archive(assets::parse_jar(bytes.data(),bytes.size())), profile(std::move(selected)) {
@@ -116,28 +118,29 @@ struct ResourceArchive::Impl final : JarResourceHost, ResourceNameHost, Resource
         if (!value) throw std::invalid_argument("null archive resource slot");
         return narrow(*resource_file_name(wide(*value),*this));
     }
-    ArchiveSprite sprite(std::int32_t clip,std::int32_t frame,std::int32_t layer) {
+    const ArchiveAnimation& animation(std::int32_t clip) {
+        if(const auto it=animation_cache.find(clip);it!=animation_cache.end())return it->second;
         const auto spec=wide(specification(animation_catalog,clip));
         const auto options=seb_load_options(spec,*this);
         const auto seb_id=lookup(narrow(*options.filename));
         if (!seb_id) throw std::invalid_argument("SEB member unavailable in selected archive");
         const auto seb_bytes=payload(*seb_id);
-        ArchiveSprite result;
+        ArchiveAnimation result;
+        result.filename=narrow(*options.filename);result.member=archive.members.at(*seb_id).name;
         result.reverse_u=options.reverse_u;result.reverse_v=options.reverse_v;result.cache_size=options.cache_size;
         result.animation=assets::parse_seb(seb_bytes.data(),seb_bytes.size());
-        auto prepared=prepare_seb_sprites(result.animation); SebStaticWork work;
-        reverse_seb(prepared,result.reverse_u,result.reverse_v);
-        if(result.cache_size>=1)set_seb_cache_size(prepared,result.cache_size);
-        const auto value=seb_sprite(prepared,work,frame,layer);
-        if (!value || value->at(1)==-1) throw std::invalid_argument("selected sprite has no image");
-        result.texture=value->at(1);
-        const auto image_spec=wide(specification(image_catalog,result.texture));
+        return animation_cache.emplace(clip,std::move(result)).first->second;
+    }
+    const ArchiveImage& image(std::int32_t texture) {
+        if(const auto it=image_cache.find(texture);it!=image_cache.end())return it->second;
+        ArchiveImage result;
+        const auto image_spec=wide(specification(image_catalog,texture));
         const auto image_parts=split_trimmed_text_fields(image_spec.get(),u',');
         for (std::size_t i=1;i<image_parts.size();++i) {
             const auto option=lower(narrow(image_parts[i]));
             if (option=="bin") continue;
             if(option.rfind("q+",0)==0||option.rfind("q-",0)==0){
-                result.image_render_queue=parse_event_decimal(std::string_view(option).substr(option[1]=='+'?2:1));continue;
+                result.render_queue=parse_event_decimal(std::string_view(option).substr(option[1]=='+'?2:1));continue;
             }
             const auto x=option.find('x');
             if (x==option.npos) throw std::invalid_argument("unbound image loading option: "+option);
@@ -147,16 +150,28 @@ struct ResourceArchive::Impl final : JarResourceHost, ResourceNameHost, Resource
         const auto image_id=lookup(narrow(image_parts.at(0)));
         if (!image_id) throw std::invalid_argument("PNG member unavailable in selected archive");
         result.png=payload(*image_id);
-        result.image_member=archive.members.at(*image_id).name;
-        result.animation_member=archive.members.at(*seb_id).name;
-        result.image_catalog=image_catalog.member;
-        result.animation_catalog=animation_catalog.member;
+        result.member=archive.members.at(*image_id).name;
         const auto opt_name=image_option_file(image_spec);
         if (const auto opt_id=lookup(narrow(*opt_name))) {
             const auto data=payload(*opt_id);
             result.opt=assets::parse_opt(data.data(),data.size());
             result.opt_member=archive.members.at(*opt_id).name;
         }
+        return image_cache.emplace(texture,std::move(result)).first->second;
+    }
+    ArchiveSprite sprite(std::int32_t clip,std::int32_t frame,std::int32_t layer) {
+        const auto& a=animation(clip);
+        auto prepared=prepare_seb_sprites(a.animation);SebStaticWork work;
+        reverse_seb(prepared,a.reverse_u,a.reverse_v);
+        if(a.cache_size>=1)set_seb_cache_size(prepared,a.cache_size);
+        const auto value=seb_sprite(prepared,work,frame,layer);
+        if(!value||value->at(1)==-1)throw std::invalid_argument("selected sprite has no image");
+        ArchiveSprite result;result.texture=value->at(1);
+        const auto& i=image(result.texture);
+        result.animation=a.animation;result.reverse_u=a.reverse_u;result.reverse_v=a.reverse_v;result.cache_size=a.cache_size;
+        result.png=i.png;result.opt=i.opt;result.standard_width=i.standard_width;result.standard_height=i.standard_height;
+        result.image_render_queue=i.render_queue;result.animation_member=a.member;result.image_member=i.member;result.opt_member=i.opt_member;
+        result.animation_catalog=animation_catalog.member;result.image_catalog=image_catalog.member;
         return result;
     }
 };
@@ -166,5 +181,7 @@ ResourceArchive::ResourceArchive(std::vector<std::uint8_t> bytes,ResourceProfile
 ResourceArchive::~ResourceArchive()=default;
 const ArchiveCatalog& ResourceArchive::images() const { return impl_->image_catalog; }
 const ArchiveCatalog& ResourceArchive::animations() const { return impl_->animation_catalog; }
+const ArchiveAnimation& ResourceArchive::animation(std::int32_t clip){return impl_->animation(clip);}
+const ArchiveImage& ResourceArchive::image(std::int32_t texture){return impl_->image(texture);}
 ArchiveSprite ResourceArchive::sprite(std::int32_t clip,std::int32_t frame,std::int32_t layer) { return impl_->sprite(clip,frame,layer); }
 } // namespace saga::desktop

@@ -146,3 +146,4 @@ kairo:0x060013d8	reimplemented	src/core/gameplay/material_queue.cpp	Retained que
 kairo:0x060013d9	reimplemented	src/core/gameplay/material_queue.cpp	Save graphics queue before requested value store; bitmap relative image offsets and partial-failure tests.
 kairo:0x060013da	reimplemented	src/core/gameplay/material_queue.cpp	Wrapping count-minus-one gate, saved value read before queue assignment and count decrement; bounds/null/underflow tests.
 kairo:0x06001087	reimplemented	src/core/gameplay/material_queue.cpp	Offset store before shader queue query, live offset reread and wrapping absolute sum; query mutation/failure tests and selected SDL material binding.
+kairo:0x0600175f	documented	docs/subsystems/assets.md	Seb copy constructor shares name/max/record and bounding references/resource, copies pixel bounds, leaves fresh frame/reversal/cache/flip/offset/work; tested sprite projection and ready catalog integration, remaining fields not ported.

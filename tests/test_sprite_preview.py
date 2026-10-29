@@ -113,6 +113,8 @@ class NativeTests(unittest.TestCase):
             report = json.loads(result.stdout)
             self.assertEqual(report['texture_slot'], 7)
             self.assertEqual(report['resource_clip'], 3)
+            self.assertEqual(report['resource_clip_slots'], 4)
+            self.assertEqual(report['resource_ready_clips'], 1)
             self.assertEqual(report['image_catalog'], 'English.lproj/img.inf')
             self.assertEqual(report['animation_member'], 'clip.seb')
             self.assertEqual(report['image_member'], 'English.lproj/choice.png')
@@ -140,22 +142,25 @@ class NativeTests(unittest.TestCase):
 
     def test_archive_load_reversal_and_relative_queue_reach_pixels(self):
         source = [(255, 0, 0, 255), (0, 255, 0, 255), (0, 0, 255, 255), (255, 255, 0, 255)]
-        for flags, queue, opt in [(b',u,c3', b'q+1', None), (b'', b'q-1', struct.pack('>5B14h', 2, 2, 1, 1, 2,
-                -1, 0, 0, 0, 0, 1, 2, -1, 1, 0, 1, 0, 1, 2))]:
+        for flags, queue, opt, earlier in [(b',u,c3', b'q+1', None, False), (b'', b'q-1', struct.pack('>5B14h', 2, 2, 1, 1, 2,
+                -1, 0, 0, 0, 0, 1, 2, -1, 1, 0, 1, 0, 1, 2), False), (b',u,c3', b'q+1', None, True)]:
             with self.subTest(flags=flags, queue=queue), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
                 archive, capture = root / 'resources.bin', root / 'frame.bmp'
-                members = [('img.inf', b'7\timage.png,bin,' + queue), ('seb.inf', b'0\tclip.seb' + flags),
+                clip_id = 3 if earlier else 0
+                catalog = (b'0\tclip.seb,v,c2\n3\tclip.seb' if earlier else b'0\tclip.seb') + flags
+                members = [('img.inf', b'7\timage.png,bin,' + queue), ('seb.inf', catalog),
                            ('clip.seb', seb([(0, 7, 0, 0, 2, 2, 0, 0, 0, 0)])),
                            ('image.png', png(2, 2, [c for p in source for c in p]))]
                 if opt is not None:
                     members.append(('image.opt', opt))
                 archive.write_bytes(jar(members))
-                result = subprocess.run([str(EXE), str(archive), '--resource', '0', '0', '0', '--language', 'English.lproj',
+                result = subprocess.run([str(EXE), str(archive), '--resource', str(clip_id), '0', '0', '--language', 'English.lproj',
                          '--dpi', '0', '--canvas', '12', '12', '--origin', '6', '6', '--headless', '--capture', str(capture)],
                          text=True, capture_output=True, timeout=20)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 report = json.loads(result.stdout)
+                self.assertEqual(report['resource_ready_clips'], 2 if earlier else 1)
                 self.assertEqual(report['image_queue_offset'], 1 if flags else -1)
                 self.assertEqual(report['resource_reverse'], [1 if flags else 0, 0])
                 self.assertEqual(report['render_queues'], [2001] if flags else [1999, 1999])

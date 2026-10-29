@@ -2,6 +2,7 @@
 #include "assets/opt_grid.hpp"
 #include "assets/jar_archive.hpp"
 #include "resource_archive.hpp"
+#include "archive_resource_manager.hpp"
 #include "sprite_preview.hpp"
 #include "sdl_bitmap.hpp"
 #include <SDL3/SDL.h>
@@ -150,10 +151,14 @@ int view(const std::string& filename, bool headless, const std::string& capture,
         if (std::filesystem::exists(target)) throw std::runtime_error("Capture destination already exists");
     }
     std::optional<saga::desktop::ArchiveSprite> archive_sprite;
+    std::unique_ptr<saga::desktop::ResourceArchive> archive;
+    std::unique_ptr<saga::desktop::ArchiveResourceManager> archive_manager;
+    std::unique_ptr<saga::core::PixelImage> archive_image;
     std::vector<stbi_uc> encoded;
     if(archive_options){
-        saga::desktop::ResourceArchive archive(read_file(filename,saga::assets::JarLimits{}.max_bytes,8),archive_options->profile);
-        archive_sprite=archive.sprite(archive_options->clip,sprite_options->frame,sprite_options->layer);
+        archive=std::make_unique<saga::desktop::ResourceArchive>(read_file(filename,saga::assets::JarLimits{}.max_bytes,8),archive_options->profile);
+        archive_manager=std::make_unique<saga::desktop::ArchiveResourceManager>(*archive);
+        archive_sprite=archive->sprite(archive_options->clip,sprite_options->frame,sprite_options->layer);
         encoded=std::move(archive_sprite->png);
         if(encoded.size()<8||encoded.size()>max_encoded_bytes)throw std::invalid_argument("archive PNG size outside preview limits");
         sprite_options->texture=archive_sprite->texture;
@@ -194,7 +199,14 @@ int view(const std::string& filename, bool headless, const std::string& capture,
         const auto count=static_cast<std::size_t>(width)*static_cast<std::size_t>(height);
         for(std::size_t i=0;i<count;++i)classifier.add(static_cast<float>(pixels.get()[i*4+3])/255.0F);
         image_alpha=classifier.finish(static_cast<std::int32_t>(count));
-        preview=saga::desktop::prepare_sprite_preview(*sprite_options,file,opt?&*opt:nullptr,width,height,image_alpha);
+        if(archive_manager){
+            archive_image=opt?std::make_unique<saga::core::PreparedOptImage>(*opt):std::make_unique<saga::core::PixelImage>();
+            archive_image->width=width;archive_image->height=height;
+            archive_image->standard_width=archive_sprite->standard_width;archive_image->standard_height=archive_sprite->standard_height;
+            archive_image->render_queue=archive_sprite->image_render_queue;
+            archive_manager->bind_image(archive_sprite->texture,archive_image.get());
+            preview=saga::desktop::prepare_sprite_preview(*sprite_options,archive_manager->drawing(),archive_options->clip,width,height,image_alpha);
+        }else preview=saga::desktop::prepare_sprite_preview(*sprite_options,file,opt?&*opt:nullptr,width,height,image_alpha);
     }
 
     // SDL's software QueueGeometry truncates source UV texels before interpolation
@@ -300,6 +312,9 @@ int view(const std::string& filename, bool headless, const std::string& capture,
         for(std::size_t i=0;i<preview.quads.size();++i){if(i)std::cout<<',';std::cout<<preview.quads[i].render_queue;}
         std::cout<<']';
         if(archive_sprite){
+            const auto& clips=*archive_manager->animations().clips;
+            std::cout<<",\"resource_clip_slots\":"<<clips.size()<<",\"resource_ready_clips\":"
+                     <<std::count_if(clips.begin(),clips.end(),[](const auto* clip){return clip!=nullptr;});
             std::cout<<",\"resource_clip\":"<<archive_options->clip<<",\"animation_member\":";json_string(archive_sprite->animation_member);
             std::cout<<",\"image_member\":";json_string(archive_sprite->image_member);
             std::cout<<",\"opt_member\":";json_string(archive_sprite->opt_member);

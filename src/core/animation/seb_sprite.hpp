@@ -29,6 +29,9 @@ struct SebStaticWork {
 // Desktop preparation of _load's record normalization/packing slice 0x1baf850..0x1bb02c4.
 // Input is the existing disk reader's output; bounding boxes/extension blocks are not synthesized.
 SebSpriteState prepare_seb_sprites(const assets::Seb&);
+// Sprite-evaluation projection of Seb(Seb) 0x1bab9fc: shared record arrays,
+// fresh work, zero reversal/flip and no cache. Clock construction is separate.
+SebSpriteState clone_seb_sprites(const SebSpriteState&);
 void convert_seb_sprite(const SebSpriteState&,std::int32_t record,SpriteArray output,std::int32_t reverse); // 0x1bb2b5c.
 SpriteArray seb_sprite(SebSpriteState&,SebStaticWork&,std::int32_t frame,std::int32_t layer); // 0x1bb1900.
 SpriteArray seb_sprite_local(SebSpriteState&,SebStaticWork&,std::int32_t frame,std::int32_t layer); // 0x1bb2290.
