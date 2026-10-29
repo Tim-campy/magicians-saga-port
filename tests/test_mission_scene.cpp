@@ -45,5 +45,9 @@ int main()try{
     scene.render();scene.advance_garbage(0);check(world.destroyed(effect)&&!world.registry().contains(world.id(effect)));
     check(queue.counts->at(0)==3); // Native Render precedes Garbage; the produced final-frame commands survive.
     scene.render();check(queue.counts->at(0)==2&&scene.faults().empty());
+    std::int32_t pairs=0;world.events().subscribe(29,[&](ComponentSlots* a,ComponentSlots* b){check(a==&hero&&b==enemy);++pairs;});
+    scene.advance_collisions(1,false);check(pairs==0&&scene.collision_events()==0);
+    scene.advance_collisions(1);check(pairs==1&&scene.collision_events()==1&&scene.area_collision_events()==0);
+    enemy->remove(32);scene.advance_collisions(0);check(pairs==1); // The initialized live group observes removal.
     std::cout<<"mission scene render bindings ok\n";return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

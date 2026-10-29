@@ -1,6 +1,6 @@
 # Enemy creation, population and frame update
 
-EnemySystem owns enemy creation/target selection, population quotas and the live per-enemy state pass. Its core kernels are ported; the selected desktop host binds native Init, full Update and contact/death receivers through explicit provisional quest/save inputs. Collision pair production, stage startup and boss completion remain separate bindings.
+EnemySystem owns enemy creation/target selection, population quotas and the live per-enemy state pass. Its core kernels are ported; the selected desktop host binds native Init, full Update and contact/death receivers through explicit provisional quest/save inputs. The optional Collision12 pass supplies pair production and area delivery; stage startup and boss completion remain separate bindings.
 
 ## Overview
 
@@ -124,6 +124,6 @@ Static addresses and local export references are recorded beside the contracts a
 ## Open questions
 
 1. (blocking) Bind decoded quest population groups/limits and saved Yugami/counters through native Stage startup instead of provisional scene rows.
-2. (blocking) Bind collision pair production, area delivery, cell migration and Stage death/boss callbacks to the full mission schedule.
+2. (blocking) Bind cell migration and Stage death/boss callbacks to the full mission schedule.
 3. Establish the original caller/ordering guards against repeated Defeat before corpse expiry; preserve the native method's absent local guard.
 4. Restore original startup target ownership for selected quest enemies through CreateSystemEnemy/OnStart rather than raw scenario factory rows.

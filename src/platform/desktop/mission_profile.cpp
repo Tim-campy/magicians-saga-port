@@ -51,6 +51,8 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         }else if(operation=="enemy_pool"){
             std::int32_t count=0;if(!native||enemy_pool||!(row>>count)||count<0||count>1000)throw std::invalid_argument("enemy_pool requires count0..1000 followed by enemy ID/weight pairs");
             for(std::int32_t i=0;i<count;++i){std::int32_t id=0,weight=0;if(!(row>>id>>weight))throw std::invalid_argument("enemy_pool requires every ID/weight pair");enemy.pool.emplace_back(id,weight);}enemy_pool=true;
+        }else if(operation=="collisions"){
+            if(!native||collisions)throw std::invalid_argument("collisions requires native mode and one row with no fields");collisions=true;
         }else if(operation=="human_system"){
             MissionHumanScenario value;if(!native||human_scenario||!(row>>value.distance>>value.min_z_rate>>value.max_z_rate>>value.attribute>>value.button))throw std::invalid_argument("human_system requires distance min/max Z rates attribute button state");human_scenario=value;
         }else if(operation=="gear_levels"){
@@ -136,6 +138,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     }
     if(!has_world)throw std::invalid_argument("an explicit world matrix is required");
     const bool enemy_requested=enemy_config||enemy_population||enemy_pool;
+    if(collisions&&!human_scenario)throw std::invalid_argument("collisions requires human_system event receivers");
     if(enemy_requested&&!(enemy_config&&enemy_population&&enemy_pool&&human_scenario))throw std::invalid_argument("enemy system requires enemy_system/enemy_population/enemy_pool and human_system");
     if(!selected.empty()){
         if(!tables||!has_view||!has_slots||!has_animation||commands)throw std::invalid_argument("entity capture needs tables/view/slots/animate and no manual draw rows");
@@ -178,6 +181,7 @@ void MissionProfile::step(){
     if(!mission)throw std::invalid_argument("selected logic requires a table-backed entity scene");
     if(humans){humans->update();humans->advance_enemies();humans->advance_projectiles();}
     if(simulate)mission->advance_movement(0);
+    if(collisions)mission->advance_collisions(0);
     if(simulate)mission->advance_emitters(0);
     if(simulate)mission->advance_modifications(0);
     mission->advance_animations({automatic!=0,application_update!=0});queue=mission->render();
@@ -202,6 +206,7 @@ void MissionProfile::write_combat_report(std::ostream& out){
     }}
     out<<']';
     if(humans){humans->write_reward_report(out);humans->write_enemy_report(out);}
+    out<<",\"collisions_enabled\":"<<(collisions?"true":"false")<<",\"collision_events\":"<<(mission?mission->collision_events():0)<<",\"area_collision_events\":"<<(mission?mission->area_collision_events():0);
     out<<",\"pending_drops\":[";first=true;
     if(entity_world){auto cursor=entity_world->subset({34})->cursor();while(const auto e=cursor.next()){
         const auto* drop=dynamic_cast<DropComponent*>((*e)->get(34));const auto* p=dynamic_cast<ContactPosition*>((*e)->get(0));

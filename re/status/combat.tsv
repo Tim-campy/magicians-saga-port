@@ -28,7 +28,7 @@ game:0x060000fd	reimplemented	src/core/gameplay/combat_rules.cpp	subtract_parame
 game:0x0600025d	reimplemented	src/core/gameplay/combat_rules.cpp	attribute_affinity with initial tables; tests/test_combat_rules.cpp
 game:0x06000e82	documented	docs/subsystems/combat.md	Numeric damage and stateful post-label shake/positional-effect suffix ported; desktop host binds real stats/RNG/DEBUG and Stage accounting; floating label selection and full event routing remain partial
 game:0x06000e7e	reimplemented	src/core/gameplay/projectile_hit.cpp	Projectile guards; damage/defeat/impact order; owner reread; pool return and speed zeroing; ECS integration test
-game:0x06000e7d	reimplemented	src/core/gameplay/contact_collision.cpp	Full contact damage/state/effects/recoil; native ordered Human/Enemy event29 receivers are bound by mission host; pair production remains separate.
+game:0x06000e7d	reimplemented	src/core/gameplay/contact_collision.cpp	Full contact damage/state/effects/recoil; native Human/Enemy event29 order and Collision12 pair production are bound in mission host.
 game:0x06000e83	reimplemented	src/core/gameplay/enemy_defeat.cpp	Complete motion/state/color/counters/pending rewards; table-backed saga_mission lethal shots and saved defeat counts tested.
 game:0x06000d47	traced	docs/subsystems/rewards.md	flag +0x14 via BitUtil.Check; bit meaning unknown
 game:0x060010ca	reimplemented	src/core/gameplay/enemy_defeat.cpp	Wrapping int32 addition then clamp at zero; overflow and negative increment tests
@@ -110,9 +110,9 @@ game:0x06000e80	reimplemented	src/core/gameplay/impact_effect.cpp	Impact travers
 game:0x06000a76	documented	docs/subsystems/combat.md	Center-first unique list and signed range gate; bounded impact use ported, general range API not ported
 game:0x06000a77	documented	docs/subsystems/combat.md	Depth-first neighbor order coordinate wrap and duplicate recursion; bounded impact use ported
 game:0x06000fca	reimplemented	src/core/gameplay/boss_notification.cpp	Ordered key releases and both control lookups before event-9 deliveries; capture and failure contracts tested
-game:0x06000e0a	reimplemented	src/core/gameplay/pass_initialization.cpp	Concrete subset request/store, queue reset or event registration; failure and live trajectory integration tests.
+game:0x06000e0a	reimplemented	src/core/gameplay/pass_initialization.cpp	Actual And(32,0) and persistent queue initialization is bound in MissionScene; live group contract tested.
 game:0x06000e0b	reimplemented	src/core/ecs/update_scheduler.cpp	Ordered dispatch or concrete enabled/pass gate; contract test; runtime comparison pending.
-game:0x06000e0c	reimplemented	src/core/gameplay/collision_pass.cpp	Complete pair selection and deferred delivery; live subset gated scheduler and both real contact receivers composed in tests
+game:0x06000e0c	reimplemented	src/core/gameplay/collision_pass.cpp	Native XYZ pair selection/deferred event29 delivery is reachable from saga_mission; contact/recoil and neighboring area damage tested with real owner/receivers.
 game:0x06000e7f	reimplemented	src/core/gameplay/combat_event_receivers.cpp	Live current-subset retargeting after human death; actual SearchTarget bound in Init tests, including nested landing/death and captured-component stores.
 game:0x06000e67	reimplemented	src/core/gameplay/enemy_initialization.cpp	Supplied-world subset/system stores, independent quota arrays and actual event23/29/30 receivers; saga_mission binds native Init between Human and Projectile.
 game:0x06000ebb	reimplemented	src/core/gameplay/human_initialization.cpp	Supplied-world subset/map/Stage/Enemy/Member stores, ordered real event 23/29 receivers, nullable results and failure/repeat/hash tests; MissionHumans binds world catalogs and services in both desktop hosts.

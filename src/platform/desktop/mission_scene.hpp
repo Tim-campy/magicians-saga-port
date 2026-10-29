@@ -4,6 +4,7 @@
 #include "core/gameplay/render_draw.hpp"
 #include "core/gameplay/motion_pass.hpp"
 #include "core/gameplay/modification_frame.hpp"
+#include "core/gameplay/pass_initialization.hpp"
 
 namespace saga::desktop {
 using MissionApplication=core::ApplicationResourceFields<core::RenderDrawResource>;
@@ -14,7 +15,7 @@ struct MissionRenderFault {std::int32_t entity;std::string message;};
 // Selected entity group and fixed supplied view. Full mission culling/camera/input remain host bindings.
 class MissionScene final:private core::RenderInitializationWorld,private core::RenderFrameHost,
     private core::QuestCameraHost,private core::QuestViewportView,private core::GarbageUpdateHost,private core::ModificationFrameHost,
-    private core::EmitterFrameHost {
+    private core::EmitterFrameHost,private core::CollisionPassHost {
 public:
     MissionScene(MissionEntities&,MissionApplication&,core::EntitySubset& visible,MissionView&,core::MapComponent*);
     MissionScene(const MissionScene&)=delete;
@@ -26,9 +27,14 @@ public:
     void advance_garbage(std::int32_t pass,bool enabled=true);
     void advance_modifications(std::int32_t pass,bool enabled=true);
     void advance_emitters(std::int32_t pass,bool enabled=true);
+    void advance_collisions(std::int32_t pass,bool enabled=true);
+    std::uint64_t collision_events()const{return collision_events_;}
+    std::uint64_t area_collision_events()const{return area_collision_events_;}
     core::RenderQueue& render();
     const std::vector<MissionRenderFault>& faults()const{return faults_;}
 private:
+    std::unique_ptr<core::CollisionCursor> open_collision_cursor()override;
+    void send_collision(std::int32_t,core::ComponentSlots&,core::ComponentSlots&)override;
     core::BulletRecords bullet_records()override{return world_.bullet_records();}
     core::ProjectileModification& acquire_modification()override{return world_.acquire_modification();}
     core::EntityPlayback& acquire_playback()override{return world_.acquire_playback();}
@@ -64,6 +70,7 @@ private:
     core::EntitySubset *movers_=nullptr,*garbage_entities_=nullptr;core::GarbagePass garbage_pass_;
     core::ModificationSystemState modifications_;
     core::EmitterSystemState emitters_;
+    core::CollisionSystemState collisions_;std::uint64_t collision_events_=0,area_collision_events_=0;
     core::RenderQueue queue_=core::make_render_queue();std::vector<MissionRenderFault> faults_;
 };
 } // namespace saga::desktop

@@ -18,7 +18,7 @@ public:
     MissionProfile(const std::filesystem::path&,bool native,ArchiveImageSet::Decoder = {},std::optional<MissionRuntimeConfig> = std::nullopt);
     MissionProfile(const MissionProfile&)=delete;
     MissionProfile& operator=(const MissionProfile&)=delete;
-    void step(); // Move (optional), Animation, Render, Garbage (optional), in native relative order.
+    void step(); // Selected actor/flight/motion/contact/effect passes, in native relative order.
     void write_combat_report(std::ostream&); // Diagnostic JSON fragment; not a complete-state snapshot.
     void write_actor_parameters(core::ComponentSlots&,std::ostream&);
     std::size_t selected_count=0;
@@ -32,6 +32,7 @@ public:
     MissionView view{};bool has_view=false,has_slots=false,has_animation=false;std::int32_t slots=0,frames=0,automatic=0,application_update=0;
     std::optional<std::int32_t> tick_ms;
     std::optional<std::int32_t> simulate;
+    bool collisions=false;
     std::vector<core::ComponentSlots*> created;
     std::map<std::string,std::int32_t> resource_names;
     std::unique_ptr<MissionEntities> entity_world;std::unique_ptr<MissionScene> mission;

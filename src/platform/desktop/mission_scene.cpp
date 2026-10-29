@@ -1,5 +1,6 @@
 #include "mission_scene.hpp"
 #include "core/gameplay/pass_initialization.hpp"
+#include "core/gameplay/subset_cursors.hpp"
 #include "core/ecs/update_scheduler.hpp"
 #include <stdexcept>
 
@@ -31,7 +32,7 @@ struct ExpiringCursor final:GarbageCursor {
 MissionScene::MissionScene(MissionEntities& world,MissionApplication& app,EntitySubset& visible,MissionView& view,MapComponent* map)
     :world_(world),app_(app),visible_(visible),view_(view),map_(map),form_{form_state_,nullptr,this}{
     initialize_render(renderer_,this);initialize_animation(animations_,&world_);
-    MovementWorld movement(world_);initialize_movement(movers_,&movement);initialize_garbage(garbage_entities_,&movement);
+    MovementWorld movement(world_);initialize_movement(movers_,&movement);initialize_collisions(collisions_,&movement);initialize_garbage(garbage_entities_,&movement);
     initialize_modifications(modifications_,&movement);
     initialize_emitters(emitters_,&movement);
 }
@@ -44,6 +45,13 @@ void MissionScene::advance_garbage(std::int32_t pass,bool enabled){
 }
 void MissionScene::advance_modifications(std::int32_t pass,bool enabled){if(gameplay_needs_update(18,enabled,pass))update_modifications(modifications_,*this);}
 void MissionScene::advance_emitters(std::int32_t pass,bool enabled){if(gameplay_needs_update(15,enabled,pass))update_emitters(emitters_,*this);}
+void MissionScene::advance_collisions(std::int32_t pass,bool enabled){if(gameplay_needs_update(12,enabled,pass))collisions_.pass.value().update(*this);}
+std::unique_ptr<CollisionCursor> MissionScene::open_collision_cursor(){return open_collision_subset(required(collisions_.subset));}
+void MissionScene::send_collision(std::int32_t event,ComponentSlots& a,ComponentSlots& b){
+    const auto area=[](const ComponentSlots& e){return e.contains(33)&&!e.contains(29);};
+    const bool area_contact=(area(a)&&b.contains(24))||(area(b)&&a.contains(24));
+    world_.events().send(event,&a,&b);++collision_events_;if(area_contact)++area_collision_events_;
+}
 std::unique_ptr<GarbageCursor> MissionScene::open_garbage_cursor(){return std::make_unique<ExpiringCursor>(world_,required(garbage_entities_));}
 RenderQueue& MissionScene::render(){faults_.clear();clear_render_queue(queue_);update_render(renderer_,*this,*this);return queue_;}
 std::unique_ptr<RenderCursor> MissionScene::visible_render_cursor(){return std::make_unique<Cursor>(visible_);}

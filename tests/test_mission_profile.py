@@ -173,6 +173,29 @@ class MissionProfileTests(unittest.TestCase):
                 scene.write_text(text + bad, encoding='utf-8')
                 self.assertNotEqual(self.run_host(scene).returncode, 0)
 
+    def test_collision_contacts_and_neighboring_impact_damage(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            scene = root / 'scene.txt'
+            text = make_shoot_scene(root, area=True)
+            text += ('enemy 0 4 7 2 36 0 70\ncollisions\n'
+                     'enemy_system 10000 3 10 25 7\nenemy_population 0 0 1 0 0 100 0\nenemy_pool 0\n')
+            scene.write_text(text, encoding='utf-8')
+            result = self.run_host(scene, frames=80)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            report = json.loads(result.stdout)
+            self.assertTrue(report['collisions_enabled'])
+            self.assertGreater(report['collision_events'], 0)
+            self.assertGreater(report['area_collision_events'], 0)
+            self.assertLess(report['positions'][1]['hp'], 100000)
+            # Shots travel at X0; the X36 enemy is outside their radius and takes area damage.
+            self.assertLess(report['positions'][2]['hp'], 100000)
+            self.assertEqual(self.run_host(scene, frames=80).stdout, result.stdout)
+            scene.write_text(text + 'collisions\n', encoding='utf-8')
+            self.assertIn('one row', self.run_host(scene).stderr)
+            scene.write_text(text.replace('human_system 10 0 100 3 1\n', ''), encoding='utf-8')
+            self.assertIn('event receivers', self.run_host(scene).stderr)
+
 
 if __name__ == '__main__':
     unittest.main()

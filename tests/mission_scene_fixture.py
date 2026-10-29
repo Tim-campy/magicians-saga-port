@@ -1,7 +1,7 @@
 """Synthetic table/archive profile shared by mission and GPU contracts."""
 from test_sprite_preview import jar, png, seb
 
-def make_table_scene(root, valid_png=True, human_frame=False, shoot=False, rewards=False):
+def make_table_scene(root, valid_png=True, human_frame=False, shoot=False, rewards=False, area=False):
     params = '13' + '\t2\t100\t1000' * 13
     tables = {
         'Chara.txt': f'2\tHero\t0\tchara\t8\tchara\t1\t0\t0\t99\t0\t100\t{params}\t0\t0\t0\t-1\t0\t2',
@@ -16,6 +16,8 @@ def make_table_scene(root, valid_png=True, human_frame=False, shoot=False, rewar
         weapon = tables['Equipment.txt'].split('\t')
         for i, value in {9: 3, 13: 15, 14: 4, 15: 12, 16: 3, 17: 0, 18: 1}.items():
             weapon[i] = str(value)
+        if area:
+            weapon[17] = '2'
         tables['Equipment.txt'] = '\t'.join(weapon)
         tables['Bullet.txt'] = '0\t0\t3\tbullet\t5\t6\teffect\t7\t0'
         enemy_params = '13' + ''.join('\t2\t100000\t100000' if i == 0 else '\t2\t0\t0' for i in range(13))
@@ -28,8 +30,9 @@ def make_table_scene(root, valid_png=True, human_frame=False, shoot=False, rewar
         tables['Equipment.txt'] += '\n' + tables['Equipment.txt'].replace('1\tWeapon', '0\tShield', 1)
     (root / 'tables.bin').write_bytes(jar([('English.lproj/' + name, text.encode()) for name, text in tables.items()]))
     for name, image, clip, color in [('hero', 200, 36, [255, 0, 0, 255]), ('enemy', 7, 0, [0, 255, 255, 255])]:
+        clips = ([0, 4, 8, 12, 16, 24, 28, 36, 40] if name == 'hero' else [0, 2, 24]) if human_frame else [clip]
         (root / f'{name}.bin').write_bytes(jar([
-            ('img.inf', f'{image}\ta.png,bin'.encode()), ('seb.inf', ('\n'.join(f'{i}\ta.seb' for i in [0,8,12,24,28,36,40]) if human_frame and name == 'hero' else f'{clip}\ta.seb').encode()),
+            ('img.inf', f'{image}\ta.png,bin'.encode()), ('seb.inf', '\n'.join(f'{i}\ta.seb' for i in clips).encode()),
             ('a.seb', seb([(0, image, 0, 0, 2, 2, 0, 0, 0, 0), (3, image, 0, 0, 2, 2, 0, 0, 0, 0)])), ('a.png', png(8, 8, color * 64) if valid_png else b'not-png')]))
     text = ('world 1 0 0 0 1 0 0 0 1\n'
             'projection 0.0625 0 0 0 0 0.125 0 0 0 0 0.00000133324445 0 -1 -1 -1 1\ngpu_depth 24 1\n'
@@ -43,11 +46,11 @@ def make_table_scene(root, valid_png=True, human_frame=False, shoot=False, rewar
     return text
 
 
-def make_shoot_scene(root, rewards=False):
-    text = make_table_scene(root, human_frame=True, shoot=True, rewards=rewards)
+def make_shoot_scene(root, rewards=False, area=False):
+    text = make_table_scene(root, human_frame=True, shoot=True, rewards=rewards, area=area)
     for name, image, clips in [('bullet', 5, [0, 1]), ('effect', 7, [0, 101])]:
         (root / f'{name}.bin').write_bytes(jar([
-            ('img.inf', '\n'.join(f'{i}\ta.png,bin' for i in [image, 1, 6, 24, 27]).encode()),
+            ('img.inf', '\n'.join(f'{i}\ta.png,bin' for i in [image, 1, 2, 6, 24, 27]).encode()),
             ('seb.inf', '\n'.join(f'{clip}\ta.seb' for clip in clips).encode()),
             ('a.seb', seb([(0, image, 0, 0, 2, 2, 0, 0, 0, 0), (3, image, 0, 0, 2, 2, 0, 0, 0, 0)])),
             ('a.png', png(2, 2, [0, 255, 0, 255] * 4))]))
