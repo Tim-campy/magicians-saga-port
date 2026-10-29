@@ -75,6 +75,8 @@ tools\build-viewer.cmd                  # optional SDL3 viewer (downloads pinned
 python -I tools/run_tests.py            # all Python tests
 ```
 
+Both Windows build scripts select code page 65001, request VSLANG=1033 after Visual Studio setup and use fresh CMake compiler detection. Detection must match the compiler's actual installed language: the old viewer cache stored a garbled Portuguese /showIncludes prefix, so Ninja recorded zero header dependencies and could link stale objects after a layout change. If build/viewer was created with that older script, clean that generated build once before using the corrected script. The repaired build was checked directly with Ninja's deps tool: image_draw.cpp.obj records 33 dependencies, including image_draw.hpp, and the complete viewer tests pass. No compiler/SDK reinstallation is needed.
+
 Linux (also what CI runs):
 
 ```sh

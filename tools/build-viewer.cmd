@@ -1,5 +1,7 @@
 @echo off
 setlocal
+rem Decode localized compiler dependency output consistently with CMake/Ninja.
+chcp 65001 >nul
 set "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
 if not exist "%VSWHERE%" (
   echo Visual Studio Installer vswhere.exe not found. 1>&2
@@ -12,8 +14,9 @@ if not defined SAGA_VS (
 )
 call "%SAGA_VS%\VC\Auxiliary\Build\vcvars64.bat"
 if errorlevel 1 exit /b %errorlevel%
+set "VSLANG=1033"
 set "PATH=%SAGA_VS%\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin;%SAGA_VS%\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja;%PATH%"
-cmake -S "%~dp0.." -B "%~dp0..\build\viewer" -G Ninja -DCMAKE_BUILD_TYPE=Release -DSAGA_BUILD_VIEWER=ON -DBUILD_TESTING=ON
+cmake --fresh -S "%~dp0.." -B "%~dp0..\build\viewer" -G Ninja -DCMAKE_BUILD_TYPE=Release -DSAGA_BUILD_VIEWER=ON -DBUILD_TESTING=ON
 if errorlevel 1 exit /b %errorlevel%
 cmake --build "%~dp0..\build\viewer" --parallel 4
 if errorlevel 1 exit /b %errorlevel%
