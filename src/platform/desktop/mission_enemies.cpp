@@ -19,9 +19,18 @@ void MissionHumans::enable_enemies(MissionEnemyScenario scenario){
     enemies_.quest=stage_.quest;enemies_.created_enemies=scenario.created;
     enemies_.defeated_enemies=scenario.defeated;enemies_.remaining_enemies=scenario.remaining;enemies_.loop_counter=scenario.loop_counter;
     stage_.collection.boss_defeated=scenario.boss_defeated;
-    std::fill(enemies_.maximum_by_section->begin(),enemies_.maximum_by_section->end(),scenario.section_limit);
-    std::fill(enemies_.created_by_section->begin(),enemies_.created_by_section->end(),scenario.section_created);
+    if(!deferred_init_){
+        std::fill(enemies_.maximum_by_section->begin(),enemies_.maximum_by_section->end(),scenario.section_limit);
+        std::fill(enemies_.created_by_section->begin(),enemies_.created_by_section->end(),scenario.section_created);
+    }
     enemy_scenario_=std::move(scenario);
+}
+void MissionHumans::apply_initialized_scenario(){
+    if(input_)input_->apply_scenario();
+    if(enemy_scenario_){
+        std::fill(enemies_.maximum_by_section->begin(),enemies_.maximum_by_section->end(),enemy_scenario_->section_limit);
+        std::fill(enemies_.created_by_section->begin(),enemies_.created_by_section->end(),enemy_scenario_->section_created);
+    }
 }
 void MissionHumans::advance_enemies(std::int32_t pass,bool enabled){
     if(enemy_scenario_&&gameplay_needs_update(5,enabled,pass))update_enemies(enemies_,*this);

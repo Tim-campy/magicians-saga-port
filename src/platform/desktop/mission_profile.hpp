@@ -16,7 +16,7 @@ struct SceneResource {
 };
 // Shared strict scenario loader. An empty decoder decodes only images needed by Gauge22 logic.
 // This is a selected scene, not the original quest/map/bootstrap or full system schedule.
-class MissionProfile:private core::GaugeDrawingHost {
+class MissionProfile:private core::GaugeDrawingHost,private core::AuxiliaryInitializationWorld,private core::TownInitializationWorld {
 public:
     MissionProfile(const std::filesystem::path&,bool native,ArchiveImageSet::Decoder = {},std::optional<MissionRuntimeConfig> = std::nullopt,std::optional<std::filesystem::path> replay =std::nullopt);
     MissionProfile(const MissionProfile&)=delete;
@@ -48,6 +48,24 @@ public:
     std::unique_ptr<MissionSpatial> spatial;
     bool accepts_live_input()const{return humans&&humans->input_enabled()&&!humans->transition_pending()&&!replay_bound_;}
 private:
+    void initialize_loaded_world();
+    void initialize_factory(std::int32_t,core::InitializationWorld*);
+    void subscribe_auxiliary_button(std::int32_t,core::AuxiliaryInitializationWorld::Button)override;
+    void subscribe_menu_orientation(std::function<void()> f)override{menu_orientation_=std::move(f);}
+    void subscribe_town_return(std::function<void(const core::TownReturnEvent&)> f)override{town_return_=std::move(f);}
+    core::PlayerWorldState* current_town_world()override{return &entity_world->player_world();}
+    void initialize_fresh_town()override{throw std::logic_error("fresh Town Init requires the S2 building-state owner");}
+    std::optional<std::uint8_t> initialized_loaded_;
+    core::MemberBootstrapWorld initialization_world_;
+    core::InitList initializers_;
+    core::InitializationSchedule initialization_{&initializers_,false};
+    std::array<std::unique_ptr<core::CallbackInitializer>,32> initializer_owners_;
+    std::vector<std::int32_t> initialized_order_;
+    bool initialization_complete_=false,menu_visible_=true;
+    core::MenuRowShapes menu_shapes_=core::initial_menu_row_shapes();
+    std::function<void()> menu_orientation_;
+    std::function<void(const core::TownReturnEvent&)> town_return_;
+    std::uint64_t submenu_touches_=0,menu_touches_=0;
     core::PixelImage* gauge_image(std::int32_t)override;
     std::int32_t gauge_view_width()override{return view.width;}
     std::int32_t gauge_view_height()override{return view.height;}

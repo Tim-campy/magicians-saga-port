@@ -6,6 +6,7 @@
 
 namespace saga::core {
 struct AttackButtonState {std::int32_t state=0,frame=0;};
+AttackButtonState initial_attack_button(); // AttackButton..ctor 0x11683b4: state0/frame4.
 void change_attack_button_state(AttackButtonState&,std::int32_t);
 struct StageHumanStart {HumanStateHost* transitions=nullptr;}; // Stored HumanSystem, not a fresh world lookup.
 struct StageDialog;
@@ -36,6 +37,23 @@ struct StageStartState:StagePlacementState {
 private:
     std::shared_ptr<StageRewards> rewards_;
 };
+struct InputTouch;
+struct StageInitializationReceivers {
+    std::function<void(ComponentSlots*)> death;
+    std::function<void(const InputTouch*)> touch;
+    std::function<void(ComponentSlots*,std::int32_t)> damage;
+};
+class StageInitializationWorld {
+public:
+    virtual ~StageInitializationWorld()=default;
+    virtual StageHumanStart* initialization_humans()=0;
+    virtual MemberRoster* initialization_members()=0;
+    virtual StageEnemyStart* initialization_enemies()=0;
+    virtual void subscribe_stage_death(std::function<void(ComponentSlots*)>)=0;
+    virtual void subscribe_stage_touch(std::function<void(const InputTouch*)>)=0;
+    virtual void subscribe_stage_damage(std::function<void(ComponentSlots*,std::int32_t)>)=0;
+};
+void initialize_stage(StageStartState&,StageInitializationWorld*,StageInitializationReceivers); // StageSystem.Init 0x1162298.
 class StageTimerHost {
 public:
     virtual ~StageTimerHost()=default;

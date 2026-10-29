@@ -70,7 +70,7 @@ ReturnTown(code) ── [code!=0] UpdateQuestRecord(code,0,0) ── CleanUp ─
 | <>c__DisplayClass75_0.<ReturnTown>b__0 | game:0x06000fda | Form switch, send event 31 | medium |
 | ecs.StageSystem.OnGameOver | game:0x06000fb7 | Retry flag / reason -> state 5/6 or dialog, then stop BGM and push defeat | high |
 | ecs.StageSystem.OnHumanDead | game:0x06000fb6 | Main character death -> OnGameOver(1) | high |
-| ecs.StageSystem.Init | game:0x06000f9b | Subscribes OnDamage to event 15 | medium |
+| ecs.StageSystem.Init | game:0x06000f9b | Human/Member/Enemy references, fresh attack buttons/collecting list, subscriptions30/9/15 | high |
 | ecs.StageSystem.Start | game:0x06000f9e | Complete stage-entry order through map/party/enemies/drops/UI/audio services | high |
 | ecs.StageSystem.ResetTimer | game:0x06000fa1 | wrap32(timeLimit * live FPS) | high |
 | ecs.StageSystem.GetZ | game:0x06000fa3 | Wrapping distance/rate projection with two map reads | high |
@@ -396,7 +396,7 @@ Evidence: local research/exports/stage-update/F1162eb8.asm and F11641a8.asm; sta
 
 ### Quest record
 
-- `StageSystem.Init` (0x1162298) subscribes `StageSystem.OnDamage` to event 15 (GOT 0x2731a18, AddEventHandler instantiation 2565). `OnDamage` (0x11666f8): null entity faults; otherwise `Entity.get_hasEnemy` -> `totalGaveDamage_` (+0x88) += D (wrap32, no clamp, overkill and DEBUG-skipped damage still count). `StageSystem.Start` zeroes it (site 0x116526c).
+- `StageSystem.Init` (0x1162298,840 bytes) stores nullable Human/Member/Enemy references in that order, creates three distinct AttackButton objects, publishes their array, replaces collectingDrops_ with a fresh list, then subscribes death30, touch9 and damage15. AttackButton..ctor (0x11683b4,36 bytes) writes state0/frame4 from the64-bit constant at ELF0x6271d8; ChangeState separately writes state/frame0. Init does not seed quest/state/frame/rewards or reset total damage. Lookup/subscription failures retain the committed prefix; repeated Init replaces arrays/lists and adds receivers. Port: stage_start.cpp and test_native_initializers.cpp. `OnDamage` (0x11666f8): null entity faults; otherwise Enemy presence adds D to totalGaveDamage_ (+0x88) with wrap32, without clamp. The loaded mission host reaches this receiver through its typed event15 adapter; Stage.Start zeroes the total at0x116526c.
 - `UpdateQuestRecord(w1, exp, money)` (0x1165728) on `QuestData+0xa8` (QuestRecord): always challengeCount += 1 and defeatedCount += EnemySystem+0x34; return if w1 != 0; else bestExp/bestMoney = max, clearCount += 1, rescuedCount += drop_.prisonersNum, bestTotalGaveDamage = max(totalGaveDamage_). Note ReturnTown(0) after a clear does not call it again (code 0), so a clear counts one challenge.
 - QuestRecord layout: bestExp +0x10, bestMoney +0x14, challengeCount +0x18, clearCount +0x1c, defeatedCount +0x20, rescuedCount +0x24, bestTotalGaveDamage +0x28.
 - `GetBestTotalGaveDamage` (0x116818c): signed max over all `Data.questData` records starting at 0; null elements reach the error helper.

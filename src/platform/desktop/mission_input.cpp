@@ -4,7 +4,7 @@
 
 namespace saga::desktop {
 using namespace core;
-MissionInput::MissionInput(MissionHumans& owner,MissionInputScenario scenario)
+MissionInput::MissionInput(MissionHumans& owner,MissionInputScenario scenario,bool defer)
     :owner_(owner),scenario_(std::move(scenario)),humans_{owner.system_,static_cast<HumanFrameHost&>(owner)}{
     const auto attribute=owner.stage_.attack_attribute;
     if(attribute<0||attribute>2||scenario_.last_active< -1||scenario_.last_active>2)throw std::invalid_argument("input requires native attack attributes0..2 and last-active -1..2");
@@ -15,9 +15,14 @@ MissionInput::MissionInput(MissionHumans& owner,MissionInputScenario scenario)
     owner.held_keys_=scenario_.held_keys;owner.stage_.last_active_button=scenario_.last_active;owner.stage_.move_front_pushed=scenario_.front_pushed;
     owner.stage_.attack_buttons=std::make_shared<std::vector<AttackButtonState*>>();
     for(auto& button:scenario_.buttons)owner.stage_.attack_buttons->push_back(&button);
-    initialize_input(state_,this,*this);
-    subscribe_input_touch([this](const InputTouch* e){stage_touch(owner_.stage_,e);}); // Event9: Input before Stage.
+    if(!defer){initialize();subscribe_input_touch([this](const InputTouch* e){stage_touch(owner_.stage_,e);});}
 } // SAGA_STUB(mission-control-surfaces): stable native IDs/lifetime; SDL supplies keys, no Surface widgets.
+void MissionInput::initialize(){initialize_input(state_,this,*this);}
+void MissionInput::apply_scenario(){
+    owner_.held_keys_=scenario_.held_keys;owner_.stage_.last_active_button=scenario_.last_active;owner_.stage_.move_front_pushed=scenario_.front_pushed;
+    auto& buttons=*owner_.stage_.attack_buttons;
+    for(std::size_t i=0;i<scenario_.buttons.size();++i)*buttons.at(i)=scenario_.buttons.at(i);
+}
 EntitySubset* MissionInput::input_subset(const EventIntegers& slots){return owner_.world_.subset(slots);}
 void MissionInput::subscribe_input_touch(Receiver f){auto next=receivers_?std::make_shared<std::vector<Receiver>>(*receivers_):std::make_shared<std::vector<Receiver>>();next->push_back(std::move(f));receivers_=std::move(next);}
 bool MissionInput::input_key_state(std::int32_t mask){return (owner_.held_keys_&static_cast<std::uint32_t>(mask))!=0;}
@@ -40,9 +45,9 @@ void MissionInput::report(std::ostream& out){
     out<<",\"input_steps\":"<<steps_<<",\"input_frame\":"<<state_.frame<<",\"last_down_frame\":"<<state_.last_down_frame
        <<",\"input_held_keys\":"<<owner_.held_keys_<<",\"input_touches\":"<<touches_<<",\"attack_attribute\":"<<owner_.stage_.attack_attribute
        <<",\"last_active_button\":"<<owner_.stage_.last_active_button<<",\"move_front_pushed\":"<<(owner_.stage_.move_front_pushed?"true":"false")<<",\"attack_buttons\":[";
-    bool first=true;for(const auto& b:scenario_.buttons){if(!first)out<<',';first=false;out<<"{\"state\":"<<b.state<<",\"frame\":"<<b.frame<<'}';}out<<']';
+    bool first=true;for(const auto* b:*owner_.stage_.attack_buttons){if(!first)out<<',';first=false;out<<"{\"state\":"<<b->state<<",\"frame\":"<<b->frame<<'}';}out<<']';
 }
-void MissionHumans::enable_input(MissionInputScenario scenario){if(input_)throw std::invalid_argument("input requires one fresh state");input_=std::make_unique<MissionInput>(*this,std::move(scenario));}
+void MissionHumans::enable_input(MissionInputScenario scenario){if(input_)throw std::invalid_argument("input requires one fresh state");input_=std::make_unique<MissionInput>(*this,std::move(scenario),deferred_init_);}
 void MissionHumans::advance_input(std::int32_t pass,bool enabled){if(input_)input_->advance(pass,enabled);}
 void MissionHumans::set_input_keys(std::uint32_t value){if(!input_)throw std::logic_error("input fresh is required");input_->set_keys(value);}
 void MissionHumans::select_input_attack(std::int32_t value){if(!input_)throw std::logic_error("input fresh is required");input_->select_attack(value);}

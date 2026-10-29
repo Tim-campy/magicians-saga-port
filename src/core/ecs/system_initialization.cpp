@@ -9,6 +9,10 @@ void InitList::erase(std::size_t index){
     entries_.erase(entries_.begin()+static_cast<std::ptrdiff_t>(index));++version_;
 }
 void InitList::clear(){entries_.clear();++version_;}
+void append_gameplay_initializers(InitList& list,const std::array<InitSystem*,32>& factory){
+    for(auto* system:factory)if(!system)throw std::invalid_argument("missing native system initializer");
+    for(auto* system:factory)list.append(system);
+}
 void initialize_systems(InitializationSchedule& schedule,InitializationWorld* world){
     auto* list=schedule.systems;
     if(!list)throw std::invalid_argument("missing initialization list");

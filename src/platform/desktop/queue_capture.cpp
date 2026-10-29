@@ -140,7 +140,7 @@ int main(int argc,char** argv)try{
                 profile.write_actor_parameters(*created[i],std::cout);
                 std::cout<<'}';}
             std::cout<<']';profile.write_combat_report(std::cout);
-            std::cout<<",\"profile\":\"selected mission systems; full schedule, quest bootstrap and complete-state hashes unbound\"}\n";return 0;
+            std::cout<<",\"profile\":\"selected mission systems; fresh-world init, quest bootstrap and complete-state hashes unbound\"}\n";return 0;
         }
         submit();auto pixels=renderer.read_pixels();
         Surface captured(SDL_CreateSurfaceFrom(width,height,SDL_PIXELFORMAT_RGBA32,pixels.rgba.data(),width*4),SDL_DestroySurface);require(captured!=nullptr,"SDL_CreateSurfaceFrom");

@@ -6,6 +6,31 @@
 #include <optional>
 
 namespace saga::core {
+struct InputTouch;
+struct PlayerWorldState;
+struct TownReturnEvent;
+class TownInitializationWorld {
+public:
+    virtual ~TownInitializationWorld()=default;
+    virtual void subscribe_town_return(std::function<void(const TownReturnEvent&)>)=0;
+    virtual PlayerWorldState* current_town_world()=0; // Global world, distinct from the subscription receiver.
+    virtual void initialize_fresh_town()=0; // Fresh-town construction remains an explicit required domain service.
+};
+void initialize_town_entry(TownInitializationWorld*,std::function<void(const TownReturnEvent&)>); // Town.Init 0x1169540; loaded branch complete.
+using MenuRowShapes=std::shared_ptr<std::vector<std::optional<std::size_t>>>;
+MenuRowShapes initial_menu_row_shapes(); // MenuSystem..cctor: seven int32[4] rows; cells are outside this projection.
+class AuxiliaryInitializationWorld {
+public:
+    virtual ~AuxiliaryInitializationWorld()=default;
+    using Button=std::function<void(const InputTouch*,ComponentSlots*)>;
+    virtual void subscribe_auxiliary_button(std::int32_t factory,Button)=0; // Event11; factory27 then28.
+    virtual void subscribe_menu_orientation(std::function<void()>)=0; // Event27.
+};
+void initialize_submenu(AuxiliaryInitializationWorld*,AuxiliaryInitializationWorld::Button); // 0x1168634.
+void initialize_menu(MenuRowShapes,AuxiliaryInitializationWorld*,AuxiliaryInitializationWorld::Button,std::function<void()>); // 0x115e6e8.
+void initialize_status_render() noexcept; // 0x1168554: return.
+void submenu_button_touch(const InputTouch*); // 0x11686ec: required event/control, otherwise inert.
+void menu_button_touch(bool visible,const InputTouch*,const std::function<void()>& draw_off); // 0x115eba0.
 class PassInitializationWorld {
 public:
     virtual ~PassInitializationWorld()=default;

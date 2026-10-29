@@ -1,7 +1,32 @@
 #include "pass_initialization.hpp"
+#include "input_frame.hpp"
+#include "member_selection.hpp"
 #include <stdexcept>
 
 namespace saga::core {
+void initialize_town_entry(TownInitializationWorld* world,std::function<void(const TownReturnEvent&)> receiver){
+    if(!world)throw std::invalid_argument("missing town initialization world");
+    world->subscribe_town_return(std::move(receiver));
+    auto* global=world->current_town_world();if(!global)throw std::invalid_argument("missing current town world");
+    if(global->loaded==0)world->initialize_fresh_town();
+}
+MenuRowShapes initial_menu_row_shapes(){return std::make_shared<std::vector<std::optional<std::size_t>>>(7,std::size_t{4});}
+void initialize_submenu(AuxiliaryInitializationWorld* world,AuxiliaryInitializationWorld::Button receiver){
+    if(!world)throw std::invalid_argument("missing submenu initialization world");world->subscribe_auxiliary_button(27,std::move(receiver));
+}
+void initialize_menu(MenuRowShapes rows,AuxiliaryInitializationWorld* world,AuxiliaryInitializationWorld::Button button,std::function<void()> orientation){
+    if(!rows)throw std::invalid_argument("missing menu rows");
+    for(const auto& row:*rows){if(!row)throw std::invalid_argument("missing menu row");if(*row<3)throw std::out_of_range("short menu row");}
+    if(!world)throw std::invalid_argument("missing menu initialization world");
+    world->subscribe_auxiliary_button(28,std::move(button));world->subscribe_menu_orientation(std::move(orientation));
+}
+void initialize_status_render() noexcept {}
+void submenu_button_touch(const InputTouch* event){if(!event||!event->component)throw std::invalid_argument("missing submenu touch");}
+void menu_button_touch(bool visible,const InputTouch* event,const std::function<void()>& off){
+    if(!visible)return;
+    if(!event||!event->component)throw std::invalid_argument("missing menu touch");
+    if(event->component->group==35&&event->type==5)off();
+}
 void initialize_rotation(EntitySubset*& destination,PassInitializationWorld* world){
     if(!world)throw std::invalid_argument("missing rotation initialization world");
     destination=world->subset({12,1,2,7});

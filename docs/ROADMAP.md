@@ -9,7 +9,7 @@ The plan in one page. Work happens in **vertical slices**: each ends in somethin
 | M0 | APK inventory, architecture, subsystem map | Done: [overview](subsystems/overview.md). |
 | M1 | Asset extraction and technical rendering | Partial: archives, OPT, SEB, Unity media verified; sprites of real entities render through GL; fonts and audio not ported. |
 | M2 | Boot, forms/menus and input | Static research; SelectForm passes ported in isolation (slice S2/S3). |
-| M3 | First playable gameplay loop | **Current = slice S1.** Scene host runs table-backed shots, terminal damage, enemy defeat, pending drops, enemy population, contact/area collisions, pickup and stage accumulation; clear/result grants, cleanup and decoded character writeback reach the scene host; native quest entry, interactive end flow and full stage schedule remain open. |
+| M3 | First playable gameplay loop | **Current = slice S1.** Scene host runs table-backed shots, terminal damage, enemy defeat, pending drops, enemy population, contact/area collisions, pickup and stage accumulation; clear/result grants, cleanup and decoded character writeback reach the scene host; native quest entry, interactive end flow and fresh-world bootstrap remain open. |
 | M4 | Save/load, progression, economy, content | Slice S3; save envelope not decoded. |
 | M5 | Windows/Linux release candidate | Windows builds and CTest; Linux builds in CI. |
 | M6 | 3DS feasibility benchmark | Not started; nothing is claimed. |
@@ -26,9 +26,6 @@ Host: `saga_mission` (headless selected scenes; window integration pending). Acc
 - [ ] A4. The stage ends (clear, game over, retreat) and prints the quest result (EXP, money, treasures, levels).
 - [ ] A5. `--replay <inputs> --frames N` prints a state hash; the same inputs give the same hash; one local golden run per quest is recorded in integration.md.
 - [ ] A6. Every service the host fakes is listed in the stub table of integration.md.
-
-Blockers:
-- [ ] (blocking) Bind complete system init dispatch to the live world in the host (A3).
 
 Tasks:
 - [ ] Extend `saga_mission` with real quest/map selection via `--data`/`--quest`, its SDL window and existing native input/replay adapters (A1, A5).

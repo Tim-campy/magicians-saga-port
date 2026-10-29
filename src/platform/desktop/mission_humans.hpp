@@ -11,7 +11,9 @@
 #include "mission_stage.hpp"
 #include "mission_input.hpp"
 #include "core/gameplay/pass_initialization.hpp"
+#include "core/gameplay/hero_bootstrap.hpp"
 #include <ostream>
+#include <stdexcept>
 
 namespace saga::desktop {
 struct MissionRuntimeConfig {std::int32_t fps;bool debug;std::int32_t seed;std::string backend;};
@@ -39,9 +41,12 @@ class MissionHumans final:private core::HumanFrameHost,private core::HumanInitia
     private core::EcsCombatPresentation,private core::DamagePresentationHost,private core::EnemyDefeatHost,
     private core::EnemyInitializationWorld,private core::EnemyFrameHost,
     private core::HumanDeathHost,private core::StageGameOverHost,private core::BossNotificationHost,
-    private core::StageFormStack,private core::VictoryFormStack {
+    private core::StageFormStack,private core::VictoryFormStack,private core::StageInitializationWorld,
+    private core::HeroBootstrapHost,private core::PartyHumanFactory {
 public:
-    MissionHumans(MissionEntities&,const GameplayCatalog&,MissionProgress&,core::StageGeometry&,MissionRuntimeConfig,MissionHumanScenario);
+    MissionHumans(MissionEntities&,const GameplayCatalog&,MissionProgress&,core::StageGeometry&,MissionRuntimeConfig,MissionHumanScenario,bool defer_init=false,core::EnemyGaugeService* gauge=nullptr);
+    void initialize_system(std::int32_t factory,core::InitializationWorld* argument);
+    void apply_initialized_scenario();
     MissionHumans(const MissionHumans&)=delete;MissionHumans& operator=(const MissionHumans&)=delete;
     void update(std::int32_t pass=0,bool enabled=true);
     void advance_projectiles(std::int32_t pass=0,bool enabled=true);
@@ -79,6 +84,21 @@ public:
     bool stage_input_enabled()const{return static_cast<bool>(stage_loop_);}
     void pulse_stage_keys(std::uint32_t);
 private:
+    core::StageHumanStart* initialization_humans()override{return &system_;}
+    core::MemberRoster* initialization_members()override{return &members_;}
+    core::StageEnemyStart* initialization_enemies()override;
+    void subscribe_stage_death(std::function<void(core::ComponentSlots*)> f)override{world_.events().subscribe(30,std::move(f));}
+    void subscribe_stage_touch(std::function<void(const core::InputTouch*)> f)override{if(!input_)throw std::logic_error("Stage Init requires Input owner");input_->observe_touch(std::move(f));}
+    void subscribe_stage_damage(std::function<void(core::ComponentSlots*,std::int32_t)> f)override{
+        auto previous=damage_receiver_;damage_receiver_=[previous=std::move(previous),f=std::move(f)](auto* e,auto amount){if(previous)previous(e,amount);f(e,amount);};
+    }
+    core::PartyCharacters character_table()override{return world_.character_table();}
+    core::PlayerWorldState* current_world()override{return &world_.player_world();}
+    core::PartyHumanFactory* human_factory_world()override{return this;}
+    core::PartyHumanFactory* world_factory(core::PlayerWorldState&)override{return this;}
+    core::Component* player_marker()override{return world_.shared_player_marker();}
+    core::PartyCharacter* character(core::HumanRecordLink& h)override{return world_.character_table()->at(static_cast<std::size_t>(h.character_id));}
+    core::ComponentSlots* create_human(const core::HumanCreation& args)override{return &world_.human(args);}
     friend class MissionResults;friend class MissionStage;
     bool table_quest_=false;
     friend class MissionInput;
@@ -107,7 +127,7 @@ private:
     core::MovementControl* movement_control(std::int32_t,std::int32_t)override;
     void send_touch_release(core::MovementControl&,std::int32_t,std::int32_t)override;
     core::EntitySubset* enemy_subset(const core::EventIntegers& slots)override{return world_.subset(slots);}
-    core::EnemyGaugeService* enemy_gauge_system()override{return nullptr;} // SAGA_STUB(mission-enemy-gauge): concrete GaugeSystem instance is unbound.
+    core::EnemyGaugeService* enemy_gauge_system()override{return gauge_service_;}
     core::StageStartState* enemy_stage_system()override{return &stage_;}
     core::MemberRoster* enemy_member_system()override{return &members_;}
     void subscribe_enemy_impact(core::EntityEvents::Single,std::optional<core::EventHashes>)override;
@@ -206,7 +226,7 @@ private:
     void impact(core::ComponentSlots& e,core::ComponentSlots* parent)override{core::create_impact_effect(&e,parent,records_,*this);}
     void miss(core::ComponentSlots&)override;
     void effects(core::ComponentSlots&,const core::DamageNumbers&)override;
-    void send_damage(core::ComponentSlots& e,std::int32_t amount)override{core::record_ecs_stage_damage(stage_.total_damage,e,amount);}
+    void send_damage(core::ComponentSlots& e,std::int32_t amount)override{if(damage_receiver_)damage_receiver_(&e,amount);else core::record_ecs_stage_damage(stage_.total_damage,e,amount);}
     void diagnostics(const core::DamageNumbers&)override;
     void damage_labels(core::ComponentSlots&,const core::DamageNumbers&)override;
     void positional_damage_effect(core::ProjectilePoint at)override{world_.effect(at,0,1,false);}
@@ -216,6 +236,9 @@ private:
     core::StageStartState stage_;core::AttackButtonState button_;core::MemberRoster members_;
     core::StageQuestForm quest_form_;
     core::EnemyCreationSystem enemies_;core::HumanFrameSystem system_;
+    bool deferred_init_=false;core::EnemyGaugeService* gauge_service_=nullptr;
+    std::unique_ptr<core::EnemyStageEntry> default_enemy_entry_;
+    std::function<void(core::ComponentSlots*,std::int32_t)> damage_receiver_;
     core::HumanEventServices services_{records_,*this,*this};
     core::EnemyEventServices enemy_services_{records_,world_.enemy_maximum_levels(),random_,*this,*this,*this};
     core::ProjectileSystemState projectiles_;core::EventInstruction attack_clips_=core::initial_attack_animation_ids();

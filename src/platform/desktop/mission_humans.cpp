@@ -12,7 +12,7 @@ EventIntegers levels(const EquipmentCombatTable& table,const std::map<std::int32
 }
 [[noreturn]]void unbound(const char* service){throw std::logic_error(std::string("mission service unbound: ")+service);}
 }
-MissionHumans::MissionHumans(MissionEntities& world,const GameplayCatalog& data,MissionProgress& saved,StageGeometry& geometry,MissionRuntimeConfig runtime,MissionHumanScenario scenario)
+MissionHumans::MissionHumans(MissionEntities& world,const GameplayCatalog& data,MissionProgress& saved,StageGeometry& geometry,MissionRuntimeConfig runtime,MissionHumanScenario scenario,bool defer,EnemyGaugeService* gauge)
     :catalog_(data),world_(world),saved_(saved),geometry_(geometry),runtime_(std::move(runtime)),random_(runtime_.seed),
      records_{data.characters,required(data.enemies.get()),data.equipment,data.hats,data.cloth},characters_(data.characters.size(),0),
      equipment_(levels(data.equipment,saved.equipment_levels)),hats_(levels(data.hats,saved.hat_levels)),cloth_(levels(data.cloth,saved.cloth_levels)){
@@ -23,16 +23,35 @@ MissionHumans::MissionHumans(MissionEntities& world,const GameplayCatalog& data,
     if(!table_quest_)stage_.quest->distance=scenario.distance;
     stage_.min_z_rate=scenario.min_z_rate;stage_.max_z_rate=scenario.max_z_rate;stage_.attack_attribute=scenario.attribute;
     button_.state=scenario.button;stage_.attack_buttons=std::make_shared<std::vector<AttackButtonState*>>(1,&button_);
-    enemies_.subset=world_.subset({24});stage_.members=&members_;stage_.humans=&system_;system_.transitions=static_cast<HumanFrameHost*>(this);
+    deferred_init_=defer;gauge_service_=gauge;
+    if(!defer)enemies_.subset=world_.subset({24});stage_.members=&members_;stage_.humans=&system_;system_.transitions=static_cast<HumanFrameHost*>(this);
     auto cursor=required(world_.subset({14})).cursor();while(const auto actor=cursor.next()){
         static_cast<void>(saved.characters.at(field<HumanRecordLink>(**actor,14).character_id)); // Require saved state for every live actor.
         add_member(members_,*actor);
     }
-    world_.events().subscribe(30,[this](ComponentSlots* e){stage_human_dead(required(e),records_,*this);});
-    initialize_humans(system_,this,services_);
-    // Native receiver order: Human, Enemy, Projectile (event23); Human, Enemy (event29).
-    initialize_enemies(enemies_,this,enemy_services_);
-    initialize_projectiles(projectiles_,this,*this);
+    if(!defer){
+        world_.events().subscribe(30,[this](ComponentSlots* e){stage_human_dead(required(e),records_,*this);});
+        initialize_humans(system_,this,services_);initialize_enemies(enemies_,this,enemy_services_);initialize_projectiles(projectiles_,this,*this);
+    }
+}
+StageEnemyStart* MissionHumans::initialization_enemies(){
+    if(stage_.enemies)return stage_.enemies;
+    if(!default_enemy_entry_)default_enemy_entry_=std::make_unique<EnemyStageEntry>(enemies_,static_cast<EnemyPopulationHost&>(*this));
+    return default_enemy_entry_.get();
+}
+void MissionHumans::initialize_system(std::int32_t id,InitializationWorld* argument){
+    switch(id){
+    case 0:required(input_.get()).initialize();break;
+    case 3:initialize_stage(stage_,this,{
+        [this](ComponentSlots* e){stage_human_dead(required(e),records_,*this);},
+        [this](const InputTouch* e){stage_touch(stage_,e);},
+        [this](ComponentSlots* e,std::int32_t amount){record_ecs_stage_damage(stage_.total_damage,required(e),amount);}});break;
+    case 4:initialize_humans(system_,this,services_);break;
+    case 5:initialize_enemies(enemies_,this,enemy_services_);break;
+    case 6:{MemberSystemInitializer initializer(members_,*this);initializer.init(argument);break;}
+    case 10:initialize_projectiles(projectiles_,this,*this);break;
+    default:throw std::invalid_argument("unsupported mission human initializer");
+    }
 }
 void MissionHumans::update(std::int32_t pass,bool enabled){if(gameplay_needs_update(4,enabled,pass)){
     // Refresh preallocated projections after native result gear upgrades; saved maps remain canonical.

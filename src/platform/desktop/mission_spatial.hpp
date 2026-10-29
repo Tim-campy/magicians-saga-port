@@ -13,7 +13,9 @@ class MissionSpatial final:private core::MissionMapHost,private core::MissionMap
     private core::CursorInitializationWorld,private core::CursorHost {
 public:
     MissionSpatial(MissionEntities&,core::MapComponent&,MissionView&,core::StageQuestForm&,
-                   std::shared_ptr<core::StageQuest>,core::EventInstruction chip_images);
+                   std::shared_ptr<core::StageQuest>,core::EventInstruction chip_images,bool defer_init=false);
+    void initialize_system(std::int32_t factory);
+    void load_selected_map();
     void advance_camera(std::int32_t pass=0,bool enabled=true);
     void advance_cells(std::int32_t pass=0,bool enabled=true);
     void advance_visibility(std::int32_t pass=0,bool enabled=true);
@@ -80,6 +82,7 @@ private:
     void cursor_cell_changed(core::CursorPointRef,core::CursorPointRef)override;
     core::CursorFocusEffect* create_cursor_focus_effect()override;
     MissionEntities& world_;core::MapComponent& map_;MissionView& view_;
+    std::shared_ptr<core::StageQuest> selected_quest_;
     core::HeroCameraFormation formation_;core::QuestCameraForm form_;
     core::QuestCameraSystem camera_;core::MissionMapSystem map_system_;
     core::CellSystemState cells_;core::CellIndexState index_;core::EntitySubset visible_;

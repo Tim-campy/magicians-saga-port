@@ -6,18 +6,25 @@
 namespace saga::desktop {
 using namespace core;
 MissionSpatial::MissionSpatial(MissionEntities& world,MapComponent& map,MissionView& view,StageQuestForm& state,
-    std::shared_ptr<StageQuest> quest,EventInstruction images)
+    std::shared_ptr<StageQuest> quest,EventInstruction images,bool defer)
     :world_(world),map_(map),view_(view),formation_(*this),form_{state,this,this},
      visible_([](auto* e){return e!=nullptr;},[&world](const auto& e){return world.id(e);}),cell_view_(*this,scratch_){
     if(!quest)throw std::invalid_argument("mission map requires a live quest");
     state.scale=view.scale;quest->chip_images=std::move(images);
-    initialize_mission_map(map_system_,*this);
-    initialize_quest_camera(camera_,this);
-    initialize_cells(cells_,this);initialize_cell_index(index_,this,*this);
-    // LoadMap writes both camera-save slots before reading them; fresh scratch is explicit scenario state.
-    load_mission_map(map_system_,std::move(quest),*this);
-    initialize_cursor(cursor_,this,*this);
+    selected_quest_=std::move(quest);
+    if(!defer){for(const auto id:{1,8,17,20})initialize_system(id);load_selected_map();initialize_system(24);}
 }
+void MissionSpatial::initialize_system(std::int32_t id){
+    switch(id){
+    case 1:initialize_mission_map(map_system_,*this);break;
+    case 8:initialize_quest_camera(camera_,this);break;
+    case 17:initialize_cells(cells_,this);break;
+    case 20:initialize_cell_index(index_,this,*this);break;
+    case 24:initialize_cursor(cursor_,this,*this);break;
+    default:throw std::invalid_argument("unsupported mission spatial initializer");
+    }
+}
+void MissionSpatial::load_selected_map(){load_mission_map(map_system_,selected_quest_,*this);}
 void MissionSpatial::advance_camera(std::int32_t pass,bool enabled){if(gameplay_needs_update(8,enabled,pass)){update_quest_camera(camera_,*this);++camera_steps_;}}
 void MissionSpatial::advance_cells(std::int32_t pass,bool enabled){if(gameplay_needs_update(17,enabled,pass)){update_cells(cells_,*this);++cell_steps_;}}
 void MissionSpatial::advance_visibility(std::int32_t pass,bool enabled){if(gameplay_needs_update(20,enabled,pass)){update_cell_visibility(index_,*this);++visibility_steps_;}}

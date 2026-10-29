@@ -9,6 +9,7 @@
 #include "core/gameplay/effect_frame.hpp"
 #include "core/gameplay/gauge_drawing.hpp"
 #include "core/gameplay/gauge_frame.hpp"
+#include "core/gameplay/enemy_initialization.hpp"
 #include "core/gameplay/info_frame.hpp"
 #include <ostream>
 
@@ -32,7 +33,8 @@ class MissionScene final:private core::RenderInitializationWorld,private core::R
     private core::BubbleInitializationWorld,private core::BubbleFrameHost,private core::DebugInitializationWorld,
     private core::GaugeInitializationWorld,private core::GaugeFrameHost {
 public:
-    MissionScene(MissionEntities&,MissionApplication&,core::EntitySubset& visible,MissionView&,core::MapComponent*);
+    MissionScene(MissionEntities&,MissionApplication&,core::EntitySubset& visible,MissionView&,core::MapComponent*,bool defer_init=false);
+    void initialize_system(std::int32_t factory);
     MissionScene(const MissionScene&)=delete;
     MissionScene& operator=(const MissionScene&)=delete;
     void advance_animations(core::SharedAnimationGates);
@@ -60,7 +62,9 @@ public:
     // Typed event21 boundary; no reward-orb or character-EXP producer is inferred.
     void send_parameter_experience(core::ComponentSlots*,std::int32_t key);
     void write_pass_report(std::ostream&);
-    void bind_spatial(MissionSpatial&);
+    void bind_spatial(MissionSpatial&,bool initialize_render=true);
+    core::EnemyGaugeService* gauge_service(){return &gauge_service_;}
+    void observe_button_event(core::AuxiliaryInitializationWorld::Button);
     core::QuestCameraHost& gauge_camera_host();
     void draw_enemy_gauges(const std::function<void(const core::ParameterGaugeRequest&)>&);
     std::uint64_t collision_events()const{return collision_events_;}
@@ -131,7 +135,8 @@ private:
     core::StageQuestForm form_state_;core::QuestCameraForm form_;
     core::RenderSystemState renderer_;core::AnimationSystemState animations_;core::SebStaticWork sprite_work_;
     core::EntitySubset *movers_=nullptr,*rotating_=nullptr,*garbage_entities_=nullptr;core::GarbagePass garbage_pass_;
-    core::EntitySubset* gauge_enemies_=nullptr;
+    core::EnemyGaugeService gauge_service_;
+    std::shared_ptr<const std::vector<core::AuxiliaryInitializationWorld::Button>> auxiliary_buttons_;
     core::ModificationSystemState modifications_;
     core::EmitterSystemState emitters_;
     core::CollisionSystemState collisions_;std::uint64_t collision_events_=0,area_collision_events_=0;

@@ -1,4 +1,5 @@
 #include "stage_start.hpp"
+#include <array>
 #include <stdexcept>
 
 namespace saga::core {
@@ -6,6 +7,20 @@ namespace {
 template<class T>T& required(T* p){if(!p)throw std::invalid_argument("missing stage startup state");return *p;}
 std::int32_t multiply(std::int32_t a,std::int32_t b){const auto v=static_cast<std::uint32_t>(a)*static_cast<std::uint32_t>(b);
     return static_cast<std::int32_t>(v<=0x7fffffffU?static_cast<std::int64_t>(v):static_cast<std::int64_t>(v)-0x100000000LL);}
+}
+AttackButtonState initial_attack_button(){return {0,4};}
+void initialize_stage(StageStartState& state,StageInitializationWorld* world,StageInitializationReceivers receivers){
+    auto& target=required(world);
+    state.humans=target.initialization_humans();state.members=target.initialization_members();state.enemies=target.initialization_enemies();
+    struct Buttons final:std::vector<AttackButtonState*> {
+        std::array<AttackButtonState,3> values;
+        Buttons(){for(auto& button:values){button=initial_attack_button();push_back(&button);}}
+    };
+    state.attack_buttons=std::make_shared<Buttons>();
+    state.collection.collecting=std::make_shared<std::vector<ComponentSlots*>>();
+    target.subscribe_stage_death(std::move(receivers.death));
+    target.subscribe_stage_touch(std::move(receivers.touch));
+    target.subscribe_stage_damage(std::move(receivers.damage));
 }
 void change_attack_button_state(AttackButtonState& button,std::int32_t state){button.state=state;button.frame=0;}
 void reset_stage_timer(StageStartState& state,StageTimerHost& host){
@@ -37,7 +52,7 @@ void start_stage(StageStartState& state,EventObject area,std::shared_ptr<StageQu
     state.last_active_button=0;
     const auto events=required(state.quest.get()).events;
     const auto first=required(events.get()).at(0);
-    state.event_states=std::make_shared<std::vector<std::uint8_t>>(required(first.get()).size(),0);
+    state.event_states=std::make_shared<std::vector<std::uint8_t>>(required(first.get()).size(),std::uint8_t{0});
     if(host.systems_paused())host.resume_systems();
     host.play_stage_bgm();host.play_stage_sound();
 }

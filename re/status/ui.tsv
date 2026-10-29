@@ -121,3 +121,8 @@ game:0x06000bf2	reimplemented	src/core/gameplay/gauge_frame.cpp	Native shared-ID
 game:0x06000bf3	reimplemented	src/core/gameplay/gauge_frame.cpp	Generic resource/clip/placement factory, ordered components and unused steps
 game:0x06000b65	reimplemented	src/core/gameplay/gauge_frame.cpp	Pooled native payload and offset partial writes before attachment
 game:0x06000d67	reimplemented	src/core/gameplay/gauge_frame.cpp	Eight distinct shared native default XYZ rows
+game:0x06000fe3	reimplemented	src/core/gameplay/pass_initialization.cpp	Native event11 registration with required argument world
+game:0x06000fe5	reimplemented	src/core/gameplay/pass_initialization.cpp	Native event/control validation and otherwise inert submenu receiver
+game:0x06000f58	reimplemented	src/core/gameplay/pass_initialization.cpp	Native menu row-shape validation before event11/27 subscriptions, retaining partial failures
+game:0x06000f5f	reimplemented	src/core/gameplay/pass_initialization.cpp	Native visible gate and group35/type5 hide service, with null/early-return contract
+game:0x06000fdb	reimplemented	src/core/gameplay/pass_initialization.cpp	Proven single-return status-render initializer

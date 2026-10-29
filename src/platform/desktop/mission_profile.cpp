@@ -29,6 +29,36 @@ SceneResource::SceneResource(const std::filesystem::path& path,ResourceProfile p
     :archive(read(path),std::move(profile)),manager(archive){
     if(decoder)images=std::make_unique<ArchiveImageSet>(manager,std::move(decoder));
 }
+void MissionProfile::subscribe_auxiliary_button(std::int32_t,AuxiliaryInitializationWorld::Button receiver){mission->observe_button_event(std::move(receiver));}
+void MissionProfile::initialize_factory(std::int32_t id,InitializationWorld* argument){
+    if(argument!=&initialization_world_)throw std::invalid_argument("foreign mission initialization world");
+    initialized_order_.push_back(id);
+    switch(id){
+    case 0:case 3:case 4:case 5:case 6:case 10:humans->initialize_system(id,argument);break;
+    case 1:case 8:case 17:case 20:case 24:spatial->initialize_system(id);break;
+    case 7:initialize_town_entry(this,[](const TownReturnEvent&){throw std::logic_error("town return requires S2 progression/event1133 services");});break;
+    case 27:initialize_submenu(this,[this](const InputTouch* event,ComponentSlots*){submenu_button_touch(event);++submenu_touches_;});break;
+    case 28:initialize_menu(menu_shapes_,this,[this](const InputTouch* event,ComponentSlots*){
+        menu_button_touch(menu_visible_,event,[]{throw std::logic_error("native menu layout/draw-off is unbound");});++menu_touches_;
+        },[]{throw std::logic_error("native menu orientation layout is unbound");});break;
+    case 29:initialize_status_render();break;
+    default:
+        mission->initialize_system(id);
+        if(id==25)spatial->observe_cursor_click([this](CursorPointRef point){mission->deliver_info_click(std::move(point));});
+        if(id==26)humans->observe_input_touch([this](const InputTouch* event){mission->deliver_button_touch(event);});
+    }
+}
+void MissionProfile::initialize_loaded_world(){
+    entity_world->player_world().loaded=*initialized_loaded_;
+    initialization_world_.state=&entity_world->player_world();std::array<InitSystem*,32> factory{};
+    for(std::size_t id=0;id<factory.size();++id){
+        initializer_owners_[id]=std::make_unique<CallbackInitializer>([this,id](InitializationWorld* world){initialize_factory(static_cast<std::int32_t>(id),world);});
+        factory[id]=initializer_owners_[id].get();
+    }
+    append_gameplay_initializers(initializers_,factory);initialize_systems(initialization_,&initialization_world_);
+    initialization_complete_=true;
+    spatial->load_selected_map();humans->apply_initialized_scenario(); // Explicit mid-mission map/input/population snapshot after native Init.
+}
 void MissionProfile::bind_schedule(){
     const auto bind=[&](std::int32_t id,bool enabled,std::function<void(std::int32_t)> body){
         const auto index=static_cast<std::size_t>(id);configured_[index]=enabled;
@@ -134,6 +164,11 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     for(std::string line;std::getline(input,line);){
         std::istringstream row(line);row.imbue(std::locale::classic());std::string operation;
         if(!(row>>operation)||operation.front()=='#')continue;
+        if(operation=="system_init"){
+            std::int32_t loaded=0;
+            if(initialized_loaded_||!(row>>loaded)||loaded<1||loaded>255)throw std::invalid_argument("system_init requires one explicit loaded-world byte1..255; fresh-game bootstrap is unbound");
+            initialized_loaded_=static_cast<std::uint8_t>(loaded);end(row);continue;
+        }
         if(operation=="quest"){
             std::int32_t id=0;
             if(!native||selected_quest||!(row>>id>>rescued_prisoners)||id<0)throw std::invalid_argument("quest requires one nonnegative ID and explicit saved rescued count");
@@ -359,6 +394,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         if(geometry){const auto initial=initial_mission_map_creation();*geometry={initial.step_x,initial.step_z,stage_quest_height(*q)};}
     }
     const bool enemy_requested=enemy_config||enemy_population||enemy_pool;
+    if(initialized_loaded_&&(!native||!human_scenario||!input_scenario||!map_images))throw std::invalid_argument("system_init requires native Human, Input and mission_map providers");
     if(!gauges.empty()){
         if(!geometry)throw std::invalid_argument("gauge scenario requires geometry");
         auto* resource=get_application_resource(global,23);bool found=false;
@@ -406,11 +442,11 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             else{const auto& fx=std::get<SelectedEffect>(request);entity=&entity_world->effect(fx.position,fx.clip,fx.image,fx.loop);}
             if(!entity)throw std::invalid_argument("selected entity record is unavailable");created.push_back(entity);
         }
-        mission=std::make_unique<MissionScene>(*entity_world,application,*entity_world->subset({0,2}),view,live_map);
+        mission=std::make_unique<MissionScene>(*entity_world,application,*entity_world->subset({0,2}),view,live_map,initialized_loaded_.has_value());
         for(const auto ordinal:players){auto& actor=*created.at(ordinal);if(!actor.contains(14))throw std::invalid_argument("selected player needs Human component");entity_world->mark_player(actor);}
         if(human_scenario){
             if(!runtime||!geometry||!simulate)throw std::invalid_argument("human_system requires runtime, geometry and simulate rows");
-            humans=std::make_unique<MissionHumans>(*entity_world,*catalog,progress,live_map?static_cast<StageGeometry&>(*live_map):*geometry,*runtime,*human_scenario);
+            humans=std::make_unique<MissionHumans>(*entity_world,*catalog,progress,live_map?static_cast<StageGeometry&>(*live_map):*geometry,*runtime,*human_scenario,initialized_loaded_.has_value(),mission->gauge_service());
             if(rewards)humans->enable_rewards(*rewards);
             if(enemy_requested)humans->enable_enemies(std::move(enemy));
             if(notifications)humans->enable_notifications(*notifications);
@@ -418,9 +454,10 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             if(result_requested)humans->enable_results(std::move(result_state));
             if(stage_loop)humans->enable_stage_loop(std::move(stage_scenario));
             if(input_scenario)humans->enable_input(*input_scenario);
-            if(input_scenario)humans->observe_input_touch([this](const InputTouch* event){mission->deliver_button_touch(event);});
-            if(map_images){spatial=std::make_unique<MissionSpatial>(*entity_world,*live_map,view,humans->quest_form(),humans->quest(),map_images);mission->bind_spatial(*spatial);
-                spatial->observe_cursor_click([this](CursorPointRef point){mission->deliver_info_click(std::move(point));});}
+            if(input_scenario&&!initialized_loaded_)humans->observe_input_touch([this](const InputTouch* event){mission->deliver_button_touch(event);});
+            if(map_images){spatial=std::make_unique<MissionSpatial>(*entity_world,*live_map,view,humans->quest_form(),humans->quest(),map_images,initialized_loaded_.has_value());mission->bind_spatial(*spatial,!initialized_loaded_);
+                if(!initialized_loaded_)spatial->observe_cursor_click([this](CursorPointRef point){mission->deliver_info_click(std::move(point));});}
+            if(initialized_loaded_)initialize_loaded_world();
             for(const auto& request:states)humans->set_state(*created.at(std::get<0>(request)),std::get<1>(request),std::get<2>(request));
         }else if(!states.empty())throw std::invalid_argument("actor_state requires human_system");
         for(auto& selected_button:buttons){
@@ -449,6 +486,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         commands=static_cast<std::size_t>(queue.counts->at(0))+static_cast<std::size_t>(queue.counts->at(1));
     }
     if(simulate&&!mission)throw std::invalid_argument("simulate requires a table-backed entity scene");
+    if(initialized_loaded_&&!initialization_complete_)throw std::invalid_argument("system_init requires a table-backed entity scene");
     if(rewards&&!humans)throw std::invalid_argument("rewards requires human_system");
     if(!buttons.empty()&&!mission)throw std::invalid_argument("button requires a table-backed entity scene");
     if((!info_popups.empty()||!info_slides.empty())&&!mission)throw std::invalid_argument("info bars require a table-backed entity scene");
@@ -486,6 +524,11 @@ void MissionProfile::write_actor_parameters(ComponentSlots& actor,std::ostream& 
     if(const auto* enemy=dynamic_cast<EnemyRecordLink*>(actor.get(24)))out<<",\"enemy_state\":"<<enemy->state<<",\"enemy_frame\":"<<enemy->frame<<",\"enemy_flags\":"<<enemy->flags;
 }
 void MissionProfile::write_combat_report(std::ostream& out){
+    out<<",\"init_schedule_complete\":"<<(initialization_complete_?"true":"false")<<",\"init_world_loaded_byte\":";
+    if(initialized_loaded_)out<<static_cast<unsigned>(entity_world->player_world().loaded);else out<<"null";
+    out<<",\"init_order\":[";for(std::size_t i=0;i<initialized_order_.size();++i){if(i)out<<',';out<<initialized_order_[i];}out<<']';
+    out<<",\"init_manager_paused\":"<<(initialization_.paused?"true":"false")<<",\"init_town_return_registered\":"<<(town_return_?"true":"false")
+       <<",\"submenu_button_events\":"<<submenu_touches_<<",\"menu_button_events\":"<<menu_touches_;
     out<<",\"enemy_gauges_enabled\":"<<(enemy_gauges?"true":"false")<<",\"enemy_gauge_requests\":[";
     if(enemy_gauges){bool first=true;mission->draw_enemy_gauges([&](const ParameterGaugeRequest& r){if(!first)out<<',';first=false;
         out<<"{\"entity\":"<<entity_world->id(*r.entity)<<",\"x\":"<<r.x<<",\"y\":"<<r.y<<",\"image\":"<<r.image<<",\"parameter\":"<<r.parameter<<",\"anchor\":"<<r.anchor<<",\"force\":"<<(r.force?"true":"false")<<'}';});}out<<']';

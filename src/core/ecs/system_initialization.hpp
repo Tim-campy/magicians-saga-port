@@ -2,6 +2,9 @@
 #include <cstdint>
 #include <cstddef>
 #include <vector>
+#include <array>
+#include <functional>
+#include <utility>
 
 namespace saga::core {
 // Borrowed world identity; concrete initialization services belong to the host.
@@ -28,4 +31,13 @@ struct InitializationSchedule {
 };
 // SystemManager.Init 0x113c614. No enabled test; pause cleared only on success.
 void initialize_systems(InitializationSchedule&,InitializationWorld*);
+// Desktop bindings still use the same versioned dispatcher; every native factory slot initializes.
+class CallbackInitializer final:public InitSystem {
+public:
+    explicit CallbackInitializer(std::function<void(InitializationWorld*)> body):body_(std::move(body)){}
+    void init(InitializationWorld* world)override{body_(world);}
+private:
+    std::function<void(InitializationWorld*)> body_;
+};
+void append_gameplay_initializers(InitList&,const std::array<InitSystem*,32>&);
 }

@@ -84,6 +84,7 @@ public:
     core::PlayerWorldState& player_world(){return player_world_;}
     core::EntityEvents& events(){return gameplay_events_;}
     void mark_player(core::ComponentSlots& e){e.add(30,&player_marker_);}
+    core::Component* shared_player_marker(){return &player_marker_;}
     void destroy(core::ComponentSlots&,bool remove_registration=true);
     core::QuestEntityLifetime& entity_lifetime(core::QuestMemberId)override;
     core::ComponentSlots& by_handle(core::QuestMemberId);

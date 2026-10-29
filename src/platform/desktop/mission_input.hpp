@@ -12,7 +12,9 @@ struct MissionInputScenario {
 };
 class MissionInput final:private core::InputFrameHost,private core::InputInitializationWorld {
 public:
-    MissionInput(MissionHumans&,MissionInputScenario);
+    MissionInput(MissionHumans&,MissionInputScenario,bool defer_init=false);
+    void initialize();
+    void apply_scenario();
     void advance(std::int32_t pass=0,bool enabled=true);
     void set_keys(std::uint32_t);
     void select_attack(std::int32_t);

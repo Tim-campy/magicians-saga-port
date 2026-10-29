@@ -13,6 +13,38 @@ from mission_scene_fixture import make_table_scene, make_shoot_scene, with_missi
 
 @unittest.skipUnless(EXE, 'saga_mission supplied by CTest')
 class MissionProfileTests(unittest.TestCase):
+    def test_loaded_world_dispatches_all_32_native_initializers_before_updates(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory);scene = root / 'scene.txt';replay = root / 'init.txt'
+            text = make_boss_scene(root)
+            replay.write_text('1 touch 5 99 123\n1 click 0 0\n', encoding='ascii')
+            scene.write_text(text+'system_init 1\n', encoding='utf-8')
+            result = self.run_host(scene, '--replay', str(replay), frames=100)
+            self.assertEqual(result.returncode, 0, result.stderr);d = json.loads(result.stdout)
+            self.assertTrue(d['init_schedule_complete']);self.assertTrue(d['update_schedule_complete'])
+            self.assertEqual(d['init_order'], list(range(32)));self.assertEqual(d['init_world_loaded_byte'], 1)
+            self.assertFalse(d['init_manager_paused']);self.assertTrue(d['init_town_return_registered'])
+            self.assertEqual(d['submenu_button_events'], 1);self.assertEqual(d['menu_button_events'], 1)
+            self.assertEqual(d['info_button_events'], 1);self.assertEqual(d['button_events'], 1)
+            self.assertEqual(d['positions'][0]['id'], 1)
+            self.assertEqual(self.run_host(scene, '--replay', str(replay), frames=100).stdout, result.stdout)
+            # Unknown loaded state is never inferred; any nonzero native byte takes the loaded branch.
+            scene.write_text(text+'system_init 128\n', encoding='utf-8')
+            other = self.run_host(scene, '--replay', str(replay), frames=100)
+            self.assertEqual(other.returncode, 0, other.stderr)
+            alternate = json.loads(other.stdout);self.assertEqual(alternate['init_world_loaded_byte'], 128)
+            self.assertEqual(alternate['positions'], d['positions'])
+            # The old selected-profile path stays explicit and does not claim complete Init coverage.
+            scene.write_text(text, encoding='utf-8');legacy = self.run_host(scene, '--replay', str(replay), frames=100)
+            self.assertEqual(legacy.returncode, 0, legacy.stderr);old = json.loads(legacy.stdout)
+            self.assertFalse(old['init_schedule_complete']);self.assertEqual(old['init_order'], [])
+            for key in ['positions','shots','rng_draws','total_damage','enemy_created','attack_buttons']:
+                self.assertEqual(d[key], old[key], key)
+            for row in ['system_init 0\n','system_init -1\n','system_init 256\n','system_init 1 extra\n','system_init 1\nsystem_init 1\n']:
+                scene.write_text(text+row, encoding='utf-8');self.assertNotEqual(self.run_host(scene).returncode, 0)
+            scene.write_text(make_table_scene(root)+'simulate 0\nsystem_init 1\n', encoding='utf-8')
+            self.assertIn('Human, Input and mission_map', self.run_host(scene).stderr)
+
     def test_gauge_factory_updates_native_images_and_expiry_in_complete_schedule(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory);scene = root / 'scene.txt'

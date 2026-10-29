@@ -60,25 +60,36 @@ struct EnemyGaugeHost final:EnemyGaugeDrawHost {
     void parameter_gauge(const ParameterGaugeRequest& r)override{draw(r);}
 };
 }
-MissionScene::MissionScene(MissionEntities& world,MissionApplication& app,EntitySubset& visible,MissionView& view,MapComponent* map)
+MissionScene::MissionScene(MissionEntities& world,MissionApplication& app,EntitySubset& visible,MissionView& view,MapComponent* map,bool defer)
     :world_(world),app_(app),visible_(visible),view_(view),map_(map),form_{form_state_,nullptr,this}{
-    initialize_render(renderer_,this);initialize_animation(animations_,&world_);
-    MovementWorld movement(world_);initialize_movement(movers_,&movement);initialize_collisions(collisions_,&movement);initialize_garbage(garbage_entities_,&movement);
-    initialize_battle(battle_,&movement);
-    initialize_bubbles(bubbles_,this);initialize_debug_visualization(debug_visualization_,this);
-    initialize_gauges(gauges_,this);
-    initialize_info(info_,this,*this);
-    initialize_buttons(buttons_,this,*this);
-    initialize_rotation(rotating_,&movement);
-    initialize_modifications(modifications_,&movement);
-    initialize_emitters(emitters_,&movement);
-    initialize_parameter_experience(experience_,this);initialize_parameters(this);
-    initialize_effects(effects_,this);
-    gauge_enemies_=world_.subset({24}); // Same canonical group as EnemySystem.Init.
+    if(!defer)for(const auto id:{21,19,11,12,31,2,16,30,22,25,26,13,18,15,9,14,23})initialize_system(id);
+}
+void MissionScene::initialize_system(std::int32_t id){
+    MovementWorld movement(world_);
+    switch(id){
+    case 2:initialize_battle(battle_,&movement);break;
+    case 9:initialize_parameter_experience(experience_,this);break;
+    case 11:initialize_movement(movers_,&movement);break;
+    case 12:initialize_collisions(collisions_,&movement);break;
+    case 13:initialize_rotation(rotating_,&movement);break;
+    case 14:initialize_parameters(this);break;
+    case 15:initialize_emitters(emitters_,&movement);break;
+    case 16:initialize_bubbles(bubbles_,this);break;
+    case 18:initialize_modifications(modifications_,&movement);break;
+    case 19:initialize_animation(animations_,&world_);break;
+    case 21:initialize_render(renderer_,this);break;
+    case 22:initialize_gauges(gauges_,this);break;
+    case 23:initialize_effects(effects_,this);break;
+    case 25:initialize_info(info_,this,*this);break;
+    case 26:initialize_buttons(buttons_,this,*this);break;
+    case 30:initialize_debug_visualization(debug_visualization_,this);break;
+    case 31:initialize_garbage(garbage_entities_,&movement);break;
+    default:throw std::invalid_argument("unsupported mission scene initializer");
+    }
 }
 QuestCameraHost& MissionScene::gauge_camera_host(){return spatial_?spatial_->camera_host():*this;}
 void MissionScene::draw_enemy_gauges(const std::function<void(const ParameterGaugeRequest&)>& draw){
-    EnemyGaugeHost host(world_,gauge_camera_host(),draw);core::draw_enemy_gauges(required(gauge_enemies_),host);
+    EnemyGaugeHost host(world_,gauge_camera_host(),draw);core::draw_enemy_gauges(required(world_.subset({24})),host);
 }
 void MissionScene::subscribe_dropoff(EntityEvents::Single receiver,std::optional<EventHashes> hashes){world_.events().subscribe(16,std::move(receiver),hashes);}
 void MissionScene::subscribe_parameter_experience(ParameterExperienceInitializationWorld::Receiver receiver,std::optional<EventHashes> hashes){
@@ -98,7 +109,12 @@ void MissionScene::advance_buttons(std::int32_t pass,bool enabled){if(gameplay_n
 void MissionScene::deliver_button_touch(const InputTouch* touch){required(button_touch_receiver_?&button_touch_receiver_:nullptr)(touch);}
 void MissionScene::send_button_event(const InputTouch* touch,ComponentSlots* target){
     info_button_(touch,target);++info_button_events_; // Original Info receiver deliberately ignores the target.
+    const auto receivers=auxiliary_buttons_;if(receivers)for(const auto& f:*receivers)f(touch,target);
     last_button_target_=target;last_button_event_type_=required(touch).type;++button_events_;
+}
+void MissionScene::observe_button_event(AuxiliaryInitializationWorld::Button receiver){
+    auto next=auxiliary_buttons_?std::make_shared<std::vector<AuxiliaryInitializationWorld::Button>>(*auxiliary_buttons_):std::make_shared<std::vector<AuxiliaryInitializationWorld::Button>>();
+    next->push_back(std::move(receiver));auxiliary_buttons_=std::move(next);
 }
 void MissionScene::advance_parameter_experience(std::int32_t pass,bool enabled){if(gameplay_needs_update(9,enabled,pass)){update_parameter_experience(experience_);++experience_steps_;}}
 void MissionScene::advance_parameters(std::int32_t pass,bool enabled){if(gameplay_needs_update(14,enabled,pass)){update_parameters();++parameter_steps_;}}
@@ -174,7 +190,7 @@ void MissionScene::send_collision(std::int32_t event,ComponentSlots& a,Component
     world_.events().send(event,&a,&b);++collision_events_;if(area_contact)++area_collision_events_;
 }
 std::unique_ptr<GarbageCursor> MissionScene::open_garbage_cursor(){return std::make_unique<ExpiringCursor>(world_,required(garbage_entities_));}
-void MissionScene::bind_spatial(MissionSpatial& value){spatial_=&value;map_=&value.map();initialize_render(renderer_,this);}
+void MissionScene::bind_spatial(MissionSpatial& value,bool initialize){spatial_=&value;map_=&value.map();if(initialize)initialize_render(renderer_,this);}
 RenderQueue& MissionScene::render(){faults_.clear();clear_render_queue(queue_);update_render(renderer_,spatial_?spatial_->camera_host():*this,*this);return queue_;}
 std::unique_ptr<RenderCursor> MissionScene::visible_render_cursor(){return std::make_unique<Cursor>(spatial_?spatial_->visible():visible_);}
 AnimationResource* MissionScene::render_resource(RenderQueue&,std::int32_t id){auto* r=get_application_resource(app_,id);return r?r->animations:nullptr;}

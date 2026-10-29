@@ -43,7 +43,7 @@ game:0x06000fb1	reimplemented	src/core/gameplay/quest_return.cpp	Desktop host bi
 game:0x06000fda	reimplemented	src/core/gameplay/quest_return.cpp	Deferred live area/stage snapshot, form switch then event 31 tested
 game:0x06000fb7	reimplemented	src/core/gameplay/stage_update.cpp	Native retry/state5/6 policy and ordered form/BGM suffix reachable from mission host through narrow StageGameOverHost; explicit initial state and answer.
 game:0x06000fb6	reimplemented	src/core/gameplay/human_impact.cpp	Main flag2 invokes game-over; mission event30 dispatch runs Stage before Enemy retarget; sub-character death does not require game-over inputs.
-game:0x06000f9b	traced	docs/subsystems/ui.md	Init stores system references, creates three distinct attack buttons and subscribes30/9/15; control-array contract established; complete Init binding remains separate.
+game:0x06000f9b	reimplemented	src/core/gameplay/stage_start.cpp	Native ordered system references, three distinct state0/frame4 buttons, fresh collecting list and subscriptions30/9/15; failure/identity tests.
 game:0x06000f9e	reimplemented	src/core/gameplay/stage_start.cpp	Complete stage-entry ordering and partial failures; real party/drop/31-pass credit composed; map/enemy/pause/audio services explicit.
 game:0x06000fbb	reimplemented	src/core/gameplay/combat_host.cpp	Enemy presence adds offered damage with wrap; null receiver faults; overkill and DEBUG integration tests
 game:0x06000fb2	reimplemented	src/core/gameplay/quest_rewards.cpp	Counters and signed bests ported with ordered live host reads and partial-failure tests
@@ -57,7 +57,7 @@ game:0x060010ee	reimplemented	src/core/gameplay/stage_rewards.cpp	add_item_stock
 game:0x060010aa	reimplemented	src/core/gameplay/stage_rewards.cpp	add_item_stock; tests/test_stage_rewards.cpp
 game:0x06001177	reimplemented	src/core/gameplay/stage_rewards.cpp	add_item_stock; tests/test_stage_rewards.cpp
 game:0x06000f34	reimplemented	src/core/gameplay/quest_return.cpp	Desktop live member aliases write decoded saved level/EXP after cleanup; native sub-member destruction/list clears; synthetic level-up, repeated lookup and failure tests.
-game:0x06000feb	traced	docs/subsystems/rewards.md	subscribes OnReturnFromQuest to event 31; rest of Init not read
+game:0x06000feb	traced	docs/subsystems/ecs.md	Event31 registration precedes global loaded-byte test; loaded mission Init branch is wired, fresh-town building construction remains unbound.
 game:0x06000fec	documented	docs/subsystems/rewards.md	ExecEvent(1133) on code 1, high score update, return flag
 game:0x0600020d	documented	docs/subsystems/rewards.md	SecureLong element 8 of AppData+0x190->+0x28
 game:0x0600020e	documented	docs/subsystems/rewards.md	overwrites the same element
@@ -234,3 +234,4 @@ game:0x06000f49	reimplemented	src/core/gameplay/stage_recovery.cpp	Two fresh her
 game:0x06000f4a	reimplemented	src/core/gameplay/stage_recovery.cpp	Two fresh hero lookups, Position.z minus current Human formation_z plus wrapping trunc(index/4)*36; negative-grid and camera integration tests.
 game:0x06000a8a	reimplemented	src/core/gameplay/quest_camera.cpp	Wrapping int32 x-z inside actual camera projection with +20 and binary32 round trip to QuestForm cursor; composed formation/offset tests.
 game:0x06000a8b	reimplemented	src/core/gameplay/quest_camera.cpp	Wrapping int32 sum then signed truncation by2 inside actual camera projection; cursor offset/save/viewport integration tests.
+game:0x06000fd4	reimplemented	src/core/gameplay/stage_start.cpp	Explicit AttackButton constructor state0/frame4, confirmed from ELF0x6271d8 and tested through Stage.Init.
