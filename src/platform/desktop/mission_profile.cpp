@@ -32,6 +32,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     std::optional<MissionRewardScenario> rewards;
     std::optional<MissionNotificationScenario> notifications;
     bool collection=false,drop_catalog=false;
+    EventInstruction map_images;
     MissionResultScenario result_state{};bool wallet=false,record=false,recruits=false;std::array<bool,3> stocks{};
     MissionStageScenario stage_scenario{};bool stage_loop=false,stage_events=false;
     MissionEnemyScenario enemy{};bool enemy_config=false,enemy_population=false,enemy_pool=false;
@@ -86,6 +87,11 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             value.retried=retried!=0;value.quest_completed=completed!=0;value.held_keys=static_cast<std::uint32_t>(keys);notifications=value;
         }else if(operation=="collisions"){
             if(!native||collisions)throw std::invalid_argument("collisions requires native mode and one row with no fields");collisions=true;
+        }else if(operation=="mission_map"){
+            std::string mode;EventIntegers values(4,0);
+            if(!native||map_images||!(row>>mode)||mode!="fresh")throw std::invalid_argument("mission_map requires fresh and four explicit chip IDs");
+            for(auto& value:values)if(!(row>>value))throw std::invalid_argument("mission_map requires start/middle/end/background chip IDs");
+            map_images=std::make_shared<EventIntegers>(std::move(values));
         }else if(operation=="human_system"){
             MissionHumanScenario value;if(!native||human_scenario||!(row>>value.distance>>value.min_z_rate>>value.max_z_rate>>value.attribute>>value.button))throw std::invalid_argument("human_system requires distance min/max Z rates attribute button state");human_scenario=value;
         }else if(operation=="gear_levels"){
@@ -180,6 +186,12 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     if(result_requested&&!(wallet&&record&&recruits&&stocks[0]&&stocks[1]&&stocks[2]&&stage_loop&&collection))throw std::invalid_argument("results require wallet/record/all inventory kinds/recruits, stage_loop and collection fresh");
     if((stage_loop||stage_events||!stage_scenario.pulses.empty())&&!(stage_loop&&stage_events&&collection))throw std::invalid_argument("stage_loop requires explicit stage_events and collection fresh");
     if(enemy_requested&&!(enemy_config&&enemy_population&&enemy_pool&&human_scenario))throw std::invalid_argument("enemy system requires enemy_system/enemy_population/enemy_pool and human_system");
+    if(map_images){
+        if(!human_scenario||!geometry||players.size()!=1||!get_application_resource(application,18))throw std::invalid_argument("mission_map requires human_system, geometry, one player and AppData18 chips");
+        const auto initial=initial_mission_map_creation();const auto distance=human_scenario->distance;
+        if(distance<0||distance>1022)throw std::invalid_argument("mission_map diagnostic distance limit0..1022");
+        if(geometry->step_x!=initial.step_x||geometry->step_z!=initial.step_z||geometry->height!=distance+2)throw std::invalid_argument("mission_map geometry must match InitWorld steps and quest height");
+    }
     if(!selected.empty()){
         if(!tables||!has_view||!has_slots||!has_animation||commands)throw std::invalid_argument("entity capture needs tables/view/slots/animate and no manual draw rows");
         catalog=std::make_unique<GameplayCatalog>(load_gameplay_catalog(*tables,false,parse_event_decimal,rewards.has_value()||collection||drop_catalog,result_requested));
@@ -190,6 +202,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         }
         entity_world=std::make_unique<MissionEntities>(*catalog,progress,slots,geometry?&*geometry:nullptr,[&](std::int32_t id){auto* r=get_application_resource(application,id);return r?r->animations:nullptr;},
             [&](std::string_view name){auto it=resource_names.find(std::string(name));if(it==resource_names.end())throw std::invalid_argument("unbound enemy resource name: "+std::string(name));return it->second;});
+        MapComponent* live_map=map_images?&entity_world->create_initial_map():nullptr;
         for(const auto& request:selected){ComponentSlots* entity=nullptr;
             if(const auto* h=std::get_if<HumanCreation>(&request))entity=&entity_world->human(*h);
             else if(const auto* e=std::get_if<EnemyCreation>(&request))entity=entity_world->enemy(*e);
@@ -200,20 +213,22 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             else{const auto& fx=std::get<SelectedEffect>(request);entity=&entity_world->effect(fx.position,fx.clip,fx.image,fx.loop);}
             if(!entity)throw std::invalid_argument("selected entity record is unavailable");created.push_back(entity);
         }
-        mission=std::make_unique<MissionScene>(*entity_world,application,*entity_world->subset({0,2}),view,nullptr);
+        mission=std::make_unique<MissionScene>(*entity_world,application,*entity_world->subset({0,2}),view,live_map);
         for(const auto ordinal:players){auto& actor=*created.at(ordinal);if(!actor.contains(14))throw std::invalid_argument("selected player needs Human component");entity_world->mark_player(actor);}
         if(human_scenario){
             if(!runtime||!geometry||!simulate)throw std::invalid_argument("human_system requires runtime, geometry and simulate rows");
-            humans=std::make_unique<MissionHumans>(*entity_world,*catalog,progress,*geometry,*runtime,*human_scenario);
+            humans=std::make_unique<MissionHumans>(*entity_world,*catalog,progress,live_map?static_cast<StageGeometry&>(*live_map):*geometry,*runtime,*human_scenario);
             if(rewards)humans->enable_rewards(*rewards);
             if(enemy_requested)humans->enable_enemies(std::move(enemy));
             if(notifications)humans->enable_notifications(*notifications);
             if(collection)humans->enable_collection();
             if(result_requested)humans->enable_results(std::move(result_state));
             if(stage_loop)humans->enable_stage_loop(std::move(stage_scenario));
+            if(map_images){spatial=std::make_unique<MissionSpatial>(*entity_world,*live_map,view,humans->quest_form(),humans->quest(),map_images);mission->bind_spatial(*spatial);}
             for(const auto& request:states)humans->set_state(*created.at(std::get<0>(request)),std::get<1>(request),std::get<2>(request));
         }else if(!states.empty())throw std::invalid_argument("actor_state requires human_system");
         for(std::int32_t i=0;i<frames;++i)mission->advance_animations({automatic!=0,application_update!=0});
+        if(spatial)spatial->advance_visibility();
         if(simulate&&*simulate>0){for(std::int32_t i=0;i<*simulate;++i)if(!step())break;}else{queue=mission->render();if(!mission->faults().empty())throw std::invalid_argument("entity render fault: "+mission->faults().front().message);}
         commands=static_cast<std::size_t>(queue.counts->at(0))+static_cast<std::size_t>(queue.counts->at(1));
     }
@@ -227,18 +242,23 @@ bool MissionProfile::step(){
     if(humans&&!humans->advance_stage())return false;
     const bool held=humans&&humans->transition_pending();
     if(!held){
-        if(humans){humans->update();humans->advance_enemies();humans->advance_projectiles();}
+        if(humans){humans->update();humans->advance_enemies();}
+        if(spatial)spatial->advance_camera();
+        if(humans)humans->advance_projectiles();
         if(simulate){mission->advance_movement(0);++movement_steps;}
         if(collisions)mission->advance_collisions(0);
         if(simulate)mission->advance_emitters(0);
+        if(spatial)spatial->advance_cells();
         if(simulate)mission->advance_modifications(0);
         mission->advance_animations({automatic!=0,application_update!=0});
+        if(spatial)spatial->advance_visibility();
     }queue=mission->render();
     if(!mission->faults().empty())throw std::invalid_argument("entity render fault: "+mission->faults().front().message);
     if(simulate&&!held)mission->advance_garbage(0);
     ++logic_steps;return true;
 }
 void MissionProfile::write_actor_parameters(ComponentSlots& actor,std::ostream& out){
+    if(const auto* cell=dynamic_cast<CellComponent*>(actor.get(5)))out<<",\"cell_xi\":"<<cell->xi<<",\"cell_yi\":"<<cell->yi;
     if(actor.contains(23)){
         out<<",\"hp\":"<<resolve_combat_parameter(actor,0)->value;
         if(actor.contains(14)){const auto& h=*dynamic_cast<HumanRecordLink*>(actor.get(14));out<<",\"mp\":"<<resolve_combat_parameter(actor,1)->value<<",\"human_experience\":"<<h.experience<<",\"human_level\":"<<h.level;}
@@ -247,6 +267,7 @@ void MissionProfile::write_actor_parameters(ComponentSlots& actor,std::ostream& 
 }
 void MissionProfile::write_combat_report(std::ostream& out){
     out<<",\"movement_steps\":"<<movement_steps;
+    out<<",\"spatial_enabled\":"<<(spatial?"true":"false");if(spatial)spatial->report(out);
     out<<",\"shots\":"<<(humans?humans->shots():0)<<",\"total_damage\":"<<(humans?humans->total_damage():0)<<",\"projectiles\":[";
     bool first=true;
     if(entity_world){auto cursor=entity_world->subset({27,0,1})->cursor();while(const auto e=cursor.next()){

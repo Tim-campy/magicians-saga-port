@@ -7,6 +7,7 @@
 #include "core/gameplay/pass_initialization.hpp"
 
 namespace saga::desktop {
+class MissionSpatial;
 using MissionApplication=core::ApplicationResourceFields<core::RenderDrawResource>;
 struct MissionView {
     std::int32_t width,height,scale,camera_x,camera_y,margin_x,margin_y,extra_depth_rate;
@@ -28,6 +29,7 @@ public:
     void advance_modifications(std::int32_t pass,bool enabled=true);
     void advance_emitters(std::int32_t pass,bool enabled=true);
     void advance_collisions(std::int32_t pass,bool enabled=true);
+    void bind_spatial(MissionSpatial&);
     std::uint64_t collision_events()const{return collision_events_;}
     std::uint64_t area_collision_events()const{return area_collision_events_;}
     core::RenderQueue& render();
@@ -72,5 +74,6 @@ private:
     core::EmitterSystemState emitters_;
     core::CollisionSystemState collisions_;std::uint64_t collision_events_=0,area_collision_events_=0;
     core::RenderQueue queue_=core::make_render_queue();std::vector<MissionRenderFault> faults_;
+    MissionSpatial* spatial_=nullptr;
 };
 } // namespace saga::desktop

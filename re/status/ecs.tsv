@@ -122,7 +122,7 @@ game:0x06000d12	traced	docs/subsystems/animation.md
 game:0x06000d35	traced	docs/subsystems/animation.md	
 game:0x06000dad	traced	docs/subsystems/animation.md	
 game:0x06000bef	reimplemented	src/core/gameplay/human_factory.cpp	Complete component sequence/base parameters/Input-or-AI; actual OnStart/CreateSubChara integration, callbacks and failures tested.
-game:0x06000beb	reimplemented	src/core/gameplay/mission_map.cpp	Full MapChip factory: wrapped Position, explicit Cell, Seb/layer, Image resource -1, Depth, visitor payload and optional playback; actual mission-load tests.
+game:0x06000beb	reimplemented	src/core/gameplay/mission_map.cpp	Desktop map mode creates actual registered Cell/Seb/Image/Depth/MapChip payloads through shared IDs; LoadMap image/depth ordering and return cleanup reach host.
 game:0x06000bec	traced	docs/subsystems/animation.md	
 game:0x06000bf0	reimplemented	src/core/gameplay/enemy_factory.cpp	Full enemy factory: double table lookup, captured/live visual fields, shared component pools and 13 parameters; real boss/normal creation tests.
 game:0x06000bf5	reimplemented	src/core/gameplay/effect_factory.cpp	Effect factory order and core payloads composed with ID registration groups; resource and presentation helpers explicit.
@@ -176,8 +176,8 @@ game:0x06000d6e	traced	docs/subsystems/save.md	Persisted actor character/level/E
 game:0x06000d6f	traced	docs/subsystems/save.md	Persisted actor character/level/EXP/formation scalar read order identified; script and visual-array wire codecs remain open.
 game:0x06000bfa	reimplemented	src/core/gameplay/entity_visual.cpp	Registered ZObject: Position/Speed/actual Cell/Depth extra 200/Seb, without Image/playback; actual boss fence and cleanup tested.
 game:0x06000b83	reimplemented	src/core/gameplay/projectile_launch.cpp	Complete pooled ModifyAnimation payload before slot 15; existing projectile wrapper delegates; full-field and boss/retry integration tests.
-game:0x06000f26	reimplemented	src/core/gameplay/mission_map.cpp	Capture global-world map result into stored MapSystem field, including null; initialization and actual stage-entry tests.
-game:0x06000f27	reimplemented	src/core/gameplay/mission_map.cpp	Full map dimensions/grid/cursor, ordered images/tiles/depth and live map assignment; actual Start->map->party/enemy->frame scenarios, callbacks and failures tested.
+game:0x06000f26	reimplemented	src/core/gameplay/mission_map.cpp	Desktop map mode stores the same live MapComponent used by stage/camera/cells; native null/failure and initialization tests retained.
+game:0x06000f27	reimplemented	src/core/gameplay/mission_map.cpp	Desktop mission_map fresh reaches actual dimensions/grid/cursor/tiles/depth with explicit chip IDs; native group9 return cleanup bound; next-mission Stage.Start remains open.
 game:0x06000f28	reimplemented	src/core/gameplay/mission_map.cpp	Footprint-1 range gate then original-map/jagged row/index assignment, including null tile; fallback-versus-original guard and malformed-grid tests.
 game:0x06000f29	reimplemented	src/core/gameplay/mission_map.cpp	Null-map global fallback before negative-coordinate guard, signed wrapped endpoint checks without footprint positivity; bounds/zero/negative/overflow tests.
 game:0x060011e3	reimplemented	src/core/gameplay/mission_map.cpp	Constant width 3, independent of quest fields; getter and real map construction tested.
@@ -185,7 +185,7 @@ game:0x060011e5	reimplemented	src/core/gameplay/mission_map.cpp	Required chipImg
 game:0x060011e6	reimplemented	src/core/gameplay/mission_map.cpp	Required chipImgs[1]; intermediate center selection in full-loader tests.
 game:0x060011e7	reimplemented	src/core/gameplay/mission_map.cpp	Required chipImgs[2]; first-row selection with live image mutation tested.
 game:0x060011e8	reimplemented	src/core/gameplay/mission_map.cpp	Required chipImgs[3]; intermediate-edge selection and short-array partial failure tested.
-game:0x06000bea	reimplemented	src/core/gameplay/mission_map.cpp	Register entity before optional jagged allocation and shared-map insertion; provided-grid identity, negative-dimension failure and InitWorld-argument scenarios tested.
+game:0x06000bea	reimplemented	src/core/gameplay/mission_map.cpp	Desktop MissionEntities binds actual InitWorld CreateMap arguments to shared registered singleton; canonical geometry is used by stage/camera/cells; grid/failure tests retained.
 game:0x06000b7f	reimplemented	src/core/gameplay/mission_map.cpp	Write captured eight scalars/grid into ComponentFactory singleton then slot 11; retain areas and aliases across map entities; tested.
 game:0x06000b7c	reimplemented	src/core/gameplay/mission_map.cpp	Acquire map chip, write data/staff IDs and fresh int32[5] filled -1 before slot 9; complete factory and pool-failure tests.
 game:0x06000e5d	reimplemented	src/core/gameplay/emitter_frame.cpp	Supplied-world And31 lookup, nullable subset store and fresh persistent queue, no loop-counter reset; repeat/failure and concrete integration tested.
@@ -203,10 +203,10 @@ game:0x06000e92	reimplemented	src/core/gameplay/parameter_experience.cpp	Ctor-cr
 game:0x06000e93	reimplemented	src/core/gameplay/parameter_experience.cpp	Fresh required slot23 throwing indexer, max(wrap(EXP-maxEXP),0), AddLevel1 only; cap/negative/overflow/missing-data tests.
 game:0x06000e94	reimplemented	src/core/gameplay/parameter_experience.cpp	Append Entity including nulls/duplicates to required keyed queue without granting/buffering EXP; registered callback and bounds/failure tests.
 game:0x06000d95	reimplemented	src/core/gameplay/ecs_combat.cpp	Required ParameterComponent/ParamSet then existing throwing dictionary indexer; missing-key/null-value/map/component contracts and Exp composition tested.
-game:0x06000e04	reimplemented	src/core/gameplay/cell_system.cpp	Supplied-world And5/0/1 then nullable map store and fresh scratch list; order, replacement and partial-failure tests.
-game:0x06000e06	reimplemented	src/core/gameplay/cell_system.cpp	Centered FCVTZS/int32-wrapping cell conversion, immediate old-key event14 and final current-list clear; 120-pass shot/debris/index cleanup, reentrancy/failure tests.
-game:0x06000df1	reimplemented	src/core/gameplay/cell_system.cpp	Supplied map/new dictionary, And5 added/removed observers, population then current-global-world event14 registration; repeat/partial-failure/live component tests.
-game:0x06000df3	reimplemented	src/core/gameplay/cell_system.cpp	Ordered viewport/origin capture, diagonal cell sweep with live bucket iteration, Invisible exclusion and current visible-set/count services; pass0 gate, dedup/mutation/failure tests.
+game:0x06000e04	reimplemented	src/core/gameplay/cell_system.cpp	Desktop live And5/0/1 and canonical MapComponent feed native Cell.Init; order/replacement/failure tests retained.
+game:0x06000e06	reimplemented	src/core/gameplay/cell_system.cpp	Desktop Cell17 performs native centered conversion and synchronous old-key event14; factory/retained index callbacks update after motion/emission; migration and cleanup tests.
+game:0x06000df1	reimplemented	src/core/gameplay/cell_system.cpp	Desktop canonical map/index initialization appends Cell group observers, populates and subscribes typed event14; prior observer and failure lifetimes tested.
+game:0x06000df3	reimplemented	src/core/gameplay/cell_system.cpp	Desktop Culling20 uses actual QuestCameraCellView and ordered world-visible set before Render21; native sweep/Invisible filtering, real terrain and selected actor visibility tested.
 game:0x06000df4	reimplemented	src/core/gameplay/cell_system.cpp	Ignore non5 slots before payload/world reads; checked Cell cast, fresh global map key and duplicate/null-preserving vector append; live subset tests.
 game:0x06000df5	reimplemented	src/core/gameplay/cell_system.cpp	Slot5 payload coordinates after component removal, fresh map key, first-pointer removal and retained empty/null buckets; live removal and duplicate tests.
 game:0x06000df6	reimplemented	src/core/gameplay/cell_system.cpp	Old bucket removal before entity/component/global-map validation; append in new current bucket with retained partial effects; tests and actual movement events.
@@ -217,8 +217,8 @@ game:0x06000dfa	reimplemented	src/core/gameplay/cell_system.cpp	Fresh global coo
 game:0x06000dfb	reimplemented	src/core/gameplay/cell_system.cpp	Required dictionary, null for absent keys or stored null list, preserve shared list identity; index and visibility tests.
 game:0x06000dfc	reimplemented	src/core/gameplay/cell_system.cpp	Single tail branch to actual ChangeCellEntity; typed event14 callback tested with moving entities, duplicates and destruction.
 game:0x06000b77	reimplemented	src/core/gameplay/cell_system.cpp	Concrete entity presence of Invisible slot21; actual visibility sweep excludes tagged entities before visible-set Add, tested.
-game:0x06000de2	reimplemented	src/core/gameplay/quest_camera.cpp	Supplied-world fresh registered camera, required angle45, flags reset/pinch120/new empty history without range reset or prior entity destruction; tests.
-game:0x06000de4	reimplemented	src/core/gameplay/quest_camera.cpp	Nullable Camera getter then fresh MemberSystem indexed formation, native conversion/wrap/isometric offsets and current QuestForm cursor; 120 pass0 combat integration.
+game:0x06000de2	reimplemented	src/core/gameplay/quest_camera.cpp	Desktop host creates native registered camera with angle45, flags/pinch/history reset and shared ID ownership; core factory/Init failure tests retained.
+game:0x06000de4	reimplemented	src/core/gameplay/quest_camera.cpp	Desktop Camera8 observes live indexed hero formation before Projectile/Move; actual cursor/save17/18/form viewport feeds cell culling and rendering; deterministic host tests.
 game:0x06000de5	reimplemented	src/core/gameplay/quest_camera.cpp	Native validation/flags/touch-count gates, scaled delta float round trip and five-pair oldest-array reuse; malformed partial-write and no invented pan/zoom semantics tested.
 game:0x06000de6	reimplemented	src/core/gameplay/quest_camera.cpp	Viewport-dependent min then clamp200, same-value return, component scale store before Position/form validation and real QuestForm position/save recenter; separate scales tested.
 game:0x06000de7	reimplemented	src/core/gameplay/quest_camera.cpp	Capture scratch before live width/minimum callback, write old entry0 then current entry1 and return current array; replacement identity tested.
@@ -228,7 +228,7 @@ game:0x06000dea	reimplemented	src/core/gameplay/quest_camera.cpp	Fresh required 
 game:0x06000deb	reimplemented	src/core/gameplay/quest_camera.cpp	Fresh required QuestForm then native binary32 conversion and distinct coordinate/save/static-render path; changed-scale and explicit-position tests.
 game:0x06000dec	reimplemented	src/core/gameplay/quest_camera.cpp	Current required QuestForm forwarding to actual scaled width; concrete cell-view adapter and visibility integration tests.
 game:0x06000ded	reimplemented	src/core/gameplay/quest_camera.cpp	Current required QuestForm forwarding to actual scaled height; concrete cell-view adapter and visibility integration tests.
-game:0x06000be9	reimplemented	src/core/gameplay/quest_camera.cpp	Supplied entity-manager registration type0 before zero Position and fresh Camera0/100; factory order/failure and live schedule tests.
+game:0x06000be9	reimplemented	src/core/gameplay/quest_camera.cpp	Desktop Map/Camera/actors use one native ID owner; factory registration, zero Position and fresh Camera0/100 feed native Camera.Init; native core failure tests retained.
 game:0x06000b2f	reimplemented	src/core/gameplay/quest_camera.cpp	Allocate fresh CameraComponent rather than pooled object, write angle/scale then slot3; constructor/init/factory failure tests.
 game:0x06000b2e	reimplemented	src/core/gameplay/quest_camera.cpp	Nullable typed slot3 getter with incompatible-type fault; Camera Init requires result while Update discards it; missing component update tested.
 game:0x06000f85	reimplemented	src/core/gameplay/render_frame.cpp	Supplied-world nullable map store before fresh 32-cell scratch; no queue clear; allocation/reference and failure contracts tested.

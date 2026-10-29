@@ -20,7 +20,7 @@ private:
     core::DropPlacementWorld* drop_world()override;
     core::DropCollectionHost& collection_host()override;
     core::BossNotificationHost& movement_host()override;
-    core::StageQuestForm* update_quest_form()override{return &form_;}
+    core::StageQuestForm* update_quest_form()override;
     bool key_pulse(std::int32_t)override;
     void pause_systems(bool)override;
     bool execute_stage_event(std::int32_t)override;
@@ -37,7 +37,7 @@ private:
     core::PlayerWorldState* update_world()override;
     std::int32_t* equipment_level(core::EquipmentSlot,std::int32_t)override;
     core::QuestReturnHost& return_host()override;
-    MissionHumans& owner_;MissionStageScenario scenario_;core::StageQuestForm form_;
+    MissionHumans& owner_;MissionStageScenario scenario_;
     std::uint64_t steps_=0;std::uint32_t pulse_=0;
 };
 }

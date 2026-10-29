@@ -9,6 +9,7 @@
 #include "core/ecs/entity_events.hpp"
 #include "core/gameplay/member_selection.hpp"
 #include "core/gameplay/emitter_factory.hpp"
+#include "core/gameplay/quest_camera.hpp"
 #include <deque>
 
 namespace saga::desktop {
@@ -24,7 +25,8 @@ struct MissionProgress {
 class MissionEntities final:public core::HumanFactoryHost,public core::EnemyFactoryHost,
     public core::BulletFactoryHost,public core::EffectFactoryHost,public core::ComponentObserver,
     public core::AnimationInitializationHost,public core::QuestEntityHost,private core::EntityDeletionHost,
-    public core::ProjectileLaunchHost,public core::DropFactoryHost,public core::EmitterFactoryHost,public core::ParticleFactoryHost {
+    public core::ProjectileLaunchHost,public core::DropFactoryHost,public core::EmitterFactoryHost,public core::ParticleFactoryHost,
+    public core::MapFactoryHost,public core::QuestCameraFactoryHost {
 public:
     using Resources=std::function<core::AnimationResource*(std::int32_t)>;
     using ResourceIds=std::function<std::int32_t(std::string_view)>;
@@ -36,6 +38,13 @@ public:
     core::ComponentSlots& bullet(const core::BulletCreation&);
     core::ComponentSlots& effect(core::ProjectilePoint,std::int32_t clip,std::int32_t image,bool loop);
     core::ComponentSlots& raw_entity(std::int32_t type);
+    core::MapComponent& create_initial_map();
+    core::MapFactoryWorld& map_factory_world(){return map_world_;}
+    core::ComponentSlots* create_camera();
+    core::ContactPosition& acquire_camera_position()override{return acquire_position();}
+    core::QuestCameraComponent& allocate_camera_component()override;
+    core::MapChipComponent& acquire_map_chip()override;
+    core::MapComponent* shared_map_component()override{return &map_component_;}
     core::DropEffectWorld& effect_world(){return effect_world_;}
     core::EnemyFactoryWorld& enemy_factory_world(){return enemy_world_;}
     bool reward_catalog_ready()const{return catalog_.treasures.has_value();}
@@ -129,6 +138,9 @@ private:
     core::PlayerWorldState player_world_{nullptr,&groups_,0};core::Component player_marker_;
     core::EntityEvents gameplay_events_;
     core::EntityIdState ids_;core::BulletFactoryWorld bullet_world_;core::DropEffectWorld effect_world_;core::EnemyFactoryWorld enemy_world_;
+    core::MapFactoryWorld map_world_{ids_,static_cast<core::MapFactoryHost&>(*this)};
+    core::MapComponent map_component_;std::deque<core::MapChipComponent> map_chips_;
+    std::deque<core::QuestCameraComponent> cameras_;
     core::Component sync_marker_;std::deque<core::DropComponent> drops_;
     std::vector<std::optional<core::PartyCharacter>> party_rows_;core::PartyCharacters party_;
     std::vector<std::optional<core::HumanHat>> hat_rows_;core::HumanHats hats_;

@@ -2,6 +2,7 @@
 #include "bitmap_mesh_frame.hpp"
 #include "mission_scene.hpp"
 #include "mission_humans.hpp"
+#include "mission_spatial.hpp"
 #include <filesystem>
 #include <tuple>
 #include <ostream>
@@ -39,5 +40,6 @@ public:
     std::unique_ptr<MissionEntities> entity_world;std::unique_ptr<MissionScene> mission;
     std::optional<MissionRuntimeConfig> runtime;
     std::unique_ptr<MissionHumans> humans;
+    std::unique_ptr<MissionSpatial> spatial;
 };
 } // namespace saga::desktop

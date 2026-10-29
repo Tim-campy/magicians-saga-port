@@ -1,4 +1,5 @@
 #include "mission_scene.hpp"
+#include "mission_spatial.hpp"
 #include "core/gameplay/pass_initialization.hpp"
 #include "core/gameplay/subset_cursors.hpp"
 #include "core/ecs/update_scheduler.hpp"
@@ -59,8 +60,9 @@ void MissionScene::send_collision(std::int32_t event,ComponentSlots& a,Component
     world_.events().send(event,&a,&b);++collision_events_;if(area_contact)++area_collision_events_;
 }
 std::unique_ptr<GarbageCursor> MissionScene::open_garbage_cursor(){return std::make_unique<ExpiringCursor>(world_,required(garbage_entities_));}
-RenderQueue& MissionScene::render(){faults_.clear();clear_render_queue(queue_);update_render(renderer_,*this,*this);return queue_;}
-std::unique_ptr<RenderCursor> MissionScene::visible_render_cursor(){return std::make_unique<Cursor>(visible_);}
+void MissionScene::bind_spatial(MissionSpatial& value){spatial_=&value;map_=&value.map();initialize_render(renderer_,this);}
+RenderQueue& MissionScene::render(){faults_.clear();clear_render_queue(queue_);update_render(renderer_,spatial_?spatial_->camera_host():*this,*this);return queue_;}
+std::unique_ptr<RenderCursor> MissionScene::visible_render_cursor(){return std::make_unique<Cursor>(spatial_?spatial_->visible():visible_);}
 AnimationResource* MissionScene::render_resource(RenderQueue&,std::int32_t id){auto* r=get_application_resource(app_,id);return r?r->animations:nullptr;}
 EventInstruction MissionScene::render_sprite(SharedAnimationClip& clip,std::int32_t frame,std::int32_t layer){return seb_sprite(required(clip.sprites),sprite_work_,frame,layer);}
 std::int32_t MissionScene::render_layer_count(SharedAnimationClip& clip){return static_cast<std::int32_t>(required(required(clip.sprites).groups.get()).size());}

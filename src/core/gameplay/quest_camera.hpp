@@ -60,10 +60,10 @@ public:
 };
 class HeroCameraFormation final:public CameraFormation {
 public:
-    explicit HeroCameraFormation(StageRecoveryHost& host):host_(host){}
+    explicit HeroCameraFormation(MemberFormationHost& host):host_(host){}
     float x(std::int32_t i)override{return indexed_member_formation_x(i,host_);}
     float z(std::int32_t i)override{return indexed_member_formation_z(i,host_);}
-private:StageRecoveryHost& host_;
+private:MemberFormationHost& host_;
 };
 class QuestCameraHost:public QuestFormCameraHost {
 public:

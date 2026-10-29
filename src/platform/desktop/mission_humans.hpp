@@ -60,6 +60,8 @@ public:
     bool advance_stage(std::int32_t pass=0,bool enabled=true);
     bool transition_pending()const;
     void write_result_report(std::ostream&);
+    std::shared_ptr<core::StageQuest> quest(){return stage_.quest;}
+    core::StageQuestForm& quest_form(){return quest_form_;}
 private:
     friend class MissionResults;friend class MissionStage;
     struct CollectionHost final:core::DropCollectionHost {
@@ -194,6 +196,7 @@ private:
     core::CombatRecordTables records_;core::EventIntegers characters_,equipment_,hats_,cloth_;
     core::CombatSavedLevels levels_{characters_,equipment_,hats_,cloth_};
     core::StageStartState stage_;core::AttackButtonState button_;core::MemberRoster members_;
+    core::StageQuestForm quest_form_;
     core::EnemyCreationSystem enemies_;core::HumanFrameSystem system_;
     core::HumanEventServices services_{records_,*this,*this};
     core::EnemyEventServices enemy_services_{records_,world_.enemy_maximum_levels(),random_,*this,*this,*this};

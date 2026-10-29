@@ -69,3 +69,17 @@ def make_shoot_scene(root, rewards=False, area=False, lethal_contact=False, trea
               'gear_levels equipment 1\ngear_levels hat 1\ngear_levels cloth 1\n'
               'resource 19 "bullet.bin" "English.lproj" 0\nglobal_alias 19 19\n'
               'resource 20 "effect.bin" "English.lproj" 0\nglobal_alias 20 20\n')
+
+
+def with_mission_map(root, text):
+    """Use the native InitWorld geometry and explicit selected quest chip IDs."""
+    (root / 'map.bin').write_bytes(jar([
+        ('img.inf', '\n'.join(f'{i}\ta.png,bin' for i in range(4)).encode()),
+        ('seb.inf', b'0\ta.seb'),
+        ('a.seb', seb([(0, 0, 0, 0, 8, 8, 0, 0, 0, 0), (3, 0, 0, 0, 8, 8, 0, 0, 0, 0)])),
+        ('a.png', png(8, 8, [32, 64, 32, 255] * 64))]))
+    return (text.replace('geometry 24 24 6', 'geometry 312 312 12')
+            .replace('view 32 16 100 -4 -4 0 0 100', 'view 128 96 100 -4 -4 0 0 100')
+            .replace('projection 0.0625 0 0 0 0 0.125', 'projection 0.015625 0 0 0 0 0.0208333333')
+            + 'resource 18 "map.bin" "English.lproj" 0\nglobal_alias 18 18\n'
+              'mission_map fresh 0 1 2 3\nruntime 25 0 system 42\n')

@@ -8,7 +8,7 @@ import unittest
 
 EXE = Path(sys.argv.pop(1)).resolve() if len(sys.argv) > 1 else None
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from mission_scene_fixture import make_table_scene, make_shoot_scene
+from mission_scene_fixture import make_table_scene, make_shoot_scene, with_mission_map
 
 
 @unittest.skipUnless(EXE, 'saga_mission supplied by CTest')
@@ -313,6 +313,40 @@ class MissionProfileTests(unittest.TestCase):
             self.assertEqual(report['collecting_drops'], 0)
             self.assertEqual(report['pending_drops'], [])
 
+    def test_map_camera_cells_and_live_visibility(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory);scene = root / 'scene.txt'
+            text = with_mission_map(root, make_shoot_scene(root))
+            text = text.replace('human_system 10 0 100 3 1', 'human_system 10 0 100 3 0').replace('0 0 0 0 0 100\n', '0 0 0 0 0 1000\n')
+            text += 'actor_state 0 1 -1\n'
+            scene.write_text(text, encoding='utf-8')
+            before = self.run_host(scene, frames=11)
+            self.assertEqual(before.returncode, 0, before.stderr)
+            result = self.run_host(scene, frames=12)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            report = json.loads(result.stdout);old = json.loads(before.stdout)['positions'][0]
+            self.assertTrue(report['spatial_enabled'])
+            self.assertEqual(report['mission_map'], {'width': 3, 'height': 12, 'size_width': 624, 'size_height': 312,
+                                                    'step_x': 312, 'step_z': 312, 'chips_live': 36})
+            self.assertEqual(report['camera_steps'], 12)
+            self.assertEqual(report['cell_steps'], 12)
+            self.assertEqual(report['visibility_steps'], 13)  # Initial LoadMap viewport plus twelve passes.
+            self.assertGreaterEqual(report['cell_change_events'], 2)
+            self.assertEqual(report['camera']['saved_x'], int(old['x']) - int(old['z']) + 20)
+            self.assertEqual(report['camera']['saved_y'], int((int(old['x']) + int(old['z']) + 144) / 2) - 60)
+            self.assertEqual(report['camera']['x'], report['camera']['saved_x'] - 64)
+            self.assertEqual(report['camera']['y'], report['camera']['saved_y'] - 48)
+            self.assertEqual(report['positions'][0]['cell_yi'], int((int(report['positions'][0]['z']) + 156) / 312))
+            visible = {e['id'] for e in report['visible_entities']}
+            self.assertIn(report['positions'][0]['id'], visible)
+            self.assertNotIn(report['positions'][1]['id'], visible)
+            self.assertLess(report['visible_count'], 38)
+            self.assertEqual(self.run_host(scene, frames=12).stdout, result.stdout)
+            for broken in [text + 'mission_map fresh 0 1 2 3\n', text.replace('fresh 0 1 2 3', 'saved 0 1 2 3'),
+                           text.replace('geometry 312 312 12', 'geometry 24 24 12'), text.replace('player 0\n', '')]:
+                scene.write_text(broken, encoding='utf-8')
+                self.assertNotEqual(self.run_host(scene).returncode, 0)
+
     def test_native_stage_clear_grants_and_deferred_return_writeback(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory);scene = root / 'scene.txt'
@@ -374,6 +408,20 @@ class MissionProfileTests(unittest.TestCase):
             self.assertIn('stage event catalog dispatch', self.run_host(scene).stderr)
             scene.write_text(text.replace('result_inventory hat 0 0 0\n', ''), encoding='utf-8')
             self.assertNotEqual(self.run_host(scene).returncode, 0)
+            # Keep the encounter above the native312-unit grid's minimum stage Z.
+            map_text = (text.replace('human 0 2 1 0 0 9 0 0 100', 'human 0 2 1 0 0 9 0 0 1000')
+                        .replace('enemy 0 4 7 1 0 0 70', 'enemy 0 4 7 1 0 0 970')
+                        .replace('drop 3 0 25 0 0 150', 'drop 3 0 25 0 0 1050')
+                        .replace('drop 1 7 25 100 0 100', 'drop 1 7 25 100 0 1000')
+                        .replace('drop 2 999 25 -100 0 100', 'drop 2 999 25 -100 0 1000'))
+            scene.write_text(with_mission_map(root, map_text), encoding='utf-8')
+            mapped = self.run_host(scene, frames=240)
+            self.assertEqual(mapped.returncode, 0, mapped.stderr)
+            cleaned = json.loads(mapped.stdout)
+            self.assertEqual(cleaned['mission_map']['chips_live'], 0)
+            self.assertEqual(cleaned['camera_steps'], 200)
+            self.assertEqual(cleaned['saved_characters'], report['saved_characters'])
+            self.assertTrue(cleaned['transition_pending'])
             # Native nonclear return records the attempt, but never runs result grants/completion.
             scene.write_text(text.replace('stage_notifications 1 0', 'stage_notifications 5 0'), encoding='utf-8')
             lost = self.run_host(scene, frames=240)

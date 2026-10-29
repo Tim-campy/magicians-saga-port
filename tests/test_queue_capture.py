@@ -11,7 +11,7 @@ EXE = Path(sys.argv.pop(1)).resolve() if len(sys.argv) > 1 else None
 VIEWER = Path(sys.argv.pop(1)).resolve() if len(sys.argv) > 1 else None
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from test_sprite_preview import png, seb, jar, bmp_pixels
-from mission_scene_fixture import make_table_scene
+from mission_scene_fixture import make_table_scene, make_shoot_scene, with_mission_map
 
 
 def command(resource, clip, x, y, depth=0, texture=-1, image_resource=-1):
@@ -21,6 +21,37 @@ def command(resource, clip, x, y, depth=0, texture=-1, image_resource=-1):
 
 @unittest.skipUnless(EXE and VIEWER, 'viewer executables supplied by CTest')
 class QueuePixels(unittest.TestCase):
+    def test_map_camera_and_cell_visibility_reach_gpu(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory);scene = root / 'scene.txt'
+            text = with_mission_map(root, make_shoot_scene(root))
+            text = text.replace('human_system 10 0 100 3 1', 'human_system 10 0 100 3 0')
+            text = text.replace('human 0 2 1 0 0 0 0 0 100', 'human 0 2 1 0 0 0 0 0 1000')
+            text += 'actor_state 0 1 -1\ntick_ms 1\n'
+            capture = text.replace('simulate 0', 'simulate 12')
+            scene.write_text(capture, encoding='utf-8')
+            inputs = subprocess.run([str(EXE), str(scene), '128', '96', '--material-inputs'], capture_output=True, text=True, timeout=30)
+            self.assertEqual(inputs.returncode, 0, inputs.stderr)
+            bound = {tuple(map(int, row.split()[1:4])) for row in text.splitlines() if row.startswith('material ')}
+            for i, key in enumerate(json.loads(inputs.stdout)['material_inputs']):
+                triple = (key['texture'], key['shader'], key['queue'])
+                if triple not in bound:
+                    text += f'material {triple[0]} {triple[1]} {triple[2]} {200 + i} 0\n'
+            scene.write_text(text, encoding='utf-8')
+            loop = subprocess.run([str(EXE), str(scene), '128', '96', '--run-frames', '12'], capture_output=True, text=True, timeout=30)
+            self.assertEqual(loop.returncode, 0, loop.stderr)
+            report = json.loads(loop.stdout)
+            self.assertEqual(report['mission_map']['chips_live'], 36)
+            self.assertEqual(report['camera_steps'], 12)
+            self.assertEqual(report['cell_steps'], 12)
+            self.assertIn(report['positions'][0]['id'], {e['id'] for e in report['visible_entities']})
+            self.assertNotIn(report['positions'][1]['id'], {e['id'] for e in report['visible_entities']})
+            scene.write_text(text.replace('simulate 0', 'simulate 12'), encoding='utf-8')
+            output = root / 'map.bmp'
+            result = subprocess.run([str(EXE), str(scene), '128', '96', str(output), '--native-depth'], capture_output=True, text=True, timeout=30)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertTrue(any(p[0] == 255 and p[1] == 0 and p[3] for p in bmp_pixels(output.read_bytes())[2]))
+
     def make_resources(self, root):
         a, b, c = root / 'first.bin', root / 'second.bin', root / 'global.bin'
         a.write_bytes(jar([('img.inf', b'2\ta.png,bin'), ('seb.inf', b'3\ta.seb'),

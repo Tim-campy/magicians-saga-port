@@ -37,6 +37,13 @@ const TreasureRecord& MissionEntities::treasure(std::int32_t id)const{
 ComponentSlots& MissionEntities::emitter(EmitterCreation args){return create_emitter(args,*this);}
 DropComponent& MissionEntities::acquire_drop(){return acquire(drops_);}
 ComponentSlots& MissionEntities::raw_entity(std::int32_t type){return create_entity(ids_,type,false,static_cast<BulletFactoryHost&>(*this));}
+MapComponent& MissionEntities::create_initial_map(){
+    core::create_map(initial_mission_map_creation(),ids_,static_cast<MapFactoryHost&>(*this));
+    map_=&map_component_;return map_component_;
+}
+ComponentSlots* MissionEntities::create_camera(){return &create_quest_camera(ids_,*this);}
+QuestCameraComponent& MissionEntities::allocate_camera_component(){return acquire(cameras_);}
+MapChipComponent& MissionEntities::acquire_map_chip(){return acquire(map_chips_);}
 ProjectileLink& MissionEntities::acquire_projectile(){return acquire(projectiles_);}
 ProjectileModification& MissionEntities::acquire_modification(){return acquire(modifications_);}
 void MissionEntities::return_component(std::int32_t slot,Component* value){retired_.emplace_back(slot,value);}

@@ -1,5 +1,6 @@
 #include "mission_data_fixture.hpp"
 #include "platform/desktop/mission_scene.hpp"
+#include "platform/desktop/mission_spatial.hpp"
 #include "core/animation/seb_sprite.hpp"
 #include <cstdlib>
 #include <iostream>
@@ -54,5 +55,36 @@ int main()try{
     scene.render();check(scene.faults().empty()&&queue.counts->at(0)==2); // Explicit numeric-label presentation stub; no invented Depth.
     for(int i=0;i<30;++i)scene.advance_garbage(0);
     check(world.destroyed(number)&&!world.registry().contains(world.id(number)));
+    {
+        MissionEntities mapped(data,saved,35,nullptr,[&](std::int32_t){return &animations.resource();},[](std::string_view){return 3;});
+        auto& map=mapped.create_initial_map();check(map.width==3&&map.height==8&&map.step_z==312);
+        auto& actor=mapped.human({0,2,5,0,0,13,0,0,1000});mapped.mark_player(actor);
+        auto* group=mapped.subset({5});
+        struct Counter final:ComponentObserver {
+            int adds=0,removes=0;
+            void added(ComponentSlots&,std::int32_t,Component*)override{++adds;}
+            void removed(ComponentSlots&,std::int32_t,Component*)override{++removes;}
+        } prior;
+        group->notifications=&prior;
+        auto quest=std::make_shared<StageQuest>();quest->distance=4;StageQuestForm state;
+        MissionView dimensions{128,96,100,0,0,0,0,100};
+        const auto images=std::make_shared<EventIntegers>(EventIntegers{0,1,2,3});
+        {
+            MissionSpatial spatial(mapped,map,dimensions,state,quest,images);
+            check(map.height==6&&mapped.subset({9})->size()==18&&prior.adds>0);
+            auto contains=[&]{auto at=spatial.visible().cursor();while(const auto e=at.next())if(*e==&actor)return true;return false;};
+            const auto x=spatial.camera_host().current_camera_form()->x;
+            spatial.advance_camera(1);check(spatial.camera_host().current_camera_form()->x==x); // Native pass-zero gate.
+            spatial.advance_camera();spatial.advance_cells(1);spatial.advance_visibility();
+            check(dynamic_cast<CellComponent*>(actor.get(5))->yi==3&&contains());
+            actor.add(21,&mapped.acquire_input());spatial.advance_visibility();check(!contains());
+            actor.remove(21);spatial.advance_visibility();check(contains());
+            mapped.destroy(actor);spatial.advance_visibility();check(!contains()&&prior.removes>0);
+        }
+        check(group->notifications==&prior);
+        bool caught=false;
+        try{MissionSpatial invalid(mapped,map,dimensions,state,quest,nullptr);}catch(const std::invalid_argument&){caught=true;}
+        check(caught&&group->notifications==&prior); // Constructor failure must not leave a dangling subscriber.
+    }
     std::cout<<"mission scene render bindings ok\n";return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

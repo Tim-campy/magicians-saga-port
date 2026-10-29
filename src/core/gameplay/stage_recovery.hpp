@@ -34,8 +34,8 @@ std::int32_t initial_human_invincible_time(std::int32_t initial_fps);
 bool is_retry_removable_effect(ComponentSlots*); // <Retry>b__57_0: Seb animation ID ==100.
 float member_formation_x(ComponentSlots*,MemberFormationHost&); // MemberSystem.GetFormationX.
 float member_formation_z(ComponentSlots*,MemberFormationHost&); // MemberSystem.GetFormationZ.
-float indexed_member_formation_x(std::int32_t,StageRecoveryHost&); // GetFormationX(int) 0x115dfbc.
-float indexed_member_formation_z(std::int32_t,StageRecoveryHost&); // GetFormationZ(int) 0x115e034.
+float indexed_member_formation_x(std::int32_t,MemberFormationHost&); // GetFormationX(int) 0x115dfbc.
+float indexed_member_formation_z(std::int32_t,MemberFormationHost&); // GetFormationZ(int) 0x115e034.
 void remove_recovery_modification(ComponentSlots&,StageRecoveryHost&);
 // StageSystem.Retry 0x1162eb8. No reset of stage/state/frame, boss flags, rewards,
 // attack timers or Human.frame; normal dialog caller clears its dialog afterwards.

@@ -8,7 +8,7 @@ namespace {[[noreturn]]void unavailable(const char* service){throw std::logic_er
 MissionStage::MissionStage(MissionHumans& owner,MissionStageScenario scenario):owner_(owner),scenario_(std::move(scenario)){
     if(!owner_.collection_enabled_||!owner_.notification_scenario_)throw std::invalid_argument("stage_loop requires collection fresh and stage_notifications");
     owner_.stage_.remaining_time=scenario_.remaining_time;owner_.stage_.boss_started=scenario_.boss_started;
-    form_.fade_frame=scenario_.fade_frame;
+    owner_.quest_form_.fade_frame=scenario_.fade_frame;
     auto rows=std::make_shared<std::vector<EventInstruction>>();
     for(const auto& e:scenario_.events)rows->push_back(std::make_shared<EventIntegers>(EventIntegers{e.first,e.second}));
     owner_.stage_.quest->events=std::make_shared<std::vector<EventScript>>(1,std::move(rows));
@@ -23,6 +23,7 @@ bool MissionStage::advance(std::int32_t pass,bool enabled){
     update_stage(owner_.stage_,*this);return true;
 }
 StageGeometry* MissionStage::stage_map(){return &owner_.geometry_;}
+StageQuestForm* MissionStage::update_quest_form(){return &owner_.quest_form_;}
 DropPlacementWorld* MissionStage::drop_world(){return owner_.drop_world();}
 DropCollectionHost& MissionStage::collection_host(){return owner_.collection_host_;}
 BossNotificationHost& MissionStage::movement_host(){return owner_;}
