@@ -345,7 +345,7 @@ class MissionProfileTests(unittest.TestCase):
     def test_quest_table_drives_map_boss_and_preserves_saved_fields(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory);scene = root / 'scene.txt'
-            original = make_boss_scene(root)
+            original = make_boss_scene(root, alternate_quest=True)
             substitutions = {
                 'geometry 312 312 12': 'geometry quest',
                 'human_system 10 0 95 0 0': 'human_system quest 0 95 0 0',
@@ -374,6 +374,29 @@ class MissionProfileTests(unittest.TestCase):
             self.assertEqual(report['remaining_time'], 4999)
             self.assertEqual(report['mission_map']['height'], 12)
             self.assertEqual(self.run_host(scene, frames=1).stdout, result.stdout)
+            override = self.run_host(scene, '--quest', '3', frames=1)
+            self.assertEqual(override.returncode, 0, override.stderr)
+            changed = json.loads(override.stdout)
+            self.assertEqual((changed['selected_quest'], changed['quest_distance'], changed['quest_money_rate']), (3,12,175))
+            self.assertEqual(changed['quest_rescued'], 2)
+            self.assertEqual(changed['mission_map']['height'], 14)
+            for value in ['-1', 'bad', '1', '99999']:
+                self.assertNotEqual(self.run_host(scene, '--quest', value, frames=1).returncode, 0)
+            scene.write_text(text.replace('quest 2 2\n', ''), encoding='utf-8')
+            self.assertIn('scenario quest row', self.run_host(scene, '--quest', '2', frames=1).stderr)
+            scene.write_text(text, encoding='utf-8')
+            # Relocation must ignore stale absolute paths and never fall back to the original directory.
+            data = root / 'data';assets = data / 'textassets';assets.mkdir(parents=True)
+            for archive in root.glob('*.bin'):
+                (assets / archive.name).write_bytes(archive.read_bytes())
+            stale = text.replace('"tables.bin"', json.dumps(r'C:\unavailable\tables.bin'))
+            scene.write_text(stale, encoding='utf-8')
+            relocated = self.run_host(scene, '--data', str(data), '--quest', '3', frames=1)
+            self.assertEqual(relocated.returncode, 0, relocated.stderr)
+            self.assertEqual(relocated.stdout, override.stdout)
+            (assets / 'tables.bin').unlink()
+            self.assertIn('selected data archive missing', self.run_host(scene, '--data', str(data), frames=1).stderr)
+            self.assertNotEqual(self.run_host(scene, '--data', str(root / 'absent'), frames=1).returncode, 0)
             for invalid in [text.replace('quest 2 2', 'quest 1 2'),
                             text.replace('quest 2 2\n', ''),
                             text + 'enemy_pool 0\n',

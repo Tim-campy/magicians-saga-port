@@ -139,7 +139,21 @@ void MissionProfile::load_replay(const std::filesystem::path& path){
         replay_[step].push_back({kind=="keys"?InputKind::keys:kind=="attack"?InputKind::attack:InputKind::pulse,argument});previous=step;
     }replay_bound_=true;
 }
-MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,ArchiveImageSet::Decoder decoder,std::optional<MissionRuntimeConfig> config,std::optional<std::filesystem::path> replay):runtime(std::move(config)){
+MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,ArchiveImageSet::Decoder decoder,std::optional<MissionRuntimeConfig> config,std::optional<std::filesystem::path> replay,MissionSelection selection):runtime(std::move(config)){
+    if(selection.quest&&*selection.quest<0)throw std::invalid_argument("quest ID must be nonnegative");
+    if(selection.data_root&&!std::filesystem::is_directory(*selection.data_root/"textassets"))throw std::invalid_argument("data root requires the extractor's textassets directory");
+    const auto archive_path=[&](const std::string& path){
+        auto resolved=std::filesystem::u8path(path);
+        if(selection.data_root){
+            // Resource IDs and archive names are declared by the scenario, not guessed from a directory scan.
+            // Accept Windows paths in scenarios read on Linux as well.
+            const auto leaf=path.substr(path.find_last_of("/\\")+1);
+            if(leaf.empty()||leaf=="."||leaf=="..")throw std::invalid_argument("archive filename required for data selection");
+            resolved=*selection.data_root/"textassets"/std::filesystem::u8path(leaf);
+            if(!std::filesystem::is_regular_file(resolved))throw std::invalid_argument("selected data archive missing: "+resolved.u8string());
+        }else if(resolved.is_relative())resolved=scene.parent_path()/resolved;
+        return resolved;
+    };
     if(replay)load_replay(*replay);
     std::ifstream input(scene);if(!input)throw std::runtime_error("cannot open scene description");
     std::vector<std::variant<HumanCreation,EnemyCreation,SelectedBullet,SelectedEffect,SelectedDrop>> selected;
@@ -172,7 +186,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         if(operation=="quest"){
             std::int32_t id=0;
             if(!native||selected_quest||!(row>>id>>rescued_prisoners)||id<0)throw std::invalid_argument("quest requires one nonnegative ID and explicit saved rescued count");
-            selected_quest=id;
+            selected_quest=selection.quest.value_or(id);
         }else if(operation=="runtime"){
             MissionRuntimeConfig value;std::int32_t debug=0;
             if(!native||runtime_row||!(row>>value.fps>>debug>>value.backend>>value.seed)||value.fps<1||value.fps>1000||(debug!=0&&debug!=1)||value.backend!="system")throw std::invalid_argument("runtime requires FPS1..1000 DEBUG0/1 system seed-int32");
@@ -289,7 +303,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         }else if(operation=="tables"){
             std::string path,language;std::int32_t dpi=0;
             if(!native||tables||!(row>>std::quoted(path)>>std::quoted(language)>>dpi))throw std::invalid_argument("tables requires native mode and one quoted archive/language/DPI profile");
-            auto resolved=std::filesystem::u8path(path);if(resolved.is_relative())resolved=scene.parent_path()/resolved;
+            auto resolved=archive_path(path);
             tables=std::make_unique<ResourceArchive>(read(resolved),ResourceProfile{language,dpi},ArchiveContents::data_only);
         }else if(operation=="progress"){
             std::int32_t id=0;SavedCharacterProgression saved;
@@ -363,7 +377,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             if(!(row>>id>>std::quoted(path)>>std::quoted(language)>>dpi))throw std::invalid_argument("resource requires id, quoted archive, quoted language and DPI");
             auto** slot=application_resource_slot(operation=="global"?global:application,id);
             if(!slot||*slot)throw std::invalid_argument("unsupported or duplicate AppData resource ID");
-            auto resolved=std::filesystem::u8path(path);if(resolved.is_relative())resolved=scene.parent_path()/resolved;
+            auto resolved=archive_path(path);
             auto value=std::make_unique<SceneResource>(resolved,ResourceProfile{language,dpi},decoder);if(value->images)textures.bind(*value->images);
             *slot=&value->manager.drawing();owners.push_back(std::move(value));
         }else if(operation=="draw"){
@@ -373,6 +387,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         }else throw std::invalid_argument("unknown scene row type");
         end(row);
     }
+    if(selection.quest&&!selected_quest)throw std::invalid_argument("--quest requires a scenario quest row with explicit saved rescued count");
     if(!has_world)throw std::invalid_argument("an explicit world matrix is required");
     const bool result_requested=wallet||record||recruits||stocks[0]||stocks[1]||stocks[2];
     if(!quest_fields.empty()&&!selected_quest)throw std::invalid_argument("quest source requires a quest selection row");

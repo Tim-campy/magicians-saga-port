@@ -9,6 +9,7 @@ import unittest
 
 EXE = Path(sys.argv.pop(1)).resolve() if len(sys.argv) > 1 else None
 VIEWER = Path(sys.argv.pop(1)).resolve() if len(sys.argv) > 1 else None
+MISSION = Path(sys.argv.pop(1)).resolve() if len(sys.argv) > 1 else None
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from test_sprite_preview import png, seb, jar, bmp_pixels
 from mission_scene_fixture import make_table_scene, make_shoot_scene, with_mission_map, make_boss_scene, make_gauge_scene
@@ -66,6 +67,19 @@ class QueuePixels(unittest.TestCase):
             self.assertEqual(report['replay_actions'], 5)
             self.assertEqual(report['input_held_keys'], 0)
             self.assertGreater(report['shots'], 0)
+            if MISSION:
+                window = subprocess.run([str(MISSION), '--scene', str(scene), '--fps', '25', '--debug', '0',
+                                         '--rng', 'system', '--seed', '42', '--frames', '60', '--replay', str(replay)],
+                                        capture_output=True, text=True, timeout=30)
+                self.assertEqual(window.returncode, 0, window.stderr)
+                self.assertEqual(window.stdout, result.stdout)
+                headless = subprocess.run([str(MISSION), '--scene', str(scene), '--fps', '25', '--debug', '0',
+                                           '--rng', 'system', '--seed', '42', '--frames', '60', '--headless', '--replay', str(replay)],
+                                          capture_output=True, text=True, timeout=30)
+                self.assertEqual(headless.returncode, 0, headless.stderr)
+                state = json.loads(headless.stdout)
+                for key in state.keys() & report.keys():
+                    self.assertEqual(state[key], report[key], key)
 
     def test_native_boss_creation_reaches_gpu(self):
         with tempfile.TemporaryDirectory() as directory:

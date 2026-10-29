@@ -14,11 +14,15 @@ struct SceneResource {
     ResourceArchive archive;ArchiveResourceManager manager;std::unique_ptr<ArchiveImageSet> images;
     SceneResource(const std::filesystem::path&,ResourceProfile,ArchiveImageSet::Decoder);
 };
+struct MissionSelection {
+    std::optional<std::filesystem::path> data_root;
+    std::optional<std::int32_t> quest;
+};
 // Shared strict scenario loader. An empty decoder decodes only images needed by Gauge22 logic.
-// This is a selected scene, not the original quest/map/bootstrap or full system schedule.
+// Scenario state remains explicit; selecting a table row does not perform Stage.Start.
 class MissionProfile:private core::GaugeDrawingHost,private core::AuxiliaryInitializationWorld,private core::TownInitializationWorld {
 public:
-    MissionProfile(const std::filesystem::path&,bool native,ArchiveImageSet::Decoder = {},std::optional<MissionRuntimeConfig> = std::nullopt,std::optional<std::filesystem::path> replay =std::nullopt);
+    MissionProfile(const std::filesystem::path&,bool native,ArchiveImageSet::Decoder = {},std::optional<MissionRuntimeConfig> = std::nullopt,std::optional<std::filesystem::path> replay =std::nullopt,MissionSelection = {});
     MissionProfile(const MissionProfile&)=delete;
     MissionProfile& operator=(const MissionProfile&)=delete;
     bool step(); // False at an explicitly held deferred transition; no further old-mission logic.

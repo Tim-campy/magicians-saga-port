@@ -1,6 +1,10 @@
 // Selected mission host. Loaded-world native Init is opt-in; original quest bootstrap remains unbound.
 #include "mission_profile.hpp"
 #include "core/gameplay/game_random.hpp"
+#ifdef SAGA_MISSION_WINDOW
+#include "mission_window.hpp"
+#include "decoded_image.hpp"
+#endif
 #include <charconv>
 #include <iomanip>
 #include <iostream>
@@ -17,26 +21,45 @@ std::int32_t integer(std::string_view value){
 }
 int main(int argc,char** argv)try{
     if(argc==2&&std::string_view(argv[1])=="--help"){
-        std::cout<<"Usage: saga_mission --scene profile.txt --frames N --headless --fps N --debug 0|1 --rng system --seed int32 [--replay inputs.txt]\n"
-                   "Runs selected table-backed combat/stage passes without SDL; Gauge22 decodes its required PNGs.\n"
+        std::cout<<"Usage: saga_mission --scene profile.txt --fps N --debug 0|1 --rng system --seed int32 [--data extracted-root] [--quest id] [--frames N] [--headless] [--replay inputs.txt]\n"
+                   "Viewer builds open a mission window; --frames N uses a bounded hidden window.\n"
+                   "--headless requires --frames N; builds without the viewer support only headless mode.\n"
+                   "--data resolves declared archive filenames below textassets/ without fallback.\n"
+                   "--quest replaces the scenario quest ID, retaining its explicit saved state.\n"
                    "FPS/DEBUG/RNG and scenario state are explicit; deferred town transitions hold the old mission.\n"
                    "Input-enabled scenes replay native movement/attack controls; quest bootstrap and full-state hashes remain open.\n";return 0;
     }
-    const std::set<std::string> required{"--scene","--frames","--fps","--debug","--rng","--seed"};
-    auto allowed=required;allowed.insert("--replay");
+    const std::set<std::string> required{"--scene","--fps","--debug","--rng","--seed"};
+    auto allowed=required;for(const auto* key:{"--replay","--frames","--data","--quest"})allowed.insert(key);
     std::map<std::string,std::string> options;bool headless=false;
     for(int i=1;i<argc;++i){const std::string key=argv[i];
         if(key=="--headless"){if(headless)throw std::invalid_argument("duplicate --headless");headless=true;continue;}
         if(!allowed.count(key)||i+1>=argc)throw std::invalid_argument("unsupported or incomplete option: "+key);
         if(!options.emplace(key,argv[++i]).second)throw std::invalid_argument("duplicate option: "+key);
     }
-    if(!headless||std::any_of(required.begin(),required.end(),[&](const auto& key){return !options.count(key);}))throw std::invalid_argument("explicit scene/frames/headless/fps/debug/rng/seed required; see --help");
-    const auto frames=integer(options.at("--frames")),fps=integer(options.at("--fps")),debug=integer(options.at("--debug")),seed=integer(options.at("--seed"));
-    if(frames<1||frames>100000||fps<1||fps>1000||(debug!=0&&debug!=1))throw std::invalid_argument("frames1..100000, fps1..1000 and debug0/1 required");
+    if(std::any_of(required.begin(),required.end(),[&](const auto& key){return !options.count(key);})||(headless&&!options.count("--frames")))throw std::invalid_argument("explicit scene/fps/debug/rng/seed and headless frames required; see --help");
+    const auto frames=options.count("--frames")?integer(options.at("--frames")):0;
+    const auto fps=integer(options.at("--fps")),debug=integer(options.at("--debug")),seed=integer(options.at("--seed"));
+    if((options.count("--frames")&&(frames<1||frames>100000))||fps<1||fps>1000||(debug!=0&&debug!=1))throw std::invalid_argument("frames1..100000, fps1..1000 and debug0/1 required");
     if(options.at("--rng")!="system")throw std::invalid_argument("only the explicit-seed system backend is available; no backend substitution");
     const auto replay=options.count("--replay")?std::optional<std::filesystem::path>(std::filesystem::u8path(options.at("--replay"))):std::nullopt;
-    saga::desktop::MissionProfile profile(std::filesystem::u8path(options.at("--scene")),true,{},saga::desktop::MissionRuntimeConfig{fps,debug!=0,seed,options.at("--rng")},replay);
+    saga::desktop::MissionSelection selection;
+    if(options.count("--data"))selection.data_root=std::filesystem::u8path(options.at("--data"));
+    if(options.count("--quest"))selection.quest=integer(options.at("--quest"));
+    saga::desktop::ArchiveImageSet::Decoder decoder;
+#ifdef SAGA_MISSION_WINDOW
+    if(!headless)decoder=saga::desktop::decode_png;
+#else
+    if(!headless)throw std::invalid_argument("this build has no window; build with SAGA_BUILD_VIEWER=ON or pass --headless --frames N");
+#endif
+    saga::desktop::MissionProfile profile(std::filesystem::u8path(options.at("--scene")),true,decoder,saga::desktop::MissionRuntimeConfig{fps,debug!=0,seed,options.at("--rng")},replay,selection);
     if(!profile.mission||!profile.simulate)throw std::invalid_argument("mission host requires selected entities and an explicit simulate row");
+#ifdef SAGA_MISSION_WINDOW
+    if(!headless){
+        if(!profile.has_view)throw std::invalid_argument("mission window requires explicit view dimensions");
+        return saga::desktop::run_native_mission(profile,profile.view.width,profile.view.height,frames?std::optional<std::int32_t>(frames):std::nullopt);
+    }
+#endif
     const auto initial=profile.logic_steps;std::int32_t executed=0;
     for(;executed<frames;++executed)if(!profile.step())break; // Deterministic fixed passes, no wall-clock sleeping.
     std::cout<<"{\"frames\":"<<executed<<",\"frames_requested\":"<<frames<<",\"initial_passes\":"<<initial<<",\"fps\":"<<fps<<",\"debug\":"<<debug

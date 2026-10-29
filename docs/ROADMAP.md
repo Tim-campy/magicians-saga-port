@@ -18,7 +18,7 @@ The plan in one page. Work happens in **vertical slices**: each ends in somethin
 
 ### S1 — Playable mission (current)
 
-Host: `saga_mission` (headless selected scenes; window integration pending). Acceptance, checked by running it on the maintainer's extracted data:
+Host: `saga_mission` (headless or SDL window; explicit scenario state remains required). Acceptance, checked by running it on the maintainer's extracted data:
 
 - [ ] A1. `saga_mission --data extracted --quest <id>` opens a window with the quest's map, party and enemies from the real tables.
 - [ ] A2. Mouse/keyboard moves the hero and triggers attacks through the ported Human/Shoot/Projectile passes.
@@ -28,7 +28,7 @@ Host: `saga_mission` (headless selected scenes; window integration pending). Acc
 - [ ] A6. Every service the host fakes is listed in the stub table of integration.md.
 
 Tasks:
-- [ ] Extend `saga_mission` with real quest/map selection via `--data`/`--quest`, its SDL window and existing native input/replay adapters (A1, A5).
+- [ ] Bind original quest entry and resource/material selection to `saga_mission --data/--quest` without requiring a diagnostic `--scene` profile (A1).
 - [ ] Replace the synthetic catalogs/services of the 240-frame combat regression with the table-backed owner used by `saga_mission` (A3).
 - [ ] Add complete reached-world state hashing and record local per-quest golden replays (A5).
 - [ ] Bind retry/defeat/victory form answers and pause/resume to Stage Update without automatic crystal or ad choices (A4).
