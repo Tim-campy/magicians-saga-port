@@ -61,6 +61,7 @@ Manifest: portrait orientation (`1`), `hardwareAccelerated=false`, `resizeableAc
 | [combat.md](combat.md) | Combat entry, hit, damage, easing |
 | [rewards.md](rewards.md) | Defeat, drops, quest results, treasure, town return |
 | [events.md](events.md) | Event tables, opcodes, delays, progression |
+| [integration.md](integration.md) | Slice hosts, wiring state, stubs and provisional inputs |
 | [text.md](text.md) | Presentation text, talk, fonts, layout |
 
 ## Key methods

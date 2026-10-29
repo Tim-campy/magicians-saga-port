@@ -28,7 +28,9 @@ jobs:
       - name: Python tests
         run: python3 -I tools/run_tests.py
       - name: Check links
-        run: python3 -I tools/check_links.py
+        run: |
+          python3 -I tools/check_links.py
+          python3 -I tools/check_roadmap.py
       - name: Check registries
         run: |
           python3 -I tools/registry.py check

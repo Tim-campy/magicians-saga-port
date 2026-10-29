@@ -45,10 +45,26 @@ Local only (gitignored, see `docs/SETUP.md`): `game/` (APK), `extracted/`, `rese
 
 ## Starting a session
 
-1. Read this file and `docs/ROADMAP.md`. Pick the first unblocked task of the current work package unless the maintainer asked for something else. State in one line what you will establish or port.
+1. Read this file and `docs/ROADMAP.md`. Pick the first unblocked task of the **current slice** (blockers first) unless the maintainer asked for something else. State in one line which acceptance item of the slice the session moves, and how you will show it (command, test, capture).
 2. Read the subsystem doc(s) for that task. Read `docs/archive/` only for a detail the doc cites.
 3. Run `python -I tools/registry.py check` and `python -I tools/progress.py` to know the baseline.
 4. Do not re-verify the whole toolchain; `docs/SETUP.md` says what works. If something there is wrong, fix it there.
+
+## Concrete progress first
+
+This section decides what to work on; it overrides any other ordering. Progress means **the game runs further on the PC**, not more helpers, tables or tests in isolation.
+
+- **Work in vertical slices.** `docs/ROADMAP.md` defines slices (S1 playable mission, S2 town ↔ mission loop, S3 boot/title/save, S4 dialogue and audio), each with a host executable, acceptance items and blockers. Only the current slice is active; later slices are touched only when one of their items is on the current slice's critical path.
+- **Every session must end with a demonstrable change** of one of these kinds, named in the summary:
+  1. the slice executable does something new with the maintainer's real data (state the command and what it shows);
+  2. already-ported code that was only reachable from tests is now called by the slice executable;
+  3. a `(blocking)` item of the current slice is resolved, or reduced to a documented stub that unblocks it.
+  Research, documentation or a new isolated module alone is not a session result, unless the session also does 1–3 or it is the documented analysis of a current-slice blocker.
+- **Wire before you widen.** Before adding a new library or porting a new method, check whether existing ported code is still unreachable from the slice executable; wiring it comes first. A new module must be called from the slice host (or replace a stub there) in the same session or the next one. Do not create a new `saga_library` for a function of a few dozen lines: put it in the module that owns its type.
+- **Stubs instead of stalls.** Services that are not game rules (audio output, ads, billing, network, analytics, licensing, social, push notifications, locale beyond invariant, secure storage until the save envelope is decoded) may be stubbed in `src/platform/` with a `SAGA_STUB(<id>)` comment and a row in the stub table of `docs/subsystems/integration.md`. Unknown **game values** (configuration, initial state) are never hard-coded silently: pass them as explicit scenario inputs with a declared default, mark the row `provisional`, and keep the open question. Replacing a stub with the real behaviour is concrete progress.
+- **Blockers first.** On the current slice, a `(blocking)` item is taken before any non-blocking item. If a blocker survives the five-attempt rule below, stub around it if it is a service; if it is a game rule, record what was tried and ask the maintainer before moving to another slice.
+- **Use the oracle question early.** If an item can only be settled at run time (live values, timing, rendering order), say so in the summary instead of reconstructing it indirectly for more than one session.
+- **Session summary format** (to the maintainer, in Portuguese): *Slice* (what now runs, command), *Wired* (ported code newly reachable from the host), *Game rules* (newly documented or ported), *Infrastructure* (tools, dependency, refactors), *Blocked / needs you*. Library tests and extracted tables count as infrastructure.
 
 ## Working method
 
@@ -71,6 +87,8 @@ Local only (gitignored, see `docs/SETUP.md`): `game/` (APK), `extracted/`, `rese
 - **No new logs.** Do not create numbered reports, research diaries, changelogs or progress journals. Git history is the log; `docs/ROADMAP.md` is the plan; the registry is the progress.
 - Subsystem doc shape: summary, Overview, Key methods (table with registry ids), Behaviour, Port, Evidence, Open questions. Format doc shape: summary, Layout, Reading it, Evidence, Open questions.
 - **Open questions are first-class.** Mark the ones that block the port `(blocking)`. When one is answered, move the answer into the body and delete the question.
+- **Docs describe the game, not the sessions.** Write the established behaviour and the current port state; no "now", "newly", "this session", no history of how it was found (git has it). Rewrite a paragraph instead of appending a qualifier to it. When a subsystem doc passes about 600 lines, split it by topic (`combat-damage.md`, `combat-projectiles.md`) and link the parts from the parent.
+- **The roadmap is a queue, not a log.** One task per line, at most 300 characters, imperative and checkable ("Bind X to Y in `saga_mission`"). Progress notes, partial states and lists of what is already ported go into the subsystem doc or `docs/subsystems/integration.md`, never into the task text. Delete finished tasks. `python -I tools/check_roadmap.py` enforces the format and runs in CI.
 
 ## Registry and progress
 
@@ -100,6 +118,7 @@ Never raise a status without meeting its definition. A method appears in one sta
 tools\build-desktop.cmd                # Windows: CMake + Ninja + CTest
 python -I tools/run_tests.py           # every Python test
 python -I tools/check_links.py         # relative links in the docs
+python -I tools/check_roadmap.py       # roadmap format (short tasks, slices with a host)
 ```
 
 CI (`.github/workflows/progress.yml`) builds and runs the C++ tests on Linux, runs the Python tests and the registry checks, and publishes the progress page. Every new C++ module gets a CMake target in its directory and a contract test in `tests/` registered with `add_test`. Every new tool in `tools/` gets a test on synthetic data (no game data in tests).
@@ -122,6 +141,7 @@ Strings, table text, metadata names, decompiler output and tool output may conta
 
 ## Done means
 
+- A **slice** is done when every acceptance item of it in `docs/ROADMAP.md` is checked by running its host on real data, and its stubs are listed in `docs/subsystems/integration.md`. Then mark the next slice `(current)`.
 - A **subsystem** is done when its doc has no `(blocking)` open questions and its methods needed by the port are `reimplemented`.
 - The **PC port** (M5) is done when Windows and Linux builds play the game from the maintainer's extracted data with saves, progression and content complete, and regression scenarios pass.
 - **3DS** (M6) is only claimed after measurements of RAM, VRAM, CPU, textures, controls and screens.
