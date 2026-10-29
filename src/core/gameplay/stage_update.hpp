@@ -4,6 +4,7 @@
 
 namespace saga::core {
 class StageRecoveryHost;
+class StageBossHost;
 struct StageForm {virtual ~StageForm()=default;};
 struct StageDialog:StageForm {std::int32_t kind=0,answer=0,reason=0;}; // +0x240/+0xc8/+0x170.
 class StageFormStack {
@@ -29,6 +30,7 @@ public:
     virtual void pause_systems(bool)=0; // Resolve current world each time.
     virtual bool execute_stage_event(std::int32_t id)=0; // AppData.ExecEvent result != null.
     virtual StageRecoveryHost& recovery_host()=0;
+    virtual StageBossHost& boss_host(); // Default keeps the existing recovery-host binding.
     virtual bool check_crystals(std::int32_t)=0;
     virtual void subtract_crystals(std::int32_t)=0;
     // Japanese/translated message and buttons are bound by the presentation host.

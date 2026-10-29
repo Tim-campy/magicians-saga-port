@@ -6,6 +6,7 @@
 #include <stdexcept>
 
 namespace saga::core {
+StageBossHost& StageUpdateHost::boss_host(){return recovery_host();}
 namespace {
 template<class T>T& required(T* p){if(!p)throw std::invalid_argument("missing stage update input");return *p;}
 template<class T>T& component(ComponentSlots& e,std::int32_t slot){return required(dynamic_cast<T*>(e.get(slot)));}
@@ -119,7 +120,7 @@ void update_stage(StageStartState& s,StageUpdateHost& host){
         collect_drops(s.collection,host.collection_host());
         update_collecting_drops(s.collection,host.collection_host());
         if(execute_stage_events(s,host)){release_stage_movement(host.movement_host());return;}
-        if(!s.boss_started&&stage_progress_rate(s,host)>=90)start_stage_boss_battle(s,host.recovery_host());
+        if(!s.boss_started&&stage_progress_rate(s,host)>=90)start_stage_boss_battle(s,host.boss_host());
         if(s.collection.boss_defeated&&s.collection.reward_box_picked_up){celebrate(s);return;}
         update_stage_attack_buttons(s);
         if(!s.collection.boss_defeated){

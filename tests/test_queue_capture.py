@@ -11,7 +11,7 @@ EXE = Path(sys.argv.pop(1)).resolve() if len(sys.argv) > 1 else None
 VIEWER = Path(sys.argv.pop(1)).resolve() if len(sys.argv) > 1 else None
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from test_sprite_preview import png, seb, jar, bmp_pixels
-from mission_scene_fixture import make_table_scene, make_shoot_scene, with_mission_map
+from mission_scene_fixture import make_table_scene, make_shoot_scene, with_mission_map, make_boss_scene
 
 
 def command(resource, clip, x, y, depth=0, texture=-1, image_resource=-1):
@@ -48,6 +48,31 @@ class QueuePixels(unittest.TestCase):
             self.assertEqual(report['replay_actions'], 5)
             self.assertEqual(report['input_held_keys'], 0)
             self.assertGreater(report['shots'], 0)
+
+    def test_native_boss_creation_reaches_gpu(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory);scene = root / 'scene.txt';text = make_boss_scene(root) + 'tick_ms 1\n'
+            # Explicit tall diagnostic viewport includes the barrier behind the party.
+            text = (text.replace('view 128 96', 'view 128 640')
+                    .replace('0.0208333333', '0.003125'))
+            bound = {tuple(map(int, row.split()[1:4])) for row in text.splitlines() if row.startswith('material ')}
+            needed = set()
+            for step in [0, 1, 12, 31]:
+                scene.write_text(text.replace('simulate 0', f'simulate {step}'), encoding='utf-8')
+                probe = subprocess.run([str(EXE), str(scene), '128', '640', '--material-inputs'], capture_output=True, text=True, timeout=30)
+                self.assertEqual(probe.returncode, 0, probe.stderr)
+                needed.update((v['texture'], v['shader'], v['queue']) for v in json.loads(probe.stdout)['material_inputs'])
+            for i, (texture, shader, queue) in enumerate(sorted(needed - bound)):
+                text += f'material {texture} {shader} {queue} {500 + i} 0\n'
+            scene.write_text(text, encoding='utf-8')
+            result = subprocess.run([str(EXE), str(scene), '128', '640', '--run-frames', '31'], capture_output=True, text=True, timeout=30)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            report = json.loads(result.stdout)
+            self.assertTrue(report['boss_entry_enabled'] and report['boss_started'])
+            self.assertEqual(report['boss_creation_calls'], 1)
+            self.assertEqual(report['boss_fence']['z'], 996)
+            self.assertEqual(len(report['enemies']), 2)
+            self.assertEqual(report['render_frames'], 31)
 
     def test_map_camera_and_cell_visibility_reach_gpu(self):
         with tempfile.TemporaryDirectory() as directory:

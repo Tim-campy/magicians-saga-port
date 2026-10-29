@@ -8,7 +8,7 @@ import unittest
 
 EXE = Path(sys.argv.pop(1)).resolve() if len(sys.argv) > 1 else None
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from mission_scene_fixture import make_table_scene, make_shoot_scene, with_mission_map
+from mission_scene_fixture import make_table_scene, make_shoot_scene, with_mission_map, make_boss_scene
 
 
 @unittest.skipUnless(EXE, 'saga_mission supplied by CTest')
@@ -400,6 +400,57 @@ class MissionProfileTests(unittest.TestCase):
                            text.replace('geometry 312 312 12', 'geometry 24 24 12'), text.replace('player 0\n', '')]:
                 scene.write_text(broken, encoding='utf-8')
                 self.assertNotEqual(self.run_host(scene).returncode, 0)
+
+    def test_native_boss_startup_creates_shared_world_enemies_and_fence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory);scene = root / 'scene.txt';text = make_boss_scene(root)
+            scene.write_text(text, encoding='utf-8')
+            result = self.run_host(scene, frames=1)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            report = json.loads(result.stdout)
+            self.assertTrue(report['boss_entry_enabled'] and report['boss_started'])
+            self.assertEqual(report['boss_creation_calls'], 1)
+            self.assertEqual(report['min_z_rate'], 75)
+            self.assertEqual(report['boss_fence']['x'], 140)
+            self.assertEqual(report['boss_fence']['z'], 996)
+            self.assertEqual(report['positions'][0]['x'], 312)
+            self.assertEqual(report['rng_draws'], 0)
+            boss, extra = report['enemies']
+            self.assertEqual((boss['enemy_id'], boss['level'], boss['state'], boss['frame'], boss['flags']), (4, 7, 1, 0, 5))
+            self.assertEqual((extra['enemy_id'], extra['level'], extra['frame']), (1, 1, 1))
+            self.assertEqual(boss['target'], report['positions'][0]['id'])
+            self.assertAlmostEqual(boss['z'], 213.5575, places=4)
+            continued = self.run_host(scene, frames=12)
+            self.assertEqual(continued.returncode, 0, continued.stderr)
+            self.assertEqual(json.loads(continued.stdout)['boss_creation_calls'], 1)
+            self.assertEqual(continued.stdout, self.run_host(scene, frames=12).stdout)
+            scene.write_text(text.replace('312 0 400', '312 0 1000'), encoding='utf-8')
+            before = self.run_host(scene, frames=1)
+            self.assertEqual(before.returncode, 0, before.stderr)
+            waiting = json.loads(before.stdout)
+            self.assertFalse(waiting['boss_started'])
+            self.assertEqual(waiting['enemies'], [])
+            for broken in [text + 'stage_boss 4 7\n', text.replace('stage_events fresh 0\n', ''),
+                           text.replace('enemy_pool 0\n', ''), text.replace('stage_loop 5000 0 20 hold\n', '')]:
+                scene.write_text(broken, encoding='utf-8')
+                self.assertNotEqual(self.run_host(scene, frames=1).returncode, 0)
+            scene.write_text(text.replace('stage_boss 4 7\n', ''), encoding='utf-8')
+            self.assertIn('stage_boss inputs', self.run_host(scene, frames=1).stderr)
+            result_text = text + ('drop 3 0 25 312 0 450\n'
+                                  'result_wallet 10 20 4\nresult_record 0 0 0 0 0 0 0\n'
+                                  'result_inventory equipment 0 0 0\nresult_inventory cloth 0 0 0\nresult_inventory hat 0 0 0\n'
+                                  'result_recruits 0 0 0\n')
+            scene.write_text(result_text, encoding='utf-8')
+            replay = root / 'boss-input.txt';replay.write_text('1 attack 0\n100 keys 131072\n130 keys 0\n400 pulse 1048576\n', encoding='utf-8')
+            ended = self.run_host(scene, '--replay', str(replay), frames=450)
+            self.assertEqual(ended.returncode, 0, ended.stderr)
+            final = json.loads(ended.stdout)
+            self.assertEqual(final['frames'], 401)
+            self.assertTrue(final['boss_defeated'] and final['reward_box_picked_up'])
+            self.assertTrue(final['result_granted'] and final['transition_pending'])
+            self.assertIsNone(final['boss_fence'])
+            self.assertEqual(final['boss_creation_calls'], 1)
+
 
     def test_native_stage_clear_grants_and_deferred_return_writeback(self):
         with tempfile.TemporaryDirectory() as directory:

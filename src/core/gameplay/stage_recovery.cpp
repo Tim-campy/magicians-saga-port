@@ -78,14 +78,14 @@ void retry_stage(StageStartState& s,StageRecoveryHost& host){
     }
     host.recovery_start_host().play_stage_bgm();
 }
-void start_stage_boss_battle(StageStartState& s,StageRecoveryHost& host){
+void start_stage_boss_battle(StageStartState& s,StageBossHost& host){
     if(s.boss_started)return;
     s.boss_started=true;
     auto& boss=required(host.create_stage_boss(required(s.enemies)));
     AnimationModificationRequest request;request.max_frame=30;request.scale_y=0;
     add_animation_modification(boss,request,host);
     s.min_z_rate=75;
-    auto* binding=host.stage_object_world();const auto z=stage_z(s,75,host.recovery_start_host());
+    auto* binding=host.stage_object_world();const auto z=stage_z(s,75,host.boss_coordinates());
     auto& world=required(binding);
     auto& fence=create_z_object({140,0,static_cast<float>(add(z,138))},7,44,world.ids,world.factory);
     request.max_frame=20;add_animation_modification(fence,request,host);s.boss_fence=&fence;

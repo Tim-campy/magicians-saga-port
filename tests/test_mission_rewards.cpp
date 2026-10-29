@@ -4,10 +4,12 @@
 #include <cstdlib>
 #include <algorithm>
 #include <iostream>
+#include <sstream>
 using namespace saga::desktop;
 using namespace saga::core;
 namespace {
-void check(bool v){if(!v)std::abort();}
+void check_at(bool v,int line){if(!v){std::cerr<<"mission rewards assertion at line "<<line<<'\n';std::abort();}}
+#define check(...) check_at((__VA_ARGS__),__LINE__)
 template<class T>T& field(ComponentSlots& e,int slot){auto* p=dynamic_cast<T*>(e.get(slot));check(p!=nullptr);return *p;}
 }
 int main()try{
@@ -48,5 +50,38 @@ int main()try{
     assert_first_tick();field<HumanRecordLink>(hero,14).state=5;resolve_combat_parameter(hero,0)->value=0;
     world.events().send(30,&hero); // Pending retry dialog keeps Stage state1 but gates subsequent collection.
     humans.advance_collection();assert_first_tick();check(saved.characters.at(2).experience==13);
-    std::cout<<"lethal shot, saved defeat count, EXP/treasure drops, debris/trails and corpse cleanup ok\n";return 0;
+    const auto boss_case=[&](bool extra_record){
+        auto catalog=data;catalog.enemies=std::make_shared<EnemyTable>(*data.enemies);
+        if(extra_record){catalog.enemies->at(1)=*catalog.enemies->at(4);catalog.enemies->at(1)->id=1;}else catalog.enemies->at(1).reset();
+        MissionProgress state=saved;StageGeometry map{24,24,6};
+        MissionEntities entities(catalog,state,35,&map,[&](auto){return &animation;},[](auto){return 3;});
+        auto& player=entities.human({0,2,5,0,0,13,32,0,0});entities.mark_player(player);
+        MissionHumans host(entities,catalog,state,map,{25,false,42,"system"},{4,0,95,0,0});
+        MissionEnemyScenario enemy_state{};enemy_state.yugami=10000;enemy_state.interval=25;enemy_state.level=7;enemy_state.section_limit=100;
+        host.enable_enemies(enemy_state);host.enable_notifications({1,0,false,2,false,0,-1});host.enable_collection();
+        MissionStageScenario stage{};stage.remaining_time=5000;stage.fade_frame=20;stage.boss_started=false;stage.boss=MissionBossScenario{4,7};host.enable_stage_loop(stage);
+        check(host.random_draws()==0);bool failed=false;try{host.advance_stage();}catch(const std::exception&){failed=true;}
+        check(failed!=extra_record);auto group=entities.subset({24});check(group->size()==(extra_record?2U:1U));
+        auto at=group->cursor();auto& boss=**at.next();check(field<EnemyRecordLink>(boss,24).flags==1&&field<EnemyRecordLink>(boss,24).opponent==&player);
+        check(field<ContactPosition>(boss,0).x==24&&field<ContactPosition>(boss,0).z==14&&host.random_draws()==0);
+        std::ostringstream report;host.write_result_report(report);check(report.str().find("\"boss_started\":true")!=std::string::npos);
+        if(extra_record){
+            auto& other=**at.next();check(field<EnemyRecordLink>(other,24).enemy_id==1&&field<EnemyRecordLink>(other,24).level==1);
+            check(field<ContactPosition>(other,0).x==32&&field<ContactPosition>(other,0).z==15);
+            const auto& spin=field<ProjectileModification>(other,15);check(spin.type==9&&spin.angle==30&&spin.loop);
+            const auto& flatten=field<ProjectileModification>(boss,15);check(flatten.type==0&&flatten.max_frame==30&&flatten.scale_y==0);
+            ComponentSlots* fence=nullptr;auto all=entities.registry().values();while(const auto entity=all.next()){
+                auto* sprite=dynamic_cast<EntitySprite*>((*entity)->get(2));if(sprite&&sprite->animation.resource==7&&sprite->animation.clip==44)fence=*entity;
+            }
+            check(fence&&!fence->contains(7)&&!fence->contains(10)&&!fence->contains(26));
+            check(field<ContactPosition>(*fence,0).x==140&&field<ContactPosition>(*fence,0).z==168&&field<EntityDepth>(*fence,4).extra==200);
+            check(field<ProjectileModification>(*fence,15).max_frame==20&&field<ProjectileModification>(*fence,15).scale_y==0);
+            check(report.str().find("\"min_z_rate\":75")!=std::string::npos);
+            host.advance_enemies();check(field<EnemyRecordLink>(boss,24).state==1&&field<EnemyRecordLink>(boss,24).frame==0&&field<EnemyRecordLink>(boss,24).flags==5);
+            check(field<EnemyRecordLink>(other,24).frame==1); // Boss activation resets its incremented frame.
+        }else{check(!boss.contains(15)&&report.str().find("\"min_z_rate\":0")!=std::string::npos&&report.str().find("\"boss_fence\":null")!=std::string::npos);}
+        const auto size=entities.subset({0})->size();host.advance_stage();check(entities.subset({0})->size()==size);
+    };
+    boss_case(true);boss_case(false);
+    std::cout<<"lethal rewards, native boss startup and retained partial failure ok\n";return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

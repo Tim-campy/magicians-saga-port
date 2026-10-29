@@ -174,7 +174,7 @@ game:0x06000b70	reimplemented	src/core/gameplay/visual_components.cpp	Pooled Ima
 game:0x06000be0	reimplemented	src/core/gameplay/member_selection.cpp	World player cache queries real And(30) on null, stores first entity and retains stale nonnull references; tested.
 game:0x06000d6e	traced	docs/subsystems/save.md	Persisted actor character/level/EXP/formation scalar write order identified; script and visual-array wire codecs remain open.
 game:0x06000d6f	traced	docs/subsystems/save.md	Persisted actor character/level/EXP/formation scalar read order identified; script and visual-array wire codecs remain open.
-game:0x06000bfa	reimplemented	src/core/gameplay/entity_visual.cpp	Registered ZObject: Position/Speed/actual Cell/Depth extra 200/Seb, without Image/playback; actual boss fence and cleanup tested.
+game:0x06000bfa	reimplemented	src/core/gameplay/entity_visual.cpp	Registered ZObject: Position/Speed/Cell/Depth extra200/Seb, no Image/playback. Native MissionStage boss fence uses resource7/clip44 and shared world IDs; actual return cleanup destroys it.
 game:0x06000b83	reimplemented	src/core/gameplay/projectile_launch.cpp	Complete pooled ModifyAnimation payload before slot 15; existing projectile wrapper delegates; full-field and boss/retry integration tests.
 game:0x06000f26	reimplemented	src/core/gameplay/mission_map.cpp	Desktop map mode stores the same live MapComponent used by stage/camera/cells; native null/failure and initialization tests retained.
 game:0x06000f27	reimplemented	src/core/gameplay/mission_map.cpp	Desktop mission_map fresh reaches actual dimensions/grid/cursor/tiles/depth with explicit chip IDs; native group9 return cleanup bound; next-mission Stage.Start remains open.

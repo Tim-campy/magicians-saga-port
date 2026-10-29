@@ -116,6 +116,8 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         }else if(operation=="result_recruits"){
             std::int32_t fresh=0;auto& r=result_state.recruits;
             if(!native||recruits||!(row>>r.discovery_state>>fresh>>r.recruited)||(fresh!=0&&fresh!=1))throw std::invalid_argument("result_recruits requires found is-new0/1 recruited");r.is_new=fresh!=0;recruits=true;
+        }else if(operation=="stage_boss"){
+            MissionBossScenario value;if(!native||stage_scenario.boss||!(row>>value.id>>value.level))throw std::invalid_argument("stage_boss requires one explicit boss ID and level");stage_scenario.boss=value;
         }else if(operation=="stage_loop"){
             std::int32_t boss=0;std::string policy;
             if(!native||stage_loop||!(row>>stage_scenario.remaining_time>>boss>>stage_scenario.fade_frame>>policy)||(boss!=0&&boss!=1)||policy!="hold")throw std::invalid_argument("stage_loop requires remaining-time boss-started0/1 fade-frame hold");stage_scenario.boss_started=boss!=0;stage_loop=true;
@@ -237,6 +239,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     const bool result_requested=wallet||record||recruits||stocks[0]||stocks[1]||stocks[2];
     if(result_requested&&!(wallet&&record&&recruits&&stocks[0]&&stocks[1]&&stocks[2]&&stage_loop&&collection))throw std::invalid_argument("results require wallet/record/all inventory kinds/recruits, stage_loop and collection fresh");
     if((stage_loop||stage_events||!stage_scenario.pulses.empty())&&!(stage_loop&&stage_events&&collection))throw std::invalid_argument("stage_loop requires explicit stage_events and collection fresh");
+    if(stage_scenario.boss&&!(stage_loop&&enemy_requested))throw std::invalid_argument("stage_boss requires stage_loop and enemy system inputs");
     if(enemy_requested&&!(enemy_config&&enemy_population&&enemy_pool&&human_scenario))throw std::invalid_argument("enemy system requires enemy_system/enemy_population/enemy_pool and human_system");
     if(input_scenario&&(!human_scenario||players.size()!=1))throw std::invalid_argument("input requires human_system and one selected player");
     if(replay_bound_&&!input_scenario)throw std::invalid_argument("input replay requires input fresh");
