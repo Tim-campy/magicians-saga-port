@@ -1,6 +1,5 @@
 #pragma once
-#include "core/gameplay/bitmap_geometry.hpp"
-#include "core/gameplay/render_colors.hpp"
+#include "bitmap_backend.hpp"
 #include <string>
 
 namespace saga::desktop {
@@ -13,11 +12,7 @@ struct SpritePreviewOptions {
     std::array<std::uint8_t,4> background{0,0,0,0}; // Explicit technical canvas clear, not mission state.
     std::int32_t resource_reverse_u=0,resource_reverse_v=0,resource_cache_size=0,image_render_queue=0;
 };
-struct PreviewQuad {
-    std::array<core::BitmapPoint,4> points;core::ImageBounds uv;
-    core::RenderColor color{1,1,1,1};core::SpritePixelPipeline pipeline;std::uint32_t shader_key=0;
-    std::int32_t queue_offset=0,render_queue=2000;
-};
+using PreviewQuad=BitmapQuad;
 struct SpritePreview {
     std::vector<PreviewQuad> quads;
     std::optional<std::array<std::int32_t,12>> sprite;

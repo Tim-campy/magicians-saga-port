@@ -1,0 +1,56 @@
+#pragma once
+#include "archive_image_set.hpp"
+#include "core/gameplay/animation_resources.hpp"
+#include "core/gameplay/bitmap_geometry.hpp"
+#include "core/gameplay/render_colors.hpp"
+#include "core/gameplay/sprite_matrix.hpp"
+#include <map>
+
+namespace saga::desktop {
+using BitmapApplication=core::ApplicationResourceFields<core::RenderDrawResource>;
+struct BitmapDepthKey {std::int32_t group=0,index=0,layer=0;};
+struct BitmapQuad {
+    std::array<core::BitmapPoint,4> points;core::ImageBounds uv;
+    core::RenderColor color{1,1,1,1};core::SpritePixelPipeline pipeline;std::uint32_t shader_key=0;
+    std::int32_t queue_offset=0,render_queue=2000;
+    std::size_t texture=0;BitmapDepthKey depth; // Native depth input, not a guessed Z mapping.
+};
+struct BitmapTextureBinding {
+    std::int32_t width,height,alpha_type;
+    const ReadyArchiveImage* ready=nullptr; // Optional borrowed decoded-pixel ownership.
+};
+class BitmapTextures {
+public:
+    std::size_t bind(core::PixelImage&,std::int32_t width,std::int32_t height,std::int32_t alpha);
+    void bind(const ArchiveImageSet&);
+    std::size_t key(core::PixelImage&)const;
+    const BitmapTextureBinding& at(std::size_t i)const{return entries_.at(i);}
+private:
+    std::map<core::PixelImage*,std::size_t> indices_;
+    std::vector<BitmapTextureBinding> entries_;
+};
+// Reusable bitmap emission from real AppData queues. No SDL dependency: quads
+// retain per-image texture keys and native depth inputs in emission order.
+// Caller owns resource/image lifetimes and supplies world matrix + surface height.
+// Atlas, culling/local-coordinate services and native scene Z/order remain unbound.
+class BitmapBackend {
+public:
+    using GlobalApplication=std::function<BitmapApplication*()>;
+    BitmapBackend(BitmapApplication&,GlobalApplication,BitmapTextures&,std::int32_t surface_height,
+                  const core::SpriteMatrix& world,bool raw_rgba=false);
+    BitmapBackend(BitmapApplication&,BitmapApplication& global,BitmapTextures&,std::int32_t surface_height,
+                  const core::SpriteMatrix& world,bool raw_rgba=false);
+    ~BitmapBackend();
+    BitmapBackend(const BitmapBackend&)=delete;
+    BitmapBackend& operator=(const BitmapBackend&)=delete;
+    core::RenderGraphics& graphics();
+    core::RenderDrawHost& resources();
+    core::RenderMatrix& matrix();
+    const std::vector<BitmapQuad>& quads()const;
+    std::optional<std::array<std::int32_t,12>> last_sprite()const;
+    void clear_quads(); // Retains buffers and graphics/SEB caches between frames.
+    void set_matrix(const core::SpriteMatrix*);
+private:
+    struct Impl;std::unique_ptr<Impl> impl_;
+};
+} // namespace saga::desktop

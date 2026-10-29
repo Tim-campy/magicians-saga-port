@@ -32,13 +32,7 @@ ResourceCatalogIndex index_resource_catalog(std::vector<std::int32_t> ids,std::s
     return result;
 }
 AnimationResource* get_animation_resource(const ApplicationAnimationResources& r,std::int32_t id) noexcept {
-    switch(id) {
-    case 1:return r.characters;case 2:return r.common;case 3:return r.enemies;case 4:return r.equipment;
-    case 7:return r.quest;case 8:return r.residents;case 11:return r.selection;
-    case 18:return r.chips;case 19:return r.bullets;case 20:return r.effects;
-    case 21:return r.hats;case 22:return r.weapons;case 23:return r.gauges;
-    default:return nullptr;
-    }
+    return get_application_resource(r,id);
 }
 std::int32_t animation_clip_max_frame(const ApplicationAnimationResources& app,std::int32_t resource,std::int32_t clip) {
     auto* r=get_animation_resource(app,resource);

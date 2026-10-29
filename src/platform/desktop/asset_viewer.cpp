@@ -208,33 +208,11 @@ int view(const std::string& filename, bool headless, const std::string& capture,
     require(SDL_SetTextureBlendMode(texture.get(), SDL_BLENDMODE_NONE), "SDL_SetTextureBlendMode");
     Texture canvas(sprite_mode?SDL_CreateTexture(renderer.get(),SDL_PIXELFORMAT_RGBA32,SDL_TEXTUREACCESS_TARGET,target_width,target_height):nullptr,SDL_DestroyTexture);
     if(sprite_mode){require(canvas!=nullptr,"SDL_CreateTexture RGBA canvas");require(SDL_SetTextureBlendMode(canvas.get(),SDL_BLENDMODE_NONE),"SDL_SetTextureBlendMode canvas");}
-    struct MaskTexture {saga::core::SpriteAlphaTest test;float alpha;Texture texture;};
-    std::vector<MaskTexture> masks;
+    saga::desktop::SdlBitmapTextures quad_cache(renderer.get(),[&](std::size_t key)->const saga::desktop::DecodedImage&{
+        if(key!=0)throw std::invalid_argument("unexpected selected-viewer texture key");return *decoded;
+    });
     std::vector<SDL_Texture*> quad_textures;
-    for(const auto& quad:preview.quads){
-        auto* selected=texture.get();const auto test=quad.pipeline.alpha_test;
-        if(test!=saga::core::SpriteAlphaTest::none){
-            if(quad.pipeline.blend==saga::core::SpriteBlend::replace)
-                throw std::runtime_error("alpha-discard with replace blending requires a shader backend");
-            auto found=std::find_if(masks.begin(),masks.end(),[&](const auto& m){return m.test==test&&m.alpha==quad.color.a;});
-            if(found==masks.end()){
-                const auto bytes=static_cast<std::size_t>(width)*static_cast<std::size_t>(height)*4;
-                std::vector<std::uint8_t> masked(pixels,pixels+bytes);
-                for(std::size_t i=3;i<bytes;i+=4){
-                    const float alpha=(static_cast<float>(masked[i])/255.0F)*quad.color.a;
-                    if(!saga::core::accepts_sprite_alpha(test,alpha))masked[i]=0;
-                }
-                Surface mask_surface(SDL_CreateSurfaceFrom(width,height,SDL_PIXELFORMAT_RGBA32,masked.data(),width*4),SDL_DestroySurface);
-                require(mask_surface!=nullptr,"SDL_CreateSurfaceFrom alpha mask");
-                Texture variant(SDL_CreateTextureFromSurface(renderer.get(),mask_surface.get()),SDL_DestroyTexture);
-                require(variant!=nullptr,"SDL_CreateTextureFromSurface alpha mask");
-                require(SDL_SetTextureScaleMode(variant.get(),SDL_SCALEMODE_NEAREST),"SDL_SetTextureScaleMode alpha mask");
-                masks.push_back({test,quad.color.a,std::move(variant)});found=std::prev(masks.end());
-            }
-            selected=found->texture.get();
-        }
-        quad_textures.push_back(selected);
-    }
+    for(const auto& quad:preview.quads)quad_textures.push_back(quad_cache.select(quad));
     if (!headless) require(SDL_SetRenderLogicalPresentation(renderer.get(), target_width, target_height, SDL_LOGICAL_PRESENTATION_LETTERBOX), "SDL_SetRenderLogicalPresentation");
     bool running = true;
     while (running) {

@@ -20,6 +20,8 @@ public:
     ArchiveImageSet(const ArchiveImageSet&)=delete;
     ArchiveImageSet& operator=(const ArchiveImageSet&)=delete;
     const ReadyArchiveImage& at(std::int32_t)const;
+    const ReadyArchiveImage* get(std::int32_t id)const{return ready_.at(static_cast<std::size_t>(id)).get();}
+    std::size_t slot_count()const{return ready_.size();}
     std::size_t ready_count()const{return ready_count_;}
 private:
     std::vector<std::unique_ptr<ReadyArchiveImage>> ready_;

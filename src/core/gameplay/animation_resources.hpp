@@ -13,12 +13,26 @@ struct ResourceCatalogIndex {
 // Missing IDs use -1. max_slots is an input-memory policy, not an original game limit.
 ResourceCatalogIndex index_resource_catalog(std::vector<std::int32_t> ids,std::size_t max_slots=1048576);
 
-struct ApplicationAnimationResources {
-    AnimationResource *characters=nullptr,*common=nullptr,*enemies=nullptr,*equipment=nullptr;
-    AnimationResource *quest=nullptr,*residents=nullptr,*selection=nullptr;
-    AnimationResource *chips=nullptr,*bullets=nullptr,*effects=nullptr;
-    AnimationResource *hats=nullptr,*weapons=nullptr,*gauges=nullptr;
+template<class Resource>struct ApplicationResourceFields {
+    Resource *characters=nullptr,*common=nullptr,*enemies=nullptr,*equipment=nullptr;
+    Resource *quest=nullptr,*residents=nullptr,*selection=nullptr;
+    Resource *chips=nullptr,*bullets=nullptr,*effects=nullptr;
+    Resource *hats=nullptr,*weapons=nullptr,*gauges=nullptr;
 };
+using ApplicationAnimationResources=ApplicationResourceFields<AnimationResource>;
+// Same AppData fields projected for clocks or drawing; one selector contract.
+template<class Fields>auto application_resource_slot(Fields& r,std::int32_t id)noexcept->decltype(&r.characters){
+    switch(id){
+    case 1:return &r.characters;case 2:return &r.common;case 3:return &r.enemies;case 4:return &r.equipment;
+    case 7:return &r.quest;case 8:return &r.residents;case 11:return &r.selection;
+    case 18:return &r.chips;case 19:return &r.bullets;case 20:return &r.effects;
+    case 21:return &r.hats;case 22:return &r.weapons;case 23:return &r.gauges;
+    default:return nullptr;
+    }
+}
+template<class Resource>Resource* get_application_resource(const ApplicationResourceFields<Resource>& r,std::int32_t id)noexcept{
+    auto slot=application_resource_slot(r,id);return slot?*slot:nullptr;
+}
 // AppData.GetResourceManager 0x1103e90. Unselected IDs return null, including 0.
 AnimationResource* get_animation_resource(const ApplicationAnimationResources&,std::int32_t) noexcept;
 std::int32_t animation_clip_max_frame(const ApplicationAnimationResources&,std::int32_t resource,std::int32_t clip);
