@@ -55,6 +55,7 @@ void MissionProfile::bind_schedule(){
     bind(21,true,[this](auto){queue=mission->render();if(!mission->faults().empty())throw std::invalid_argument("entity render fault: "+mission->faults().front().message);});
     bind(23,true,[this](auto pass){mission->advance_effects(pass);});
     bind(24,static_cast<bool>(spatial),[this](auto pass){spatial->advance_cursor(pass);});
+    bind(26,true,[this](auto pass){mission->advance_buttons(pass);});
     bind(31,simulate.has_value(),[this](auto pass){mission->advance_garbage(pass);});
     for(const auto id:gameplay_update_order)if(updates_[static_cast<std::size_t>(id)])update_list_.push_back(updates_[static_cast<std::size_t>(id)].get());
     last_updates_.reserve(update_list_.size());
@@ -66,6 +67,17 @@ void MissionProfile::load_replay(const std::filesystem::path& path){
     while(std::getline(file,line)){
         std::istringstream row(line);row.imbue(std::locale::classic());row>>std::ws;if(row.eof()||row.peek()=='#')continue;
         std::string frame,kind,value;if(!(row>>frame>>kind>>value))throw std::invalid_argument("replay requires step keys|attack|pulse value or step cursor x y");
+        if(kind=="touch"){
+            std::string group,control;if(!(row>>group>>control))throw std::invalid_argument("touch replay requires type group value");end(row);
+            std::uint64_t step=0;InputAction action{InputKind::touch};
+            const auto a=std::from_chars(frame.data(),frame.data()+frame.size(),step);
+            const auto b=std::from_chars(value.data(),value.data()+value.size(),action.x);
+            const auto c=std::from_chars(group.data(),group.data()+group.size(),action.y),d=std::from_chars(control.data(),control.data()+control.size(),action.z);
+            if(a.ec!=std::errc{}||a.ptr!=frame.data()+frame.size()||!step||step<previous||
+               b.ec!=std::errc{}||b.ptr!=value.data()+value.size()||c.ec!=std::errc{}||c.ptr!=group.data()+group.size()||
+               d.ec!=std::errc{}||d.ptr!=control.data()+control.size()||++count>100000)throw std::invalid_argument("invalid or unordered touch replay action");
+            replay_[step].push_back(action);previous=step;continue;
+        }
         if(kind=="cursor"){
             std::string y;if(!(row>>y))throw std::invalid_argument("cursor replay requires signed world x y");end(row);
             std::uint64_t step=0;InputAction action{InputKind::cursor};
@@ -100,6 +112,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     std::map<std::string,std::int32_t> gear_defaults;
     std::vector<std::size_t> players;
     std::vector<std::tuple<std::size_t,std::int32_t,float>> states;
+    std::vector<std::pair<std::int32_t,ButtonCreation>> buttons;
     std::set<std::string> quest_fields;
     std::int32_t rescued_prisoners=0;
     for(std::string line;std::getline(input,line);){
@@ -258,6 +271,14 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             SelectedBullet b;if(!native||!(row>>b.id>>b.damage>>b.attribute>>b.parent>>b.position.x>>b.position.y>>b.position.z))throw std::invalid_argument("bullet requires ID damage attribute parent ordinal and XYZ");selected.emplace_back(b);
         }else if(operation=="drop"){
             SelectedDrop d;if(!native||!(row>>d.type>>d.value>>d.scale>>d.position.x>>d.position.y>>d.position.z))throw std::invalid_argument("drop requires type value scale and XYZ");selected.emplace_back(d);drop_catalog=true;
+        }else if(operation=="button"){
+            std::int32_t parent=-1,dynamic=0,auto_destroy=0,unique=0;ButtonCreation b{};auto& p=b.properties;
+            if(!native||buttons.size()>=100000||!(row>>parent>>b.x>>b.y>>b.resource>>b.clip>>b.frame>>p.id>>p.value>>dynamic>>auto_destroy>>p.scale>>p.offset_x>>p.offset_y>>unique)||
+               parent< -1||(dynamic!=0&&dynamic!=1)||(auto_destroy!=0&&auto_destroy!=1)||(unique!=0&&unique!=1))
+                throw std::invalid_argument("button requires parent x y resource clip frame group value dynamic0/1 autoDestroy0/1 scale offsetX offsetY unique0/1");
+            p.dynamic=dynamic!=0;p.auto_destroy=auto_destroy!=0;b.unique_value=unique!=0;
+            // Explicit diagnostic scenario: no text payload and text offsets0; not recovered quest widget setup.
+            buttons.emplace_back(parent,std::move(b));
         }else if(operation=="effect"){
             SelectedEffect e;std::int32_t repeat=0;
             if(!native||!(row>>e.clip>>e.image>>repeat>>e.position.x>>e.position.y>>e.position.z)||(repeat!=0&&repeat!=1))throw std::invalid_argument("effect requires clip image loop0/1 and XYZ");
@@ -318,6 +339,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         if(distance<0||distance>1022)throw std::invalid_argument("mission_map diagnostic distance limit0..1022");
         if(geometry->step_x!=initial.step_x||geometry->step_z!=initial.step_z||geometry->height!=distance+2)throw std::invalid_argument("mission_map geometry must match InitWorld steps and quest height");
     }
+    if(!buttons.empty()&&!map_images)throw std::invalid_argument("button scenario requires mission_map fresh; dedicated widget drawing is unbound");
     if(!selected.empty()){
         if(!tables||!has_view||!has_slots||!has_animation||commands)throw std::invalid_argument("entity capture needs tables/view/slots/animate and no manual draw rows");
         if(!catalog)catalog=std::make_unique<GameplayCatalog>(load_gameplay_catalog(*tables,false,parse_event_decimal,rewards.has_value()||collection||drop_catalog,result_requested));
@@ -351,9 +373,16 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             if(result_requested)humans->enable_results(std::move(result_state));
             if(stage_loop)humans->enable_stage_loop(std::move(stage_scenario));
             if(input_scenario)humans->enable_input(*input_scenario);
+            if(input_scenario)humans->observe_input_touch([this](const InputTouch* event){mission->deliver_button_touch(event);});
             if(map_images){spatial=std::make_unique<MissionSpatial>(*entity_world,*live_map,view,humans->quest_form(),humans->quest(),map_images);mission->bind_spatial(*spatial);}
             for(const auto& request:states)humans->set_state(*created.at(std::get<0>(request)),std::get<1>(request),std::get<2>(request));
         }else if(!states.empty())throw std::invalid_argument("actor_state requires human_system");
+        for(auto& selected_button:buttons){
+            auto& b=selected_button.second;const auto parent=selected_button.first;
+            if(parent>=0)b.properties.parent=created.at(static_cast<std::size_t>(parent));
+            // SAGA_STUB(mission-entity-button-draw): retain native entities/Update/touch; dedicated image/text/widget output is unbound.
+            entity_world->button(b);
+        }
         bind_schedule();
         for(const auto& frame:replay_)for(const auto& action:frame.second)
             if(action.kind==InputKind::cursor&&!spatial)throw std::invalid_argument("cursor replay requires mission_map fresh");
@@ -364,6 +393,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     }
     if(simulate&&!mission)throw std::invalid_argument("simulate requires a table-backed entity scene");
     if(rewards&&!humans)throw std::invalid_argument("rewards requires human_system");
+    if(!buttons.empty()&&!mission)throw std::invalid_argument("button requires a table-backed entity scene");
     if((human_scenario||!states.empty()||!players.empty()||!gear_defaults.empty())&&!mission)throw std::invalid_argument("human scenario rows require a table-backed entity scene");
     selected_count=selected.size();
 }
@@ -375,7 +405,8 @@ bool MissionProfile::step(){
         if(action.kind==InputKind::keys)humans->set_input_keys(action.value);
         else if(action.kind==InputKind::attack)humans->select_input_attack(static_cast<std::int32_t>(action.value));
         else if(action.kind==InputKind::pulse)humans->pulse_stage_keys(action.value);
-        else spatial->touch_cursor(action.x,action.y);
+        else if(action.kind==InputKind::cursor)spatial->touch_cursor(action.x,action.y);
+        else humans->send_logical_touch(action.x,action.y,action.z);
         ++replay_applied_;
     }
     enabled_=configured_;last_updates_.clear();halted_=false;

@@ -2,6 +2,7 @@
 #include "gameplay_catalog.hpp"
 #include "core/ecs/dynamic_subsets.hpp"
 #include "core/gameplay/animation_pass.hpp"
+#include "core/gameplay/button_frame.hpp"
 #include "core/gameplay/enemy_factory.hpp"
 #include "core/gameplay/effect_factory.hpp"
 #include "core/gameplay/drop_collection.hpp"
@@ -26,7 +27,7 @@ class MissionEntities final:public core::HumanFactoryHost,public core::EnemyFact
     public core::BulletFactoryHost,public core::EffectFactoryHost,public core::ComponentObserver,
     public core::AnimationInitializationHost,public core::QuestEntityHost,private core::EntityDeletionHost,
     public core::ProjectileLaunchHost,public core::DropFactoryHost,public core::EmitterFactoryHost,public core::ParticleFactoryHost,
-    public core::MapFactoryHost,public core::QuestCameraFactoryHost {
+    public core::MapFactoryHost,public core::QuestCameraFactoryHost,public core::ButtonFactoryHost {
 public:
     using Resources=std::function<core::AnimationResource*(std::int32_t)>;
     using ResourceIds=std::function<std::int32_t(std::string_view)>;
@@ -38,6 +39,10 @@ public:
     core::ComponentSlots& bullet(const core::BulletCreation&);
     core::ComponentSlots& effect(core::ProjectilePoint,std::int32_t clip,std::int32_t image,bool loop);
     core::ComponentSlots& raw_entity(std::int32_t type);
+    core::ComponentSlots& button(const core::ButtonCreation&);
+    core::EntityButton& acquire_button()override;
+    core::EntitySubset* factory_buttons()override{return subset({17});}
+    void destroy_button(core::ComponentSlots& e,bool remove)override{destroy(e,remove);}
     core::MapComponent& create_initial_map();
     core::MapFactoryWorld& map_factory_world(){return map_world_;}
     core::ComponentSlots* create_camera();
@@ -140,6 +145,7 @@ private:
     core::PlayerWorldState player_world_{nullptr,&groups_,0};core::Component player_marker_;
     core::EntityEvents gameplay_events_;
     core::EntityIdState ids_;core::BulletFactoryWorld bullet_world_;core::DropEffectWorld effect_world_;core::EnemyFactoryWorld enemy_world_;
+    std::deque<core::EntityButton> buttons_;
     core::MapFactoryWorld map_world_{ids_,static_cast<core::MapFactoryHost&>(*this)};
     core::MapComponent map_component_;std::deque<core::MapChipComponent> map_chips_;
     std::deque<core::QuestCameraComponent> cameras_;

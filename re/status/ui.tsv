@@ -1,4 +1,12 @@
 id	status	evidence	note
+game:0x06000dcd	reimplemented	src/core/gameplay/button_frame.cpp	Supplied-world And17/0/2 and event9 subscription; nullable subset and partial Init semantics tested; live MissionScene binding
+game:0x06000dcf	reimplemented	src/core/gameplay/button_frame.cpp	Parent projection, retained Position, fresh camera/dynamic lookups, binary32 scale and unconditional autoDestroy snapshot; live index26 before Garbage
+game:0x06000dd5	reimplemented	src/core/gameplay/button_frame.cpp	First ID/value match, type13 hover and unconditional event11 including null target; same input9 bus as Input and Stage; replay and failure tests
+game:0x06000ddd	reimplemented	src/core/gameplay/button_frame.cpp	Complete native removal predicate reads only Button.autoDestroy; live/null parent irrelevant; deferred snapshot and callback mutation tested
+game:0x06000de1	reimplemented	src/core/gameplay/button_frame.cpp	Touch selection compares group ID then value with fresh Button getters; first match retained; duplicate matching widgets tested
+game:0x06000bf1	reimplemented	src/core/gameplay/button_frame.cpp	World.CreateButton with shared IDs, exact Position/Seb/Button slots and first value-only unique replacement; explicit diagnostic widgets reach real host
+game:0x06000b2c	reimplemented	src/core/gameplay/button_frame.cpp	Entity.AddButton writes supplied payload via pool and slot17; hover is retained; shared text identity and pool-state quirk tested
+game:0x06000c1f	reimplemented	src/core/gameplay/button_frame.cpp	Unique button replacement compares value only across IDs; exactly first match is destroyed before new allocation; live subset hole order tested
 game:0x06000e18	reimplemented	src/core/gameplay/cursor_frame.cpp	Fresh save17/18 and point publication before ordered event2/4 subscriptions; MissionSpatial initializes after LoadMap; failure/lifecycle contract tests
 game:0x06000e1a	reimplemented	src/core/gameplay/cursor_frame.cpp	Tracking invalidation and exact isometric cell event13; captured save values and fresh point after map/callback; live schedule24 and replay tested
 game:0x06000e1e	reimplemented	src/core/gameplay/cursor_frame.cpp	Native Human selection and focus changes; stable selection-effect output interface preserves post-create focus read and failure prefix

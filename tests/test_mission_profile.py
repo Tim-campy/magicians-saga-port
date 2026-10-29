@@ -13,6 +13,48 @@ from mission_scene_fixture import make_table_scene, make_shoot_scene, with_missi
 
 @unittest.skipUnless(EXE, 'saga_mission supplied by CTest')
 class MissionProfileTests(unittest.TestCase):
+    def test_entity_buttons_follow_native_camera_and_route_touch(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory);scene = root / 'scene.txt';replay = root / 'buttons.txt'
+            text = make_boss_scene(root)
+            # Explicit empty-text diagnostic widgets; the real quest widget producer remains separate.
+            text += 'button 0 7 9 1 40 0 99 123 0 0 100 8 -9 0\n'
+            text += 'button 0 7 9 1 40 0 99 124 1 0 100 8 -9 0\n'
+            text += 'button -1 7 9 1 40 0 99 125 0 1 100 8 -9 0\n'
+            scene.write_text(text, encoding='utf-8');replay.write_text('1 touch 13 99 123\n', encoding='ascii')
+            result = self.run_host(scene, '--replay', str(replay), frames=1)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            d = json.loads(result.stdout);buttons = d['entity_buttons'];self.assertEqual(len(buttons), 2)
+            self.assertEqual(d['button_steps'], 1);self.assertEqual(d['button_removals'], 1)
+            self.assertEqual(d['last_button_target'], buttons[0]['entity']);self.assertEqual(d['last_button_event_type'], 13)
+            self.assertTrue(buttons[0]['hover']);self.assertFalse(buttons[1]['hover'])
+            self.assertEqual(buttons[0]['parent'], d['positions'][0]['id'])
+            self.assertEqual((buttons[0]['x'], buttons[0]['y']), (buttons[1]['x'], buttons[1]['y']))
+            self.assertAlmostEqual(buttons[0]['x'], -88 - d['camera']['x'], places=4)
+            self.assertAlmostEqual(buttons[0]['y'], 356 - d['camera']['y'], places=4)
+            self.assertLess(d['last_update_order'].index(24), d['last_update_order'].index(26))
+            self.assertLess(d['last_update_order'].index(26), d['last_update_order'].index(31))
+            self.assertEqual(self.run_host(scene, '--replay', str(replay), frames=1).stdout, result.stdout)
+            replay.write_text('1 touch 13 99 123\n2 touch 2 99 123\n3 touch 13 99 999\n', encoding='ascii')
+            later = self.run_host(scene, '--replay', str(replay), frames=3)
+            self.assertEqual(later.returncode, 0, later.stderr);after = json.loads(later.stdout)
+            self.assertFalse(after['entity_buttons'][0]['hover']);self.assertEqual(after['last_button_target'], -1)
+            self.assertEqual(after['button_events'], 3)
+            # Factory uniqueness is by value, even across different group IDs, and removes only the first match.
+            scene.write_text(text + 'button -1 1 2 1 40 0 100 123 1 0 100 0 0 1\n', encoding='utf-8')
+            replaced = self.run_host(scene, frames=1);self.assertEqual(replaced.returncode, 0, replaced.stderr)
+            # Native subset traversal reuses the removed hash slot for the replacement.
+            self.assertEqual([b['group'] for b in json.loads(replaced.stdout)['entity_buttons']], [100,99])
+            for bad in ['1 touch 13 99\n', '1 touch 13 99 2147483648\n', '1 touch 13 99 1 extra\n',
+                        '2 touch 13 99 1\n1 touch 13 99 1\n']:
+                replay.write_text(bad, encoding='ascii')
+                self.assertNotEqual(self.run_host(scene, '--replay', str(replay)).returncode, 0)
+            for invalid in ['button 50 0 0 1 40 0 99 123 0 0 100 0 0 0\n',
+                            'button 0 0 0 1 40 0 99 123 2 0 100 0 0 0\n']:
+                scene.write_text(text + invalid, encoding='utf-8');self.assertNotEqual(self.run_host(scene).returncode, 0)
+            scene.write_text(text.replace('mission_map fresh 0 1 2 3\n', ''), encoding='utf-8')
+            self.assertIn('button scenario requires mission_map fresh', self.run_host(scene).stderr)
+
     def test_cursor_selects_live_human_and_follows_camera_cells(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory);scene = root / 'scene.txt';replay = root / 'cursor.txt'
@@ -84,9 +126,9 @@ class MissionProfileTests(unittest.TestCase):
             self.assertEqual(report['effect_steps'], 12)
             self.assertEqual(report['effect_updates'], [])
             self.assertFalse(report['update_schedule_complete'])
-            self.assertEqual(report['bound_update_systems'], [0,2,3,4,5,8,9,10,11,12,13,14,15,17,18,19,20,21,23,24,31])
-            self.assertEqual(report['unbound_update_systems'], [16,22,25,26,30])
-            self.assertEqual(report['last_update_order'], [2,9,11,13,14,15,18,19,21,23,31])
+            self.assertEqual(report['bound_update_systems'], [0,2,3,4,5,8,9,10,11,12,13,14,15,17,18,19,20,21,23,24,26,31])
+            self.assertEqual(report['unbound_update_systems'], [16,22,25,30])
+            self.assertEqual(report['last_update_order'], [2,9,11,13,14,15,18,19,21,23,26,31])
             self.assertEqual(report['rotation_steps'], 12)
             self.assertEqual(report['battle_steps'], 12)
 

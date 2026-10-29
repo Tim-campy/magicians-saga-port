@@ -29,6 +29,7 @@ std::int32_t MissionInput::input_frames_per_second(){return owner_.runtime_.fps;
 void MissionInput::advance(std::int32_t pass,bool enabled){if(gameplay_needs_update(0,enabled,pass)){update_input(state_,*this);++steps_;}}
 void MissionInput::set_keys(std::uint32_t keys){owner_.held_keys_=keys;}
 void MissionInput::select_attack(std::int32_t index){if(index<0||index>2)throw std::invalid_argument("attack control index0..2 required");send_input_touch(2,&controls_.at(static_cast<std::size_t>(index+2)).touch);}
+void MissionInput::logical_touch(std::int32_t type,std::int32_t group,std::int32_t value){InputControl control{group,value};send_input_touch(type,&control);}
 MovementControl* MissionInput::movement_control(std::int32_t group,std::int32_t value){for(auto& c:controls_)if(c.touch.group==group&&c.touch.value==value)return &c;return nullptr;}
 void MissionInput::release(MovementControl& control,std::int32_t type,std::int32_t event_id){
     if(event_id!=9)throw std::logic_error("mission control event is unbound");
@@ -45,5 +46,7 @@ void MissionHumans::enable_input(MissionInputScenario scenario){if(input_)throw 
 void MissionHumans::advance_input(std::int32_t pass,bool enabled){if(input_)input_->advance(pass,enabled);}
 void MissionHumans::set_input_keys(std::uint32_t value){if(!input_)throw std::logic_error("input fresh is required");input_->set_keys(value);}
 void MissionHumans::select_input_attack(std::int32_t value){if(!input_)throw std::logic_error("input fresh is required");input_->select_attack(value);}
+void MissionHumans::observe_input_touch(std::function<void(const InputTouch*)> receiver){if(!input_)throw std::logic_error("input fresh is required");input_->observe_touch(std::move(receiver));}
+void MissionHumans::send_logical_touch(std::int32_t type,std::int32_t group,std::int32_t value){if(!input_)throw std::logic_error("input fresh is required");input_->logical_touch(type,group,value);}
 void MissionHumans::write_input_report(std::ostream& out){out<<",\"input_enabled\":"<<(input_?"true":"false");if(input_)input_->report(out);}
 }

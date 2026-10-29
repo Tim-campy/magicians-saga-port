@@ -22,7 +22,8 @@ class MissionScene final:private core::RenderInitializationWorld,private core::R
     private core::QuestCameraHost,private core::QuestViewportView,private core::GarbageUpdateHost,private core::ModificationFrameHost,
     private core::EmitterFrameHost,private core::CollisionPassHost,
     private core::ParameterInitializationWorld,private core::ParameterExperienceInitializationWorld,
-    private core::EffectInitializationWorld,private core::EffectFrameHost {
+    private core::EffectInitializationWorld,private core::EffectFrameHost,
+    private core::ButtonInitializationWorld,private core::ButtonFrameHost {
 public:
     MissionScene(MissionEntities&,MissionApplication&,core::EntitySubset& visible,MissionView&,core::MapComponent*);
     MissionScene(const MissionScene&)=delete;
@@ -38,6 +39,8 @@ public:
     void advance_collisions(std::int32_t pass,bool enabled=true);
     void advance_parameter_experience(std::int32_t pass=0,bool enabled=true);
     void advance_battle(std::int32_t pass=0,bool enabled=true);
+    void advance_buttons(std::int32_t pass=0,bool enabled=true);
+    void deliver_button_touch(const core::InputTouch*);
     void advance_parameters(std::int32_t pass=0,bool enabled=true);
     void advance_effects(std::int32_t pass=0,bool enabled=true);
     // Typed event21 boundary; no reward-orb or character-EXP producer is inferred.
@@ -51,6 +54,14 @@ public:
     core::RenderQueue& render();
     const std::vector<MissionRenderFault>& faults()const{return faults_;}
 private:
+    core::EntitySubset* button_subset(const core::EventIntegers& slots)override{return world_.subset(slots);}
+    void subscribe_button_touch(core::ButtonInitializationWorld::Receiver receiver)override{button_touch_receiver_=std::move(receiver);}
+    bool button_parent_destroyed(core::ComponentSlots& e)override{return world_.destroyed(e);}
+    float project_button_x(float x,float z)override{return core::render_isometric_x(x,z);}
+    float project_button_y(float x,float z)override{return core::render_isometric_y(x,z);}
+    core::QuestCameraForm* button_camera_form()override{return gauge_camera_host().current_camera_form();}
+    void destroy_button(core::ComponentSlots& e,bool remove)override{world_.destroy(e,remove);++button_removals_;}
+    void send_button_event(const core::InputTouch*,core::ComponentSlots*)override;
     void subscribe_dropoff(core::EntityEvents::Single,std::optional<core::EventHashes>)override;
     void subscribe_parameter_experience(core::ParameterExperienceInitializationWorld::Receiver,std::optional<core::EventHashes>)override;
     core::EntitySubset* effect_subset(const core::EventIntegers& all,const core::EventIntegers& none)override{return world_.subset(all,none);}
@@ -97,6 +108,9 @@ private:
     core::CollisionSystemState collisions_;std::uint64_t collision_events_=0,area_collision_events_=0;
     core::ParameterExperienceSystem experience_;
     core::BattleSystemState battle_;
+    core::ButtonFrameState buttons_;core::ButtonInitializationWorld::Receiver button_touch_receiver_;
+    std::uint64_t button_steps_=0,button_events_=0,button_removals_=0;
+    core::ComponentSlots* last_button_target_=nullptr;std::int32_t last_button_event_type_=0;
     core::ParameterExperienceInitializationWorld::Receiver experience_receiver_;
     core::EffectSystemState effects_;
     std::uint64_t experience_steps_=0,parameter_steps_=0,effect_steps_=0,battle_steps_=0;

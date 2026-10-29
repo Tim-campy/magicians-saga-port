@@ -72,6 +72,8 @@ public:
     void set_input_keys(std::uint32_t);
     void set_input_movement(bool up,bool down){set_input_keys((held_keys_&~0xa0000U)|(up?0x20000U:0U)|(down?0x80000U:0U));}
     void select_input_attack(std::int32_t);
+    void observe_input_touch(std::function<void(const core::InputTouch*)>);
+    void send_logical_touch(std::int32_t type,std::int32_t group,std::int32_t value);
     std::int32_t selected_attack()const{return stage_.attack_attribute;}
     void write_input_report(std::ostream&);
     bool stage_input_enabled()const{return static_cast<bool>(stage_loop_);}

@@ -37,6 +37,8 @@ const TreasureRecord& MissionEntities::treasure(std::int32_t id)const{
 ComponentSlots& MissionEntities::emitter(EmitterCreation args){return create_emitter(args,*this);}
 DropComponent& MissionEntities::acquire_drop(){return acquire(drops_);}
 ComponentSlots& MissionEntities::raw_entity(std::int32_t type){return create_entity(ids_,type,false,static_cast<BulletFactoryHost&>(*this));}
+ComponentSlots& MissionEntities::button(const ButtonCreation& args){return create_button(args,ids_,*this);}
+EntityButton& MissionEntities::acquire_button(){return acquire(buttons_);}
 MapComponent& MissionEntities::create_initial_map(){
     core::create_map(initial_mission_map_creation(),ids_,static_cast<MapFactoryHost&>(*this));
     map_=&map_component_;return map_component_;
