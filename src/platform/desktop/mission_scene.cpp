@@ -4,6 +4,7 @@
 #include "core/gameplay/subset_cursors.hpp"
 #include "core/ecs/update_scheduler.hpp"
 #include <stdexcept>
+#include <algorithm>
 
 namespace saga::desktop {
 using namespace core;
@@ -109,12 +110,19 @@ void MissionScene::advance_buttons(std::int32_t pass,bool enabled){if(gameplay_n
 void MissionScene::deliver_button_touch(const InputTouch* touch){required(button_touch_receiver_?&button_touch_receiver_:nullptr)(touch);}
 void MissionScene::send_button_event(const InputTouch* touch,ComponentSlots* target){
     info_button_(touch,target);++info_button_events_; // Original Info receiver deliberately ignores the target.
-    const auto receivers=auxiliary_buttons_;if(receivers)for(const auto& f:*receivers)f(touch,target);
+    const auto receivers=auxiliary_buttons_;if(receivers)for(const auto& f:*receivers)f.callback(touch,target);
     last_button_target_=target;last_button_event_type_=required(touch).type;++button_events_;
 }
-void MissionScene::observe_button_event(AuxiliaryInitializationWorld::Button receiver){
-    auto next=auxiliary_buttons_?std::make_shared<std::vector<AuxiliaryInitializationWorld::Button>>(*auxiliary_buttons_):std::make_shared<std::vector<AuxiliaryInitializationWorld::Button>>();
-    next->push_back(std::move(receiver));auxiliary_buttons_=std::move(next);
+void MissionScene::observe_button_event(std::int32_t factory,AuxiliaryInitializationWorld::Button receiver){
+    auto next=auxiliary_buttons_?std::make_shared<std::vector<ButtonObserver>>(*auxiliary_buttons_):std::make_shared<std::vector<ButtonObserver>>();
+    next->push_back({factory,std::move(receiver)});auxiliary_buttons_=std::move(next);
+}
+void MissionScene::remove_button_observer(std::int32_t factory){
+    if(!auxiliary_buttons_)return;
+    auto next=std::make_shared<std::vector<ButtonObserver>>(*auxiliary_buttons_);
+    const auto it=std::find_if(next->begin(),next->end(),[=](const auto& entry){return entry.factory==factory;});
+    if(it!=next->end())next->erase(it);
+    auxiliary_buttons_=std::move(next);
 }
 void MissionScene::advance_parameter_experience(std::int32_t pass,bool enabled){if(gameplay_needs_update(9,enabled,pass)){update_parameter_experience(experience_);++experience_steps_;}}
 void MissionScene::advance_parameters(std::int32_t pass,bool enabled){if(gameplay_needs_update(14,enabled,pass)){update_parameters();++parameter_steps_;}}

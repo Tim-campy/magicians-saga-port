@@ -64,7 +64,10 @@ public:
     void write_pass_report(std::ostream&);
     void bind_spatial(MissionSpatial&,bool initialize_render=true);
     core::EnemyGaugeService* gauge_service(){return &gauge_service_;}
-    void observe_button_event(core::AuxiliaryInitializationWorld::Button);
+    void observe_button_event(std::int32_t factory,core::AuxiliaryInitializationWorld::Button);
+    void remove_button_observer(std::int32_t factory); // First known-method identity; no native delegate-hash emulation.
+    void set_manager_paused(bool value){info_paused_=value;}
+    void pause_info(){core::pause_info(info_);}
     core::QuestCameraHost& gauge_camera_host();
     void draw_enemy_gauges(const std::function<void(const core::ParameterGaugeRequest&)>&);
     std::uint64_t collision_events()const{return collision_events_;}
@@ -83,7 +86,7 @@ private:
     void subscribe_info_button(core::InfoInitializationWorld::Button f)override{info_button_=std::move(f);}
     void subscribe_info_town(core::InfoInitializationWorld::Town f)override{info_town_=std::move(f);}
     std::int32_t info_view_height()override{return view_.height;}
-    bool info_world_paused()override{return info_paused_;} // Fresh SystemManager CLR value; native pause/resume binding remains separate.
+    bool info_world_paused()override{return info_paused_;}
     core::EntitySubset* info_monsters()override{return world_.subset({16});}
     std::shared_ptr<core::PopupBar> make_monster_info(core::ComponentSlots*)override;
     std::shared_ptr<core::SlideBar> make_attack_notice(core::EventObject)override;
@@ -136,7 +139,8 @@ private:
     core::RenderSystemState renderer_;core::AnimationSystemState animations_;core::SebStaticWork sprite_work_;
     core::EntitySubset *movers_=nullptr,*rotating_=nullptr,*garbage_entities_=nullptr;core::GarbagePass garbage_pass_;
     core::EnemyGaugeService gauge_service_;
-    std::shared_ptr<const std::vector<core::AuxiliaryInitializationWorld::Button>> auxiliary_buttons_;
+    struct ButtonObserver {std::int32_t factory;core::AuxiliaryInitializationWorld::Button callback;};
+    std::shared_ptr<const std::vector<ButtonObserver>> auxiliary_buttons_;
     core::ModificationSystemState modifications_;
     core::EmitterSystemState emitters_;
     core::CollisionSystemState collisions_;std::uint64_t collision_events_=0,area_collision_events_=0;

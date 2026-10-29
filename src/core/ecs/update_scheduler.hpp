@@ -29,6 +29,19 @@ void update_systems(UpdateSchedule&,std::int32_t pass);
 inline constexpr std::array<std::int32_t,26> gameplay_update_order{{
     0,2,3,4,5,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,30,31
 }};
+inline constexpr std::array<std::int32_t,12> gameplay_pause_order{{
+    2,4,5,9,10,11,13,14,15,19,23,28
+}};
+struct GameplaySystemState {
+    bool enabled=true;
+    std::function<void()> on_enabled,on_disabled,on_pause; // Empty means BaseSystem's RET hook.
+};
+// BaseSystem.set_enabled 0x113b48c: store before hook, unchanged values do nothing.
+void set_system_enabled(GameplaySystemState&,bool);
+// Fixed Systems.CreateSystems projection of SystemManager.PauseSystems 0x113b03c.
+// Every concrete IPausable.Pause writes !value through set_enabled; resume does not restore a snapshot.
+// Dynamic manager list mutation is outside this fixed gameplay binding.
+void pause_gameplay_systems(bool& manager_paused,std::array<GameplaySystemState,32>&,bool value);
 // Gates from the concrete game's 26 NeedsUpdate methods; unsupported indices throw.
 bool gameplay_needs_update(std::int32_t factory_index,bool enabled,std::int32_t pass);
 class GameplayUpdate final:public UpdateSystem {

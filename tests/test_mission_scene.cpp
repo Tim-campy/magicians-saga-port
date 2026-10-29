@@ -19,6 +19,15 @@ int main()try{
     MissionApplication app;app.characters=&resource;app.enemies=&resource;
     MissionEntities world(data,saved,35,nullptr,[&](std::int32_t id){auto* r=get_application_resource(app,id);return r?r->animations:nullptr;},[](std::string_view){return 3;});
     auto* visible=world.subset({0,2});MissionView view{128,96,100,-20,-30,0,0,100};MissionScene scene(world,app,*visible,view,nullptr);
+    {std::vector<int> calls;InputControl control{99,123};InputTouch touch{5,&control};bool replace=true;
+        scene.observe_button_event(28,[&](auto*,auto*){calls.push_back(1);});
+        scene.observe_button_event(27,[&](auto*,auto*){calls.push_back(2);if(replace){replace=false;scene.remove_button_observer(28);scene.observe_button_event(28,[&](auto*,auto*){calls.push_back(4);});}});
+        scene.observe_button_event(28,[&](auto*,auto*){calls.push_back(3);});
+        scene.remove_button_observer(28); // Remove first identity, retaining the second registration.
+        scene.deliver_button_touch(&touch);check(calls==std::vector<int>{2,3}); // Current delivery retains its snapshot.
+        calls.clear();scene.deliver_button_touch(&touch);check(calls==std::vector<int>{2,4});
+        scene.remove_button_observer(27);scene.remove_button_observer(28);scene.remove_button_observer(28);
+    }
     auto& hero=world.human({0,2,5,0,0,13,0,0,0});auto* enemy=world.enemy({0,4,7,0,{10,0,0}});check(enemy!=nullptr);
     auto* battles=world.subset({20,14});check(battles->size()==0); // Main hero has Input28, not AI20.
     hero.add(20,&world.acquire_ai());scene.advance_battle(0,false);scene.advance_battle(-1);

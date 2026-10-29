@@ -8,6 +8,7 @@
 #include <cmath>
 #include <charconv>
 #include <set>
+#include <algorithm>
 
 namespace saga::desktop {
 using namespace core;
@@ -29,7 +30,20 @@ SceneResource::SceneResource(const std::filesystem::path& path,ResourceProfile p
     :archive(read(path),std::move(profile)),manager(archive){
     if(decoder)images=std::make_unique<ArchiveImageSet>(manager,std::move(decoder));
 }
-void MissionProfile::subscribe_auxiliary_button(std::int32_t,AuxiliaryInitializationWorld::Button receiver){mission->observe_button_event(std::move(receiver));}
+void MissionProfile::subscribe_auxiliary_button(std::int32_t factory,AuxiliaryInitializationWorld::Button receiver){
+    if(factory==28)menu_button_receiver_=receiver;
+    mission->observe_button_event(factory,std::move(receiver));
+}
+void MissionProfile::refresh_enabled(){
+    for(std::size_t i=0;i<enabled_.size();++i)enabled_[i]=configured_[i]&&system_states_[i].enabled;
+}
+void MissionProfile::pause_systems(bool value){
+    if(!initialization_complete_)throw std::logic_error("stage pause requires system_init's declared loaded-world lifecycle");
+    ++pause_requests_;mission->set_manager_paused(value);
+    try{pause_gameplay_systems(initialization_.paused,system_states_,value);}
+    catch(...){refresh_enabled();throw;}
+    refresh_enabled(); // Stage3 changes the gates of systems later in this same update.
+}
 void MissionProfile::initialize_factory(std::int32_t id,InitializationWorld* argument){
     if(argument!=&initialization_world_)throw std::invalid_argument("foreign mission initialization world");
     initialized_order_.push_back(id);
@@ -57,6 +71,10 @@ void MissionProfile::initialize_loaded_world(){
     }
     append_gameplay_initializers(initializers_,factory);initialize_systems(initialization_,&initialization_world_);
     initialization_complete_=true;
+    system_states_[28].on_enabled=[this]{mission->observe_button_event(28,menu_button_receiver_);};
+    system_states_[28].on_disabled=[this]{mission->remove_button_observer(28);};
+    system_states_[25].on_pause=[this]{mission->pause_info();};
+    if(humans->stage_input_enabled())humans->bind_stage_pause([this](bool value){pause_systems(value);});
     if(!native_stage_entry_)spatial->load_selected_map();
     humans->apply_initialized_scenario(); // Explicit input/population snapshot; Start replaces its native entry fields.
 }
@@ -117,6 +135,13 @@ void MissionProfile::load_replay(const std::filesystem::path& path){
     while(std::getline(file,line)){
         std::istringstream row(line);row.imbue(std::locale::classic());row>>std::ws;if(row.eof()||row.peek()=='#')continue;
         std::string frame,kind,value;if(!(row>>frame>>kind>>value))throw std::invalid_argument("replay requires step keys|attack|pulse value or step cursor x y");
+        if(kind=="answer"){
+            end(row);std::uint64_t step=0;InputAction action{InputKind::answer};
+            const auto a=std::from_chars(frame.data(),frame.data()+frame.size(),step),b=std::from_chars(value.data(),value.data()+value.size(),action.x);
+            if(a.ec!=std::errc{}||a.ptr!=frame.data()+frame.size()||!step||step<previous||b.ec!=std::errc{}||b.ptr!=value.data()+value.size()||++count>100000)
+                throw std::invalid_argument("invalid or unordered signed dialog answer");
+            replay_[step].push_back(action);previous=step;continue;
+        }
         if(kind=="touch"){
             std::string group,control;if(!(row>>group>>control))throw std::invalid_argument("touch replay requires type group value");end(row);
             std::uint64_t step=0;InputAction action{InputKind::touch};
@@ -173,6 +198,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     std::ifstream input(scene);if(!input)throw std::runtime_error("cannot open scene description");
     std::vector<std::variant<HumanCreation,EnemyCreation,SelectedBullet,SelectedEffect,SelectedDrop>> selected;
     std::optional<MissionHumanScenario> human_scenario;bool runtime_row=false;
+    std::array<bool,32> enabled_rows{};
     std::optional<MissionRewardScenario> rewards;
     std::optional<MissionNotificationScenario> notifications;
     bool collection=false,drop_catalog=false;
@@ -242,6 +268,12 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             std::int32_t loaded=0;
             if(initialized_loaded_||!(row>>loaded)||loaded<1||loaded>255)throw std::invalid_argument("system_init requires one explicit loaded-world byte1..255; fresh-game bootstrap is unbound");
             initialized_loaded_=static_cast<std::uint8_t>(loaded);end(row);continue;
+        }
+        if(operation=="system_enabled"){
+            std::int32_t id=0,value=0;
+            if(!(row>>id>>value)||id<0||id>=32||(value!=0&&value!=1)||enabled_rows[static_cast<std::size_t>(id)])
+                throw std::invalid_argument("system_enabled requires one factory0..31 and bool0/1 per slot");
+            end(row);enabled_rows[static_cast<std::size_t>(id)]=true;system_states_[static_cast<std::size_t>(id)].enabled=value!=0;continue;
         }
         if(operation=="stage_start"){
             std::int32_t stage=0;std::string area;
@@ -465,6 +497,8 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     if(selection.quest&&!selected_quest)throw std::invalid_argument("--quest requires a scenario quest row with explicit saved rescued count");
     if(!has_world)throw std::invalid_argument("an explicit world matrix is required");
     const bool result_requested=wallet||record||recruits||stocks[0]||stocks[1]||stocks[2];
+    if(std::find(enabled_rows.begin(),enabled_rows.end(),true)!=enabled_rows.end()&&!initialized_loaded_)
+        throw std::invalid_argument("system_enabled snapshot requires system_init");
     if(offscreen_camera_&&(!initialized_loaded_||!map_images))throw std::invalid_argument("mission_presentation requires system_init and mission_map");
     if(stage_entry){
         if(!selected_quest||!initialized_loaded_||!human_scenario||!stage_loop||!result_requested||!has_formation||!states.empty())
@@ -555,7 +589,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
                 if(!initialized_loaded_)spatial->observe_cursor_click([this](CursorPointRef point){mission->deliver_info_click(std::move(point));});}
             if(initialized_loaded_)initialize_loaded_world();
             if(stage_entry)humans->start_mission(*stage_entry,formation,*spatial,
-                [this]{return initialization_.paused;},[this]{initialization_.paused=false;});
+                [this]{return initialization_.paused;},[this]{pause_systems(false);});
             for(const auto& request:states)humans->set_state(*created.at(std::get<0>(request)),std::get<1>(request),std::get<2>(request));
         }else if(!states.empty())throw std::invalid_argument("actor_state requires human_system");
         for(auto& selected_button:buttons){
@@ -578,6 +612,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         bind_schedule();
         for(const auto& frame:replay_)for(const auto& action:frame.second)
             if(action.kind==InputKind::viewport&&!offscreen_camera_)throw std::invalid_argument("viewport replay requires mission_presentation");
+            else if(action.kind==InputKind::answer&&(!stage_loop||!initialized_loaded_))throw std::invalid_argument("answer replay requires stage_loop and system_init");
             else if((action.kind==InputKind::cursor||action.kind==InputKind::click)&&!spatial)throw std::invalid_argument("cursor/click replay requires mission_map fresh");
         for(std::int32_t i=0;i<frames;++i)mission->advance_animations({automatic!=0,application_update!=0});
         if(spatial)spatial->advance_visibility();
@@ -602,13 +637,14 @@ bool MissionProfile::step(){
         if(action.kind==InputKind::keys)humans->set_input_keys(action.value);
         else if(action.kind==InputKind::attack)humans->select_input_attack(static_cast<std::int32_t>(action.value));
         else if(action.kind==InputKind::pulse)humans->pulse_stage_keys(action.value);
+        else if(action.kind==InputKind::answer)humans->answer_stage_dialog(action.x);
         else if(action.kind==InputKind::viewport)resize_viewport(action.x,action.y);
         else if(action.kind==InputKind::cursor)spatial->touch_cursor(action.x,action.y);
         else if(action.kind==InputKind::click)spatial->click_cursor(action.x,action.y);
         else humans->send_logical_touch(action.x,action.y,action.z);
         ++replay_applied_;
     }
-    enabled_=configured_;last_updates_.clear();halted_=false;
+    refresh_enabled();last_updates_.clear();halted_=false;
     UpdateSchedule schedule{&update_list_,&timer_};update_systems(schedule,0);
     if(halted_)return false;
     ++logic_steps;return true;
@@ -633,6 +669,8 @@ void MissionProfile::write_combat_report(std::ostream& out){
     out<<",\"init_order\":[";for(std::size_t i=0;i<initialized_order_.size();++i){if(i)out<<',';out<<initialized_order_[i];}out<<']';
     out<<",\"init_manager_paused\":"<<(initialization_.paused?"true":"false")<<",\"init_town_return_registered\":"<<(town_return_?"true":"false")
        <<",\"submenu_button_events\":"<<submenu_touches_<<",\"menu_button_events\":"<<menu_touches_;
+    out<<",\"pause_requests\":"<<pause_requests_<<",\"system_enabled\":[";
+    for(std::size_t i=0;i<system_states_.size();++i){if(i)out<<',';out<<(system_states_[i].enabled?"true":"false");}out<<']';
     out<<",\"enemy_gauges_enabled\":"<<(enemy_gauges?"true":"false")<<",\"enemy_gauge_requests\":[";
     if(enemy_gauges){bool first=true;mission->draw_enemy_gauges([&](const ParameterGaugeRequest& r){if(!first)out<<',';first=false;
         out<<"{\"entity\":"<<entity_world->id(*r.entity)<<",\"x\":"<<r.x<<",\"y\":"<<r.y<<",\"image\":"<<r.image<<",\"parameter\":"<<r.parameter<<",\"anchor\":"<<r.anchor<<",\"force\":"<<(r.force?"true":"false")<<'}';});}out<<']';

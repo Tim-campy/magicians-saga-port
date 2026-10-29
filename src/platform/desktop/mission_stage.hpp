@@ -22,6 +22,9 @@ public:
     MissionStage(MissionHumans&,MissionStageScenario);
     bool advance(std::int32_t pass,bool enabled);
     void pulse(std::uint32_t mask){pending_pulse_|=mask;}
+    void bind_pause(std::function<void(bool)> callback){pause_=std::move(callback);}
+    bool exit_dialog_pending()const;
+    void answer_dialog(std::int32_t);
     void report(std::ostream&);
     void start(std::int32_t,const core::EventIntegers&,core::StageMapLoader&,
                std::function<bool()>,std::function<void()>);
@@ -90,6 +93,9 @@ private:
     std::uint64_t steps_=0;std::uint32_t pulse_=0,pending_pulse_=0;
     core::StageMapLoader* map_loader_=nullptr;
     std::function<bool()> paused_;std::function<void()> resume_;
+    std::function<void(bool)> pause_;
+    bool answer_received_=false;
+    std::uint64_t modal_wait_steps_=0,dialog_answers_=0;
     bool started_=false;
 };
 }

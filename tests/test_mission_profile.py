@@ -13,6 +13,82 @@ from mission_scene_fixture import make_table_scene, make_shoot_scene, with_missi
 
 @unittest.skipUnless(EXE, 'saga_mission supplied by CTest')
 class MissionProfileTests(unittest.TestCase):
+    def test_native_pause_resume_and_explicit_exit_answers(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);scene=root/'scene.txt';replay=root/'pause.txt'
+            text=make_boss_scene(root)+('system_init 1\ncollisions\ninfo_popup 1 0 0 5 0 20 -1\ninfo_popup 2 1 0 3 0 12 -1\n'
+                                       'result_wallet 10 20 4\nresult_record 0 0 0 0 0 0 0\n'
+                                       'result_inventory equipment 0 0 0\nresult_inventory cloth 0 0 0\n'
+                                       'result_inventory hat 0 0 0\nresult_recruits 0 0 0\n')
+            scene.write_text(text,encoding='utf-8')
+            replay.write_text('2 pulse 33554432\n3 touch 5 99 123\n3 click 0 0\n7 pulse 67108864\n8 touch 5 99 123\n'
+                              '9 pulse 33554432\n10 pulse 134217728\n12 pulse 67108864\n14 answer -1\n15 pulse 67108864\n'
+                              '16 pulse 33554432\n17 pulse 134217728\n20 answer 0\n',encoding='ascii')
+            def run(frames):
+                result=self.run_host(scene,'--replay',str(replay),frames=frames)
+                self.assertEqual(result.returncode,0,result.stderr)
+                return json.loads(result.stdout)
+            paused=run(6)
+            self.assertTrue(paused['init_manager_paused']);self.assertEqual(paused['stage_state'],2)
+            self.assertEqual(paused['pause_requests'],1);self.assertEqual(paused['movement_steps'],1)
+            self.assertEqual(paused['battle_steps'],2);self.assertEqual(paused['input_steps'],6)
+            self.assertEqual(paused['remaining_time'],4998);self.assertEqual(paused['info_steps'],6)
+            self.assertEqual(paused['info_popup_disposals'],0);self.assertEqual(paused['info_popups'][0]['state'],2)
+            self.assertEqual(paused['submenu_button_events'],1);self.assertEqual(paused['menu_button_events'],0)
+            cohort={2,4,5,9,10,11,13,14,15,19,23,28}
+            self.assertEqual(paused['system_enabled'],[i not in cohort for i in range(32)])
+            self.assertEqual(paused['last_update_order'],[0,3,8,12,16,17,18,20,21,22,24,25,26,30,31])
+            resumed=run(7)
+            self.assertFalse(resumed['init_manager_paused']);self.assertEqual(resumed['movement_steps'],2)
+            self.assertEqual(resumed['battle_steps'],2);self.assertEqual(resumed['remaining_time'],paused['remaining_time'])
+            self.assertEqual(run(8)['menu_button_events'],1)
+            waiting=run(13)
+            self.assertEqual(waiting['info_popup_disposals'],1);self.assertEqual([p['id'] for p in waiting['info_popups']],[2])
+            self.assertTrue(waiting['exit_dialog_pending']);self.assertEqual(waiting['retry_dialog']['kind'],99)
+            self.assertFalse(waiting['transition_pending']);self.assertEqual(waiting['exit_dialog_answers'],0)
+            self.assertEqual(waiting['exit_dialog_wait_steps'],3)
+            cancelled=run(14)
+            self.assertFalse(cancelled['exit_dialog_pending']);self.assertIsNone(cancelled['retry_dialog'])
+            self.assertEqual(cancelled['stage_state'],2);self.assertTrue(cancelled['init_manager_paused'])
+            self.assertFalse(cancelled['transition_pending']);self.assertEqual(cancelled['exit_dialog_answers'],1)
+            finished=run(25)
+            self.assertTrue(finished['transition_pending']);self.assertEqual(finished['exit_dialog_answers'],2)
+            self.assertEqual(finished['frames'],20);self.assertEqual(finished['replay_actions'],13)
+            self.assertFalse(finished['result_granted']);self.assertEqual(finished['quest_record']['challenges'],1)
+            self.assertEqual(finished['quest_record']['clears'],0);self.assertEqual(finished['inventory_changes'],[])
+            self.assertEqual(finished['notification_events'].count('make_exit'),2)
+            self.assertIn('answer_exit:-1',finished['notification_events']);self.assertIn('answer_exit:0',finished['notification_events'])
+            self.assertEqual(json.loads(self.run_host(scene,'--replay',str(replay),frames=25).stdout),finished)
+
+    def test_pause_resume_enables_cohort_without_restoring_old_flags(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);scene=root/'scene.txt';replay=root/'pause.txt'
+            text=make_boss_scene(root)+'system_init 1\nsystem_enabled 9 0\nsystem_enabled 22 0\n'
+            scene.write_text(text,encoding='utf-8');replay.write_text('2 pulse 33554432\n4 pulse 67108864\n',encoding='ascii')
+            result=self.run_host(scene,'--replay',str(replay),frames=5)
+            self.assertEqual(result.returncode,0,result.stderr);d=json.loads(result.stdout)
+            self.assertTrue(d['system_enabled'][9]);self.assertFalse(d['system_enabled'][22])
+            self.assertEqual(d['parameter_experience_steps'],2);self.assertEqual(d['gauge_steps'],0)
+            for bad in ['system_enabled 9 0\n','system_enabled 32 0\n','system_enabled -1 1\n',
+                        'system_enabled 10 2\n','system_enabled 10 0 extra\n']:
+                scene.write_text(text+bad,encoding='utf-8');self.assertNotEqual(self.run_host(scene).returncode,0)
+            scene.write_text(text.replace('system_init 1\n',''),encoding='utf-8')
+            self.assertIn('requires system_init',self.run_host(scene).stderr)
+
+    def test_dialog_answers_require_a_pending_dialog_and_signed_int32(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);scene=root/'scene.txt';replay=root/'answer.txt'
+            text=make_boss_scene(root)+'system_init 1\n';scene.write_text(text,encoding='utf-8')
+            for bad in ['1 answer 0\n','1 answer -2147483649\n','1 answer 2147483648\n','1 answer 0 extra\n',
+                        '2 pulse 33554432\n3 pulse 134217728\n4 answer 1\n4 answer 0\n']:
+                replay.write_text(bad,encoding='ascii');self.assertNotEqual(self.run_host(scene,'--replay',str(replay),frames=6).returncode,0)
+            replay.write_text('2 pulse 33554432\n3 pulse 134217728\n4 answer 1\n5 pulse 67108864\n',encoding='ascii')
+            ok=self.run_host(scene,'--replay',str(replay),frames=6)
+            self.assertEqual(ok.returncode,0,ok.stderr);d=json.loads(ok.stdout)
+            self.assertFalse(d['exit_dialog_pending']);self.assertIsNone(d['retry_dialog']);self.assertEqual(d['stage_state'],1)
+            scene.write_text(text.replace('system_init 1\n',''),encoding='utf-8')
+            self.assertIn('answer replay requires',self.run_host(scene,'--replay',str(replay)).stderr)
+
     def test_native_presentation_and_viewport_replay(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);scene=root/'scene.txt';replay=root/'resize.txt'

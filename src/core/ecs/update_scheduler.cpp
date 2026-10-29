@@ -16,6 +16,17 @@ void update_systems(UpdateSchedule& schedule,std::int32_t pass){
         if(pass==0)require(schedule.stopwatch).stop(); // Not a finally block.
     }
 }
+void set_system_enabled(GameplaySystemState& system,bool value){
+    if(system.enabled==value)return;
+    system.enabled=value;
+    const auto& hook=value?system.on_enabled:system.on_disabled;
+    if(hook)hook();
+}
+void pause_gameplay_systems(bool& paused,std::array<GameplaySystemState,32>& systems,bool value){
+    paused=value;
+    for(const auto index:gameplay_pause_order)set_system_enabled(systems[static_cast<std::size_t>(index)],!value);
+    if(value)for(auto& system:systems)if(system.on_pause)system.on_pause();
+}
 bool gameplay_needs_update(std::int32_t index,bool enabled,std::int32_t pass){
     if(std::find(gameplay_update_order.begin(),gameplay_update_order.end(),index)==gameplay_update_order.end())
         throw std::invalid_argument("factory entry has no update interface");

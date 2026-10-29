@@ -3069,7 +3069,7 @@ game:0x06000cc2,kairo.unity.ecs.BasePauseSystem..ctor,ecs,traced,84,0x113b340
 game:0x06000cc3,game:0x06000cc3,ecs,,248,0x113b394
 game:0x06000cc4,game:0x06000cc4,ecs,,212,0x113af4c
 game:0x06000cc5,game:0x06000cc5,ecs,,8,0x113b4bc
-game:0x06000cc6,kairo.unity.ecs.BaseSystem.set_enabled,ecs,documented,48,0x113b48c
+game:0x06000cc6,kairo.unity.ecs.BaseSystem.set_enabled,ecs,reimplemented,48,0x113b48c
 game:0x06000cc7,game:0x06000cc7,ecs,,92,0x113b4c4
 game:0x06000cc8,kairo.unity.ecs.BaseSystem.OnEnabled,ecs,documented,4,0x113b520
 game:0x06000cc9,kairo.unity.ecs.BaseSystem.OnDisabled,ecs,documented,4,0x113b524
@@ -3720,12 +3720,12 @@ game:0x06000f59,game:0x06000f59,ecs,,8,0x115e884
 game:0x06000f5a,game:0x06000f5a,ecs,,4,0x115e88c
 game:0x06000f5b,game:0x06000f5b,ecs,,168,0x115e890
 game:0x06000f5c,game:0x06000f5c,ecs,,168,0x115e938
-game:0x06000f5d,game:0x06000f5d,ecs,,224,0x115e9e0
-game:0x06000f5e,game:0x06000f5e,ecs,,224,0x115eac0
+game:0x06000f5d,ecs.MenuSystem.OnEnabled,ecs,documented,224,0x115e9e0
+game:0x06000f5e,ecs.MenuSystem.OnDisabled,ecs,documented,224,0x115eac0
 game:0x06000f5f,ecs.MenuSystem.OnButtonTouch,ecs,reimplemented,160,0x115eba0
 game:0x06000f60,game:0x06000f60,ecs,,448,0x115ec40
 game:0x06000f61,game:0x06000f61,ecs,,200,0x115ee00
-game:0x06000f62,game:0x06000f62,ecs,,16,0x115eec8
+game:0x06000f62,ecs.MenuSystem.Pause,ecs,documented,16,0x115eec8
 game:0x06000f63,game:0x06000f63,ecs,,8,0x115eed8
 game:0x06000f64,game:0x06000f64,ecs,,8,0x115eee0
 game:0x06000f65,game:0x06000f65,ecs,,88,0x115eee8

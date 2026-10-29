@@ -28,11 +28,24 @@ MissionStage::MissionStage(MissionHumans& owner,MissionStageScenario scenario):o
 bool MissionStage::advance(std::int32_t pass,bool enabled){
     if(owner_.transition_pending())return false;
     if(!gameplay_needs_update(3,enabled,pass))return true;
-    if(owner_.stage_.dialog)unavailable("stage dialog pause/input flow");
     ++steps_;auto pulse=scenario_.pulses.find(steps_);pulse_=pending_pulse_;pending_pulse_=0;
     if(pulse!=scenario_.pulses.end())pulse_|=pulse->second;
+    if(owner_.stage_.dialog){
+        if(owner_.stage_.dialog->kind!=99)unavailable("retry/defeat form lifecycle and recovery");
+        // SAGA_STUB(mission-exit-modal): explicit close notification replaces the unbound FormManager gate.
+        // Negative answers are valid native cancellations, never a pending sentinel.
+        if(!answer_received_){++modal_wait_steps_;return true;}
+    }
     if(owner_.stage_.state==1)++owner_.collection_steps_;
-    update_stage(owner_.stage_,*this);return true;
+    update_stage(owner_.stage_,*this);
+    if(!owner_.stage_.dialog)answer_received_=false;
+    return true;
+}
+bool MissionStage::exit_dialog_pending()const{return owner_.stage_.dialog&&owner_.stage_.dialog->kind==99&&!answer_received_;}
+void MissionStage::answer_dialog(std::int32_t answer){
+    if(!exit_dialog_pending())throw std::invalid_argument("no pending exit dialog to answer");
+    owner_.stage_.dialog->answer=answer;answer_received_=true;++dialog_answers_;
+    owner_.notification_events_.push_back("answer_exit:"+std::to_string(answer));
 }
 void MissionStage::start(std::int32_t stage,const EventIntegers& formation,StageMapLoader& map,
     std::function<bool()> paused,std::function<void()> resume){
@@ -76,7 +89,7 @@ DropPlacementWorld* MissionStage::drop_world(){return owner_.drop_world();}
 DropCollectionHost& MissionStage::collection_host(){return owner_.collection_host_;}
 BossNotificationHost& MissionStage::movement_host(){return owner_;}
 bool MissionStage::key_pulse(std::int32_t mask){return (pulse_&static_cast<std::uint32_t>(mask))!=0;}
-void MissionStage::pause_systems(bool){unavailable("stage pause/resume input");}
+void MissionStage::pause_systems(bool value){if(!pause_)unavailable("stage pause/resume lifecycle");pause_(value);}
 bool MissionStage::execute_stage_event(std::int32_t){unavailable("stage event catalog dispatch");}
 StageRecoveryHost& MissionStage::recovery_host(){unavailable("stage retry recovery");}
 StageBossHost& MissionStage::boss_host(){if(!enemy_entry_)unavailable("stage_boss inputs");return *this;}
@@ -92,7 +105,11 @@ bool MissionStage::check_crystals(std::int32_t){unavailable("crystal retry decis
 void MissionStage::subtract_crystals(std::int32_t){unavailable("crystal retry subtraction");}
 StageFormStack* MissionStage::stage_form_stack(){return owner_.stage_form_stack();}
 std::shared_ptr<StageDialog> MissionStage::make_retry_form(std::int32_t cost){return owner_.make_retry_form(cost);}
-std::shared_ptr<StageDialog> MissionStage::make_exit_form(){unavailable("stage exit dialog");}
+std::shared_ptr<StageDialog> MissionStage::make_exit_form(){
+    auto form=std::make_shared<StageDialog>();
+    owner_.stage_forms_.push_back(form);owner_.form_names_[form.get()]="exit";
+    owner_.notification_events_.push_back("make_exit");answer_received_=false;return form;
+} // SAGA_STUB(mission-stage-forms): retained identity; desktop title supplies the explicit exit choices.
 std::shared_ptr<StageForm> MissionStage::make_insufficient_crystals_form(){unavailable("insufficient crystals dialog");}
 std::shared_ptr<StageForm> MissionStage::make_interstitial_ad(){unavailable("retry ad request");}
 std::shared_ptr<StageForm> MissionStage::make_defeat_form(std::int32_t reason){return owner_.make_defeat_form(reason);}
@@ -107,6 +124,8 @@ std::int32_t* MissionStage::equipment_level(EquipmentSlot kind,std::int32_t id){
 }
 QuestReturnHost& MissionStage::return_host(){if(!owner_.results_)unavailable("return state providers");return *owner_.results_;}
 void MissionStage::report(std::ostream& out){
+    out<<",\"exit_dialog_pending\":"<<(exit_dialog_pending()?"true":"false")
+       <<",\"exit_dialog_answers\":"<<dialog_answers_<<",\"exit_dialog_wait_steps\":"<<modal_wait_steps_;
     out<<",\"native_stage_started\":"<<(started_?"true":"false");
     if(started_){
         out<<",\"quest_form_scale\":"<<owner_.quest_form_.scale<<",\"entry_members\":[";bool first=true;
@@ -133,5 +152,12 @@ bool MissionHumans::advance_stage(std::int32_t pass,bool enabled){
 }
 void MissionHumans::pulse_stage_keys(std::uint32_t mask){
     if(!stage_loop_)throw std::invalid_argument("stage_loop is required for pulse input");stage_loop_->pulse(mask);
+}
+void MissionHumans::bind_stage_pause(std::function<void(bool)> callback){
+    if(!stage_loop_)throw std::invalid_argument("stage_loop is required for pause lifecycle");stage_loop_->bind_pause(std::move(callback));
+}
+bool MissionHumans::exit_dialog_pending()const{return stage_loop_&&stage_loop_->exit_dialog_pending();}
+void MissionHumans::answer_stage_dialog(std::int32_t answer){
+    if(!stage_loop_)throw std::invalid_argument("stage_loop is required for dialog answers");stage_loop_->answer_dialog(answer);
 }
 }

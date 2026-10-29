@@ -86,6 +86,10 @@ public:
     void write_input_report(std::ostream&);
     bool stage_input_enabled()const{return static_cast<bool>(stage_loop_);}
     void pulse_stage_keys(std::uint32_t);
+    void bind_stage_pause(std::function<void(bool)>);
+    std::int32_t stage_state()const{return stage_.state;}
+    bool exit_dialog_pending()const;
+    void answer_stage_dialog(std::int32_t);
 private:
     core::StageHumanStart* initialization_humans()override{return &system_;}
     core::MemberRoster* initialization_members()override{return &members_;}

@@ -55,8 +55,11 @@ public:
     std::unique_ptr<MissionHumans> humans;
     std::unique_ptr<MissionSpatial> spatial;
     bool accepts_live_input()const{return humans&&humans->input_enabled()&&!humans->transition_pending()&&!replay_bound_;}
+    bool native_stage_controls()const{return initialization_complete_&&humans&&humans->stage_input_enabled();}
 private:
     void initialize_loaded_world();
+    void pause_systems(bool);
+    void refresh_enabled();
     bool native_stage_entry_=false;
     std::optional<BitmapCamera> offscreen_camera_;
     std::uint64_t viewport_changes_=0;
@@ -75,6 +78,7 @@ private:
     bool initialization_complete_=false,menu_visible_=true;
     core::MenuRowShapes menu_shapes_=core::initial_menu_row_shapes();
     std::function<void()> menu_orientation_;
+    core::AuxiliaryInitializationWorld::Button menu_button_receiver_;
     std::function<void(const core::TownReturnEvent&)> town_return_;
     std::uint64_t submenu_touches_=0,menu_touches_=0;
     core::PixelImage* gauge_image(std::int32_t)override;
@@ -97,7 +101,9 @@ private:
     std::vector<core::UpdateSystem*> update_list_;
     std::vector<std::int32_t> last_updates_;
     bool halted_=false;
-    enum class InputKind {keys,attack,pulse,cursor,click,touch,viewport};
+    std::array<core::GameplaySystemState,32> system_states_;
+    std::uint64_t pause_requests_=0;
+    enum class InputKind {keys,attack,pulse,cursor,click,touch,viewport,answer};
     struct InputAction {InputKind kind;std::uint32_t value=0;std::int32_t x=0,y=0,z=0;};
     std::map<std::uint64_t,std::vector<InputAction>> replay_;
     bool replay_bound_=false;std::uint64_t replay_applied_=0;
