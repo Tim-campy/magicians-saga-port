@@ -22,6 +22,43 @@ def command(resource, clip, x, y, depth=0, texture=-1, image_resource=-1):
 
 @unittest.skipUnless(EXE and VIEWER, 'viewer executables supplied by CTest')
 class QueuePixels(unittest.TestCase):
+    def test_resize_replay_updates_native_camera_and_gpu_target(self):
+        if not MISSION:self.skipTest('mission executable required')
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);scene=root/'scene.txt';replay=root/'resize.txt'
+            original=make_boss_scene(root)
+            text=('mission_presentation 128 96 100 0 1 0 1500100 -1\nsystem_init 1\nmaterial_policy native\ntick_ms 1\n'+
+                  '\n'.join(l for l in original.splitlines() if not l.startswith(('world ','projection ','view ','slots ','animate ','simulate ','material ')))+'\n')
+            scene.write_text(text,encoding='utf-8');replay.write_text('2 viewport 161 99\n8 viewport 128 96\n',encoding='ascii')
+            args=[str(MISSION),'--scene',str(scene),'--frames','12','--fps','25','--debug','0','--rng','system','--seed','42','--replay',str(replay)]
+            window=subprocess.run(args,capture_output=True,text=True,timeout=30)
+            headless=subprocess.run([*args,'--headless'],capture_output=True,text=True,timeout=30)
+            self.assertEqual(window.returncode,0,window.stderr);self.assertEqual(headless.returncode,0,headless.stderr)
+            a=json.loads(window.stdout);b=json.loads(headless.stdout)
+            self.assertEqual((a['viewport']['width'],a['viewport']['height'],a['viewport']['changes']),(128,96,2))
+            for key in a.keys()&b.keys():self.assertEqual(a[key],b[key],key)
+            snapshot=list(args);snapshot[snapshot.index('--frames')+1]='6';output=root/'resized.bmp'
+            captured=subprocess.run([*snapshot,'--capture',str(output)],capture_output=True,text=True,timeout=30)
+            self.assertEqual(captured.returncode,0,captured.stderr)
+            self.assertEqual(json.loads(captured.stdout)['capture_render_frames'],6)
+            self.assertEqual(json.loads(captured.stdout)['capture_logic_steps'],6)
+            self.assertEqual(bmp_pixels(output.read_bytes())[:2],(161,99))
+            self.assertTrue(any(p[3] for p in bmp_pixels(output.read_bytes())[2]))
+            state=subprocess.run([*snapshot,'--headless'],capture_output=True,text=True,timeout=30)
+            self.assertEqual(state.returncode,0,state.stderr)
+            self.assertEqual(json.loads(captured.stdout)['commands'],json.loads(state.stdout)['render_commands'])
+            existing=output.read_bytes()
+            self.assertNotEqual(subprocess.run([*snapshot,'--capture',str(output)],capture_output=True,text=True,timeout=30).returncode,0)
+            self.assertEqual(output.read_bytes(),existing)
+            # Bounded runs keep the declared target even without a replay; live SDL/HiDPI events are interactive only.
+            plain=args[:-2]
+            window=subprocess.run(plain,capture_output=True,text=True,timeout=30)
+            headless=subprocess.run([*plain,'--headless'],capture_output=True,text=True,timeout=30)
+            self.assertEqual(window.returncode,0,window.stderr);self.assertEqual(headless.returncode,0,headless.stderr)
+            a=json.loads(window.stdout);b=json.loads(headless.stdout)
+            self.assertEqual(a['viewport']['changes'],0)
+            for key in a.keys()&b.keys():self.assertEqual(a[key],b[key],key)
+
     def test_enemy_health_pixels_use_native_saved_threshold(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

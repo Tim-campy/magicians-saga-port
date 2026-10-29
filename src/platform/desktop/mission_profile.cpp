@@ -60,6 +60,12 @@ void MissionProfile::initialize_loaded_world(){
     if(!native_stage_entry_)spatial->load_selected_map();
     humans->apply_initialized_scenario(); // Explicit input/population snapshot; Start replaces its native entry fields.
 }
+void MissionProfile::resize_viewport(std::int32_t width,std::int32_t height){
+    if(!offscreen_camera_||!has_view)throw std::invalid_argument("viewport resize requires mission_presentation");
+    const auto matrix=bitmap_projection(width,height,*offscreen_camera_);
+    if(view.width!=width||view.height!=height)++viewport_changes_;
+    view.width=width;view.height=height;projection=matrix;
+}
 void MissionProfile::bind_schedule(){
     const auto bind=[&](std::int32_t id,bool enabled,std::function<void(std::int32_t)> body){
         const auto index=static_cast<std::size_t>(id);configured_[index]=enabled;
@@ -122,9 +128,9 @@ void MissionProfile::load_replay(const std::filesystem::path& path){
                d.ec!=std::errc{}||d.ptr!=control.data()+control.size()||++count>100000)throw std::invalid_argument("invalid or unordered touch replay action");
             replay_[step].push_back(action);previous=step;continue;
         }
-        if(kind=="cursor"||kind=="click"){
+        if(kind=="cursor"||kind=="click"||kind=="viewport"){
             std::string y;if(!(row>>y))throw std::invalid_argument("point replay requires signed world x y");end(row);
-            std::uint64_t step=0;InputAction action{kind=="cursor"?InputKind::cursor:InputKind::click};
+            std::uint64_t step=0;InputAction action{kind=="cursor"?InputKind::cursor:kind=="click"?InputKind::click:InputKind::viewport};
             const auto a=std::from_chars(frame.data(),frame.data()+frame.size(),step);
             const auto b=std::from_chars(value.data(),value.data()+value.size(),action.x),c=std::from_chars(y.data(),y.data()+y.size(),action.y);
             if(a.ec!=std::errc{}||a.ptr!=frame.data()+frame.size()||!step||step<previous||
@@ -189,6 +195,19 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     for(std::string line;std::getline(input,line);){
         std::istringstream row(line);row.imbue(std::locale::classic());std::string operation;
         if(!(row>>operation)||operation.front()=='#')continue;
+        if(operation=="mission_presentation"){
+            BitmapCamera camera{};std::int32_t width=0,height=0,scale=0,auto_flag=0,update_flag=0;
+            if(!native||has_world||has_projection||has_view||has_slots||has_animation||simulate||
+               !(row>>width>>height>>scale>>auto_flag>>update_flag>>camera.near_clip>>camera.far_clip>>camera.z)||scale<1||
+               (auto_flag!=0&&auto_flag!=1)||(update_flag!=0&&update_flag!=1))
+                throw std::invalid_argument("mission_presentation requires width height initial-form-scale animation0/1 update0/1 near far cameraZ and no presentation overrides");
+            // Spatial camera owns offsets. QuestForm margins0/0 and RenderSystem depth rate100 are native initializers.
+            offscreen_camera_=camera;view={width,height,scale,0,0,0,0,100};
+            has_world=has_projection=has_view=has_slots=has_animation=true;
+            reset_matrix(world);slots=35; // World.cctor MyEntityManager(0x23).
+            frames=0;automatic=auto_flag;application_update=update_flag;simulate=0; // Start-at-first-frame host policy.
+            resize_viewport(width,height);end(row);continue;
+        }
         if(operation=="mission_resources"){
             std::string language;std::int32_t dpi=0;
             if(!native||!selection.data_root||tables||!owners.empty()||!resource_names.empty()||!(row>>std::quoted(language)>>dpi))
@@ -446,6 +465,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     if(selection.quest&&!selected_quest)throw std::invalid_argument("--quest requires a scenario quest row with explicit saved rescued count");
     if(!has_world)throw std::invalid_argument("an explicit world matrix is required");
     const bool result_requested=wallet||record||recruits||stocks[0]||stocks[1]||stocks[2];
+    if(offscreen_camera_&&(!initialized_loaded_||!map_images))throw std::invalid_argument("mission_presentation requires system_init and mission_map");
     if(stage_entry){
         if(!selected_quest||!initialized_loaded_||!human_scenario||!stage_loop||!result_requested||!has_formation||!states.empty())
             throw std::invalid_argument("stage_start requires quest, system_init, human_system, stage_loop, results, party_formation and no actor_state override");
@@ -557,7 +577,8 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         } // Explicit native factory arguments; original quest producers/restored state remain unbound.
         bind_schedule();
         for(const auto& frame:replay_)for(const auto& action:frame.second)
-            if((action.kind==InputKind::cursor||action.kind==InputKind::click)&&!spatial)throw std::invalid_argument("cursor/click replay requires mission_map fresh");
+            if(action.kind==InputKind::viewport&&!offscreen_camera_)throw std::invalid_argument("viewport replay requires mission_presentation");
+            else if((action.kind==InputKind::cursor||action.kind==InputKind::click)&&!spatial)throw std::invalid_argument("cursor/click replay requires mission_map fresh");
         for(std::int32_t i=0;i<frames;++i)mission->advance_animations({automatic!=0,application_update!=0});
         if(spatial)spatial->advance_visibility();
         if(simulate&&*simulate>0){for(std::int32_t i=0;i<*simulate;++i)if(!step())break;}else{queue=mission->render();if(!mission->faults().empty())throw std::invalid_argument("entity render fault: "+mission->faults().front().message);}
@@ -581,6 +602,7 @@ bool MissionProfile::step(){
         if(action.kind==InputKind::keys)humans->set_input_keys(action.value);
         else if(action.kind==InputKind::attack)humans->select_input_attack(static_cast<std::int32_t>(action.value));
         else if(action.kind==InputKind::pulse)humans->pulse_stage_keys(action.value);
+        else if(action.kind==InputKind::viewport)resize_viewport(action.x,action.y);
         else if(action.kind==InputKind::cursor)spatial->touch_cursor(action.x,action.y);
         else if(action.kind==InputKind::click)spatial->click_cursor(action.x,action.y);
         else humans->send_logical_touch(action.x,action.y,action.z);
@@ -602,6 +624,10 @@ void MissionProfile::write_actor_parameters(ComponentSlots& actor,std::ostream& 
     if(const auto* enemy=dynamic_cast<EnemyRecordLink*>(actor.get(24)))out<<",\"enemy_state\":"<<enemy->state<<",\"enemy_frame\":"<<enemy->frame<<",\"enemy_flags\":"<<enemy->flags;
 }
 void MissionProfile::write_combat_report(std::ostream& out){
+    if(offscreen_camera_){
+        out<<",\"viewport\":{\"width\":"<<view.width<<",\"height\":"<<view.height<<",\"changes\":"<<viewport_changes_<<",\"projection\":[";
+        for(std::size_t i=0;i<projection.values.size();++i){if(i)out<<',';out<<projection.values[i];}out<<"]}";
+    }
     out<<",\"init_schedule_complete\":"<<(initialization_complete_?"true":"false")<<",\"init_world_loaded_byte\":";
     if(initialized_loaded_)out<<static_cast<unsigned>(entity_world->player_world().loaded);else out<<"null";
     out<<",\"init_order\":[";for(std::size_t i=0;i<initialized_order_.size();++i){if(i)out<<',';out<<initialized_order_[i];}out<<']';

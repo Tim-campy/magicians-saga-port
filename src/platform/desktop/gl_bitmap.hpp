@@ -24,6 +24,7 @@ public:
     // Column-major world -> OpenGL clip matrix is an explicit host input; no camera is inferred.
     void begin_frame(GlBitmapClear,core::RenderColor background,const core::OffscreenMatrix& view_projection);
     void set_viewport(std::int32_t x,std::int32_t y,std::int32_t width,std::int32_t height); // Bottom-left pixels.
+    void resize_target(std::int32_t width,std::int32_t height); // Reallocate only target storage, retaining source textures/context.
     void clear_depth(); // Active viewport only, preserving color, regardless of the preceding ZWrite state.
     void set_material(std::uint32_t shader_key);
     void draw(const BitmapQuad&,const core::OffscreenMatrix& model);

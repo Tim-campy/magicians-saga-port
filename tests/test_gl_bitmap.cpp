@@ -110,6 +110,13 @@ int main(int argc,char** argv)try{
     submission.cursors->at(0)=0;submission.lengths->at(0)=ready.active_count;
     renderer.begin_frame(GlBitmapClear::color_and_depth,{0,0,0,0},vp);submit_mesh_streams(submission,1,host);auto layer=renderer.read_pixels();check(pixel(layer)[2]==255&&pixel(layer)[0]==0);
     if(argc==2){const std::filesystem::path path(argv[1]);std::filesystem::create_directories(path);save(overlap,path/"same-layer-depth.bmp");save(layer,path/"next-layer-clear.bmp");save(oriented,path/"texture-orientation.bmp");save(cleared,path/"viewport-clear.bmp");}
+    renderer.resize_target(17,19);renderer.begin_frame(GlBitmapClear::color_and_depth,{1,0,0,1},unit);
+    auto resized=renderer.read_pixels();check(resized.width==17&&resized.height==19&&resized.rgba[0]==255&&resized.rgba[1]==0);
+    renderer.set_material(quad(0,0).shader_key);renderer.draw(quad(0,0),unit);
+    check(renderer.read_pixels().rgba.size()==17U*19U*4U);
+    fails([&]{renderer.resize_target(0,19);});fails([&]{renderer.resize_target(8192,8192);});
+    check(renderer.read_pixels().width==17);
+    renderer.resize_target(32,32);renderer.begin_frame(GlBitmapClear::color_and_depth,{0,0,0,0},unit);
     // Unsupported input is rejected, rather than silently flattening or guessing a material.
     auto invalid=quad(0,0);invalid.native_depth=false;renderer.set_material(invalid.shader_key);fails([&]{renderer.draw(invalid,unit);});
     fails([&]{renderer.set_material(0);});fails([&]{renderer.set_viewport(0,0,33,32);});

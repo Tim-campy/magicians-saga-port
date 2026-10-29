@@ -4,9 +4,25 @@
 #include <algorithm>
 #include <limits>
 #include <stdexcept>
+#include <cmath>
 
 namespace saga::desktop {
 using namespace core;
+OffscreenMatrix bitmap_projection(std::int32_t width,std::int32_t height,BitmapCamera camera){
+    if(width<1||height<2||width>8192||height>8192||static_cast<std::uint64_t>(width)*height>16U*1024U*1024U||
+       !std::isfinite(camera.near_clip)||!std::isfinite(camera.far_clip)||!std::isfinite(camera.z)||camera.far_clip<=camera.near_clip)
+        throw std::invalid_argument("invalid orthographic target/camera");
+    const auto p=offscreen_camera_placement(width,height,camera.z);
+    const float aspect=static_cast<float>(width)/static_cast<float>(height),half_width=p.half_height*aspect;
+    const float span=camera.far_clip-camera.near_clip;
+    if(!std::isfinite(span))throw std::invalid_argument("orthographic clip span overflow");
+    OffscreenMatrix result;auto& m=result.values;
+    m[0]=1.0F/half_width;m[5]=1.0F/p.half_height;m[10]=2.0F/span;m[15]=1;
+    m[12]=-p.x*m[0];m[13]=-p.y*m[5];
+    const float translation=-camera.z*m[10];m[14]=translation-(camera.far_clip+camera.near_clip)/span;
+    for(const auto value:m)if(!std::isfinite(value))throw std::invalid_argument("nonfinite orthographic matrix");
+    return result;
+}
 namespace {
 [[noreturn]] void unbound(){throw std::runtime_error("bitmap backend requires an unbound graphics service");}
 }
@@ -210,4 +226,5 @@ std::optional<std::array<std::int32_t,12>> BitmapBackend::last_sprite()const{ret
 void BitmapBackend::clear_quads(){impl_->output.clear();impl_->last.reset();}
 void BitmapBackend::set_matrix(const SpriteMatrix* matrix){set_graphics_matrix(impl_->transform,matrix);}
 void BitmapBackend::set_depth_host(BitmapDepthHost* host){impl_->depth_host=host;}
+void BitmapBackend::resize_surface(std::int32_t height){if(height<1||height>8192)throw std::invalid_argument("invalid bitmap surface height");impl_->surface.height=height;}
 } // namespace saga::desktop

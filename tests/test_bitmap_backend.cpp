@@ -37,6 +37,18 @@ struct SubmissionHost:MeshSubmissionHost {
 };
 }
 int main()try{
+    {const BitmapCamera camera{0,1500100,-1};const auto m=bitmap_projection(600,640,camera).values;
+     check(m[0]==2.0F/600&&m[5]==2.0F/640&&m[15]==1);
+     check(m[0]*300+m[12]==0&&m[5]*320+m[13]==0);
+     check(std::abs(m[10]*camera.z+m[14]+1)<0.000001F);
+     check(std::abs(m[10]*(camera.z+camera.far_clip)+m[14]-1)<0.000001F);
+     const auto odd=bitmap_projection(601,641,camera).values;
+     check(odd[5]==1.0F/320&&odd[5]!=2.0F/641);
+     check(odd[0]*300+odd[12]==0&&odd[5]*320+odd[13]==0);
+     fails([&]{bitmap_projection(600,1,camera);});fails([&]{bitmap_projection(0,640,camera);});
+     fails([&]{bitmap_projection(600,640,{1,1,0});});
+     fails([&]{bitmap_projection(8192,8192,camera);});
+    }
     auto a=file(2),b=file(7);std::vector<const saga::assets::Seb*> aa(4,nullptr),bb(6,nullptr);aa[3]=&a;bb[5]=&b;
     PreparedAnimationResource first(aa),second(bb);
     PixelImage image_a,image_b,image_global;image_a.width=8;image_a.height=8;image_b.width=16;image_b.height=4;image_b.render_queue=2;

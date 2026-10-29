@@ -21,16 +21,17 @@ std::int32_t integer(std::string_view value){
 }
 int main(int argc,char** argv)try{
     if(argc==2&&std::string_view(argv[1])=="--help"){
-        std::cout<<"Usage: saga_mission --scene profile.txt --fps N --debug 0|1 --rng system --seed int32 [--data extracted-root] [--quest id] [--frames N] [--headless] [--replay inputs.txt]\n"
+        std::cout<<"Usage: saga_mission --scene profile.txt --fps N --debug 0|1 --rng system --seed int32 [--data extracted-root] [--quest id] [--frames N] [--headless] [--replay inputs.txt] [--capture new-output.bmp]\n"
                    "Viewer builds open a mission window; --frames N uses a bounded hidden window.\n"
                    "--headless requires --frames N; builds without the viewer support only headless mode.\n"
                    "--data resolves declared archive filenames below textassets/ without fallback.\n"
                    "--quest replaces the scenario quest ID, retaining its explicit saved state.\n"
+                   "--capture requires viewer mode and --frames N; steps the native world before capturing its prepared viewport.\n"
                    "FPS/DEBUG/RNG and scenario state are explicit; deferred town transitions hold the old mission.\n"
                    "Input-enabled scenes replay native movement/attack controls; quest bootstrap and full-state hashes remain open.\n";return 0;
     }
     const std::set<std::string> required{"--scene","--fps","--debug","--rng","--seed"};
-    auto allowed=required;for(const auto* key:{"--replay","--frames","--data","--quest"})allowed.insert(key);
+    auto allowed=required;for(const auto* key:{"--replay","--frames","--data","--quest","--capture"})allowed.insert(key);
     std::map<std::string,std::string> options;bool headless=false;
     for(int i=1;i<argc;++i){const std::string key=argv[i];
         if(key=="--headless"){if(headless)throw std::invalid_argument("duplicate --headless");headless=true;continue;}
@@ -39,6 +40,7 @@ int main(int argc,char** argv)try{
     }
     if(std::any_of(required.begin(),required.end(),[&](const auto& key){return !options.count(key);})||(headless&&!options.count("--frames")))throw std::invalid_argument("explicit scene/fps/debug/rng/seed and headless frames required; see --help");
     const auto frames=options.count("--frames")?integer(options.at("--frames")):0;
+    if(options.count("--capture")&&(headless||!options.count("--frames")))throw std::invalid_argument("capture requires viewer mode and --frames N");
     const auto fps=integer(options.at("--fps")),debug=integer(options.at("--debug")),seed=integer(options.at("--seed"));
     if((options.count("--frames")&&(frames<1||frames>100000))||fps<1||fps>1000||(debug!=0&&debug!=1))throw std::invalid_argument("frames1..100000, fps1..1000 and debug0/1 required");
     if(options.at("--rng")!="system")throw std::invalid_argument("only the explicit-seed system backend is available; no backend substitution");
@@ -57,6 +59,11 @@ int main(int argc,char** argv)try{
 #ifdef SAGA_MISSION_WINDOW
     if(!headless){
         if(!profile.has_view)throw std::invalid_argument("mission window requires explicit view dimensions");
+        if(options.count("--capture")){
+            const auto output=std::filesystem::u8path(options.at("--capture"));
+            if(std::filesystem::exists(output))throw std::invalid_argument("capture destination already exists");
+            return saga::desktop::run_native_mission(profile,profile.view.width,profile.view.height,frames,output);
+        }
         return saga::desktop::run_native_mission(profile,profile.view.width,profile.view.height,frames?std::optional<std::int32_t>(frames):std::nullopt);
     }
 #endif

@@ -5,11 +5,15 @@
 #include "core/gameplay/render_colors.hpp"
 #include "core/gameplay/sprite_matrix.hpp"
 #include "core/gameplay/mesh_depth.hpp"
+#include "core/gameplay/offscreen_transform.hpp"
 #include "core/gameplay/gauge_drawing.hpp"
 #include "core/gameplay/quest_camera.hpp"
 #include <map>
 
 namespace saga::desktop {
+struct BitmapCamera {float near_clip,far_clip,z;};
+// Native offscreen resize placement, then the public orthographic camera boundary.
+core::OffscreenMatrix bitmap_projection(std::int32_t width,std::int32_t height,BitmapCamera);
 using BitmapApplication=core::ApplicationResourceFields<core::RenderDrawResource>;
 struct BitmapDepthKey {std::int32_t group=0,index=0,relative=0;}; // group is native CurrentDepthLayer.
 struct BitmapQuad {
@@ -70,6 +74,7 @@ public:
     void draw_parameter_gauge(const core::ParameterGaugeRequest&,core::QuestCameraHost&,core::GaugeDrawState* shared=nullptr);
     void set_matrix(const core::SpriteMatrix*);
     void set_depth_host(BitmapDepthHost*); // Borrowed; null selects the existing 2D diagnostic profile.
+    void resize_surface(std::int32_t height);
 private:
     struct Impl;std::unique_ptr<Impl> impl_;
 };

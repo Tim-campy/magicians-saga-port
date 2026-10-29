@@ -31,18 +31,21 @@ int run_native_mission(MissionProfile& profile,std::int32_t width,std::int32_t h
     std::optional<std::int32_t> frames,std::optional<std::filesystem::path> capture){
     if(width<1||height<1||width>8192||height>8192||static_cast<std::uint64_t>(width)*height>16U*1024U*1024U)throw std::invalid_argument("invalid mission dimensions");
     if(frames&&(*frames<1||*frames>100000))throw std::invalid_argument("run frame count1..100000 required");
-    if(capture&&frames)throw std::invalid_argument("capture and frame loop are exclusive");
     if(capture&&std::filesystem::exists(*capture))throw std::invalid_argument("capture destination already exists");
-    const bool loop=!capture,bounded=frames.has_value(),interactive=loop&&!bounded;
+    const bool loop=!capture||frames.has_value(),bounded=frames.has_value(),interactive=loop&&!bounded;
+    const bool live_viewport=interactive&&profile.accepts_live_viewport();
     const auto frame_limit=frames.value_or(0);
     const auto output=capture.value_or(std::filesystem::path{});
+    if(profile.resizable_viewport()&&(profile.view.width!=width||profile.view.height!=height)){
+        if(!loop)throw std::invalid_argument("mission_presentation capture dimensions must match the prepared viewport");
+        profile.resize_viewport(width,height); // Explicit frontend size; native Camera/Cell/Render follow on the first step.
+    }
     auto& application=profile.application;
     auto& global=profile.global;
     auto& textures=profile.textures;
     auto& owners=profile.owners;
     auto& world=profile.world;
     auto& queue=profile.queue;
-    auto& commands=profile.commands;
     auto& projection=profile.projection;
     auto& has_projection=profile.has_projection;
     auto& has_gpu_depth=profile.has_gpu_depth;
@@ -56,12 +59,12 @@ int run_native_mission(MissionProfile& profile,std::int32_t width,std::int32_t h
     auto& entity_world=profile.entity_world;
     BitmapBackend backend(application,global,textures,height,world);sort_render_queue(queue);
     if(!has_projection||!has_gpu_depth)throw std::invalid_argument("native capture needs projection and gpu_depth rows");
-    if(loop&&(!mission||!tick_ms))throw std::invalid_argument("scene loop requires selected entities and explicit tick_ms");
+    if(loop&&(!mission||(!capture&&!tick_ms)))throw std::invalid_argument("scene loop requires selected entities and explicit tick_ms");
     require(SDL_Init(SDL_INIT_VIDEO),"SDL_Init");Quit quit;configure_gl_bitmap_context();
     const char* input_title=profile.humans&&profile.humans->stage_input_enabled()?"Mission - W/S move, 1/2/3/F/click attack, Enter result, Space pause, N step, Esc close":"Mission - W/S move, 1/2/3/F/click attack, Space pause, N step, Esc close";
     const char* title=loop?(profile.accepts_live_input()?input_title:"Mission preview - Space pause, N step, Esc close"):"Native AppData capture";
     Window window(SDL_CreateWindow(title,width,height,
-        SDL_WINDOW_OPENGL|(interactive?0:SDL_WINDOW_HIDDEN)),SDL_DestroyWindow);require(window!=nullptr,"SDL_CreateWindow");
+        SDL_WINDOW_OPENGL|(interactive?0:SDL_WINDOW_HIDDEN)|(live_viewport?SDL_WINDOW_RESIZABLE:0)),SDL_DestroyWindow);require(window!=nullptr,"SDL_CreateWindow");
     GlBitmapRenderer renderer(*window,width,height,[&](std::size_t key){const auto* ready=textures.at(key).ready;
         if(!ready)throw std::invalid_argument("texture has no decoded archive image");return GlBitmapTexture{&ready->pixels,GlBitmapWrap::clamp,GlBitmapWrap::clamp};});
     MeshDepthSurface surface;MeshDepthState depth;depth.surface=&surface;GpuQueries queries;
@@ -80,15 +83,26 @@ int run_native_mission(MissionProfile& profile,std::int32_t width,std::int32_t h
         if(profile.native_materials)return 0; // SAGA_STUB(mission-image-access-check): no eviction/aging service is bound.
         throw std::logic_error("capture has no image counter");
     });
+    const auto resize=[&](std::int32_t w,std::int32_t h){
+        if(!profile.resizable_viewport()||w<1||h<2||(w==width&&h==height))return;
+        profile.resize_viewport(w,h);renderer.resize_target(w,h);backend.resize_surface(h);width=w;height=h;
+    };
+    if(live_viewport){
+        int w=0,h=0;require(SDL_GetWindowSizeInPixels(window.get(),&w,&h),"SDL window pixel size");resize(w,h);
+    }
     auto submit=[&]{
         frame.begin_frame();frame.draw(queue,0);profile.draw_enemy_gauges(backend);frame.draw(queue,1);frame.finish();bind_bitmap_mesh_frame(bindings,frame);
         s.cursors->at(0)=0;s.lengths->at(0)=frame.records().active_count;
         renderer.begin_frame(GlBitmapClear::color_and_depth,{0,0,0,0},projection);submit_mesh_streams(s,1,host);
     };
-    if(loop){bool running=true,paused=false;std::uint64_t rendered=0,logic_steps=0;
-        while(running&&(!bounded||rendered<static_cast<std::uint64_t>(frame_limit))){const auto deadline=SDL_GetTicks()+static_cast<Uint64>(*tick_ms);bool single_step=false;SDL_Event event;
+    std::uint64_t rendered=0,logic_steps=0;
+    if(loop){bool running=true,paused=false;
+        while(running&&(!bounded||rendered<static_cast<std::uint64_t>(frame_limit))){const auto deadline=SDL_GetTicks()+static_cast<Uint64>(capture?0:*tick_ms);bool single_step=false;SDL_Event event;
             while(SDL_PollEvent(&event)){
                 if(event.type==SDL_EVENT_QUIT)running=false;
+                else if(event.type==SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED&&event.window.windowID==SDL_GetWindowID(window.get())&&live_viewport){
+                    int w=0,h=0;require(SDL_GetWindowSizeInPixels(window.get(),&w,&h),"SDL live pixel size");resize(w,h);
+                }
                 else if(event.type==SDL_EVENT_KEY_DOWN&&!event.key.repeat){
                     if(event.key.key==SDLK_ESCAPE)running=false;
                     else if(event.key.key==SDLK_SPACE)paused=!paused;
@@ -108,9 +122,13 @@ int run_native_mission(MissionProfile& profile,std::int32_t width,std::int32_t h
                 profile.humans->set_input_movement(focused&&(keys[SDL_SCANCODE_W]||keys[SDL_SCANCODE_UP]),focused&&(keys[SDL_SCANCODE_S]||keys[SDL_SCANCODE_DOWN]));
             }
             if(!paused||single_step){if(profile.step())++logic_steps;else{paused=true;if(bounded)break;}}
+            if(profile.resizable_viewport()&&(profile.view.width!=width||profile.view.height!=height)){
+                require(SDL_SetWindowSize(window.get(),profile.view.width,profile.view.height),"SDL replay window size");
+                resize(profile.view.width,profile.view.height);
+            }
             submit();renderer.present();++rendered;const auto now=SDL_GetTicks();if(now<deadline)SDL_Delay(static_cast<Uint32>(deadline-now));
         }
-        std::cout<<"{\"entities\":"<<profile.selected_count<<",\"render_frames\":"<<rendered<<",\"logic_steps\":"<<logic_steps
+        if(!capture){std::cout<<"{\"entities\":"<<profile.selected_count<<",\"render_frames\":"<<rendered<<",\"logic_steps\":"<<logic_steps
                  <<",\"rng_draws\":"<<(profile.humans?profile.humans->random_draws():0)<<",\"positions\":[";
         std::cout<<std::setprecision(std::numeric_limits<float>::max_digits10);
         for(std::size_t i=0;i<created.size();++i){if(i)std::cout<<',';const auto* p=dynamic_cast<ContactPosition*>(created[i]->get(0));
@@ -122,12 +140,13 @@ int run_native_mission(MissionProfile& profile,std::int32_t width,std::int32_t h
             profile.write_actor_parameters(*created[i],std::cout);
             std::cout<<'}';}
         std::cout<<']';profile.write_combat_report(std::cout);
-        std::cout<<",\"profile\":\"selected mission systems; fresh-world init, quest bootstrap and complete-state hashes unbound\"}\n";return 0;
+        std::cout<<",\"profile\":\"selected mission systems; fresh-world init, quest bootstrap and complete-state hashes unbound\"}\n";return 0;}
     }
-    submit();auto pixels=renderer.read_pixels();
+    if(!loop||rendered==0)submit();auto pixels=renderer.read_pixels();
     Surface captured(SDL_CreateSurfaceFrom(width,height,SDL_PIXELFORMAT_RGBA32,pixels.rgba.data(),width*4),SDL_DestroySurface);require(captured!=nullptr,"SDL_CreateSurfaceFrom");
     require(SDL_SaveBMP(captured.get(),output.string().c_str()),"SDL_SaveBMP");std::set<std::size_t> used;for(const auto& q:backend.quads())used.insert(q.texture);
-    std::cout<<"{\"resources\":"<<owners.size()<<",\"entities\":"<<profile.selected_count<<",\"commands\":"<<commands<<",\"quads\":"<<backend.quads().size()<<",\"textures\":"<<used.size()
+    std::cout<<"{\"resources\":"<<owners.size()<<",\"entities\":"<<profile.selected_count<<",\"commands\":"<<(queue.counts->at(0)+queue.counts->at(1))<<",\"quads\":"<<backend.quads().size()<<",\"textures\":"<<used.size()
+             <<",\"capture_render_frames\":"<<rendered<<",\"capture_logic_steps\":"<<logic_steps
              <<",\"profile\":\""<<(profile.native_materials?"explicit projection, native material cache and depth":"explicit projection and material identities, native depth")<<"\"}\n";return 0;
 }
 } // namespace saga::desktop

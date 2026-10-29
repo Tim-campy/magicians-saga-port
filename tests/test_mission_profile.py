@@ -13,6 +13,24 @@ from mission_scene_fixture import make_table_scene, make_shoot_scene, with_missi
 
 @unittest.skipUnless(EXE, 'saga_mission supplied by CTest')
 class MissionProfileTests(unittest.TestCase):
+    def test_native_presentation_and_viewport_replay(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);scene=root/'scene.txt';replay=root/'resize.txt'
+            original=make_boss_scene(root)+'system_init 1\n'
+            scene.write_text(original,encoding='utf-8');baseline=self.run_host(scene,frames=12)
+            self.assertEqual(baseline.returncode,0,baseline.stderr)
+            text='mission_presentation 128 96 100 0 1 0 1500100 -1\n'+'\n'.join(l for l in original.splitlines() if not l.startswith(('world ','projection ','slots ','view ','animate ','simulate ')))+'\n'
+            scene.write_text(text,encoding='utf-8');result=self.run_host(scene,frames=12)
+            self.assertEqual(result.returncode,0,result.stderr);a=json.loads(baseline.stdout);b=json.loads(result.stdout)
+            for key in a.keys()&b.keys():self.assertEqual(a[key],b[key],key)
+            self.assertEqual((b['viewport']['width'],b['viewport']['height'],b['viewport']['changes']),(128,96,0))
+            replay.write_text('2 viewport 161 99\n8 viewport 128 96\n',encoding='ascii')
+            resized=self.run_host(scene,'--replay',str(replay),frames=12)
+            self.assertEqual(resized.returncode,0,resized.stderr);self.assertEqual(json.loads(resized.stdout)['viewport']['changes'],2)
+            self.assertEqual(self.run_host(scene,'--replay',str(replay),frames=12).stdout,resized.stdout)
+            for bad in [text+'world 1 0 0 0 1 0 0 0 1\n',text.replace('system_init 1\n',''),
+                        text.replace('128 96 100','128 1 100'),text+'slots 35\n']:
+                scene.write_text(bad,encoding='utf-8');self.assertNotEqual(self.run_host(scene).returncode,0)
     def test_resource_index_replaces_manual_archive_and_alias_bindings(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);scene=root/'scene.txt';text=make_gauge_scene(root)

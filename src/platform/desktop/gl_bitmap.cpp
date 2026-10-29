@@ -134,6 +134,15 @@ struct GlBitmapRenderer::Impl {
 };
 GlBitmapRenderer::GlBitmapRenderer(SDL_Window& w,std::int32_t width,std::int32_t height,Textures textures):impl_(std::make_unique<Impl>(w,width,height,std::move(textures))){impl_->init();}
 GlBitmapRenderer::~GlBitmapRenderer()=default;
+void GlBitmapRenderer::resize_target(std::int32_t width,std::int32_t height){
+    if(width<1||height<1||width>8192||height>8192||static_cast<std::int64_t>(width)*height>16*1024*1024)throw std::invalid_argument("invalid GL resize target");
+    auto& s=*impl_;if(width==s.width&&height==s.height)return;s.current();auto& g=*s.gl;
+    g.BindFramebuffer(GL_FRAMEBUFFER,s.target);g.BindTexture(GL_TEXTURE_2D,s.color);
+    g.TexImage2D(GL_TEXTURE_2D,0,GL_RGBA8,width,height,0,GL_RGBA,GL_UNSIGNED_BYTE,nullptr);
+    g.BindRenderbuffer(GL_RENDERBUFFER,s.depth);g.RenderbufferStorage(GL_RENDERBUFFER,GL_DEPTH_COMPONENT24,width,height);
+    if(g.CheckFramebufferStatus(GL_FRAMEBUFFER)!=GL_FRAMEBUFFER_COMPLETE)throw std::runtime_error("GL resized target incomplete");
+    g.check("GL target resize");s.width=width;s.height=height;s.begun=false;s.material_ready=false;
+}
 void GlBitmapRenderer::begin_frame(GlBitmapClear clear,core::RenderColor background,const core::OffscreenMatrix& vp){
     if(clear!=GlBitmapClear::color_and_depth&&clear!=GlBitmapClear::depth&&clear!=GlBitmapClear::preserve)throw std::invalid_argument("unsupported GL frame clear");
     finite_matrix(vp);auto& s=*impl_;s.current();auto& g=*s.gl;g.BindFramebuffer(GL_FRAMEBUFFER,s.target);g.UseProgram(s.program);g.BindVertexArray(s.vao);

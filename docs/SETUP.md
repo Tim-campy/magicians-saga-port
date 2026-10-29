@@ -190,6 +190,7 @@ For table-backed entity scenes, replace manual draw rows with tables, progress a
 | gauge | creation step0..100000, parent selected-entity ordinal, type0..7, from/to/maximum, image, frame maximum, flags, option, option2; actual CreateGauge factory with explicit provisional call arguments/timing |
 | tick_ms | diagnostic animation/render interval1..1000; required for loop modes |
 | simulate | initial selected logic passes0..10000; enables optional Human/Enemy/Projectile -> Move -> Collision -> Emitter -> Modifier -> Animation -> Render -> Garbage on every loop step; absent means animation-only |
+| mission_presentation | width height initial-form-scale automatic0/1 application-update0/1 near far camera-Z; native identity/slots/margins/depth-rate and no pre-roll; exclusive with world/projection/view/slots/animate/simulate; requires system_init and mission_map |
 | mission_resources | quoted language and DPI; requires --data and generated mission-resources.tsv; binds tables, nine mission archives, global aliases and resource names |
 | material_policy | literal native; ordinary image/shader/queue material cache; exclusive with explicit material rows |
 | runtime | FPS1..1000, DEBUG0/1, backend name system, seed int32; must agree with supplied CLI runtime |
@@ -252,6 +253,11 @@ python -I tools/extract_assets.py --out extracted/full --mission-index
 ```
 
 Use `mission_resources "English.lproj" 1` and `material_policy native` in the scenario, removing its tables/resource/global_alias/resource_name/material rows. The first row requires `--data`; it uses the validated manifest name mapping and the original AppData resource IDs. The second selects ordinary native material identity/UniColor under the shared renderer. State, projection, depth and timing remain explicit. `quest-auto-resources.txt` is the local native-Start profile using these rows. `queue_capture` also accepts trailing `--data <root>` with its existing `--replay` option.
+
+`mission_presentation 600 640 100 0 1 0 1500100 -1` replaces the remaining presentation matrices and fixed offsets with the native initializer/resize contracts and public projection math. Its last three values explicitly select the serialized Offscreen camera baseline. It requires loaded-world Init and a native map. The local quest-native-presentation.txt profile exercises it. Interactive non-replay windows can be resized; bounded/headless runs keep declared dimensions unless their replay contains `step viewport width height`. Source textures and game time are retained across resize. Degenerate/minimized targets are ignored interactively; explicit invalid replay sizes fail. Captures must match the prepared dimensions; pause retains the old native queue until the next step.
+
+For a reproducible screenshot after native logic has processed a resize, add `--capture new-output.bmp --frames N` to the viewer host command. It steps and renders every frame through the retained mesh/material owner without wall-clock pacing, then saves the final viewport through the shared GL path; the destination must not exist. `--capture` is incompatible with `--headless`. This avoids adding a simulate override to the presentation owner, which deliberately starts with zero pre-roll.
+
 
 To open the prepared real-data mission directly through the game host (viewer build):
 

@@ -26,6 +26,9 @@ public:
     MissionProfile(const MissionProfile&)=delete;
     MissionProfile& operator=(const MissionProfile&)=delete;
     bool step(); // False at an explicitly held deferred transition; no further old-mission logic.
+    bool resizable_viewport()const{return offscreen_camera_.has_value();}
+    bool accepts_live_viewport()const{return resizable_viewport()&&!replay_bound_;}
+    void resize_viewport(std::int32_t width,std::int32_t height);
     std::uint64_t logic_steps=0,movement_steps=0;
     void write_combat_report(std::ostream&); // Diagnostic JSON fragment; not a complete-state snapshot.
     void draw_enemy_gauges(BitmapBackend&);
@@ -55,6 +58,8 @@ public:
 private:
     void initialize_loaded_world();
     bool native_stage_entry_=false;
+    std::optional<BitmapCamera> offscreen_camera_;
+    std::uint64_t viewport_changes_=0;
     void initialize_factory(std::int32_t,core::InitializationWorld*);
     void subscribe_auxiliary_button(std::int32_t,core::AuxiliaryInitializationWorld::Button)override;
     void subscribe_menu_orientation(std::function<void()> f)override{menu_orientation_=std::move(f);}
@@ -92,7 +97,7 @@ private:
     std::vector<core::UpdateSystem*> update_list_;
     std::vector<std::int32_t> last_updates_;
     bool halted_=false;
-    enum class InputKind {keys,attack,pulse,cursor,click,touch};
+    enum class InputKind {keys,attack,pulse,cursor,click,touch,viewport};
     struct InputAction {InputKind kind;std::uint32_t value=0;std::int32_t x=0,y=0,z=0;};
     std::map<std::uint64_t,std::vector<InputAction>> replay_;
     bool replay_bound_=false;std::uint64_t replay_applied_=0;
