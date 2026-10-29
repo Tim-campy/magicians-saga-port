@@ -39,6 +39,10 @@ class QueuePixels(unittest.TestCase):
                 pixels = bmp_pixels(output.read_bytes())[2]
                 self.assertEqual((255, 0, 255, 255) in pixels, visible)
                 self.assertEqual((0, 0, 255, 255) in pixels, visible)
+                automatic='material_policy native\n'+'\n'.join(l for l in text.splitlines() if not l.startswith('material '))+'\n'
+                native_result,native_output=self.run_capture(root,automatic,name=f'auto-gauge-{defeats}.bmp',native=True)
+                self.assertEqual(native_result.returncode,0,native_result.stderr)
+                self.assertEqual(native_output.read_bytes(),output.read_bytes())
 
     def test_native_input_replay_runs_the_gpu_scene(self):
         with tempfile.TemporaryDirectory() as directory:

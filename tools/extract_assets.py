@@ -41,6 +41,36 @@ import zipfile
 import wave
 
 APK_SHA = 'd58943e6ed4137975a554f1e210853f4a7b41573a38dbb462f4f5e159bf6eead'
+# AppData RESOURCE names row1 (cctor 0x11183c0..0x1118630), indexed by GetResourceId 0x11155dc.
+# Only resources reached by the mission host; the full application inventory stays local.
+MISSION_RESOURCES = ((1, 'chara'), (3, 'enemy'), (7, 'quest'), (18, 'chip'),
+                     (19, 'bullet'), (20, 'effect'), (21, 'hat'), (22, 'weapon'), (23, 'gauge'))
+
+
+def write_mission_index(root):
+    """Publish a small native-host index from already extracted, hash-checked files."""
+    manifest = json.loads((root / 'manifest.json').read_text(encoding='utf-8'))
+    if manifest.get('schema') not in (2, 3) or manifest.get('apk_sha256') != APK_SHA:
+        raise ValueError('Mission index requires the supported APK schema-2/3 manifest')
+    rows = ['mission_resources\t1']
+    for resource, name in ((-1, 'xls'), *MISSION_RESOURCES):
+        entries = [entry for entry in manifest['files'] if entry['name'] == name]
+        if len(entries) != 1:
+            raise ValueError('Mission archive missing or ambiguous: ' + name)
+        entry = entries[0];relative = entry['output']
+        if Path(relative).parent != Path('textassets'):
+            raise ValueError('Mission archives must be direct textassets children')
+        path = bounded(root, relative)
+        if hashlib.sha256(path.read_bytes()).hexdigest() != entry['sha256']:
+            raise ValueError('Mission archive hash mismatch: ' + name)
+        kind = 'tables' if resource == -1 else 'resource'
+        rows.append(f'{kind}\t{resource}\t{json.dumps(relative, ensure_ascii=False)}\t{json.dumps(name)}')
+    output = bounded(root, 'mission-resources.tsv');payload = ('\n'.join(rows) + '\n').encode('utf-8')
+    if output.exists() and output.read_bytes() != payload:
+        raise ValueError('Refusing to replace differing mission resource index')
+    if not output.exists():
+        output.write_bytes(payload)
+    return output
 KEY_SHA = 'cb79ca3dff35eca5c3307e5321dbf86d68aefb366d138b0b72ff2fb47173a24c'
 METADATA = 'assets/bin/Data/Managed/Metadata/global-metadata.dat'
 # TextInfoToLowerData .cctor 0x1e2460c; offsets within v31 default_data.
@@ -612,6 +642,7 @@ def main():
     p.add_argument('apk', type=Path, nargs='?')
     p.add_argument('--out', type=Path, default=Path('extracted'))
     p.add_argument('--check', action='store_true')
+    p.add_argument('--mission-index', action='store_true', help='Index existing decoded mission archives for the native host; no APK re-extraction')
     p.add_argument('--collation-indexers', action='store_true', help='Include native indexer configurations and collation resources')
     p.add_argument('--collation', action='store_true', help='Include seven original version-3 collation resources')
     p.add_argument('--runtime-tables', action='store_true', help='Include the 72-entry runtime Hashtable prime table')
@@ -622,7 +653,11 @@ def main():
     p.add_argument('--unity-media', action='store_true', help='Also export Unity textures, fonts and FSB/WAV audio')
     args = p.parse_args()
     try:
-        if args.check:
+        if args.mission_index:
+            if args.apk or args.check:
+                raise ValueError('--mission-index cannot combine with APK or --check')
+            print('Mission resource index: ' + str(write_mission_index(args.out)))
+        elif args.check:
             if not check(args.out, args.culture_signs or args.culture_names or args.culture_neutral or args.culture_lower,
                          args.culture_names or args.culture_neutral or args.culture_lower,
                          args.culture_neutral or args.culture_lower, args.culture_lower, args.runtime_tables, args.collation or args.collation_indexers, args.collation_indexers):

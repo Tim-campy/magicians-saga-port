@@ -29,6 +29,18 @@ struct Fixture {
 };
 }
 int main()try{
+    {BitmapMaterials cache;
+     auto& first=cache.resolve(2,66576,2450);check(first.uniform_color&&first.image&&first.queue.offset==0);
+     check(&cache.resolve(2,66576,2450)==&first);
+     auto& variant=cache.resolve(2,66576,2449);check(&variant!=&first&&variant.image==first.image&&variant.queue.offset==-1);
+     auto& colored=cache.resolve(2,1040,2450);check(!colored.uniform_color&&colored.image==first.image);
+     auto& other=cache.resolve(3,66576,2450);check(other.image!=first.image&&cache.size()==4);
+     auto q=make_render_queue();Fixture f;
+     BitmapMeshFrame frame(*f.backend,f.depth,f.queries,{24,false,[]{return true;}},[&](auto t,auto s,auto v)->SubmissionMaterial&{return cache.resolve(t,s,v);});
+     insert_render_command(q,f.command(100));frame.begin_frame();frame.draw(q,0);frame.finish();
+     check(frame.records().active_count==1);
+     for(const auto& entry:frame.cache().sorted->values)check(entry.second->vertex_color==!entry.first->uniform_color);
+    }
     {Fixture f;BitmapMeshFrame frame(*f.backend,f.depth,f.queries,{24,false,[]{return true;}},f.provider());auto q=make_render_queue();insert_render_command(q,f.command(100));
         frame.begin_frame();frame.draw(q,0);frame.finish();check(frame.records().active_count==1&&f.backend->quads().size()==1);
         auto* row=frame.records().rows->at(0);auto* group=row->layer->groups->values.at(0);auto storage=group->geometry->positions;

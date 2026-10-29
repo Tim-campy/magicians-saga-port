@@ -190,6 +190,8 @@ For table-backed entity scenes, replace manual draw rows with tables, progress a
 | gauge | creation step0..100000, parent selected-entity ordinal, type0..7, from/to/maximum, image, frame maximum, flags, option, option2; actual CreateGauge factory with explicit provisional call arguments/timing |
 | tick_ms | diagnostic animation/render interval1..1000; required for loop modes |
 | simulate | initial selected logic passes0..10000; enables optional Human/Enemy/Projectile -> Move -> Collision -> Emitter -> Modifier -> Animation -> Render -> Garbage on every loop step; absent means animation-only |
+| mission_resources | quoted language and DPI; requires --data and generated mission-resources.tsv; binds tables, nine mission archives, global aliases and resource names |
+| material_policy | literal native; ordinary image/shader/queue material cache; exclusive with explicit material rows |
 | runtime | FPS1..1000, DEBUG0/1, backend name system, seed int32; must agree with supplied CLI runtime |
 | mission_map | fresh plus four int32 chip IDs (start/middle/end/background); requires human_system, one player, AppData18 chips and geometry312/312/(distance+2); native map/camera/cells/culling; distance0..1022 diagnostic allocation bound |
 | input | fresh, initial held uint32, last-active -1..2, move-front0/1, then three attack state/frame int32 pairs; requires human_system attribute0..2 and one player; states/held mask must agree with existing scenario rows |
@@ -242,6 +244,14 @@ The optional `enemy_gauges` row enables native enemy HP drawing. Bind resource23
 ```
 
 The command runs fixed passes without wall-clock sleeping and prints final positions, destroyed flags, Human state/frame/attack counters, RNG draw count and render-command count. FPS25/DEBUG0/System.Random/seed42 are explicit provisional configuration choices. With human_system enabled, FPS drives actual attack intervals and walking recovery cadence; the seeded RNG drives actual recovery/celebration draws. DEBUG is passed to the actual numeric damage gate; optional diagnostics remain disabled as a logging stub. Headless mode prepares SEB catalogs/clocks and skips PNGs unless explicit Gauge22 entities require the gauge archive. In that case it decodes that archive and binds CPU images for alpha, without GPU submission. Other resources remain undecoded. `--data <root>` resolves each declared archive filename under `<root>/textassets/`, without falling back to the scene path. `--quest <id>` overrides the ID in the required scenario quest row; its saved rescued count and other explicit state remain unchanged. A missing file, absent quest row, table gap or conflicting numeric static field fails. Input-enabled scenes accept --replay; physical gameplay input is supplied by the SDL frontend. Unknown flags fail. The viewer build also opens the shared SDL/OpenGL mission window when `--headless` is omitted. It derives dimensions from the explicit `view` row. Without `--frames` the window is interactive; with `--frames N` it runs a bounded hidden-window replay. Desktop-only builds report that window support is unavailable. Original quest entry remains unbound.
+
+To remove manual archive/material rows, generate the local resource index once from the existing extractor output:
+
+```powershell
+python -I tools/extract_assets.py --out extracted/full --mission-index
+```
+
+Use `mission_resources "English.lproj" 1` and `material_policy native` in the scenario, removing its tables/resource/global_alias/resource_name/material rows. The first row requires `--data`; it uses the validated manifest name mapping and the original AppData resource IDs. The second selects ordinary native material identity/UniColor under the shared renderer. State, projection, depth and timing remain explicit. `quest-auto-resources.txt` is the local native-Start profile using these rows. `queue_capture` also accepts trailing `--data <root>` with its existing `--replay` option.
 
 To open the prepared real-data mission directly through the game host (viewer build):
 

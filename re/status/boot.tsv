@@ -38,3 +38,4 @@ game:0x0600072e	traced	docs/subsystems/ui.md	FormManager ctor: +0xb0 = MyConfig.
 game:0x06000731	traced	docs/subsystems/ui.md	FormManager.Updated: 120 on key masks 0x10/0x20, writes +0xb0 if changed
 game:0x0600023f	reimplemented	src/core/gameplay/animation_resources.cpp	13-field resource selector shared by typed clock/render projections, default-null IDs and identity tested; feeds effect/animation and multi-image AppData bitmap bindings.
 game:0x06000217	reimplemented	src/core/gameplay/cell_system.cpp	Shared scratch inverse cell projection; int32 wrap/SDIV/negative truncation, first intermediate store before second-entry bounds fault; identity, overflow and real visibility-host tests.
+game:0x0600023d	traced	docs/subsystems/data.md	Static resource-name row1 lookup returns the matching index or -1; mission resource IDs/names recovered from relocated cctor literals and used by the native host index.

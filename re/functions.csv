@@ -551,7 +551,7 @@ game:0x06000239,game:0x06000239,boot,,444,0x11151f0
 game:0x0600023a,game:0x0600023a,boot,,48,0x11153ac
 game:0x0600023b,game:0x0600023b,boot,,32,0x11153dc
 game:0x0600023c,game:0x0600023c,boot,,480,0x11153fc
-game:0x0600023d,game:0x0600023d,boot,,240,0x11155dc
+game:0x0600023d,main.AppData.GetResourceId,boot,traced,240,0x11155dc
 game:0x0600023e,game:0x0600023e,boot,,260,0x11156cc
 game:0x0600023f,main.AppData.GetResourceManager,boot,reimplemented,152,0x1103e90
 game:0x06000240,game:0x06000240,boot,,16,0x11157d0
@@ -8455,7 +8455,7 @@ kairo:0x06001095,kairo:0x06001095,graphics,,160,0x1ca02f0
 kairo:0x06001096,kairo:0x06001096,graphics,,152,0x1ca0390
 kairo:0x06001097,kairo:0x06001097,graphics,,60,0x1ca0b64
 kairo:0x06001098,kairo:0x06001098,graphics,,60,0x1ca0ba0
-kairo:0x06001099,kairo:0x06001099,graphics,,1852,0x1ca0428
+kairo:0x06001099,kairo.unity.graphics.MaterialManager.GetMaterial,graphics,traced,1852,0x1ca0428
 kairo:0x0600109a,kairo:0x0600109a,graphics,,1496,0x1ca0bdc
 kairo:0x0600109b,kairo:0x0600109b,graphics,,484,0x1ca11b4
 kairo:0x0600109c,kairo:0x0600109c,graphics,,1868,0x1ca1398

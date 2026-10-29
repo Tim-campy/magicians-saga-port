@@ -1,6 +1,7 @@
 #pragma once
 #include "bitmap_backend.hpp"
 #include "core/gameplay/mesh_geometry.hpp"
+#include <tuple>
 
 namespace saga::desktop {
 struct BitmapMeshSettings {
@@ -8,8 +9,21 @@ struct BitmapMeshSettings {
     bool null_surface;
     std::function<bool()> depth_step;
 };
+// Ordinary textured MaterialManager.GetMaterial projection: image identity,
+// shader name key and queue variant. Special material paths remain rejected by BitmapBackend.
+class BitmapMaterials {
+public:
+    BitmapMaterials()=default;
+    BitmapMaterials(const BitmapMaterials&)=delete;
+    BitmapMaterials& operator=(const BitmapMaterials&)=delete;
+    core::SubmissionMaterial& resolve(std::size_t texture,std::uint32_t shader,std::int32_t absolute_queue);
+    std::size_t size()const{return materials_.size();}
+private:
+    std::map<std::size_t,core::SubmissionImage> images_;
+    std::map<std::tuple<std::size_t,std::uint32_t,std::int32_t>,core::SubmissionMaterial> materials_;
+};
 // Desktop ownership adapter for the recovered mesh kernels. It does not choose scene/camera defaults.
-// Material canonicalization is supplied by the owner, never inferred from a texture/shader tuple here.
+// Material ownership is supplied explicitly, either by BitmapMaterials or a diagnostic profile.
 class BitmapMeshFrame final:public BitmapDepthHost,private core::MeshQuadHost,private core::MeshRecordHost {
 public:
     using Materials=std::function<core::SubmissionMaterial&(std::size_t,std::uint32_t,std::int32_t)>;

@@ -65,7 +65,9 @@ int run_native_mission(MissionProfile& profile,std::int32_t width,std::int32_t h
     GlBitmapRenderer renderer(*window,width,height,[&](std::size_t key){const auto* ready=textures.at(key).ready;
         if(!ready)throw std::invalid_argument("texture has no decoded archive image");return GlBitmapTexture{&ready->pixels,GlBitmapWrap::clamp,GlBitmapWrap::clamp};});
     MeshDepthSurface surface;MeshDepthState depth;depth.surface=&surface;GpuQueries queries;
+    BitmapMaterials native_materials;
     BitmapMeshFrame frame(backend,depth,queries,{depth_bits,false,[&]{return depth_step!=0;}},[&](auto t,auto shader,auto queue_value)->SubmissionMaterial&{
+        if(profile.native_materials)return native_materials.resolve(t,shader,queue_value);
         const auto found=material_bindings.find({t,shader,queue_value});
         if(found==material_bindings.end())throw std::invalid_argument("unbound material: texture="+std::to_string(t)+" shader="+std::to_string(shader)+" queue="+std::to_string(queue_value));
         return materials.at(found->second);
@@ -74,7 +76,10 @@ int run_native_mission(MissionProfile& profile,std::int32_t width,std::int32_t h
     MeshSubmissionState s;s.cursors=std::make_shared<std::vector<std::int32_t>>(1,0);s.lengths=std::make_shared<std::vector<std::int32_t>>(1,0);
     s.lists=std::make_shared<std::vector<SubmissionRecords>>(1,frame.records().rows);OffscreenMatrix unit;unit.values[0]=unit.values[5]=unit.values[10]=unit.values[15]=1;
     s.matrices=std::make_shared<std::vector<OffscreenMatrix>>(1,unit);s.used_materials=std::make_shared<std::vector<SubmissionMaterial*>>();
-    GlMeshSubmissionHost host(renderer,bindings,[](auto&,auto&){},[]()->std::int32_t{throw std::logic_error("capture has no image counter");});
+    GlMeshSubmissionHost host(renderer,bindings,[](auto&,auto&){},[&]()->std::int32_t{
+        if(profile.native_materials)return 0; // SAGA_STUB(mission-image-access-check): no eviction/aging service is bound.
+        throw std::logic_error("capture has no image counter");
+    });
     auto submit=[&]{
         frame.begin_frame();frame.draw(queue,0);profile.draw_enemy_gauges(backend);frame.draw(queue,1);frame.finish();bind_bitmap_mesh_frame(bindings,frame);
         s.cursors->at(0)=0;s.lengths->at(0)=frame.records().active_count;
@@ -123,6 +128,6 @@ int run_native_mission(MissionProfile& profile,std::int32_t width,std::int32_t h
     Surface captured(SDL_CreateSurfaceFrom(width,height,SDL_PIXELFORMAT_RGBA32,pixels.rgba.data(),width*4),SDL_DestroySurface);require(captured!=nullptr,"SDL_CreateSurfaceFrom");
     require(SDL_SaveBMP(captured.get(),output.string().c_str()),"SDL_SaveBMP");std::set<std::size_t> used;for(const auto& q:backend.quads())used.insert(q.texture);
     std::cout<<"{\"resources\":"<<owners.size()<<",\"entities\":"<<profile.selected_count<<",\"commands\":"<<commands<<",\"quads\":"<<backend.quads().size()<<",\"textures\":"<<used.size()
-             <<",\"profile\":\"explicit projection and material identities, native depth\"}\n";return 0;
+             <<",\"profile\":\""<<(profile.native_materials?"explicit projection, native material cache and depth":"explicit projection and material identities, native depth")<<"\"}\n";return 0;
 }
 } // namespace saga::desktop

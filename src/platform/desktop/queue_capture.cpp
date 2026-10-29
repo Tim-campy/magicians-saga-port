@@ -35,8 +35,16 @@ int number(std::string_view s){int result=0;const auto p=std::from_chars(s.data(
 }
 int main(int argc,char** argv)try{
     std::optional<std::filesystem::path> replay;
-    if(argc>=3&&std::string_view(argv[argc-2])=="--replay"){replay=std::filesystem::u8path(argv[argc-1]);argc-=2;}
-    if(argc!=5&&argc!=6){std::cerr<<"Usage: queue_capture scene.txt width height new-output.bmp [--native-depth] [--replay inputs.txt]\n       queue_capture scene.txt width height --material-inputs|--interactive [--replay inputs.txt]\n       queue_capture scene.txt width height --run-frames count [--replay inputs.txt]\n";return 2;}
+    MissionSelection selection;
+    while(argc>=3){const std::string_view option=argv[argc-2];
+        if(option=="--replay"){
+            if(replay)throw std::invalid_argument("duplicate --replay");replay=std::filesystem::u8path(argv[argc-1]);
+        }else if(option=="--data"){
+            if(selection.data_root)throw std::invalid_argument("duplicate --data");selection.data_root=std::filesystem::u8path(argv[argc-1]);
+        }else break;
+        argc-=2;
+    }
+    if(argc!=5&&argc!=6){std::cerr<<"Usage: queue_capture scene.txt width height new-output.bmp [--native-depth] [--replay inputs.txt] [--data extracted-root]\n       queue_capture scene.txt width height --material-inputs|--interactive [--replay inputs.txt] [--data extracted-root]\n       queue_capture scene.txt width height --run-frames count [--replay inputs.txt] [--data extracted-root]\n";return 2;}
     const bool inspect=argc==5&&std::string_view(argv[4])=="--material-inputs";
     const bool interactive=argc==5&&std::string_view(argv[4])=="--interactive";
     const bool bounded=argc==6&&std::string_view(argv[4])=="--run-frames";const bool loop=interactive||bounded;
@@ -46,7 +54,7 @@ int main(int argc,char** argv)try{
     if(width<1||height<1||width>8192||height>8192||static_cast<std::uint64_t>(width)*height>16U*1024U*1024U)throw std::invalid_argument("invalid capture dimensions");
     const auto scene=std::filesystem::u8path(argv[1]),output=inspect||loop?std::filesystem::path{}:std::filesystem::u8path(argv[4]);
     if(!inspect&&!loop&&std::filesystem::exists(output))throw std::invalid_argument("capture destination already exists");
-    MissionProfile profile(scene,native,decode_png,std::nullopt,replay);
+    MissionProfile profile(scene,native,decode_png,std::nullopt,replay,selection);
     if(native&&!inspect)return run_native_mission(profile,width,height,bounded?std::optional<std::int32_t>(frame_limit):std::nullopt,
         loop?std::nullopt:std::optional<std::filesystem::path>(output));
     auto& application=profile.application;

@@ -155,6 +155,14 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         }else if(resolved.is_relative())resolved=scene.parent_path()/resolved;
         return resolved;
     };
+    const auto load_resource=[&](std::int32_t id,const std::filesystem::path& path,const std::string& language,std::int32_t dpi){
+        auto** slot=application_resource_slot(application,id);
+        auto** alias=application_resource_slot(global,id);
+        if(!slot||*slot||!alias||*alias)throw std::invalid_argument("mission resource index has duplicate or unsupported AppData ID");
+        auto value=std::make_unique<SceneResource>(path,ResourceProfile{language,dpi},decoder);
+        if(value->images)textures.bind(*value->images);
+        *slot=*alias=&value->manager.drawing();owners.push_back(std::move(value));
+    };
     if(replay)load_replay(*replay);
     std::ifstream input(scene);if(!input)throw std::runtime_error("cannot open scene description");
     std::vector<std::variant<HumanCreation,EnemyCreation,SelectedBullet,SelectedEffect,SelectedDrop>> selected;
@@ -181,6 +189,36 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     for(std::string line;std::getline(input,line);){
         std::istringstream row(line);row.imbue(std::locale::classic());std::string operation;
         if(!(row>>operation)||operation.front()=='#')continue;
+        if(operation=="mission_resources"){
+            std::string language;std::int32_t dpi=0;
+            if(!native||!selection.data_root||tables||!owners.empty()||!resource_names.empty()||!(row>>std::quoted(language)>>dpi))
+                throw std::invalid_argument("mission_resources requires --data, language/DPI and no previous resource bindings");
+            const auto index=*selection.data_root/"mission-resources.tsv";
+            if(std::filesystem::file_size(index)>16384)throw std::length_error("mission resource index exceeds16KiB");
+            std::ifstream list(index);std::string signature;std::int32_t version=0;
+            if(!(list>>signature>>version)||signature!="mission_resources"||version!=1)throw std::invalid_argument("invalid mission resource index header");
+            std::set<std::int32_t> remaining{1,3,7,18,19,20,21,22,23};
+            for(std::string line;std::getline(list,line);){
+                std::istringstream entry(line);std::string kind,path,name;std::int32_t id=0;
+                entry>>std::ws;if(entry.eof())continue;
+                if(!(entry>>kind>>id>>std::quoted(path)>>std::quoted(name)))throw std::invalid_argument("invalid mission resource index row");end(entry);
+                const auto relative=std::filesystem::u8path(path);
+                if(relative.is_absolute()||relative.parent_path()!=std::filesystem::path("textassets")||relative.filename().empty())throw std::invalid_argument("mission resource path must be a direct textassets child");
+                const auto resolved=*selection.data_root/relative;
+                if(kind=="tables"&&id==-1&&name=="xls"&&!tables)
+                    tables=std::make_unique<ResourceArchive>(read(resolved),ResourceProfile{language,dpi},ArchiveContents::data_only);
+                else if(kind=="resource"&&remaining.erase(id)&&!name.empty()&&resource_names.emplace(name,id).second)
+                    load_resource(id,resolved,language,dpi);
+                else throw std::invalid_argument("duplicate or unexpected mission resource index entry");
+            }
+            if(!list.eof()||!tables||!remaining.empty())throw std::invalid_argument("incomplete mission resource index");
+            end(row);continue;
+        }
+        if(operation=="material_policy"){
+            std::string policy;
+            if(!native||native_materials||!materials.empty()||!(row>>policy)||policy!="native")throw std::invalid_argument("material_policy native is exclusive with explicit material rows");
+            native_materials=true;end(row);continue;
+        }
         if(operation=="system_init"){
             std::int32_t loaded=0;
             if(initialized_loaded_||!(row>>loaded)||loaded<1||loaded>255)throw std::invalid_argument("system_init requires one explicit loaded-world byte1..255; fresh-game bootstrap is unbound");
@@ -313,7 +351,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             has_gpu_depth=true;
         }else if(operation=="material"){
             std::int32_t texture=0,material_queue=0,id=0,uniform=0;std::uint32_t shader=0;
-            if(!native||!(row>>texture>>shader>>material_queue>>id>>uniform)||texture<0||(uniform!=0&&uniform!=1))throw std::invalid_argument("material requires texture shader queue identity uniform0/1 in native mode");
+            if(!native||native_materials||!(row>>texture>>shader>>material_queue>>id>>uniform)||texture<0||(uniform!=0&&uniform!=1))throw std::invalid_argument("material requires texture shader queue identity uniform0/1 in native mode without material_policy");
             auto inserted=materials.emplace(id,SubmissionMaterial{});auto& value=inserted.first->second;
             if(!inserted.second&&(value.queue.absolute!=material_queue||value.uniform_color!=(uniform!=0)))throw std::invalid_argument("conflicting material identity");
             value.queue.absolute=material_queue;value.uniform_color=uniform!=0;

@@ -38,6 +38,7 @@ Types were resolved from metadata return types and SZARRAY element pointers, not
 | `data.Data.Load` (jar) | `game:0x06001154` | 21 names → `LoadStringArray` | high |
 | `data.Data.Load` (arrays) | `game:0x06001155` | Per-table `LoadData<T>` → `Data` fields | medium |
 | `data.Data.get_<x>Data` ×10 (list above) | see TSV | Return `Data` array fields | high |
+| `main.AppData.GetResourceId` | `game:0x0600023d` | Static name row1 lookup; mission resource index | high |
 | `main.AppData.GetDataList` | `game:0x06000194` | 10 descriptors (array, selector) | high |
 | `main.AppData.NewData` | `game:0x0600015b` | `BaseData.NewGame` on every list object; tail `InitCheckScriptData` | high |
 | `main.AppData.DeserializeData` | `game:0x06000190` | Reads BaseData save sections | medium |
@@ -197,6 +198,26 @@ The logical fields below are TAB-separated; each array includes its count prefix
 Chip images use `GetIntArray`; the four group fields use `GetIntTripleArray`. Any negative outer count means null, zero means a distinct empty array, and negative inner group/row counts fault. Saved stage details `+0x98`, rescued prisoners `+0xa0`, completion byte `+0xa4` and quest record `+0xa8` are not loaded here. The completion getter tests flags mask2 OR the saved byte; static flags must not be copied into that byte.
 
 Port: [quest_catalog.cpp](../../src/core/gameplay/quest_catalog.cpp) provides the in-place reader and the shared table framing/id indexing. Its projection preserves saved prisoner/completion fields across Load. The caller supplies the decimal parser; full runtime numeric culture and QuestData construction/NewGame are separate contracts. [Tests](../../tests/test_quest_catalog.cpp) cover field mapping, nonnumeric skips, ignored suffixes, null/empty distinction, nested failures, partial mutation, duplicates, gaps and CRLF framing. `MissionProfile` requests Quest.txt only for an explicit quest selection and shares its static projection with Human, Enemy, Stage and Map; see [integration](integration.md#table-selected-quests-s1-a1a3).
+
+### Mission resource index
+
+AppData.GetResourceId (game:0x0600023d, ELF0x11155dc,240 bytes) searches row1 of the static resource-name array at AppData.static+0xa8, returning the first matching index or -1. AppData.cctor fills this24-entry row at ELF0x11183c0..0x1118630. Resolving its relocated metadata string literals establishes the mission subset below; GetResourceManager's existing dispatch maps these IDs to the corresponding live fields. Confidence high for these IDs/names; this does not establish the complete application resource lifecycle.
+
+| ID | TextAsset name |
+| --- | --- |
+| 1 | chara |
+| 3 | enemy |
+| 7 | quest |
+| 18 | chip |
+| 19 | bullet |
+| 20 | effect |
+| 21 | hat |
+| 22 | weapon |
+| 23 | gauge |
+
+`python -I tools/extract_assets.py --out extracted/full --mission-index` writes a local mission-resources.tsv from an existing schema2/3 manifest of the supported APK. It selects those names plus the existing xls table archive, requires one matching entry each and verifies every decoded file hash. Numeric filename prefixes come from the manifest, not guesses. Existing differing indices are preserved and reported. No APK re-extraction or additional package is needed for this command.
+
+The native `mission_resources "English.lproj" 1` scenario row requires `--data`, reads that small version1 index and supplies tables, application/global aliases and resource-name lookups through the existing synchronous archive owners. It rejects duplicate/missing IDs, non-child paths and mixed prior bindings. Language/DPI remain explicit; saved inputs and full async/locale/pack selection remain separate. Synthetic tests verify equivalent domain output against manual bindings, schema variants, hashes, missing entries and path rejection. Local evidence: mission-resource-entry/{GetResourceId.asm,AppDataCtor.asm,resource-names.json} and appdata-constants/AppData_cctor.asm; all native addresses use the ELF base and source hash recorded in coverage.tsv.
 
 ## Evidence
 

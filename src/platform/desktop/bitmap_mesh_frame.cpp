@@ -3,6 +3,13 @@
 
 namespace saga::desktop {
 using namespace core;
+SubmissionMaterial& BitmapMaterials::resolve(std::size_t texture,std::uint32_t shader,std::int32_t queue){
+    const auto base=sprite_shader_queue(shader);
+    const auto key=std::make_tuple(texture,shader,queue);
+    const auto found=materials_.find(key);if(found!=materials_.end())return found->second;
+    auto& value=materials_[key];value.queue={add_queue_offset(queue,-base),queue};
+    value.uniform_color=(shader&0x10000U)!=0;value.image=&images_[texture];return value;
+}
 BitmapMeshFrame::BitmapMeshFrame(BitmapBackend& backend,MeshDepthState& depth,MeshDepthHost& queries,BitmapMeshSettings settings,Materials materials)
     :backend_(backend),depth_(depth),queries_(queries),settings_(std::move(settings)),resolve_(std::move(materials)),
      cache_{std::make_shared<std::map<SubmissionMaterial*,MeshBuilderState*>>(),std::make_shared<MeshBuilderOrder>()},

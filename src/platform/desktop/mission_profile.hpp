@@ -36,6 +36,7 @@ public:
     core::OffscreenMatrix projection;bool has_projection=false,has_gpu_depth=false;std::int32_t depth_bits=0,depth_step=0;
     std::map<std::int32_t,core::SubmissionMaterial> materials;
     std::map<std::tuple<std::size_t,std::uint32_t,std::int32_t>,std::int32_t> material_bindings;
+    bool native_materials=false;
     std::unique_ptr<ResourceArchive> tables;std::unique_ptr<GameplayCatalog> catalog;MissionProgress progress;
     std::optional<std::int32_t> selected_quest;
     std::optional<core::StageGeometry> geometry;

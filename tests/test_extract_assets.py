@@ -5,10 +5,36 @@ import struct
 import json
 import tempfile
 import unittest
+import hashlib
 
 spec = importlib.util.spec_from_file_location('extract_assets', Path(__file__).parents[1]/'tools/extract_assets.py')
 extractor = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(extractor)
+
+
+class MissionIndexTests(unittest.TestCase):
+    def test_manifest_names_paths_hashes_and_non_destructive_repeat(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory);assets = root/'textassets';assets.mkdir()
+            entries = []
+            for index, name in enumerate(['xls'] + [name for _, name in extractor.MISSION_RESOURCES]):
+                payload = ('synthetic:' + name).encode();relative = f'textassets/{index:02}_{name}.bin'
+                (root/relative).write_bytes(payload)
+                entries.append({'name':name,'output':relative,'sha256':hashlib.sha256(payload).hexdigest()})
+            manifest = {'schema':2,'apk_sha256':extractor.APK_SHA,'files':entries}
+            source = root/'manifest.json';source.write_text(json.dumps(manifest), encoding='utf-8')
+            output = extractor.write_mission_index(root);original = output.read_bytes()
+            self.assertIn(b'resource\t23\t', original)
+            self.assertEqual(extractor.write_mission_index(root).read_bytes(), original)
+            manifest['schema']=3;source.write_text(json.dumps(manifest), encoding='utf-8')
+            self.assertEqual(extractor.write_mission_index(root).read_bytes(), original)
+            (root/entries[0]['output']).write_bytes(b'changed')
+            with self.assertRaisesRegex(ValueError, 'hash mismatch'):extractor.write_mission_index(root)
+            self.assertEqual(output.read_bytes(), original)
+            manifest['files'].append(entries[1]);source.write_text(json.dumps(manifest), encoding='utf-8')
+            manifest['files'][0]['sha256'] = hashlib.sha256(b'changed').hexdigest()
+            source.write_text(json.dumps(manifest), encoding='utf-8')
+            with self.assertRaisesRegex(ValueError, 'ambiguous'):extractor.write_mission_index(root)
 
 
 class CollationTests(unittest.TestCase):

@@ -13,6 +13,29 @@ from mission_scene_fixture import make_table_scene, make_shoot_scene, with_missi
 
 @unittest.skipUnless(EXE, 'saga_mission supplied by CTest')
 class MissionProfileTests(unittest.TestCase):
+    def test_resource_index_replaces_manual_archive_and_alias_bindings(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);scene=root/'scene.txt';text=make_gauge_scene(root)
+            scene.write_text(text,encoding='utf-8');control=self.run_host(scene,frames=12)
+            self.assertEqual(control.returncode,0,control.stderr)
+            data=root/'data';assets=data/'textassets';assets.mkdir(parents=True)
+            for path in root.glob('*.bin'):(assets/path.name).write_bytes(path.read_bytes())
+            entries=[(-1,'tables','xls'),(1,'hero','chara'),(3,'enemy','enemy-book'),(7,'quest','quest'),
+                     (18,'hero','chip'),(19,'bullet','bullet'),(20,'effect','effect'),(21,'hero','hat'),
+                     (22,'hero','weapon'),(23,'gauges','gauge')]
+            index=data/'mission-resources.tsv'
+            content='mission_resources 1\n'+''.join(f'{"tables" if i==-1 else "resource"} {i} "textassets/{file}.bin" "{name}"\n' for i,file,name in entries)
+            index.write_text(content,encoding='utf-8')
+            automatic='mission_resources "English.lproj" 0\n'+'\n'.join(l for l in text.splitlines() if not l.startswith(('tables ','resource ','resource_name ','global_alias ')))+'\n'
+            scene.write_text(automatic,encoding='utf-8')
+            result=self.run_host(scene,'--data',str(data),frames=12)
+            self.assertEqual(result.returncode,0,result.stderr);self.assertEqual(result.stdout,control.stdout)
+            for bad in [content.replace('resource 23 ', 'resource 22 '),content.replace('textassets/hero.bin','../hero.bin'),
+                        '\n'.join(content.splitlines()[:-1])+'\n',content.replace('mission_resources 1','mission_resources 2')]:
+                index.write_text(bad,encoding='utf-8');self.assertNotEqual(self.run_host(scene,'--data',str(data)).returncode,0)
+            index.write_text(content,encoding='utf-8')
+            self.assertNotEqual(self.run_host(scene).returncode,0)
+
     def test_loaded_world_dispatches_all_32_native_initializers_before_updates(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory);scene = root / 'scene.txt';replay = root / 'init.txt'
