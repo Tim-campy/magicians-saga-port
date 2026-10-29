@@ -29,6 +29,8 @@ Milestone **M3** (first playable loop) is current. No playable build exists yet:
 
 ## Tools
 
+The [GPU bitmap adapter](docs/subsystems/assets.md#gpu-bitmap-submission) now draws native-Z sprite commands through the recovered mesh ordering and layer depth clears. Its optional OpenGL 3.3 pixel tests cover overlap, alpha discard, blending and viewport state. Production mission ownership and camera/resource bindings remain open.
+
 Python 3 (standard library unless noted) and C++17 with CMake. Each tool has tests on synthetic data.
 
 | Tool | Purpose |

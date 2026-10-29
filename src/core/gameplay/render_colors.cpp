@@ -183,7 +183,7 @@ std::uint32_t sprite_shader_key(const SpriteShaderState& s){
 // Public SDL blending implements them; no shader source generator is copied.
 SpritePixelPipeline sprite_pixel_pipeline(std::uint32_t key){
     if((key&0xe002fU)!=0||(key&16U)==0)throw std::invalid_argument("unbound sprite stencil/shape/add-color shader");
-    SpritePixelPipeline p;p.modulate=(key&0x10000U)==0;
+    SpritePixelPipeline p;p.modulate=(key&0x10000U)==0;p.depth_write=(key&0x200U)==0;
     if(key&0x40U)p.blend=(key&0x2000U)?SpriteBlend::alpha:((key&0x4000U)?SpriteBlend::add:SpriteBlend::attenuate);
     else if(key&0x80U)p.blend=(key&0x2000U)?SpriteBlend::subtract_alpha:((key&0x4000U)?SpriteBlend::subtract_add:SpriteBlend::attenuate);
     else p.blend=(key&0x100U)?SpriteBlend::replace:SpriteBlend::alpha;

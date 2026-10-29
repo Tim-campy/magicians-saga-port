@@ -33,11 +33,15 @@ jobs:
         run: |
           python3 -I tools/registry.py check
           python3 -I tools/progress.py --check
-      - name: Build and test the C++ core (Linux)
+      - name: Install Linux graphics test dependencies
         run: |
-          cmake -S . -B build/linux -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev libxext-dev libxcursor-dev libxi-dev libxrandr-dev libxss-dev libxtst-dev libgl1-mesa-dev libgl1-mesa-dri xvfb xauth
+      - name: Build and test the C++ core and GPU adapters (Linux)
+        run: |
+          cmake -S . -B build/linux -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON -DSAGA_BUILD_VIEWER=ON -DSDL_X11=ON -DSDL_WAYLAND=OFF -DSDL_AUDIO=OFF -DSDL_JOYSTICK=OFF -DSDL_HAPTIC=OFF -DSDL_SENSOR=OFF
           cmake --build build/linux --parallel
-          ctest --test-dir build/linux --output-on-failure
+          xvfb-run -a env LIBGL_ALWAYS_SOFTWARE=1 ctest --test-dir build/linux --output-on-failure
       - name: Build progress site
         run: python3 -I tools/progress.py build/progress
       - uses: actions/configure-pages@v5

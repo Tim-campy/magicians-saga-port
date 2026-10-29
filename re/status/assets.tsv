@@ -138,7 +138,7 @@ kairo:0x0600142a	reimplemented	src/core/gameplay/render_colors.cpp	Begin state t
 kairo:0x0600142c	reimplemented	src/core/gameplay/render_colors.cpp	Fresh GUI query/pop then material return or render/blend restoration; callback and restoration tests.
 kairo:0x06001146	reimplemented	src/core/gameplay/render_colors.cpp	Full shader-state bit key including GUI early return, blend families and special masks; pipeline/pixel tests.
 kairo:0x06001140	traced	docs/subsystems/assets.md	Reached textured-sprite Init slice normalizes mode, replace modulation and alpha type; partial port in render_colors, shape/stencil/material setup remains unbound.
-kairo:0x06001143	traced	docs/subsystems/assets.md	Reached shader selection maps to public SDL blend/alpha operations; compiled shader states confirm reverse subtraction of RGB and alpha; full source generator not ported.
+kairo:0x06001143	traced	docs/subsystems/assets.md	Reached texture blend/alpha state and Transparent ZWrite Off versus opaque/cutout On are bound to GL GPU pixel tests with public LEqual; full private source generator remains unported.
 kairo:0x06001532	traced	docs/subsystems/assets.md	Sampled-alpha scalar classifier recovered/tested; native texture tile/readback/liveness and dispatch wrapper not ported.
 kairo:0x06000f32	traced	docs/subsystems/assets.md	AssetReader lazy initializer density buckets, preserved 180..189 gap and lowercased locale publication established; body stays an explicit platform/locale service.
 kairo:0x06000f3e	traced	docs/subsystems/assets.md	AssetReader static initializer publishes four drawable DPI folders; exact order is the tested ResourceLookupState default; static constructor itself not separately ported.

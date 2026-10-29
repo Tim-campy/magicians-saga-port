@@ -59,6 +59,19 @@ uv run tools/extract_assets.py --check --out extracted/collation-indexers --coll
 uv run tools/extract_assets.py game/MagiciansSaga-1.4.0.apk --out extracted/full --unity-media
 ```
 
+## GPU bitmap adapter
+
+The optional viewer build also compiles `gl_bitmap` and `test_gl_bitmap`; it reuses SDL 3.4.18 and requires an OpenGL 3.3 core driver. GLSL compiles through the driver at runtime, without a separate shader SDK. Existing `asset_viewer` and `queue_capture` commands still use their SDL 2D diagnostic path; the GL adapter currently consumes explicit ready mesh/material bindings.
+
+```powershell
+tools\build-viewer.cmd
+build\viewer\test_gl_bitmap.exe build\viewer\gl-contract
+```
+
+The build runs `gl_bitmap_depth_pixels` through CTest. The standalone invocation repeats that contract and saves four synthetic 32x32 BMPs in the supplied directory. It checks native-Z occlusion, layer clears, alpha discard, depth writes, blend equations, orientation and the concrete AppData/BitmapBackend/Offscreen submission chain. These captures contain synthetic test data. A hidden SDL OpenGL window still requires a graphics driver; failure is reported, not silently skipped. Windows was exercised on Intel UHD Graphics 770 with OpenGL 3.3.0. Matrices, wrapping and target dimensions remain explicit host inputs; see [GPU behavior and limits](subsystems/assets.md#gpu-bitmap-submission).
+
+Linux CI installs Mesa/X11 development packages, Xvfb and xauth, enables `SAGA_BUILD_VIEWER`, and runs CTest with `xvfb-run -a env LIBGL_ALWAYS_SOFTWARE=1`. The adapter's owned framebuffer is RGBA8/D24; it does not request an Android emulator or execute the APK.
+
 ## Ghidra headless
 
 ```powershell

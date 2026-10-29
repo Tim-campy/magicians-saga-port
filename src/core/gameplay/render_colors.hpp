@@ -86,7 +86,10 @@ SpriteShaderState sprite_shader_state(const RenderColorState&,bool has_image,std
 std::uint32_t sprite_shader_key(const SpriteShaderState&); // ShaderBuilder.GetNameId.
 enum class SpriteBlend {replace,alpha,add,subtract_alpha,subtract_add,attenuate};
 enum class SpriteAlphaTest {none,at_least_001,greater_099,at_most_099};
-struct SpritePixelPipeline {SpriteBlend blend=SpriteBlend::replace;SpriteAlphaTest alpha_test=SpriteAlphaTest::none;bool modulate=true;};
+struct SpritePixelPipeline {
+    SpriteBlend blend=SpriteBlend::replace;SpriteAlphaTest alpha_test=SpriteAlphaTest::none;
+    bool modulate=true,depth_write=true; // Reached non-GUI shaders use public LessEqual; Transparent disables ZWrite.
+};
 SpritePixelPipeline sprite_pixel_pipeline(std::uint32_t shader_key);
 bool accepts_sprite_alpha(SpriteAlphaTest,float alpha);
 } // namespace saga::core

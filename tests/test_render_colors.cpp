@@ -66,7 +66,8 @@ int main(){
      partial.add(1);check(partial.finish(3)==3);ImageAlphaClassifier bounds;bounds.add(0.01F);bounds.add(0.999F);check(bounds.finish(2)==2);
      ImageAlphaClassifier nan;nan.add(std::numeric_limits<float>::quiet_NaN());check(nan.finish(1)==0);}
     {Host h;SpriteShaderState shader=sprite_shader_state(h.state,true,0,1,h.work.white,-1,false);auto key=sprite_shader_key(shader);
-     check(key==0x10110&&sprite_pixel_pipeline(key).blend==SpriteBlend::replace&&!sprite_pixel_pipeline(key).modulate);
+     check(key==0x10110&&sprite_pixel_pipeline(key).blend==SpriteBlend::replace&&!sprite_pixel_pipeline(key).modulate&&sprite_pixel_pipeline(key).depth_write);
+     check(!sprite_pixel_pipeline(0x210).depth_write&&sprite_pixel_pipeline(0x410).depth_write);
      shader=sprite_shader_state(h.state,true,3,1,h.work.white,1,false);key=sprite_shader_key(shader);check(key==0x10c10&&sprite_pixel_pipeline(key).alpha_test==SpriteAlphaTest::greater_099);
      set_render_mode(h.state,2,128,127);shader=sprite_shader_state(h.state,true,2,0.5F,h.work.white,-1,false);check(sprite_pixel_pipeline(sprite_shader_key(shader)).blend==SpriteBlend::subtract_alpha);
      set_render_mode(h.state,1,20,255);shader=sprite_shader_state(h.state,true,2,0.5F,h.work.white,-1,false);check(sprite_pixel_pipeline(sprite_shader_key(shader)).blend==SpriteBlend::add);
