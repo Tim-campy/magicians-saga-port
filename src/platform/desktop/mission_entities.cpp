@@ -58,6 +58,7 @@ void MissionEntities::remove_all_components(QuestMemberId key){handles_.at(stati
 void MissionEntities::dispose_entity_events(QuestMemberId key){handles_.at(static_cast<std::size_t>(key))->events.dispose();}
 void MissionEntities::erase_registration(QuestMemberId key){registry_.erase(handles_.at(static_cast<std::size_t>(key))->id);}
 EntitySubset* MissionEntities::subset(const std::vector<std::int32_t>& all){return &groups_.get(std::make_shared<ComponentGroupFilter>(all));}
+EntitySubset* MissionEntities::subset(const std::vector<std::int32_t>& all,const std::vector<std::int32_t>& none){return &groups_.get(std::make_shared<ComponentGroupFilter>(all,none));}
 AnimationResource* MissionEntities::resource(std::int32_t id){return resources_(id);}
 bool MissionEntities::registered_id(std::int32_t value){return registry_.contains(value);}
 ComponentSlots* MissionEntities::create(std::int32_t type,std::int32_t value){

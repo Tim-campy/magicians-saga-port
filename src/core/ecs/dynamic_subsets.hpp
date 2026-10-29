@@ -15,6 +15,8 @@ public:
     ComponentGroupFilter()=default;
     explicit ComponentGroupFilter(std::vector<std::int32_t> all)
         :owned_all_(std::make_shared<const std::vector<std::int32_t>>(std::move(all))){identity.lists.all=owned_all_.get();}
+    ComponentGroupFilter(std::vector<std::int32_t> all,std::vector<std::int32_t> none)
+        :ComponentGroupFilter(std::move(all)){owned_none_=std::make_shared<const std::vector<std::int32_t>>(std::move(none));identity.lists.none=owned_none_.get();}
     FilterIdentity identity;
     std::function<void()> diagnostic;
     std::int32_t hash()override{return identity.hash(diagnostic);}
@@ -22,6 +24,7 @@ public:
     bool matches(ComponentSlots*)override;
 private:
     std::shared_ptr<const std::vector<std::int32_t>> owned_all_;
+    std::shared_ptr<const std::vector<std::int32_t>> owned_none_;
 };
 class DynamicSubsets final:public ComponentObserver {
 public:

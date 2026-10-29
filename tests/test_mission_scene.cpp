@@ -28,6 +28,11 @@ int main()try{
     scene.advance_movement(1);check(enemy_position.z==speed); // Move ignores the pass index.
     scene.advance_movement(0);check(enemy_position.z==speed+speed);
     auto& human_position=*dynamic_cast<ContactPosition*>(hero.get(0));check(human_position.x==0&&human_position.z==0);
+    auto& parameter=*resolve_combat_parameter(hero,0);parameter.level=1;parameter.max_level=10;parameter.experience=8;parameter.max_experience=10;parameter.experience_buffer=12;
+    scene.send_parameter_experience(&hero,0);scene.advance_parameter_experience(0,false);check(parameter.experience_buffer==12);
+    scene.advance_parameter_experience(1);check(parameter.experience_buffer==7&&parameter.experience==3&&parameter.level==2);
+    scene.advance_parameter_experience();scene.advance_parameter_experience();check(parameter.experience_buffer==0&&parameter.experience==0&&parameter.level==3);
+    world.events().send(16,nullptr);scene.advance_parameters(1); // Native OnDropoff/Update are actual RET bodies.
     enemy->remove(1);scene.advance_movement(0);check(enemy_position.z==speed+speed); // Live subset removal.
     auto& restored=world.acquire_speed();restored.z=3;enemy->add(1,&restored);
     scene.advance_movement(0);check(enemy_position.z==(speed+speed)+3); // Reinsertion is observed.
@@ -58,6 +63,13 @@ int main()try{
     auto& notice=create_effect({{0,50,0},7,3,0,0,false,false,30,0,nullptr,-1,true},effects.ids,effects.factory);
     check(notice.contains(26)&&!notice.contains(4)&&!notice.contains(5));
     scene.render();check(scene.faults().empty());
+    scene.advance_effects(0,false);check(dynamic_cast<EffectComponent*>(notice.get(26))->frame==0);
+    scene.advance_effects(1);check(dynamic_cast<EffectComponent*>(notice.get(26))->frame==1);
+    auto& parent=world.raw_entity(0);
+    auto& child=create_effect({{0,0,0},7,3,0,0,false,true,30,0,&parent,-1,false},effects.ids,effects.factory);
+    auto& child_effect=*dynamic_cast<EffectComponent*>(child.get(26));auto& depth=world.acquire_depth();child.add(4,&depth);
+    scene.advance_effects();check(child_effect.frame==0);child.remove(4);scene.advance_effects();check(child_effect.frame==1);
+    world.destroy(parent);scene.advance_effects();check(world.destroyed(child)&&!world.registry().contains(world.id(child)));
     for(int i=0;i<30;++i)scene.advance_garbage(0);check(world.destroyed(notice));
     {
         MissionEntities mapped(data,saved,35,nullptr,[&](std::int32_t){return &animations.resource();},[](std::string_view){return 3;});

@@ -73,6 +73,7 @@ public:
     void delete_from_manager(core::QuestMemberId,bool)override;
     const core::EntityRegistry& registry()const{return registry_;}
     core::EntitySubset* subset(const std::vector<std::int32_t>&)override;
+    core::EntitySubset* subset(const std::vector<std::int32_t>& all,const std::vector<std::int32_t>& none);
     core::AnimationResource* resource(std::int32_t)override;
     bool registered_id(std::int32_t)override;
     core::ComponentSlots* create(std::int32_t type,std::int32_t id)override;

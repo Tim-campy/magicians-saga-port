@@ -33,6 +33,11 @@ class MissionProfileTests(unittest.TestCase):
             self.assertEqual(report['positions'][0]['z'], 0)
             self.assertGreater(report['positions'][1]['z'], 0)
             self.assertEqual(report['render_commands'], 2)
+            self.assertEqual(report['parameter_experience_steps'], 12)
+            self.assertEqual(report['parameter_steps'], 12)
+            self.assertEqual(report['parameter_experience_pending'], 0)
+            self.assertEqual(report['effect_steps'], 12)
+            self.assertEqual(report['effect_updates'], [])
 
     def test_live_human_walking_uses_saved_gear_fps_and_rng(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -488,6 +493,9 @@ class MissionProfileTests(unittest.TestCase):
             cleared = json.loads(confirmed.stdout)
             self.assertEqual(cleared['frames'], 201)
             self.assertTrue(cleared['result_granted'] and cleared['transition_pending'])
+            self.assertEqual(cleared['parameter_experience_steps'], 200)
+            self.assertEqual(cleared['parameter_steps'], 200)
+            self.assertEqual(cleared['effect_steps'], 200)
             self.assertEqual(cleared['replay_actions'], 1)
             no_confirmation = self.run_host(scene, frames=240)
             self.assertEqual(no_confirmation.returncode, 0, no_confirmation.stderr)

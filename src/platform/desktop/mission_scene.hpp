@@ -5,6 +5,9 @@
 #include "core/gameplay/motion_pass.hpp"
 #include "core/gameplay/modification_frame.hpp"
 #include "core/gameplay/pass_initialization.hpp"
+#include "core/gameplay/parameter_experience.hpp"
+#include "core/gameplay/effect_frame.hpp"
+#include <ostream>
 
 namespace saga::desktop {
 class MissionSpatial;
@@ -16,7 +19,9 @@ struct MissionRenderFault {std::int32_t entity;std::string message;};
 // Selected entity group and fixed supplied view. Full mission culling/camera/input remain host bindings.
 class MissionScene final:private core::RenderInitializationWorld,private core::RenderFrameHost,
     private core::QuestCameraHost,private core::QuestViewportView,private core::GarbageUpdateHost,private core::ModificationFrameHost,
-    private core::EmitterFrameHost,private core::CollisionPassHost {
+    private core::EmitterFrameHost,private core::CollisionPassHost,
+    private core::ParameterInitializationWorld,private core::ParameterExperienceInitializationWorld,
+    private core::EffectInitializationWorld,private core::EffectFrameHost {
 public:
     MissionScene(MissionEntities&,MissionApplication&,core::EntitySubset& visible,MissionView&,core::MapComponent*);
     MissionScene(const MissionScene&)=delete;
@@ -29,12 +34,23 @@ public:
     void advance_modifications(std::int32_t pass,bool enabled=true);
     void advance_emitters(std::int32_t pass,bool enabled=true);
     void advance_collisions(std::int32_t pass,bool enabled=true);
+    void advance_parameter_experience(std::int32_t pass=0,bool enabled=true);
+    void advance_parameters(std::int32_t pass=0,bool enabled=true);
+    void advance_effects(std::int32_t pass=0,bool enabled=true);
+    // Typed event21 boundary; no reward-orb or character-EXP producer is inferred.
+    void send_parameter_experience(core::ComponentSlots*,std::int32_t key);
+    void write_pass_report(std::ostream&);
     void bind_spatial(MissionSpatial&);
     std::uint64_t collision_events()const{return collision_events_;}
     std::uint64_t area_collision_events()const{return area_collision_events_;}
     core::RenderQueue& render();
     const std::vector<MissionRenderFault>& faults()const{return faults_;}
 private:
+    void subscribe_dropoff(core::EntityEvents::Single,std::optional<core::EventHashes>)override;
+    void subscribe_parameter_experience(core::ParameterExperienceInitializationWorld::Receiver,std::optional<core::EventHashes>)override;
+    core::EntitySubset* effect_subset(const core::EventIntegers& all,const core::EventIntegers& none)override{return world_.subset(all,none);}
+    bool effect_parent_destroyed(core::ComponentSlots& e)override{return world_.destroyed(e);}
+    void destroy_effect_entity(core::ComponentSlots& e)override{world_.destroy(e,true);}
     std::unique_ptr<core::CollisionCursor> open_collision_cursor()override;
     void send_collision(std::int32_t,core::ComponentSlots&,core::ComponentSlots&)override;
     core::BulletRecords bullet_records()override{return world_.bullet_records();}
@@ -73,6 +89,10 @@ private:
     core::ModificationSystemState modifications_;
     core::EmitterSystemState emitters_;
     core::CollisionSystemState collisions_;std::uint64_t collision_events_=0,area_collision_events_=0;
+    core::ParameterExperienceSystem experience_;
+    core::ParameterExperienceInitializationWorld::Receiver experience_receiver_;
+    core::EffectSystemState effects_;
+    std::uint64_t experience_steps_=0,parameter_steps_=0,effect_steps_=0;
     core::RenderQueue queue_=core::make_render_queue();std::vector<MissionRenderFault> faults_;
     MissionSpatial* spatial_=nullptr;
 };

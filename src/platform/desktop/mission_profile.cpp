@@ -278,9 +278,11 @@ bool MissionProfile::step(){
     if(!held){
         if(humans){humans->update();humans->advance_enemies();}
         if(spatial)spatial->advance_camera();
+        mission->advance_parameter_experience();
         if(humans)humans->advance_projectiles();
         if(simulate){mission->advance_movement(0);++movement_steps;}
         if(collisions)mission->advance_collisions(0);
+        mission->advance_parameters();
         if(simulate)mission->advance_emitters(0);
         if(spatial)spatial->advance_cells();
         if(simulate)mission->advance_modifications(0);
@@ -288,6 +290,7 @@ bool MissionProfile::step(){
         if(spatial)spatial->advance_visibility();
     }queue=mission->render();
     if(!mission->faults().empty())throw std::invalid_argument("entity render fault: "+mission->faults().front().message);
+    if(!held)mission->advance_effects(); // Native index23 follows Render21, before Garbage31.
     if(simulate&&!held)mission->advance_garbage(0);
     ++logic_steps;return true;
 }
@@ -300,6 +303,7 @@ void MissionProfile::write_actor_parameters(ComponentSlots& actor,std::ostream& 
     if(const auto* enemy=dynamic_cast<EnemyRecordLink*>(actor.get(24)))out<<",\"enemy_state\":"<<enemy->state<<",\"enemy_frame\":"<<enemy->frame<<",\"enemy_flags\":"<<enemy->flags;
 }
 void MissionProfile::write_combat_report(std::ostream& out){
+    if(mission)mission->write_pass_report(out);
     out<<",\"movement_steps\":"<<movement_steps;
     out<<",\"replay_bound\":"<<(replay_bound_?"true":"false")<<",\"replay_actions\":"<<replay_applied_;
     if(humans)humans->write_input_report(out);else out<<",\"input_enabled\":false";

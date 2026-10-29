@@ -43,6 +43,25 @@ MissionScene::MissionScene(MissionEntities& world,MissionApplication& app,Entity
     MovementWorld movement(world_);initialize_movement(movers_,&movement);initialize_collisions(collisions_,&movement);initialize_garbage(garbage_entities_,&movement);
     initialize_modifications(modifications_,&movement);
     initialize_emitters(emitters_,&movement);
+    initialize_parameter_experience(experience_,this);initialize_parameters(this);
+    initialize_effects(effects_,this);
+}
+void MissionScene::subscribe_dropoff(EntityEvents::Single receiver,std::optional<EventHashes> hashes){world_.events().subscribe(16,std::move(receiver),hashes);}
+void MissionScene::subscribe_parameter_experience(ParameterExperienceInitializationWorld::Receiver receiver,std::optional<EventHashes> hashes){
+    // Fresh scene Init has one event21 receiver. General typed EventManager removal/restoration is unbound.
+    if(hashes||experience_receiver_)throw std::logic_error("parameter experience requires fresh scene initialization");experience_receiver_=std::move(receiver);
+}
+void MissionScene::send_parameter_experience(ComponentSlots* e,std::int32_t key){experience_receiver_(e,key);}
+void MissionScene::advance_parameter_experience(std::int32_t pass,bool enabled){if(gameplay_needs_update(9,enabled,pass)){update_parameter_experience(experience_);++experience_steps_;}}
+void MissionScene::advance_parameters(std::int32_t pass,bool enabled){if(gameplay_needs_update(14,enabled,pass)){update_parameters();++parameter_steps_;}}
+void MissionScene::advance_effects(std::int32_t pass,bool enabled){if(gameplay_needs_update(23,enabled,pass)){update_effects(effects_,*this);++effect_steps_;}}
+void MissionScene::write_pass_report(std::ostream& out){
+    std::size_t pending=0;for(const auto& queue:*experience_.queues)pending+=queue->size();
+    out<<",\"parameter_experience_steps\":"<<experience_steps_<<",\"parameter_steps\":"<<parameter_steps_<<",\"parameter_experience_pending\":"<<pending<<",\"effect_steps\":"<<effect_steps_<<",\"effect_updates\":[";
+    bool first=true;auto cursor=required(effects_.subset).cursor();while(const auto entity=cursor.next()){
+        const auto& effect=required(dynamic_cast<EffectComponent*>((*entity)->get(26)));if(!first)out<<',';first=false;
+        out<<"{\"id\":"<<world_.id(**entity)<<",\"type\":"<<effect.type<<",\"frame\":"<<effect.frame<<",\"max_frame\":"<<effect.max_frame<<'}';
+    }out<<']';
 }
 void MissionScene::advance_animations(SharedAnimationGates gates){update_animations(animations_,gates);}
 void MissionScene::advance_movement(std::int32_t pass,bool enabled){

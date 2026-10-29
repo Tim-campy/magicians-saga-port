@@ -88,6 +88,13 @@ The per-entity counter is separate from the SEB object's own frame; do not merge
 
 | Method | Registry id | Role | Confidence |
 |---|---|---|---|
+| `ecs.EffectSystem.Init` | game:0x06000e3e | And26/Nor4 and fresh deferred destruction list | high |
+| `ecs.EffectSystem.Update` | game:0x06000e40 | Parent death, type dispatch, deferred destruction | high |
+| `ecs.EffectSystem.UpdateNormalEffect` | game:0x06000e41 | Depth guard and wrapping remainder clock | high |
+| `ecs.EffectSystem.UpdateDamageNumEffect` | game:0x06000e42 | binary32 Y+1 before frame increment | high |
+| `ecs.EffectSystem.UpdateTimeEffect` | game:0x06000e43 | RET; absent from the Update jump table | high |
+| `ecs.EffectSystem.UpdateLevelUpEffect` / `UpdateJumpNumEffect` | game:0x06000e44 / game:0x06000e45 | Wrapping frame increment | high |
+| `ecs.EffectSystem.UpdateWarehouseBalloonEffect` / `UpdateStrWithBgEffect` | game:0x06000e46 / game:0x06000e47 | Wrapping frame increment | high |
 | `ecs.AnimationSystem..ctor` | game:0x06000dc4 | Constructor (called by CreateSystems) | medium |
 | `ecs.AnimationSystem.Init` | game:0x06000dba | Subset And(2,10), 24 ResourceManagers | high |
 | `ecs.AnimationSystem.NeedsUpdate` | game:0x06000dbb | Returns enabled byte +0x18; ignores pass | high |
@@ -245,6 +252,26 @@ The desktop [ready catalog manager](assets.md#ready-catalog-manager-and-duplicat
 
 Evidence: local `research/exports/animation-resources/{GetResourceManager,SebDispose}.asm`, `resource-map.json` (23 jump-table bytes at ELF 0x627ac4 resolved to field-offset metadata), `corpus.json`, and existing `seb-readers/Seb_load_18983.asm`. Selector dispatch is 0x1103e90..0x1103eb4; field load 0x1103f1c, default null return 0x1103f20. The effect factory reads the selected SEB array at 0x1134b14, clip maximum at 0x1134b34 and subtracts one at 0x1134b38. Confidence high for these static contracts; Android comparison absent.
 
+### Non-depth effects (EffectSystem, factory index23)
+
+Init at0x1149cf0 obtains supplied-world And({26}).Nor({4}), stores the nullable subset at+0x20, then publishes a fresh List<Entity> at+0x28. It does not reset effect fields or subscribe to events. Its filter excludes ordinary depth-rendered visual effects; Effect.frame and Seb.frame are distinct clocks. Effect fields used here are type int32+0x10, depth byte+0x18, frame int32+0x1c, maxFrame int32+0x20 and parent reference+0x28.
+
+Update at0x1149e6c enumerates that live subset. For each required Effect, a nonnull parent whose destroyed byte is set queues the effect entity for deletion, then the current Effect.type still dispatches. The byte jump table at ELF0x645bfd establishes:
+
+| Type | Update |
+| --- | --- |
+| 0 | If Effect.depth is false, store wrap32(frame+1) remainder maxFrame; otherwise retain frame. |
+| 1 | Store Position.y=binary32(y+1), then increment the current Effect.frame with int32 wrapping. |
+| 2,3 | No handler and no frame increment. |
+| 4,5,6,7 | Increment Effect.frame with int32 wrapping. |
+| Other | Retain all fields. |
+
+The normal clock uses ARM64 SDIV/MSUB: a zero maximum preserves the incremented numerator; INT_MIN/-1 has remainder0; negative operands retain signed remainder semantics. The depth test is not a loop flag. Type1 requires Position before Effect and retains its Y write if the later Effect query fails. UpdateTimeEffect is an empty helper; the dispatcher does not call it. No handler grants EXP or changes Garbage lifetime.
+
+After disposing the subset cursor, Update tests the persistent pending list's Count==0 and returns without clearing an empty list. The helper at0x12cd7ac requires a nonnull list; its Count call is a narrow public-collection boundary, not a separately reconstructed algorithm. Nonempty queues use a captured, version-checked enumeration and actual Entity.Destroy(true). A pending parent death does not suppress the handler; a failure retains queue entries and earlier writes/deletions. Successful draining clears the currently stored list even if a callback replaced it. This is the same list adapter used by Emitter and Modifier.
+
+Port: [effect_frame.hpp](../../src/core/gameplay/effect_frame.hpp) and [effect_frame.cpp](../../src/core/gameplay/effect_frame.cpp), exercised by [contract tests](../../tests/test_effect_frame.cpp) and MissionScene. The desktop host runs index23 after Render21 and before Garbage31, with actual lifetime flags and deletion. Specialized DrawDynamic output remains separate: existing numeric(type3) and MP(type7) presentation stubs retain their entities and native clocks; other unsupported no-Depth drawing paths still fail explicitly. No fake Depth or shared Seb clock is added.
+
 ## Port
 
 - Fire/FlyAway projectile and ModifyAnimation payload creation is ported in `projectile_launch`; see [combat.md](combat.md#projectile-launch-payload). ModifyAnimation per-frame execution and expiry are now ported above.
@@ -257,6 +284,9 @@ Evidence: local `research/exports/animation-resources/{GetResourceManager,SebDis
 - Missing: complete catalog/file/locale selection and production population of the manager fields, effective flag binding, concrete Pause adapter, other spawn factories, emitter execution and image/rendering consumers. Selected-file clock preparation, header maxima and AppData selection are now implemented.
 
 ## Evidence
+
+- Effect frame cluster: local research/exports/mission-effect/ (bounded Init, Update and handlers; ELF SHA25617a6cf3a3cef9bd7b387c4b9627df113a8b214f0deb07e1778585dac1143526f, Ghidra base0x100000, full syntactic coverage). Init's And constructor0x113a398 and IComponentFilter method2 establish Nor4. Native jump table ELF0x645bfd selects the eight type paths; effect/position getter targets resolve through the existing IL2CPP code map. research/exports/mission-effect-helper/effect_pending_empty.asm establishes the required nonnull Count==0 boundary. Confidence high for these static contracts; no Android comparison.
+
 
 - Local `research/exports/seb-timing-followup/M37433_Update.asm`, `animation-producers/M37431_Init.asm`, `seb-timing/M18994_Frame.asm`, `animation-transitions/M37438_RestoreAnimation.asm` and `animation-pass-contract.json`. Update shared calls are at 0x1141c8c; resource/clip checks at 0x1141d3c..0x1141d8c, max capture at 0x1141d90, wrapped store at 0x1141dc4, signed >= decision at 0x1141df8/0x1141dfc, restore at 0x1141e04 and remainder at 0x1141e1c..0x1141e24. Init publishes the manager array at 0x1141b1c before lookup 0x1141b48 and stores through the captured array at 0x1141b80. Registered field offsets corroborate resourceManagers_ +0x28 and ResourceManager.seb +0x18; hasMonster's word at 0x1130548 loads slot 16. Confidence high for these static contracts; no runtime comparison.
 
