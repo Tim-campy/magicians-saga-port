@@ -20,16 +20,25 @@ struct MovementWorld final:PassInitializationWorld {
         throw std::logic_error("mission impact dispatch is not bound");
     }
 };
+struct ExpiringCursor final:GarbageCursor {
+    MissionEntities& world;EntitySubset::Cursor cursor;
+    ExpiringCursor(MissionEntities& owner,EntitySubset& group):world(owner),cursor(group.cursor()){}
+    std::optional<GarbageEntity> next()override{if(const auto entity=cursor.next())return GarbageEntity{world.handle(**entity),*entity};return std::nullopt;}
+};
 }
 MissionScene::MissionScene(MissionEntities& world,MissionApplication& app,EntitySubset& visible,MissionView& view,MapComponent* map)
     :world_(world),app_(app),visible_(visible),view_(view),map_(map),form_{form_state_,nullptr,this}{
     initialize_render(renderer_,this);initialize_animation(animations_,&world_);
-    MovementWorld movement(world_);initialize_movement(movers_,&movement);
+    MovementWorld movement(world_);initialize_movement(movers_,&movement);initialize_garbage(garbage_entities_,&movement);
 }
 void MissionScene::advance_animations(SharedAnimationGates gates){update_animations(animations_,gates);}
 void MissionScene::advance_movement(std::int32_t pass,bool enabled){
     if(gameplay_needs_update(11,enabled,pass))move_subset(required(movers_));
 }
+void MissionScene::advance_garbage(std::int32_t pass,bool enabled){
+    if(gameplay_needs_update(31,enabled,pass))garbage_pass_.update(*this);
+}
+std::unique_ptr<GarbageCursor> MissionScene::open_garbage_cursor(){return std::make_unique<ExpiringCursor>(world_,required(garbage_entities_));}
 RenderQueue& MissionScene::render(){faults_.clear();clear_render_queue(queue_);update_render(renderer_,*this,*this);return queue_;}
 std::unique_ptr<RenderCursor> MissionScene::visible_render_cursor(){return std::make_unique<Cursor>(visible_);}
 AnimationResource* MissionScene::render_resource(RenderQueue&,std::int32_t id){auto* r=get_application_resource(app_,id);return r?r->animations:nullptr;}

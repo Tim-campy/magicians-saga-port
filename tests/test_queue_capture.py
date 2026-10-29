@@ -119,6 +119,21 @@ class QueuePixels(unittest.TestCase):
             result, moved_output = self.run_capture(root, text + 'simulate 2\n', 'moving.bmp', native=True)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertNotEqual(bmp_pixels(moved_output.read_bytes())[2], pixels)
+            (root / 'effect.bin').write_bytes(jar([
+                ('img.inf', b'9\te.png,bin'), ('seb.inf', b'0\te.seb'),
+                ('e.seb', seb([(0, 9, 0, 0, 2, 2, 0, 0, 0, 0), (3, 9, 0, 0, 2, 2, 0, 0, 0, 0)])),
+                ('e.png', png(2, 2, [0, 255, 0, 255] * 4))]))
+            effects = (text + 'resource 20 "effect.bin" "English.lproj" 0\nglobal_alias 20 20\n'
+                       'material 2 65808 2000 12 0\neffect 0 9 0 18 0 0\n')
+            # Header max_frame4 -> native lifetime3. Render occurs before Garbage.
+            for passes, green in [(3, True), (4, False)]:
+                result, capture = self.run_capture(root, effects + f'simulate {passes}\n', f'effect-{passes}.bmp', native=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual((0, 255, 0, 255) in bmp_pixels(capture.read_bytes())[2], green)
+            (root / 'scene.txt').write_text(effects + 'tick_ms 1\nsimulate 0\n', encoding='utf-8')
+            expired = subprocess.run([str(EXE), str(root / 'scene.txt'), '32', '16', '--run-frames', '3'], capture_output=True, text=True, timeout=30)
+            self.assertEqual(expired.returncode, 0, expired.stderr)
+            self.assertTrue(json.loads(expired.stdout)['positions'][2]['destroyed'])
             result, output = self.run_capture(root, text.replace('progress 2 5 13\n', ''), 'unknown-save.bmp', native=True)
             self.assertNotEqual(result.returncode, 0)
             self.assertIn('unbound saved character state', result.stderr)

@@ -26,12 +26,21 @@ ComponentSlots* MissionEntities::enemy(const EnemyCreation& args){return create_
 ComponentSlots& MissionEntities::bullet(const BulletCreation& args){return create_bullet(args,*this);}
 ComponentSlots& MissionEntities::effect(ProjectilePoint p,std::int32_t clip,std::int32_t image,bool loop){return create_visual_effect(p,clip,image,loop,ids_,*this);}
 std::int32_t MissionEntities::id(const ComponentSlots& e)const{return node_index_.at(&e)->id;}
+QuestMemberId MissionEntities::handle(const ComponentSlots& e)const{return node_index_.at(&e)->handle;}
+bool MissionEntities::destroyed(const ComponentSlots& e)const{return node_index_.at(&e)->lifetime.destroyed;}
+void MissionEntities::destroy(ComponentSlots& e,bool remove){destroy_quest_entity(handle(e),remove,*this);}
+QuestEntityLifetime& MissionEntities::entity_lifetime(QuestMemberId key){return handles_.at(static_cast<std::size_t>(key))->lifetime;}
+void MissionEntities::delete_from_manager(QuestMemberId key,bool remove){delete_entity_from_manager(key,remove,*this);}
+void MissionEntities::remove_all_components(QuestMemberId key){handles_.at(static_cast<std::size_t>(key))->components.remove_all();}
+void MissionEntities::dispose_entity_events(QuestMemberId key){handles_.at(static_cast<std::size_t>(key))->events.dispose();}
+void MissionEntities::erase_registration(QuestMemberId key){registry_.erase(handles_.at(static_cast<std::size_t>(key))->id);}
 EntitySubset* MissionEntities::subset(const std::vector<std::int32_t>& all){return &groups_.get(std::make_shared<ComponentGroupFilter>(all));}
 AnimationResource* MissionEntities::resource(std::int32_t id){return resources_(id);}
 bool MissionEntities::registered_id(std::int32_t value){return registry_.contains(value);}
 ComponentSlots* MissionEntities::create(std::int32_t type,std::int32_t value){
     if(type!=0)throw std::invalid_argument("mission factory entity type is not bound");
-    nodes_.emplace_back(value,slots_);auto& n=nodes_.back();node_index_.emplace(&n.components,&n);return &n.components;
+    nodes_.emplace_back(value,static_cast<QuestMemberId>(handles_.size()),slots_);auto& n=nodes_.back();
+    handles_.push_back(&n);node_index_.emplace(&n.components,&n);return &n.components;
 }
 void MissionEntities::register_entity(ComponentSlots& e,bool temporary){auto& n=*node_index_.at(&e);EntityRegistration r{n.id,&e,&n.events};registry_.add(&r,temporary);}
 void MissionEntities::added(ComponentSlots& e,std::int32_t slot,Component* c){groups_.added(e,slot,c);}

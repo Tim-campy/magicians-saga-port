@@ -38,5 +38,12 @@ int main()try{
     hero.add(21,&world.acquire_input());scene.render();check(queue.counts->at(0)==1&&queue.buffers->at(0)->at(0)->at(render_resource)==3);
     hero.remove(21);dynamic_cast<EntitySprite*>(hero.get(2))->animation.clip=999;scene.render();
     check(scene.faults().size()==1&&scene.faults().front().entity==world.id(hero)&&queue.counts->at(0)==0);
+    dynamic_cast<EntitySprite*>(hero.get(2))->animation.clip=36;app.effects=&resource;
+    auto& effect=world.effect({20,0,0},0,-1,false);auto* lifetime=dynamic_cast<GarbageLifetime*>(effect.get(22));
+    check(lifetime!=nullptr);lifetime->frames=2;scene.advance_garbage(0,false);check(lifetime->frames==2);
+    scene.render();check(queue.counts->at(0)==3);scene.advance_garbage(1);check(!world.destroyed(effect)&&lifetime->frames==1);
+    scene.render();scene.advance_garbage(0);check(world.destroyed(effect)&&!world.registry().contains(world.id(effect)));
+    check(queue.counts->at(0)==3); // Native Render precedes Garbage; the produced final-frame commands survive.
+    scene.render();check(queue.counts->at(0)==2&&scene.faults().empty());
     std::cout<<"mission scene render bindings ok\n";return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

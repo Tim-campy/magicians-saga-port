@@ -184,10 +184,11 @@ For table-backed entity scenes, replace manual draw rows with tables, progress a
 | human | direction, character ID, level, formation X/Z, EXP, position X/Y/Z |
 | enemy | direction, enemy ID, level, flags, position X/Y/Z |
 | bullet | bullet ID, damage, attribute, parent creation ordinal (-1 means null), position X/Y/Z |
+| effect | clip ID, image ID (-1 keeps SEB images), loop flag0/1, position X/Y/Z; uses AppData20 |
 | tick_ms | diagnostic animation/render interval1..1000; required for loop modes |
-| simulate | initial movement + animation passes0..10000; enables MoveSystem before animation/render on every subsequent loop step; absent means animation-only |
+| simulate | initial selected logic passes0..10000; enables Move -> Animation -> Render -> Garbage on every loop step; absent means animation-only |
 
-Scene views select all constructed position/sprite entities as their explicit visible group. They run the recovered render producer and animations; actual mission visibility/camera/input and the complete combat schedule are not supplied by this diagnostic profile. A human's creation level and supplied saved level remain distinct from its table initial_level. Unknown saved values do not default to zero. The native Data.Load bootstrap, original resource-name resolver and save envelope remain separate work.
+Scene views select all constructed position/sprite entities as their explicit visible group. They run the recovered render producer, animations and optionally movement/expiry; actual mission visibility/camera/input and the complete combat schedule are not supplied by this diagnostic profile. Non-looping effects derive their lifetime from the SEB header minus one. Garbage runs after command production, so an expiring entity retains its final frame's commands; the next frame excludes it. Bounded reports mark expired entities destroyed and omit their removed positions. A human's creation level and supplied saved level remain distinct from its table initial_level. Unknown saved values do not default to zero. The native Data.Load bootstrap, original resource-name resolver and save envelope remain separate work.
 
 ```powershell
 build/viewer/queue_capture.exe scene.txt 600 220 --material-inputs

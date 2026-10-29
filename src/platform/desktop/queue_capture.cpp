@@ -47,6 +47,7 @@ struct GpuQueries:MeshDepthHost {
     float low_depth_scaling()override{throw std::logic_error("capture has no low-depth scaling profile");}
 };
 struct SelectedBullet {std::int32_t id,damage,attribute,parent;ProjectilePoint position;};
+struct SelectedEffect {std::int32_t clip,image;bool loop;ProjectilePoint position;};
 }
 int main(int argc,char** argv)try{
     if(argc!=5&&argc!=6){std::cerr<<"Usage: queue_capture scene.txt width height new-output.bmp [--native-depth]\n       queue_capture scene.txt width height --material-inputs|--interactive\n       queue_capture scene.txt width height --run-frames count\n";return 2;}
@@ -72,7 +73,7 @@ int main(int argc,char** argv)try{
     std::optional<std::int32_t> simulate;
     std::vector<ComponentSlots*> created;
     std::map<std::string,std::int32_t> resource_names;
-    std::vector<std::variant<HumanCreation,EnemyCreation,SelectedBullet>> selected;
+    std::vector<std::variant<HumanCreation,EnemyCreation,SelectedBullet,SelectedEffect>> selected;
     std::unique_ptr<MissionEntities> entity_world;std::unique_ptr<MissionScene> mission;
     for(std::string line;std::getline(input,line);){
         std::istringstream row(line);row.imbue(std::locale::classic());std::string operation;
@@ -127,6 +128,10 @@ int main(int argc,char** argv)try{
             EnemyCreation e;if(!native||!(row>>e.direction>>e.id>>e.level>>e.flags>>e.position.x>>e.position.y>>e.position.z))throw std::invalid_argument("enemy requires direction ID level flags and XYZ");selected.emplace_back(e);
         }else if(operation=="bullet"){
             SelectedBullet b;if(!native||!(row>>b.id>>b.damage>>b.attribute>>b.parent>>b.position.x>>b.position.y>>b.position.z))throw std::invalid_argument("bullet requires ID damage attribute parent ordinal and XYZ");selected.emplace_back(b);
+        }else if(operation=="effect"){
+            SelectedEffect e;std::int32_t repeat=0;
+            if(!native||!(row>>e.clip>>e.image>>repeat>>e.position.x>>e.position.y>>e.position.z)||(repeat!=0&&repeat!=1))throw std::invalid_argument("effect requires clip image loop0/1 and XYZ");
+            e.loop=repeat!=0;selected.emplace_back(e);
         }else if(operation=="global_alias"){
             std::int32_t target=0,source=0;if(!(row>>target>>source))throw std::invalid_argument("global_alias requires target/source AppData IDs");
             auto** slot=application_resource_slot(global,target);auto* value=get_application_resource(application,source);
@@ -155,15 +160,19 @@ int main(int argc,char** argv)try{
         for(const auto& request:selected){ComponentSlots* entity=nullptr;
             if(const auto* h=std::get_if<HumanCreation>(&request))entity=&entity_world->human(*h);
             else if(const auto* e=std::get_if<EnemyCreation>(&request))entity=entity_world->enemy(*e);
-            else{const auto& b=std::get<SelectedBullet>(request);ComponentSlots* parent=nullptr;
-                if(b.parent!=-1)parent=created.at(static_cast<std::size_t>(b.parent));
-                entity=&entity_world->bullet({b.id,b.damage,b.attribute,parent,b.position});}
+            else if(const auto* b=std::get_if<SelectedBullet>(&request)){ComponentSlots* parent=nullptr;
+                if(b->parent!=-1)parent=created.at(static_cast<std::size_t>(b->parent));
+                entity=&entity_world->bullet({b->id,b->damage,b->attribute,parent,b->position});}
+            else{const auto& fx=std::get<SelectedEffect>(request);entity=&entity_world->effect(fx.position,fx.clip,fx.image,fx.loop);}
             if(!entity)throw std::invalid_argument("selected entity record is unavailable");created.push_back(entity);
         }
         mission=std::make_unique<MissionScene>(*entity_world,application,*entity_world->subset({0,2}),view,nullptr);
         for(std::int32_t i=0;i<frames;++i)mission->advance_animations({automatic!=0,application_update!=0});
-        if(simulate)for(std::int32_t i=0;i<*simulate;++i){mission->advance_movement(0);mission->advance_animations({automatic!=0,application_update!=0});}
-        queue=mission->render();if(!mission->faults().empty())throw std::invalid_argument("entity render fault: "+mission->faults().front().message);
+        if(simulate&&*simulate>0)for(std::int32_t i=0;i<*simulate;++i){
+            mission->advance_movement(0);mission->advance_animations({automatic!=0,application_update!=0});queue=mission->render();
+            if(!mission->faults().empty())throw std::invalid_argument("entity render fault: "+mission->faults().front().message);
+            mission->advance_garbage(0);
+        }else{queue=mission->render();if(!mission->faults().empty())throw std::invalid_argument("entity render fault: "+mission->faults().front().message);}
         commands=static_cast<std::size_t>(queue.counts->at(0))+static_cast<std::size_t>(queue.counts->at(1));
     }
     if(simulate&&!mission)throw std::invalid_argument("simulate requires a table-backed entity scene");
@@ -211,16 +220,19 @@ int main(int argc,char** argv)try{
                 }
                 if(!running)break;
                 if(!paused||single_step){if(simulate)mission->advance_movement(0);mission->advance_animations({automatic!=0,application_update!=0});queue=mission->render();
-                    if(!mission->faults().empty())throw std::invalid_argument("entity render fault: "+mission->faults().front().message);++logic_steps;}
+                    if(!mission->faults().empty())throw std::invalid_argument("entity render fault: "+mission->faults().front().message);
+                    if(simulate)mission->advance_garbage(0);++logic_steps;}
                 submit();renderer.present();++rendered;const auto now=SDL_GetTicks();if(now<deadline)SDL_Delay(static_cast<Uint32>(deadline-now));
             }
             std::cout<<"{\"entities\":"<<selected.size()<<",\"render_frames\":"<<rendered<<",\"logic_steps\":"<<logic_steps
                      <<",\"movement_steps\":"<<(simulate?logic_steps+static_cast<std::uint64_t>(*simulate):0)<<",\"positions\":[";
             std::cout<<std::setprecision(std::numeric_limits<float>::max_digits10);
             for(std::size_t i=0;i<created.size();++i){if(i)std::cout<<',';const auto* p=dynamic_cast<ContactPosition*>(created[i]->get(0));
-                if(!p)throw std::logic_error("selected entity has no position");
-                std::cout<<"{\"id\":"<<entity_world->id(*created[i])<<",\"x\":"<<p->x<<",\"y\":"<<p->y<<",\"z\":"<<p->z<<'}';}
-            std::cout<<"],\"profile\":\"selected movement/animation/render passes; gameplay input and full schedule unbound\"}\n";return 0;
+                const bool dead=entity_world->destroyed(*created[i]);
+                std::cout<<"{\"id\":"<<entity_world->id(*created[i])<<",\"destroyed\":"<<(dead?"true":"false");
+                if(p)std::cout<<",\"x\":"<<p->x<<",\"y\":"<<p->y<<",\"z\":"<<p->z;
+                else if(!dead)throw std::logic_error("selected live entity has no position");std::cout<<'}';}
+            std::cout<<"],\"profile\":\"selected movement/animation/render/garbage passes; gameplay input and full schedule unbound\"}\n";return 0;
         }
         submit();auto pixels=renderer.read_pixels();
         Surface captured(SDL_CreateSurfaceFrom(width,height,SDL_PIXELFORMAT_RGBA32,pixels.rgba.data(),width*4),SDL_DestroySurface);require(captured!=nullptr,"SDL_CreateSurfaceFrom");

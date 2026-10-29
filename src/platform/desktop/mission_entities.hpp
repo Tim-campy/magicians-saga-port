@@ -4,6 +4,7 @@
 #include "core/gameplay/animation_pass.hpp"
 #include "core/gameplay/enemy_factory.hpp"
 #include "core/gameplay/effect_factory.hpp"
+#include "core/gameplay/stage_cleanup.hpp"
 #include <deque>
 
 namespace saga::desktop {
@@ -16,7 +17,7 @@ struct MissionProgress {
 // Native world teardown, pooling reuse, input updates and the complete system schedule remain separate.
 class MissionEntities final:public core::HumanFactoryHost,public core::EnemyFactoryHost,
     public core::BulletFactoryHost,public core::EffectFactoryHost,public core::ComponentObserver,
-    public core::AnimationInitializationHost {
+    public core::AnimationInitializationHost,public core::QuestEntityHost,private core::EntityDeletionHost {
 public:
     using Resources=std::function<core::AnimationResource*(std::int32_t)>;
     using ResourceIds=std::function<std::int32_t(std::string_view)>;
@@ -28,6 +29,11 @@ public:
     core::ComponentSlots& bullet(const core::BulletCreation&);
     core::ComponentSlots& effect(core::ProjectilePoint,std::int32_t clip,std::int32_t image,bool loop);
     std::int32_t id(const core::ComponentSlots&)const;
+    core::QuestMemberId handle(const core::ComponentSlots&)const;
+    bool destroyed(const core::ComponentSlots&)const;
+    void destroy(core::ComponentSlots&,bool remove_registration=true);
+    core::QuestEntityLifetime& entity_lifetime(core::QuestMemberId)override;
+    void delete_from_manager(core::QuestMemberId,bool)override;
     const core::EntityRegistry& registry()const{return registry_;}
     core::EntitySubset* subset(const std::vector<std::int32_t>&)override;
     core::AnimationResource* resource(std::int32_t)override;
@@ -79,13 +85,18 @@ public:
     core::EffectComponent& acquire_effect()override;
     core::GarbageLifetime& acquire_garbage()override;
 private:
+    void remove_all_components(core::QuestMemberId)override;
+    void dispose_entity_events(core::QuestMemberId)override;
+    void erase_registration(core::QuestMemberId)override;
     struct Node {
-        std::int32_t id;core::ComponentEvents events;core::ComponentSlots components;
-        Node(std::int32_t value,std::int32_t slots):id(value),components(slots,&events){}
+        std::int32_t id;core::QuestMemberId handle;core::QuestEntityLifetime lifetime;
+        core::ComponentEvents events;core::ComponentSlots components;
+        Node(std::int32_t value,core::QuestMemberId key,std::int32_t slots):id(value),handle(key),components(slots,&events){}
     };
     const GameplayCatalog& catalog_;MissionProgress& progress_;std::int32_t slots_;core::StageGeometry* map_;
     Resources resources_;ResourceIds resource_ids_;
     std::deque<Node> nodes_;std::map<const core::ComponentSlots*,Node*> node_index_;
+    std::vector<Node*> handles_; // Stable host identity, including multiple native temporary ID -1 entities.
     core::EntityRegistry registry_{*this};core::DynamicSubsets groups_;
     core::EntityIdState ids_;core::BulletFactoryWorld bullet_world_;
     std::vector<std::optional<core::PartyCharacter>> party_rows_;core::PartyCharacters party_;

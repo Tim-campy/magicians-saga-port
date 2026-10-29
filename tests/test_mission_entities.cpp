@@ -35,5 +35,13 @@ int main()try{
     check(world.character_table()->at(2)==nullptr);
     check(world.enemy({0,-1,1,0,{}})==nullptr);fails([&]{world.bullet({0,1,0,&hero,{}});});
     fails([&]{world.release_collision(&field<ProjectileCollision>(hero,32));});
+    const auto effect_id=world.id(effect);auto* effects=world.subset({26});check(effects->size()==1);
+    world.destroy(effect);check(world.destroyed(effect)&&!effect.contains(0)&&!world.registry().contains(effect_id)&&effects->size()==0);
+    const auto stale_key=world.handle(effect);world.destroy(effect);check(world.entity_lifetime(stale_key).destroyed);
+    // Native ID -1 is not an adequate lifetime key for multiple temporary entities.
+    auto* a=world.create(0,-1);auto* b=world.create(0,-1);world.register_entity(*a,true);world.register_entity(*b,true);
+    check(world.handle(*a)!=world.handle(*b));world.destroy(*a);check(world.destroyed(*a)&&!world.destroyed(*b));
+    auto& retained=world.effect({0,0,0},0,7,false);const auto retained_id=world.id(retained);
+    world.destroy(retained,false);check(world.destroyed(retained)&&world.registry().contains(retained_id)&&effects->size()==0);
     std::cout<<"mission entity bindings ok\n";return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

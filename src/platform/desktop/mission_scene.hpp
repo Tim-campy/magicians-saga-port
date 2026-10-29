@@ -12,7 +12,7 @@ struct MissionView {
 struct MissionRenderFault {std::int32_t entity;std::string message;};
 // Selected entity group and fixed supplied view. Full mission culling/camera/input remain host bindings.
 class MissionScene final:private core::RenderInitializationWorld,private core::RenderFrameHost,
-    private core::QuestCameraHost,private core::QuestViewportView {
+    private core::QuestCameraHost,private core::QuestViewportView,private core::GarbageUpdateHost {
 public:
     MissionScene(MissionEntities&,MissionApplication&,core::EntitySubset& visible,MissionView&,core::MapComponent*);
     MissionScene(const MissionScene&)=delete;
@@ -20,9 +20,14 @@ public:
     void advance_animations(core::SharedAnimationGates);
     // Selected MoveSystem pass only; Human/Enemy AI, collision and cell migration remain unbound.
     void advance_movement(std::int32_t pass,bool enabled=true);
+    // Native index31 runs after RenderSystem; commands already produced remain in this frame.
+    void advance_garbage(std::int32_t pass,bool enabled=true);
     core::RenderQueue& render();
     const std::vector<MissionRenderFault>& faults()const{return faults_;}
 private:
+    std::unique_ptr<core::GarbageCursor> open_garbage_cursor()override;
+    core::QuestEntityLifetime& entity_lifetime(core::QuestMemberId key)override{return world_.entity_lifetime(key);}
+    void delete_from_manager(core::QuestMemberId key,bool remove)override{world_.delete_from_manager(key,remove);}
     core::MapComponent* render_map()override{return map_;}
     std::unique_ptr<core::RenderCursor> visible_render_cursor()override;
     core::AnimationResource* render_resource(core::RenderQueue&,std::int32_t)override;
@@ -43,7 +48,7 @@ private:
     MissionEntities& world_;MissionApplication& app_;core::EntitySubset& visible_;MissionView& view_;core::MapComponent* map_;
     core::StageQuestForm form_state_;core::QuestCameraForm form_;
     core::RenderSystemState renderer_;core::AnimationSystemState animations_;core::SebStaticWork sprite_work_;
-    core::EntitySubset* movers_=nullptr;
+    core::EntitySubset *movers_=nullptr,*garbage_entities_=nullptr;core::GarbagePass garbage_pass_;
     core::RenderQueue queue_=core::make_render_queue();std::vector<MissionRenderFault> faults_;
 };
 } // namespace saga::desktop

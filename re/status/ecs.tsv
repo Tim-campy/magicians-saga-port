@@ -90,7 +90,7 @@ game:0x06000bfb	traced	docs/subsystems/ecs.md
 game:0x06000c02	reimplemented	src/core/ecs/world_teardown.cpp	Ordered world teardown or live registered-entity destruction then Clear; retained groups, failures and mutation integration tested.
 game:0x06000c46	traced	docs/subsystems/ecs.md	
 game:0x06000c47	traced	docs/subsystems/ecs.md	
-game:0x06000bb1	reimplemented	src/core/gameplay/quest_return.cpp	Destroyed guard and manager-before-flag ordering tested, including duplicate destruction and failure
+game:0x06000bb1	reimplemented	src/core/gameplay/quest_return.cpp	Destroyed guard and manager-before-flag ordering; MissionEntities lifetime handles bind actual deletion; duplicate destruction and failure tested
 game:0x06000db8	traced	docs/subsystems/ecs.md	
 game:0x06000c78	reimplemented	src/core/ecs/entity_subset.cpp	Empty-null or public First contract over the ordered cursor; player query and untouched-cache tests.
 game:0x06000fea	traced	docs/subsystems/ecs.md	
@@ -137,7 +137,7 @@ game:0x06000f7d	reimplemented	src/core/ecs/update_scheduler.cpp	Ordered dispatch
 game:0x06000b61	reimplemented	src/core/gameplay/garbage_lifetime.cpp	Pool acquire counter write and slot-22 add; impact creation binding tested
 game:0x06000ea3	reimplemented	src/core/gameplay/pass_initialization.cpp	Concrete subset request/store, queue reset or event registration; failure and live trajectory integration tests.
 game:0x06000ea4	reimplemented	src/core/ecs/update_scheduler.cpp	Ordered dispatch or concrete enabled/pass gate; contract test; runtime comparison pending.
-game:0x06000ea5	documented	docs/subsystems/ecs.md	Wrapping countdown then deferred ordered destruction ported; live subset cursor and scheduler remain adapters
+game:0x06000ea5	reimplemented	src/core/gameplay/garbage_lifetime.cpp	Wrapping countdown and deferred destruction; MissionScene binds live subset, index31 gate and real manager deletion; expiry and final-frame GPU contracts tested
 game:0x06000dc6	reimplemented	src/core/ecs/update_scheduler.cpp	Concrete enabled/pass gate; tested across all 26 update systems.
 game:0x06000dce	reimplemented	src/core/ecs/update_scheduler.cpp	Concrete enabled/pass gate; tested across all 26 update systems.
 game:0x06000de3	reimplemented	src/core/ecs/update_scheduler.cpp	Concrete enabled/pass gate; tested across all 26 update systems.
