@@ -13,6 +13,36 @@ from mission_scene_fixture import make_table_scene, make_shoot_scene, with_missi
 
 @unittest.skipUnless(EXE, 'saga_mission supplied by CTest')
 class MissionProfileTests(unittest.TestCase):
+    def test_info_controller_updates_bars_and_receives_native_events(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory);scene = root / 'scene.txt';replay = root / 'info.txt'
+            text = make_boss_scene(root)
+            text += ('info_popup 1 0 0 5 0 20 -1\ninfo_popup 2 1 0 3 0 12 3\n'
+                     'info_slide 3 80 12 3\ninfo_slide 4 40 14 -1\n')
+            scene.write_text(text, encoding='utf-8')
+            replay.write_text('1 click 0 0\n1 touch 5 99 123\n', encoding='ascii')
+            first = self.run_host(scene, '--replay', str(replay), frames=9)
+            self.assertEqual(first.returncode, 0, first.stderr)
+            d = json.loads(first.stdout)
+            self.assertEqual(d['info_steps'], 9);self.assertEqual(d['info_clicks'], 1)
+            self.assertEqual(d['cursor_clicks'], 1);self.assertEqual(d['info_button_events'], 1)
+            self.assertEqual(d['info_emphasize_frame'], -1);self.assertFalse(d['info_dialog_pending'])
+            self.assertEqual([(p['id'],p['y'],p['state']) for p in d['info_popups']], [(1,76,1),(2,64,1)])
+            self.assertEqual([(p['id'],p['x'],p['y'],p['state']) for p in d['info_slides']], [(3,0,65,1),(4,0,79,1)])
+            self.assertLess(d['last_update_order'].index(24), d['last_update_order'].index(25))
+            self.assertLess(d['last_update_order'].index(25), d['last_update_order'].index(26))
+            later = self.run_host(scene, '--replay', str(replay), frames=30)
+            self.assertEqual(later.returncode, 0, later.stderr);d = json.loads(later.stdout)
+            self.assertEqual(d['info_popup_disposals'], 1)
+            self.assertEqual([p['id'] for p in d['info_popups']], [1])
+            self.assertEqual([(p['id'],p['x'],p['y']) for p in d['info_slides']], [(4,0,65)])
+            self.assertEqual(self.run_host(scene, '--replay', str(replay), frames=30).stdout, later.stdout)
+            for bad in ['1 click 0\n', '1 click 0 2147483648\n', '1 click 0 0 extra\n']:
+                replay.write_text(bad, encoding='ascii')
+                self.assertNotEqual(self.run_host(scene, '--replay', str(replay)).returncode, 0)
+            for bad in ['info_popup 1 0 0 0 2 20 -1\n', 'info_popup 1 0 0 0 0 20\n', 'info_slide 1 80 20\n']:
+                scene.write_text(text + bad, encoding='utf-8');self.assertNotEqual(self.run_host(scene).returncode, 0)
+
     def test_entity_buttons_follow_native_camera_and_route_touch(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory);scene = root / 'scene.txt';replay = root / 'buttons.txt'
@@ -126,9 +156,9 @@ class MissionProfileTests(unittest.TestCase):
             self.assertEqual(report['effect_steps'], 12)
             self.assertEqual(report['effect_updates'], [])
             self.assertFalse(report['update_schedule_complete'])
-            self.assertEqual(report['bound_update_systems'], [0,2,3,4,5,8,9,10,11,12,13,14,15,17,18,19,20,21,23,24,26,31])
-            self.assertEqual(report['unbound_update_systems'], [16,22,25,30])
-            self.assertEqual(report['last_update_order'], [2,9,11,13,14,15,18,19,21,23,26,31])
+            self.assertEqual(report['bound_update_systems'], [0,2,3,4,5,8,9,10,11,12,13,14,15,17,18,19,20,21,23,24,25,26,31])
+            self.assertEqual(report['unbound_update_systems'], [16,22,30])
+            self.assertEqual(report['last_update_order'], [2,9,11,13,14,15,18,19,21,23,25,26,31])
             self.assertEqual(report['rotation_steps'], 12)
             self.assertEqual(report['battle_steps'], 12)
 

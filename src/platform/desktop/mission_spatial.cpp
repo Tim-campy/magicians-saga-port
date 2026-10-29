@@ -32,6 +32,10 @@ void MissionSpatial::touch_cursor(std::int32_t x,std::int32_t y){
     auto point=std::make_shared<CursorPoint>(CursorPoint{x,y});const auto receivers=point_receivers_[0];
     if(receivers)for(const auto& receiver:*receivers)receiver(point);++cursor_touches_;
 }
+void MissionSpatial::click_cursor(std::int32_t x,std::int32_t y){
+    auto point=std::make_shared<CursorPoint>(CursorPoint{x,y});const auto receivers=point_receivers_[1];
+    if(receivers)for(const auto& receiver:*receivers)receiver(point);++cursor_clicks_;
+}
 void MissionSpatial::cursor_cell_changed(CursorPointRef old_cell,CursorPointRef new_cell){
     // Typed event13 projection. There are no known subscribers in this selected profile;
     // retain the distinct payload identities for diagnostics, without inventing game consumers.
@@ -70,7 +74,7 @@ void MissionSpatial::send_cell_change(ComponentSlots* e,std::int32_t old_key){
 }
 void MissionSpatial::report(std::ostream& out){
     const auto entity_id=[this](ComponentSlots* e){return e?world_.id(*e):-1;};
-    out<<",\"cursor_steps\":"<<cursor_steps_<<",\"cursor_touches\":"<<cursor_touches_<<",\"cursor_cell_events\":"<<cursor_changes_;
+    out<<",\"cursor_steps\":"<<cursor_steps_<<",\"cursor_touches\":"<<cursor_touches_<<",\"cursor_clicks\":"<<cursor_clicks_<<",\"cursor_cell_events\":"<<cursor_changes_;
     out<<",\"cursor\":{\"x\":"<<cursor_.last_position->x<<",\"y\":"<<cursor_.last_position->y
        <<",\"focus\":"<<entity_id(cursor_.focus)<<",\"tracking\":"<<(cursor_.tracking?"true":"false")
        <<",\"wait\":"<<cursor_.focus_wait<<",\"catch_human\":"<<entity_id(cursor_.catch_human)

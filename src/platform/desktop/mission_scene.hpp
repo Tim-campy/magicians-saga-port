@@ -8,6 +8,7 @@
 #include "core/gameplay/parameter_experience.hpp"
 #include "core/gameplay/effect_frame.hpp"
 #include "core/gameplay/gauge_drawing.hpp"
+#include "core/gameplay/info_frame.hpp"
 #include <ostream>
 
 namespace saga::desktop {
@@ -17,13 +18,16 @@ struct MissionView {
     std::int32_t width,height,scale,camera_x,camera_y,margin_x,margin_y,extra_depth_rate;
 };
 struct MissionRenderFault {std::int32_t entity;std::string message;};
+struct MissionPopupScenario {std::int32_t id,category,type,priority;bool single;std::int32_t height,duration;};
+struct MissionSlideScenario {std::int32_t id,width,height,duration;};
 // Selected entity group and fixed supplied view. Full mission culling/camera/input remain host bindings.
 class MissionScene final:private core::RenderInitializationWorld,private core::RenderFrameHost,
     private core::QuestCameraHost,private core::QuestViewportView,private core::GarbageUpdateHost,private core::ModificationFrameHost,
     private core::EmitterFrameHost,private core::CollisionPassHost,
     private core::ParameterInitializationWorld,private core::ParameterExperienceInitializationWorld,
     private core::EffectInitializationWorld,private core::EffectFrameHost,
-    private core::ButtonInitializationWorld,private core::ButtonFrameHost {
+    private core::ButtonInitializationWorld,private core::ButtonFrameHost,
+    private core::InfoInitializationWorld,private core::InfoHost {
 public:
     MissionScene(MissionEntities&,MissionApplication&,core::EntitySubset& visible,MissionView&,core::MapComponent*);
     MissionScene(const MissionScene&)=delete;
@@ -41,6 +45,10 @@ public:
     void advance_battle(std::int32_t pass=0,bool enabled=true);
     void advance_buttons(std::int32_t pass=0,bool enabled=true);
     void deliver_button_touch(const core::InputTouch*);
+    void advance_info(std::int32_t pass=0,bool enabled=true);
+    void deliver_info_click(core::CursorPointRef);
+    void add_info_popup(MissionPopupScenario);
+    void add_info_slide(MissionSlideScenario);
     void advance_parameters(std::int32_t pass=0,bool enabled=true);
     void advance_effects(std::int32_t pass=0,bool enabled=true);
     // Typed event21 boundary; no reward-orb or character-EXP producer is inferred.
@@ -54,6 +62,14 @@ public:
     core::RenderQueue& render();
     const std::vector<MissionRenderFault>& faults()const{return faults_;}
 private:
+    void subscribe_info_click(core::InfoInitializationWorld::Click f)override{info_click_=std::move(f);}
+    void subscribe_info_button(core::InfoInitializationWorld::Button f)override{info_button_=std::move(f);}
+    void subscribe_info_town(core::InfoInitializationWorld::Town f)override{info_town_=std::move(f);}
+    std::int32_t info_view_height()override{return view_.height;}
+    bool info_world_paused()override{return info_paused_;} // Fresh SystemManager CLR value; native pause/resume binding remains separate.
+    core::EntitySubset* info_monsters()override{return world_.subset({16});}
+    std::shared_ptr<core::PopupBar> make_monster_info(core::ComponentSlots*)override;
+    std::shared_ptr<core::SlideBar> make_attack_notice(core::EventObject)override;
     core::EntitySubset* button_subset(const core::EventIntegers& slots)override{return world_.subset(slots);}
     void subscribe_button_touch(core::ButtonInitializationWorld::Receiver receiver)override{button_touch_receiver_=std::move(receiver);}
     bool button_parent_destroyed(core::ComponentSlots& e)override{return world_.destroyed(e);}
@@ -109,6 +125,11 @@ private:
     core::ParameterExperienceSystem experience_;
     core::BattleSystemState battle_;
     core::ButtonFrameState buttons_;core::ButtonInitializationWorld::Receiver button_touch_receiver_;
+    core::InfoState info_;core::InfoInitializationWorld::Click info_click_;
+    core::InfoInitializationWorld::Button info_button_;core::InfoInitializationWorld::Town info_town_;
+    bool info_paused_=false;std::uint64_t info_steps_=0,info_clicks_=0,info_button_events_=0,info_popup_disposals_=0;
+    std::vector<std::shared_ptr<core::PopupBar>> scenario_popups_; // Keep diagnostic payload identity after native removal.
+    std::vector<std::shared_ptr<core::SlideBar>> scenario_slides_;
     std::uint64_t button_steps_=0,button_events_=0,button_removals_=0;
     core::ComponentSlots* last_button_target_=nullptr;std::int32_t last_button_event_type_=0;
     core::ParameterExperienceInitializationWorld::Receiver experience_receiver_;

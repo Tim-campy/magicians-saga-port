@@ -1,4 +1,34 @@
 id	status	evidence	note
+game:0x06000ef5	reimplemented	src/core/gameplay/info_frame.hpp	Fresh controller owns distinct empty bar lists; default payload and repeated Init preservation exercised by contract and mission host
+game:0x06000ef6	reimplemented	src/core/gameplay/info_frame.cpp	Reset emphasis/offset, retain lists/dialog, ordered event4/11/28 subscriptions; live scene Init and partial-failure contracts
+game:0x06000ef7	reimplemented	src/core/gameplay/info_frame.cpp	Captured/versioned Equals search and single-category drops, emphasis reuse, live priority insertion; actual host uses explicit forced scenario insertion
+game:0x06000ef8	reimplemented	src/core/gameplay/info_frame.cpp	Nullable slide append; live scenario rows and event28 factory interface preserve arguments and ordering
+game:0x06000ef9	reimplemented	src/core/gameplay/info_frame.cpp	Null-tolerant popup Drop forwarding; finite/infinite duration and already-dropping contracts
+game:0x06000efb	reimplemented	src/core/gameplay/info_frame.cpp	Dialog answer/type5 Drop, marker clear, popup then slide updates; real mission index25 and failure prefix tested
+game:0x06000efc	reimplemented	src/core/gameplay/info_frame.cpp	Emphasis, live-list bottom/stack layout, base clocks, virtual Dispose then fresh-list removal; reentrant replacement/failure contracts and live host
+game:0x06000efd	reimplemented	src/core/gameplay/info_frame.cpp	Double captured bar access before virtual Height, wrapped per-index Y65, base clocks and removal without Dispose; live/replaced lists tested
+game:0x06000f02	reimplemented	src/core/gameplay/info_frame.cpp	Native six-frame binary32 1-to-1.1-to-1 easing, amplitude100; existing float Graph implementation reused
+game:0x06000f03	reimplemented	src/core/gameplay/info_frame.cpp	Fresh emphasized references and repeated virtual Height; separate binary32 multiply/subtract before caller int32 conversion
+game:0x06000f05	reimplemented	src/core/gameplay/info_frame.cpp	First virtual Type match on captured/versioned popup list; actual dialog type5 caller and mutation semantics tested
+game:0x06000f06	reimplemented	src/core/gameplay/info_frame.cpp	First existing.Equals(incoming), return before next version check; mutation and duplicate emphasis contracts tested
+game:0x06000f07	reimplemented	src/core/gameplay/info_frame.cpp	Live Count/element identity scan including null, absent minus1; used by actual emphasis layout tests
+game:0x06000f11	reimplemented	src/core/gameplay/info_frame.cpp	Captured/versioned popup enumeration; Drop Category0 only; retained list identity, clock side effects and replacement tested; native pause producer remains separate
+game:0x06000f12	reimplemented	src/core/gameplay/info_frame.cpp	Current manager pause gate then live Monster16 scan, first strict geometric hit and native factory/AddPopup interface; same event4 bus as Cursor
+game:0x06000f13	reimplemented	src/core/gameplay/info_frame.cpp	Inert native event11 validates event and only type5 component; real Button event routing and null/failure contracts
+game:0x06000f14	reimplemented	src/core/gameplay/info_frame.cpp	Opaque town argument to concrete attack-notice factory then nullable AddSlide; no invented mode gate; factory remains explicit interface
+game:0x060006cd	reimplemented	src/core/gameplay/info_frame.hpp	Popup base fresh-zero payload with supplied int32 ID; complete base lifecycle tests retain numeric widths and caller-owned concrete virtuals
+game:0x060006e5	reimplemented	src/core/gameplay/info_frame.cpp	Base popup clocks, captured state dispatch, repeated Duration, frame9 wait transition and eighth out-frame completion before final draw; actual mission provider
+game:0x060006e6	reimplemented	src/core/gameplay/info_frame.cpp	Popup stateFrame zero and state store only; global frame retained, used by native transition/Drop contracts
+game:0x060006e7	reimplemented	src/core/gameplay/info_frame.cpp	Popup Drop duration-plus8 frame and state2/stateFrame0 unless already dropping; infinite duration yields7; native callers tested
+game:0x060006e8	reimplemented	src/core/gameplay/info_frame.cpp	Captured bottom and virtual Height, wrapped endpoint, existing Graph easing duration8/amplitude80; callback side effects tested
+game:0x060006e9	reimplemented	src/core/gameplay/info_frame.cpp	Popup base Wait captures bottom before Height; virtual override retained and callback mutation tested
+game:0x060006ea	reimplemented	src/core/gameplay/info_frame.cpp	Popup out easing captures initial bottom before Height and fresh final bottom afterward; base Update completion prefix tested
+game:0x0600066e	reimplemented	src/core/gameplay/info_frame.hpp	Slide base fresh-zero payload and supplied int32 ID; complete finite/infinite base lifecycle tests and explicit mission provider
+game:0x06000681	reimplemented	src/core/gameplay/info_frame.cpp	Base slide clocks, captured-state branches, virtual Wait/Duration and eight-tick out completion; real mission controller binding
+game:0x06000682	reimplemented	src/core/gameplay/info_frame.cpp	Virtual Width, wrapped negative endpoint, Graph easing duration8/amplitude80; caller stateFrame and native ordering retained
+game:0x06000683	reimplemented	src/core/gameplay/info_frame.cpp	Slide base Wait writes X0 only; actual wait-phase contracts and mission scenario
+game:0x06000684	reimplemented	src/core/gameplay/info_frame.cpp	Slide out easing to wrapped negative Width; eighth out update completes before another endpoint write
+game:0x06000686	reimplemented	src/core/gameplay/info_frame.cpp	Slide stateFrame zero and state store only; shared native transition helper in base Update
 game:0x06000dcd	reimplemented	src/core/gameplay/button_frame.cpp	Supplied-world And17/0/2 and event9 subscription; nullable subset and partial Init semantics tested; live MissionScene binding
 game:0x06000dcf	reimplemented	src/core/gameplay/button_frame.cpp	Parent projection, retained Position, fresh camera/dynamic lookups, binary32 scale and unconditional autoDestroy snapshot; live index26 before Garbage
 game:0x06000dd5	reimplemented	src/core/gameplay/button_frame.cpp	First ID/value match, type13 hover and unconditional event11 including null target; same input9 bus as Input and Stage; replay and failure tests

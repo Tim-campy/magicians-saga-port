@@ -19,6 +19,8 @@ public:
     void advance_visibility(std::int32_t pass=0,bool enabled=true);
     void advance_cursor(std::int32_t pass=0,bool enabled=true);
     void touch_cursor(std::int32_t x,std::int32_t y); // Normalized world-isometric event2; screen transform remains unbound.
+    void click_cursor(std::int32_t x,std::int32_t y); // Event4, Cursor's inert receiver followed by Info.
+    void observe_cursor_click(core::CursorInitializationWorld::Receiver f){subscribe_cursor_point(4,std::move(f));}
     core::QuestCameraHost& camera_host(){return *this;}
     core::MapComponent& map(){return map_;}
     core::EntitySubset& visible(){return visible_;}
@@ -93,6 +95,6 @@ private:
     std::array<std::shared_ptr<const std::vector<PointReceiver>>,2> point_receivers_;
     std::deque<core::CursorFocusEffect> focus_effects_; // Stable arg storage for the presentation stub.
     core::CursorPointRef old_cursor_cell_,new_cursor_cell_;
-    std::uint64_t cursor_steps_=0,cursor_changes_=0,cursor_touches_=0;
+    std::uint64_t cursor_steps_=0,cursor_changes_=0,cursor_touches_=0,cursor_clicks_=0;
 };
 }

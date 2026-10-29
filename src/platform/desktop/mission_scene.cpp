@@ -65,6 +65,7 @@ MissionScene::MissionScene(MissionEntities& world,MissionApplication& app,Entity
     initialize_render(renderer_,this);initialize_animation(animations_,&world_);
     MovementWorld movement(world_);initialize_movement(movers_,&movement);initialize_collisions(collisions_,&movement);initialize_garbage(garbage_entities_,&movement);
     initialize_battle(battle_,&movement);
+    initialize_info(info_,this,*this);
     initialize_buttons(buttons_,this,*this);
     initialize_rotation(rotating_,&movement);
     initialize_modifications(modifications_,&movement);
@@ -87,14 +88,22 @@ void MissionScene::advance_battle(std::int32_t pass,bool enabled){if(gameplay_ne
 void MissionScene::advance_buttons(std::int32_t pass,bool enabled){if(gameplay_needs_update(26,enabled,pass)){update_buttons(buttons_,*this);++button_steps_;}}
 void MissionScene::deliver_button_touch(const InputTouch* touch){required(button_touch_receiver_?&button_touch_receiver_:nullptr)(touch);}
 void MissionScene::send_button_event(const InputTouch* touch,ComponentSlots* target){
-    // Typed event11 projection: the selected profile has no InfoSystem receiver yet.
-    // Preserve the nullable target and source event type; do not invent a popup consumer.
+    info_button_(touch,target);++info_button_events_; // Original Info receiver deliberately ignores the target.
     last_button_target_=target;last_button_event_type_=required(touch).type;++button_events_;
 }
 void MissionScene::advance_parameter_experience(std::int32_t pass,bool enabled){if(gameplay_needs_update(9,enabled,pass)){update_parameter_experience(experience_);++experience_steps_;}}
 void MissionScene::advance_parameters(std::int32_t pass,bool enabled){if(gameplay_needs_update(14,enabled,pass)){update_parameters();++parameter_steps_;}}
 void MissionScene::advance_effects(std::int32_t pass,bool enabled){if(gameplay_needs_update(23,enabled,pass)){update_effects(effects_,*this);++effect_steps_;}}
 void MissionScene::write_pass_report(std::ostream& out){
+    out<<",\"info_steps\":"<<info_steps_<<",\"info_clicks\":"<<info_clicks_<<",\"info_button_events\":"<<info_button_events_<<",\"info_popup_disposals\":"<<info_popup_disposals_
+       <<",\"info_emphasize_frame\":"<<info_.emphasize_frame<<",\"info_emphasized_id\":"<<(info_.emphasized?info_.emphasized->id:-1)
+       <<",\"info_offset_bottom\":"<<info_.offset_bottom<<",\"info_dialog_pending\":"<<(info_.dialog?"true":"false");
+    out<<",\"info_popups\":[";
+    for(std::int32_t i=0;i<info_.popups->size();++i){auto b=info_.popups->at(i);if(i)out<<',';
+        out<<"{\"id\":"<<b->id<<",\"y\":"<<b->y<<",\"bottom\":"<<b->bottom<<",\"frame\":"<<b->frame<<",\"state_frame\":"<<b->state_frame<<",\"state\":"<<b->state<<'}';}out<<']';
+    out<<",\"info_slides\":[";
+    for(std::int32_t i=0;i<info_.slides->size();++i){auto b=info_.slides->at(i);if(i)out<<',';
+        out<<"{\"id\":"<<b->id<<",\"x\":"<<b->x<<",\"y\":"<<b->y<<",\"frame\":"<<b->frame<<",\"state_frame\":"<<b->state_frame<<",\"state\":"<<b->state<<'}';}out<<']';
     out<<",\"button_steps\":"<<button_steps_<<",\"button_events\":"<<button_events_<<",\"button_removals\":"<<button_removals_
        <<",\"last_button_target\":"<<(last_button_target_?world_.id(*last_button_target_):-1)<<",\"last_button_event_type\":"<<last_button_event_type_;
     out<<",\"entity_buttons\":[";bool first_button=true;auto button_cursor=world_.subset({17})->cursor();

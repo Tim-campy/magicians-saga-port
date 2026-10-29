@@ -61,7 +61,7 @@ private:
     std::vector<core::UpdateSystem*> update_list_;
     std::vector<std::int32_t> last_updates_;
     bool halted_=false;
-    enum class InputKind {keys,attack,pulse,cursor,touch};
+    enum class InputKind {keys,attack,pulse,cursor,click,touch};
     struct InputAction {InputKind kind;std::uint32_t value=0;std::int32_t x=0,y=0,z=0;};
     std::map<std::uint64_t,std::vector<InputAction>> replay_;
     bool replay_bound_=false;std::uint64_t replay_applied_=0;
