@@ -23,7 +23,7 @@ MissionHumans::MissionHumans(MissionEntities& world,const GameplayCatalog& data,
     button_.state=scenario.button;stage_.attack_buttons=std::make_shared<std::vector<AttackButtonState*>>(1,&button_);
     enemies_.subset=world_.subset({24});stage_.members=&members_;stage_.humans=&system_;system_.transitions=static_cast<HumanFrameHost*>(this);
     auto cursor=required(world_.subset({14})).cursor();while(const auto actor=cursor.next()){
-        saved.characters.at(field<HumanRecordLink>(**actor,14).character_id); // Require saved state for every live actor.
+        static_cast<void>(saved.characters.at(field<HumanRecordLink>(**actor,14).character_id)); // Require saved state for every live actor.
         add_member(members_,*actor);
     }
     initialize_humans(system_,this,services_);

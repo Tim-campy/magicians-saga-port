@@ -1,7 +1,7 @@
 """Synthetic table/archive profile shared by mission and GPU contracts."""
 from test_sprite_preview import jar, png, seb
 
-def make_table_scene(root, valid_png=True, human_frame=False, shoot=False):
+def make_table_scene(root, valid_png=True, human_frame=False, shoot=False, rewards=False):
     params = '13' + '\t2\t100\t1000' * 13
     tables = {
         'Chara.txt': f'2\tHero\t0\tchara\t8\tchara\t1\t0\t0\t99\t0\t100\t{params}\t0\t0\t0\t-1\t0\t2',
@@ -20,6 +20,10 @@ def make_table_scene(root, valid_png=True, human_frame=False, shoot=False):
         tables['Bullet.txt'] = '0\t0\t3\tbullet\t5\t6\teffect\t7\t0'
         enemy_params = '13' + ''.join('\t2\t100000\t100000' if i == 0 else '\t2\t0\t0' for i in range(13))
         tables['Enemy.txt'] = f'4\tEnemy\t0\t2\t10\t100\t0\t0\t0\tenemy-book\t7\t0\t0\t0\t{enemy_params}\t0'
+    if rewards:
+        enemy_params = '13' + ''.join('\t2\t1\t1' if i == 0 else '\t2\t0\t0' for i in range(13))
+        tables['Enemy.txt'] = f'4\tEnemy\t0\t2\t10\t10\t1\t1\t2\t0\t1000\t0\t0\tenemy-book\t7\t0\t0\t0\t{enemy_params}\t0'
+        tables['Treasure.txt'] = '0\tGem\tquest\t77\t1\t2\t3\t-1\t-1\t-1\t-1\t0'
     if human_frame:
         tables['Equipment.txt'] += '\n' + tables['Equipment.txt'].replace('1\tWeapon', '0\tShield', 1)
     (root / 'tables.bin').write_bytes(jar([('English.lproj/' + name, text.encode()) for name, text in tables.items()]))
@@ -39,14 +43,21 @@ def make_table_scene(root, valid_png=True, human_frame=False, shoot=False):
     return text
 
 
-def make_shoot_scene(root):
-    text = make_table_scene(root, human_frame=True, shoot=True)
-    for name, image, clips in [('bullet', 5, [0]), ('effect', 7, [0, 101])]:
+def make_shoot_scene(root, rewards=False):
+    text = make_table_scene(root, human_frame=True, shoot=True, rewards=rewards)
+    for name, image, clips in [('bullet', 5, [0, 1]), ('effect', 7, [0, 101])]:
         (root / f'{name}.bin').write_bytes(jar([
-            ('img.inf', f'{image}\ta.png,bin\n1\ta.png,bin'.encode()),
+            ('img.inf', '\n'.join(f'{i}\ta.png,bin' for i in [image, 1, 6, 24, 27]).encode()),
             ('seb.inf', '\n'.join(f'{clip}\ta.seb' for clip in clips).encode()),
             ('a.seb', seb([(0, image, 0, 0, 2, 2, 0, 0, 0, 0), (3, image, 0, 0, 2, 2, 0, 0, 0, 0)])),
             ('a.png', png(2, 2, [0, 255, 0, 255] * 4))]))
+    if rewards:
+        (root / 'quest.bin').write_bytes(jar([
+            ('img.inf', b'77\ta.png,bin\n98\ta.png,bin'),
+            ('seb.inf', b'41\ta.seb\n42\ta.seb'),
+            ('a.seb', seb([(0, 98, 0, 0, 2, 2, 0, 0, 0, 0), (3, 98, 0, 0, 2, 2, 0, 0, 0, 0)])),
+            ('a.png', png(2, 2, [255, 255, 0, 255] * 4))]))
+        text += 'rewards 0 1 4\nresource 7 "quest.bin" "English.lproj" 0\nglobal_alias 7 7\n'
     return (text.replace('progress 2 5 13', 'progress 2 1 0')
             .replace('human 0 2 5 0 0 13 0 0 0', 'human 0 2 1 0 0 0 0 0 100')
             .replace('enemy 0 4 7 0 10 0 0', 'enemy 0 4 7 2 0 0 70')

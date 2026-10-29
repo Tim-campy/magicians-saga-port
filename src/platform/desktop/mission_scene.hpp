@@ -13,7 +13,8 @@ struct MissionView {
 struct MissionRenderFault {std::int32_t entity;std::string message;};
 // Selected entity group and fixed supplied view. Full mission culling/camera/input remain host bindings.
 class MissionScene final:private core::RenderInitializationWorld,private core::RenderFrameHost,
-    private core::QuestCameraHost,private core::QuestViewportView,private core::GarbageUpdateHost,private core::ModificationFrameHost {
+    private core::QuestCameraHost,private core::QuestViewportView,private core::GarbageUpdateHost,private core::ModificationFrameHost,
+    private core::EmitterFrameHost {
 public:
     MissionScene(MissionEntities&,MissionApplication&,core::EntitySubset& visible,MissionView&,core::MapComponent*);
     MissionScene(const MissionScene&)=delete;
@@ -24,9 +25,17 @@ public:
     // Native index31 runs after RenderSystem; commands already produced remain in this frame.
     void advance_garbage(std::int32_t pass,bool enabled=true);
     void advance_modifications(std::int32_t pass,bool enabled=true);
+    void advance_emitters(std::int32_t pass,bool enabled=true);
     core::RenderQueue& render();
     const std::vector<MissionRenderFault>& faults()const{return faults_;}
 private:
+    core::BulletRecords bullet_records()override{return world_.bullet_records();}
+    core::ProjectileModification& acquire_modification()override{return world_.acquire_modification();}
+    core::EntityPlayback& acquire_playback()override{return world_.acquire_playback();}
+    core::ParticleFactoryHost* emitter_particle_world()override{return &world_;}
+    core::DropEffectWorld* emitter_effect_world()override{return &world_.effect_world();}
+    core::DefeatColor& acquire_emitter_color()override{return world_.acquire_enemy_color();}
+    void destroy_emitter_entity(core::ComponentSlots& e)override{world_.destroy(e,true);}
     void destroy_modified_entity(core::ComponentSlots& e)override{world_.destroy(e,true);}
     void return_modification(core::Component* p)override{world_.return_component(15,p);}
     std::unique_ptr<core::GarbageCursor> open_garbage_cursor()override;
@@ -54,6 +63,7 @@ private:
     core::RenderSystemState renderer_;core::AnimationSystemState animations_;core::SebStaticWork sprite_work_;
     core::EntitySubset *movers_=nullptr,*garbage_entities_=nullptr;core::GarbagePass garbage_pass_;
     core::ModificationSystemState modifications_;
+    core::EmitterSystemState emitters_;
     core::RenderQueue queue_=core::make_render_queue();std::vector<MissionRenderFault> faults_;
 };
 } // namespace saga::desktop

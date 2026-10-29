@@ -93,6 +93,30 @@ class MissionProfileTests(unittest.TestCase):
             incomplete = subprocess.run([str(EXE), '--headless'], capture_output=True, text=True, timeout=30)
             self.assertNotEqual(incomplete.returncode, 0)
 
+    def test_lethal_shot_pending_rewards_and_cleanup(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            scene = root / 'scene.txt'
+            text = make_shoot_scene(root, rewards=True)
+            scene.write_text(text, encoding='utf-8')
+            result = self.run_host(scene, frames=240)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            report = json.loads(result.stdout)
+            self.assertTrue(report['positions'][1]['destroyed'])
+            self.assertTrue(report['rewards_enabled'])
+            self.assertEqual(report['defeated_enemies'], 1)
+            self.assertEqual(report['remaining_enemies'], 1)  # Native ordinary-enemy floor.
+            self.assertEqual(report['saved_defeats'], [{'enemy_id': 4, 'count': 5}])
+            self.assertEqual([(d['type'], d['value']) for d in report['pending_drops']], [(0, 10), (3, 0)])
+            self.assertEqual(report['projectiles'], [])
+            self.assertGreaterEqual(report['rng_draws'], 19)
+            self.assertEqual(self.run_host(scene, frames=240).stdout, result.stdout)
+            # Lethal rules require explicit initial counters; no fabricated reward state.
+            scene.write_text(text.replace('rewards 0 1 4\n', ''), encoding='utf-8')
+            missing = self.run_host(scene, frames=240)
+            self.assertNotEqual(missing.returncode, 0)
+            self.assertIn('enemy defeat requires explicit counters', missing.stderr)
+
 
 if __name__ == '__main__':
     unittest.main()

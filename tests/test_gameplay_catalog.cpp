@@ -30,6 +30,12 @@ int main(int argc,char** argv)try{
     check(data.equipment[1]->image==12&&data.equipment[1]->resource=="weapon"&&data.equipment[1]->bullet_id==3);
     check(data.hats[0]->image==9&&data.cloth[0]->image==11&&data.enemies->at(4)->image==7&&data.bullets->at(3)->image==5);
     check(data.members.size()==7&&data.members.at("Enemy.txt")=="English.lproj/Enemy.txt");
+    check(!data.treasures);fails([&]{load_gameplay_catalog(archive,false,parse_event_decimal,true);});
+    auto reward_members=saga::test::mission_tables();const std::string treasure="0\tGem\tquest\t77\t1\t2\t3\t-1\t-1\t-1\t-1\t0";
+    reward_members.push_back({"English.lproj/Treasure.txt",{treasure.begin(),treasure.end()}});
+    ResourceArchive reward_archive(saga::test::jar_fixture(reward_members),{"English.lproj",1},ArchiveContents::data_only);
+    const auto rewards=load_gameplay_catalog(reward_archive,false,parse_event_decimal,true);
+    check(rewards.treasures&&rewards.treasures->at(0)->image==77&&rewards.members.size()==8);
     members.pop_back();ResourceArchive missing(saga::test::jar_fixture(members),{"English.lproj",1},ArchiveContents::data_only);
     fails([&]{load_gameplay_catalog(missing,false,parse_event_decimal);});
     ResourceArchive fallback(saga::test::jar_fixture({{"Chara.txt",{42}}}),{"English.lproj",1},ArchiveContents::data_only);

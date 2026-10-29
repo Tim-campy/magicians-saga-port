@@ -127,7 +127,7 @@ game:0x06000bec	traced	docs/subsystems/animation.md
 game:0x06000bf0	reimplemented	src/core/gameplay/enemy_factory.cpp	Full enemy factory: double table lookup, captured/live visual fields, shared component pools and 13 parameters; real boss/normal creation tests.
 game:0x06000bf5	reimplemented	src/core/gameplay/effect_factory.cpp	Effect factory order and core payloads composed with ID registration groups; resource and presentation helpers explicit.
 game:0x06000bf7	reimplemented	src/core/gameplay/emitter_factory.cpp	Captured resource clock before global registration; complete ordered particle payload, separate live map divisors and wrapped lifetime; factory and real emitter/animation/expiry tests.
-game:0x06000e5f	reimplemented	src/core/gameplay/emitter_frame.cpp	Complete cadence/type dispatch, live bullet trail copies, finite emissions and persistent versioned expiry queue; 120-pass attack/death/landing-debris integration tested.
+game:0x06000e5f	reimplemented	src/core/gameplay/emitter_frame.cpp	Complete cadence/type dispatch and deferred expiry; saga_mission binds real bullet trails and enemy landing-debris factories/resources.
 game:0x06000f81	reimplemented	src/core/gameplay/projectile_launch.cpp	Binary32 distance and int32 duration height; ordered projectile modification animation additions
 game:0x06000c05	documented	docs/subsystems/ecs.md	World wrapper forwards collection and excluded entity, forces manager registry removal true
 game:0x06000f6f	reimplemented	src/core/gameplay/motion_pass.cpp	Live And 0 1 group iteration and complete movement kernel; Shared MissionProfile step reaches it from saga_mission and queue_capture with real table-backed factory velocities; parent order and group reinsertion tested

@@ -29,11 +29,11 @@ game:0x0600025d	reimplemented	src/core/gameplay/combat_rules.cpp	attribute_affin
 game:0x06000e82	documented	docs/subsystems/combat.md	Numeric damage and stateful post-label shake/positional-effect suffix ported; desktop host binds real stats/RNG/DEBUG and Stage accounting; floating label selection and full event routing remain partial
 game:0x06000e7e	reimplemented	src/core/gameplay/projectile_hit.cpp	Projectile guards; damage/defeat/impact order; owner reread; pool return and speed zeroing; ECS integration test
 game:0x06000e7d	reimplemented	src/core/gameplay/contact_collision.cpp	Full contact orchestration with explicit state/presentation services; tested guards, payloads, callback order and recoil
-game:0x06000e83	reimplemented	src/core/gameplay/enemy_defeat.cpp	Complete motion state color counter and pending reward sequence; shared-RNG ECS damage integration tested
+game:0x06000e83	reimplemented	src/core/gameplay/enemy_defeat.cpp	Complete motion/state/color/counters/pending rewards; table-backed saga_mission lethal shots and saved defeat counts tested.
 game:0x06000d47	traced	docs/subsystems/rewards.md	flag +0x14 via BitUtil.Check; bit meaning unknown
 game:0x060010ca	reimplemented	src/core/gameplay/enemy_defeat.cpp	Wrapping int32 addition then clamp at zero; overflow and negative increment tests
 game:0x060010c7	reimplemented	src/core/gameplay/enemy_rewards.cpp	Binary32 zero-amplitude interpolation with wrapped progress/difference; synthetic edges and full local table audit
-game:0x06000bf9	reimplemented	src/core/gameplay/drop_factory.cpp	All four pending-drop branches with actual Cell/Image payloads; registry/reward suffix/collection integration tested.
+game:0x06000bf9	reimplemented	src/core/gameplay/drop_factory.cpp	All four pending-drop branches with actual Cell/Image payloads; EXP/treasure factory reachable from saga_mission; no collection credit here.
 game:0x06000fa4	reimplemented	src/core/gameplay/drop_collection.cpp	Live drop query, ordered range/boss gates, immediate boss credit or queued start; mutations and failure effects tested.
 game:0x06000fa5	reimplemented	src/core/gameplay/drop_collection.cpp	Captured hero target, live indexed list, reused float curve, 31-pass credit and current-list removal; real factory/expiry integration.
 game:0x06000fb9	reimplemented	src/core/gameplay/drop_collection.cpp	Accumulator then actual number/common effect factories, Garbage(0), explicit sound; partial failures and unknown types tested.

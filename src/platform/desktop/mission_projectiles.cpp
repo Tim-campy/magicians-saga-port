@@ -22,7 +22,7 @@ void MissionHumans::read_bullet_data(ComponentSlots& e){static_cast<void>(bullet
 void MissionHumans::create_bullet_impact(ComponentSlots& e,ComponentSlots& owner){create_impact_effect(&e,&owner,records_,*this);}
 void MissionHumans::bullet_hit(ComponentSlots& e,ComponentSlots* target){on_projectile_hit(&e,target,*this);}
 ComponentSlots* MissionHumans::create_effect(std::int32_t clip,std::int32_t image,std::int32_t loop,ProjectilePoint at){return &world_.effect(at,clip,image,loop!=0);}
-ComponentSlots* MissionHumans::create_emitter(std::int32_t,std::int32_t,std::int32_t,std::int32_t,std::int32_t,ProjectilePoint){unbound("enemy landing debris emitters");}
+ComponentSlots* MissionHumans::create_emitter(std::int32_t category,std::int32_t type,std::int32_t interval,std::int32_t maximum,std::int32_t argument,ProjectilePoint at){return &world_.emitter({category,type,interval,maximum,argument,at});}
 void MissionHumans::boss_defeated(ComponentSlots&){unbound("boss completion");}
 void MissionHumans::add_color(ComponentSlots& e,std::int32_t r,std::int32_t g,std::int32_t b,std::int32_t a){
     auto& color=world_.acquire_enemy_color();color.values={{r,g,b,a}};e.add(6,&color);
@@ -32,7 +32,24 @@ bool MissionHumans::damage(ComponentSlots* attacker,ComponentSlots& target,std::
     EcsDamageHost host(required(attacker),target,records_,levels_,world_,world_.enemy_maximum_levels(),affinities_,config,*this);
     return apply_combat_damage(amount,attribute,random_,host);
 }
-void MissionHumans::defeat(ComponentSlots&){unbound("enemy defeat, saved counts and pending reward/drop factories");}
+void MissionHumans::enable_rewards(MissionRewardScenario scenario){
+    if(reward_scenario_||!world_.reward_catalog_ready())throw std::invalid_argument("rewards require one explicit scenario and a loaded Treasure catalog");
+    enemies_.defeated_enemies=scenario.defeated;enemies_.remaining_enemies=scenario.remaining;
+    for(const auto& row:records_.enemies)if(row)saved_.enemy_defeat_counts.emplace(row->id,scenario.saved_defeat_count);
+    reward_scenario_=scenario;
+}
+void MissionHumans::defeat(ComponentSlots& e){
+    if(!reward_scenario_)unbound("enemy defeat requires explicit counters and reward catalogs");
+    defeat_enemy(e,records_,enemies_,random_,*this);
+}
+void MissionHumans::write_reward_report(std::ostream& out){
+    out<<",\"rewards_enabled\":"<<(reward_scenario_?"true":"false");
+    if(!reward_scenario_)return;
+    out<<",\"defeated_enemies\":"<<enemies_.defeated_enemies<<",\"remaining_enemies\":"<<enemies_.remaining_enemies<<",\"saved_defeats\":[";bool first=true;
+    for(const auto& entry:saved_.enemy_defeat_counts)if(entry.second!=reward_scenario_->saved_defeat_count){
+        if(!first)out<<',';first=false;out<<"{\"enemy_id\":"<<entry.first<<",\"count\":"<<entry.second<<'}';}
+    out<<']';
+}
 void MissionHumans::miss(ComponentSlots&){} // SAGA_STUB(mission-damage-labels): floating miss label only.
 void MissionHumans::effects(ComponentSlots& receiver,const DamageNumbers& numbers){present_combat_damage(receiver,numbers,*this);}
 void MissionHumans::damage_labels(ComponentSlots&,const DamageNumbers&){++damage_presentations_;} // SAGA_STUB(mission-damage-labels): floating numeric/critical labels only; stateful shake/impact are executed by present_combat_damage.

@@ -8,6 +8,7 @@
 #include "core/gameplay/stage_cleanup.hpp"
 #include "core/ecs/entity_events.hpp"
 #include "core/gameplay/member_selection.hpp"
+#include "core/gameplay/emitter_factory.hpp"
 #include <deque>
 
 namespace saga::desktop {
@@ -16,13 +17,14 @@ struct MissionProgress {
     std::map<std::int32_t,core::SavedCharacterProgression> characters;
     std::map<std::int32_t,std::int32_t> shop_purchases;
     std::map<std::int32_t,std::int32_t> equipment_levels,hat_levels,cloth_levels;
+    std::map<std::int32_t,std::int32_t> enemy_defeat_counts;
 };
 // Fresh desktop entity/component ownership around the existing game factories.
 // Native world teardown, pooling reuse, input updates and the complete system schedule remain separate.
 class MissionEntities final:public core::HumanFactoryHost,public core::EnemyFactoryHost,
     public core::BulletFactoryHost,public core::EffectFactoryHost,public core::ComponentObserver,
     public core::AnimationInitializationHost,public core::QuestEntityHost,private core::EntityDeletionHost,
-    public core::ProjectileLaunchHost {
+    public core::ProjectileLaunchHost,public core::DropFactoryHost,public core::EmitterFactoryHost,public core::ParticleFactoryHost {
 public:
     using Resources=std::function<core::AnimationResource*(std::int32_t)>;
     using ResourceIds=std::function<std::int32_t(std::string_view)>;
@@ -35,6 +37,15 @@ public:
     core::ComponentSlots& effect(core::ProjectilePoint,std::int32_t clip,std::int32_t image,bool loop);
     core::ComponentSlots& raw_entity(std::int32_t type);
     core::DropEffectWorld& effect_world(){return effect_world_;}
+    bool reward_catalog_ready()const{return catalog_.treasures.has_value();}
+    core::ComponentSlots* drop(std::int32_t type,std::int32_t value,core::ProjectilePoint,std::int32_t scale);
+    core::ComponentSlots& emitter(core::EmitterCreation);
+    core::DropComponent& acquire_drop()override;
+    core::Component* sync_animation()override{return &sync_marker_;}
+    core::BulletFactoryWorld* emitter_global_world()override{return &bullet_world_;}
+    core::BulletFactoryWorld* particle_global_world()override{return &bullet_world_;}
+    core::StageGeometry* particle_global_map()override{return map_;}
+    std::int32_t particle_clip_max_frame(std::int32_t resource,std::int32_t clip)override{return clip_max_frame(resource,clip);}
     core::ProjectileLink& acquire_projectile()override;
     core::ProjectileModification& acquire_modification()override;
     void return_component(std::int32_t,core::Component*)override;
@@ -115,6 +126,7 @@ private:
     core::PlayerWorldState player_world_{nullptr,&groups_,0};core::Component player_marker_;
     core::EntityEvents gameplay_events_;
     core::EntityIdState ids_;core::BulletFactoryWorld bullet_world_;core::DropEffectWorld effect_world_;
+    core::Component sync_marker_;std::deque<core::DropComponent> drops_;
     std::vector<std::optional<core::PartyCharacter>> party_rows_;core::PartyCharacters party_;
     std::vector<std::optional<core::HumanHat>> hat_rows_;core::HumanHats hats_;
     core::ParameterMaximumLevels maxima_=core::initial_parameter_maximum_levels(),enemy_maxima_=core::initial_enemy_parameter_maximum_levels();

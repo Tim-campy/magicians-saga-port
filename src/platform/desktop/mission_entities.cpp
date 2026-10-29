@@ -25,6 +25,12 @@ ComponentSlots& MissionEntities::human(const HumanCreation& args){
 ComponentSlots* MissionEntities::enemy(const EnemyCreation& args){return create_enemy(args,ids_,*this);}
 ComponentSlots& MissionEntities::bullet(const BulletCreation& args){return create_bullet(args,*this);}
 ComponentSlots& MissionEntities::effect(ProjectilePoint p,std::int32_t clip,std::int32_t image,bool loop){return create_visual_effect(p,clip,image,loop,ids_,*this);}
+ComponentSlots* MissionEntities::drop(std::int32_t type,std::int32_t value,ProjectilePoint at,std::int32_t scale){
+    if(!catalog_.treasures)throw std::invalid_argument("reward scene requires the Treasure catalog");
+    return create_drop(type,value,at,scale,*catalog_.treasures,ids_,*this);
+}
+ComponentSlots& MissionEntities::emitter(EmitterCreation args){return create_emitter(args,*this);}
+DropComponent& MissionEntities::acquire_drop(){return acquire(drops_);}
 ComponentSlots& MissionEntities::raw_entity(std::int32_t type){return create_entity(ids_,type,false,static_cast<BulletFactoryHost&>(*this));}
 ProjectileLink& MissionEntities::acquire_projectile(){return acquire(projectiles_);}
 ProjectileModification& MissionEntities::acquire_modification(){return acquire(modifications_);}

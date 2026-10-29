@@ -28,6 +28,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     std::ifstream input(scene);if(!input)throw std::runtime_error("cannot open scene description");
     std::vector<std::variant<HumanCreation,EnemyCreation,SelectedBullet,SelectedEffect>> selected;
     std::optional<MissionHumanScenario> human_scenario;bool runtime_row=false;
+    std::optional<MissionRewardScenario> rewards;
     std::map<std::string,std::int32_t> gear_defaults;
     std::vector<std::size_t> players;
     std::vector<std::tuple<std::size_t,std::int32_t,float>> states;
@@ -39,6 +40,8 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             if(!native||runtime_row||!(row>>value.fps>>debug>>value.backend>>value.seed)||value.fps<1||value.fps>1000||(debug!=0&&debug!=1)||value.backend!="system")throw std::invalid_argument("runtime requires FPS1..1000 DEBUG0/1 system seed-int32");
             value.debug=debug!=0;runtime_row=true;
             if(runtime&&(runtime->fps!=value.fps||runtime->debug!=value.debug||runtime->backend!=value.backend||runtime->seed!=value.seed))throw std::invalid_argument("scene runtime conflicts with CLI inputs");runtime=value;
+        }else if(operation=="rewards"){
+            MissionRewardScenario value;if(!native||rewards||!(row>>value.defeated>>value.remaining>>value.saved_defeat_count))throw std::invalid_argument("rewards requires initial defeated/remaining/saved defeat counts");rewards=value;
         }else if(operation=="human_system"){
             MissionHumanScenario value;if(!native||human_scenario||!(row>>value.distance>>value.min_z_rate>>value.max_z_rate>>value.attribute>>value.button))throw std::invalid_argument("human_system requires distance min/max Z rates attribute button state");human_scenario=value;
         }else if(operation=="gear_levels"){
@@ -125,7 +128,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     if(!has_world)throw std::invalid_argument("an explicit world matrix is required");
     if(!selected.empty()){
         if(!tables||!has_view||!has_slots||!has_animation||commands)throw std::invalid_argument("entity capture needs tables/view/slots/animate and no manual draw rows");
-        catalog=std::make_unique<GameplayCatalog>(load_gameplay_catalog(*tables,false,parse_event_decimal));
+        catalog=std::make_unique<GameplayCatalog>(load_gameplay_catalog(*tables,false,parse_event_decimal,rewards.has_value()));
         for(const auto& entry:gear_defaults){
             const auto& data=entry.first=="equipment"?catalog->equipment:entry.first=="hat"?catalog->hats:catalog->cloth;
             auto& levels=entry.first=="equipment"?progress.equipment_levels:entry.first=="hat"?progress.hat_levels:progress.cloth_levels;
@@ -147,6 +150,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         if(human_scenario){
             if(!runtime||!geometry||!simulate)throw std::invalid_argument("human_system requires runtime, geometry and simulate rows");
             humans=std::make_unique<MissionHumans>(*entity_world,*catalog,progress,*geometry,*runtime,*human_scenario);
+            if(rewards)humans->enable_rewards(*rewards);
             for(const auto& request:states)humans->set_state(*created.at(std::get<0>(request)),std::get<1>(request),std::get<2>(request));
         }else if(!states.empty())throw std::invalid_argument("actor_state requires human_system");
         for(std::int32_t i=0;i<frames;++i)mission->advance_animations({automatic!=0,application_update!=0});
@@ -154,6 +158,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         commands=static_cast<std::size_t>(queue.counts->at(0))+static_cast<std::size_t>(queue.counts->at(1));
     }
     if(simulate&&!mission)throw std::invalid_argument("simulate requires a table-backed entity scene");
+    if(rewards&&!humans)throw std::invalid_argument("rewards requires human_system");
     if((human_scenario||!states.empty()||!players.empty()||!gear_defaults.empty())&&!mission)throw std::invalid_argument("human scenario rows require a table-backed entity scene");
     selected_count=selected.size();
 }
@@ -161,6 +166,7 @@ void MissionProfile::step(){
     if(!mission)throw std::invalid_argument("selected logic requires a table-backed entity scene");
     if(humans){humans->update();humans->advance_projectiles();}
     if(simulate)mission->advance_movement(0);
+    if(simulate)mission->advance_emitters(0);
     if(simulate)mission->advance_modifications(0);
     mission->advance_animations({automatic!=0,application_update!=0});queue=mission->render();
     if(!mission->faults().empty())throw std::invalid_argument("entity render fault: "+mission->faults().front().message);
@@ -182,5 +188,12 @@ void MissionProfile::write_combat_report(std::ostream& out){
         out<<"{\"id\":"<<entity_world->id(**e)<<",\"x\":"<<p->x<<",\"y\":"<<p->y<<",\"z\":"<<p->z<<",\"frame\":"<<flight->frame<<",\"max_frame\":"<<flight->max_frame<<'}';
     }}
     out<<']';
+    if(humans)humans->write_reward_report(out);
+    out<<",\"pending_drops\":[";first=true;
+    if(entity_world){auto cursor=entity_world->subset({34})->cursor();while(const auto e=cursor.next()){
+        const auto* drop=dynamic_cast<DropComponent*>((*e)->get(34));const auto* p=dynamic_cast<ContactPosition*>((*e)->get(0));
+        if(!drop||!p)throw std::invalid_argument("missing diagnostic pending drop fields");
+        if(!first)out<<',';first=false;out<<"{\"id\":"<<entity_world->id(**e)<<",\"type\":"<<drop->type<<",\"value\":"<<drop->value<<",\"x\":"<<p->x<<",\"z\":"<<p->z<<'}';
+    }}out<<']';
 }
 } // namespace saga::desktop
