@@ -3,7 +3,7 @@ kairo:0x06000f39	traced	docs/subsystems/assets.md	GetData reaches Encrypter.Deco
 kairo:0x06000f34	traced	docs/subsystems/assets.md	_getInputStream: UIMethod + RunOnUiThread; delegate unresolved
 kairo:0x06000f37	traced	docs/subsystems/assets.md	_getData: UIMethod + RunOnUiThread; delegate unresolved
 kairo:0x06000f38	traced	docs/subsystems/assets.md	_getTextAsset: UIMethod + RunOnUiThread; delegate unresolved
-kairo:0x06000f35	traced	docs/subsystems/assets.md	GetAccessFilesList: candidate list with language folder; precedence open
+kairo:0x06000f35	reimplemented	src/core/gameplay/resource_lookup.cpp	Exact DPI suffix/descending-prefix/root candidate order, existing UTF16 Split reuse, lazy init and pack/primary-language gates; null/empty/duplicate/index and catalog-composition tests.
 kairo:0x0600030e	traced	docs/formats/jar-container.md	SetEncryptionKey: stores key array; called from AppData.Init 0x11006e4
 kairo:0x0600031b	traced	docs/formats/jar-container.md	Encrypter cctor: initial 1-byte key array
 kairo:0x06000317	traced	docs/formats/jar-container.md	Decode: loads static key, forwards to 0x06000318
@@ -11,13 +11,13 @@ kairo:0x06000318	traced	docs/formats/jar-container.md	Decode overload: forwards 
 kairo:0x06000316	documented	docs/formats/jar-container.md	Encode: in-place periodic XOR; caller Decode 0x06000318; Python port in tools/extract_assets.py
 kairo:0x060003c6	reimplemented	src/assets/jar_archive.cpp	index/data parsing; flags!=0 unsupported; name dictionary not built
 kairo:0x060003d0	documented	docs/subsystems/assets.md	ConvertExtension: Config rule then .inf/.ini->.txt with prefix; callers Exist, _search
-kairo:0x060003cd	documented	docs/subsystems/assets.md	_search: candidate lookup in dictionary +0x10; callers Exist, GetInputStream
+kairo:0x060003cd	reimplemented	src/core/gameplay/resource_lookup.cpp	Trim/alias/lower and candidate generation, capture live dictionary before lower per candidate, first-hit member return; interfaces preserve text/path services and tests cover ordering/replacement.
 kairo:0x060003ca	traced	docs/subsystems/assets.md	Exist: prefixed CheckResourceAsStream or _search
 kairo:0x060003cb	traced	docs/subsystems/assets.md	GetData: Storage.Read, then GetSize/GetInputStream; -1 -> null
 kairo:0x060003c8	traced	docs/subsystems/assets.md	GetInputStream: prefixed stream, else _search; GetCustomResource branch
 kairo:0x060003ce	traced	docs/subsystems/assets.md	GetResourceAsStream: name then name+.bytes
 kairo:0x060003cf	traced	docs/subsystems/assets.md	CheckResourceAsStream: name then name+.bytes
-kairo:0x06000269	documented	docs/subsystems/assets.md	Config.ConvertExtension: selector 2/3/4 replaces all .gif->.png then .mld->.ogg; callers JarInflater.ConvertExtension, GetAccessFilesList
+kairo:0x06000269	reimplemented	src/core/gameplay/resource_lookup.cpp	Selectors 2/3/4 apply ordinal all-occurrence gif-to-png then mld-to-ogg conversion; null/nonmatching modes and uppercase second-conversion integration tests.
 kairo:0x060016ea	traced	docs/subsystems/assets.md	LoadReady selected-row trimming and selected-over-base supplementation ported/tested in resource_catalog; ordinal IDs, retained base duplicates and array publication established; loading/language/exception shell remains partial.
 kairo:0x060016ec	traced	docs/formats/inf.md	Missing-ID first-free assignment, retained row-count length and ordered duplicate overwrite ported as a slice; full async LoadStart remains open.
 kairo:0x0600171d	traced	docs/subsystems/assets.md	LoadStart closure: bin/WxH options, palette, Image ctor 0x06001502
@@ -140,3 +140,5 @@ kairo:0x06001146	reimplemented	src/core/gameplay/render_colors.cpp	Full shader-s
 kairo:0x06001140	traced	docs/subsystems/assets.md	Reached textured-sprite Init slice normalizes mode, replace modulation and alpha type; partial port in render_colors, shape/stencil/material setup remains unbound.
 kairo:0x06001143	traced	docs/subsystems/assets.md	Reached shader selection maps to public SDL blend/alpha operations; compiled shader states confirm reverse subtraction of RGB and alpha; full source generator not ported.
 kairo:0x06001532	traced	docs/subsystems/assets.md	Sampled-alpha scalar classifier recovered/tested; native texture tile/readback/liveness and dispatch wrapper not ported.
+kairo:0x06000f32	traced	docs/subsystems/assets.md	AssetReader lazy initializer density buckets, preserved 180..189 gap and lowercased locale publication established; body stays an explicit platform/locale service.
+kairo:0x06000f3e	traced	docs/subsystems/assets.md	AssetReader static initializer publishes four drawable DPI folders; exact order is the tested ResourceLookupState default; static constructor itself not separately ported.

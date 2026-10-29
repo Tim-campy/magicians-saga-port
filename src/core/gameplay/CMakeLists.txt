@@ -241,6 +241,8 @@ target_link_libraries(animation_pass PUBLIC entity_visual entity_subset animatio
 
 saga_library(animation_resources animation_resources.cpp)
 saga_library(resource_catalog resource_catalog.cpp)
+saga_library(resource_lookup resource_lookup.cpp)
+target_link_libraries(resource_lookup PUBLIC presentation_text)
 target_link_libraries(animation_resources PUBLIC seb_sprite)
 target_link_libraries(animation_resources PUBLIC animation_pass seb)
 

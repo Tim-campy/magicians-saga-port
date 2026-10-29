@@ -76,7 +76,7 @@ Current maintainer priority: game-specific decompilation and gameplay integratio
 
 ### 7. Assets and rendering
 - [ ] Close the chain TexId → `img.inf` id → ResourceManager → Image/OPT, including `Image.GetOptimizeSeb` and which ResourceManager serves each Seb.
-- [ ] Rebuild the language candidate order of `AssetReader.GetAccessFilesList`; bind file/text services and alias rules to C++. LoadReady's selected-over-base supplementation is ported/tested, preserving ordinal cursors, base duplicates and partial publication; actual locale selection and the loading shell remain open.
+- [ ] Compose catalog loading with explicit locale/density state and production file/text providers. Exact DPI/language candidate order, ordinal extension conversion, first-match archive search, selected-over-base supplementation and ID indexing are ported/tested; the prefixed path conversion and LoadReady/LoadStart shell remain open. Use the existing extractors/readers and public text/path implementations.
 - [ ] Bind the ported SEB evaluator to the actual pixel consumer, including negative TexId commands, Image/OPT selection and automatic drawing clocks; manual frame advance, native interpolation/crop overwrite and cache aliasing are ported/tested.
 - [ ] Decide whether the desktop/3DS build reads the Python extractor output or ports the XOR decode and Unity media extraction to C++; audio streaming policy for 74 MB of PCM.
 

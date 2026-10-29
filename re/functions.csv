@@ -5011,7 +5011,7 @@ kairo:0x06000265,kairo:0x06000265,data,,340,0x1beb788
 kairo:0x06000266,kairo:0x06000266,data,,4640,0x1beb8dc
 kairo:0x06000267,kairo:0x06000267,data,,232,0x1becc50
 kairo:0x06000268,kairo:0x06000268,data,,228,0x1becd38
-kairo:0x06000269,kairo.common.cfg.Config.ConvertExtension,data,documented,292,0x1bece1c
+kairo:0x06000269,kairo.common.cfg.Config.ConvertExtension,data,reimplemented,292,0x1bece1c
 kairo:0x0600026a,kairo:0x0600026a,data,,160,0x1becbb0
 kairo:0x0600026b,kairo:0x0600026b,data,,152,0x1becf40
 kairo:0x0600026c,kairo:0x0600026c,data,,88,0x1becfd8
@@ -5243,7 +5243,7 @@ kairo:0x060003c9,kairo:0x060003c9,util,,264,0x1bfc5a0
 kairo:0x060003ca,kairo.unity.util.JarInflater.Exist,util,traced,76,0x1beaeec
 kairo:0x060003cb,kairo.unity.util.JarInflater.GetData,util,traced,672,0x1beaf38
 kairo:0x060003cc,kairo:0x060003cc,util,,8,0x1bfc7f8
-kairo:0x060003cd,kairo.unity.util.JarInflater._search,util,documented,312,0x1bfc468
+kairo:0x060003cd,kairo.unity.util.JarInflater._search,util,reimplemented,312,0x1bfc468
 kairo:0x060003ce,kairo.unity.util.JarInflater.GetResourceAsStream,util,traced,408,0x1bfbe04
 kairo:0x060003cf,kairo.unity.util.JarInflater.CheckResourceAsStream,util,traced,336,0x1bfc6a8
 kairo:0x060003d0,kairo.unity.util.JarInflater.ConvertExtension,util,documented,360,0x1bfc300
@@ -8113,10 +8113,10 @@ kairo:0x06000f2e,kairo:0x06000f2e,io,,4,0x1c8f6fc
 kairo:0x06000f2f,kairo:0x06000f2f,io,,76,0x1c8f700
 kairo:0x06000f30,kairo:0x06000f30,io,,8,0x1c8f74c
 kairo:0x06000f31,kairo:0x06000f31,io,,8,0x1c8f754
-kairo:0x06000f32,kairo:0x06000f32,io,,484,0x1c8f75c
+kairo:0x06000f32,kairo.unity.io.AssetReader._init,io,traced,484,0x1c8f75c
 kairo:0x06000f33,kairo:0x06000f33,io,,180,0x1c8f940
 kairo:0x06000f34,kairo.unity.io.AssetReader._getInputStream,io,traced,364,0x1c8fd28
-kairo:0x06000f35,kairo.unity.io.AssetReader.GetAccessFilesList,io,traced,2684,0x1c8fe9c
+kairo:0x06000f35,kairo.unity.io.AssetReader.GetAccessFilesList,io,reimplemented,2684,0x1c8fe9c
 kairo:0x06000f36,kairo:0x06000f36,io,,152,0x1c90918
 kairo:0x06000f37,kairo.unity.io.AssetReader._getData,io,traced,348,0x1c909b0
 kairo:0x06000f38,kairo.unity.io.AssetReader._getTextAsset,io,traced,364,0x1c90b14
@@ -8125,7 +8125,7 @@ kairo:0x06000f3a,kairo:0x06000f3a,io,,420,0x1c90c90
 kairo:0x06000f3b,kairo:0x06000f3b,io,,84,0x1c8f9f4
 kairo:0x06000f3c,kairo:0x06000f3c,io,,1016,0x1c90e3c
 kairo:0x06000f3d,kairo:0x06000f3d,io,,112,0x1c91234
-kairo:0x06000f3e,kairo:0x06000f3e,io,,260,0x1c912a4
+kairo:0x06000f3e,kairo.unity.io.AssetReader..cctor,io,traced,260,0x1c912a4
 kairo:0x06000f3f,kairo:0x06000f3f,unassigned,,92,0x1c913a8
 kairo:0x06000f40,kairo:0x06000f40,unassigned,,8,0x1c91404
 kairo:0x06000f41,kairo:0x06000f41,unassigned,,608,0x1c9140c
