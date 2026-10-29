@@ -1,4 +1,6 @@
 saga_library(combat_rules combat_rules.cpp)
+saga_library(quest_render quest_render.cpp)
+target_link_libraries(quest_render PUBLIC quest_camera image_draw render_draw)
 saga_library(stage_rewards stage_rewards.cpp)
 saga_library(event_flow event_flow.cpp)
 saga_library(event_conditions event_conditions.cpp)

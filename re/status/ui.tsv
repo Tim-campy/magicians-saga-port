@@ -44,3 +44,7 @@ game:0x060007c0	reimplemented	src/core/gameplay/quest_camera.cpp	Required GameVi
 game:0x060007c1	reimplemented	src/core/gameplay/quest_camera.cpp	Required GameView dimension then QuestForm VIEW_Y and current scale; signed scaling with zero/overflow semantics; fresh camera/visibility path tested.
 game:0x060007b9	reimplemented	src/core/gameplay/quest_camera.cpp	Five map queries then discarded viewport calls, decoded save center17/18 writes/rereads and fresh width/height offset stores; retained partial writes and real frame tests.
 game:0x060007ba	reimplemented	src/core/gameplay/quest_camera.cpp	Four map queries/viewport probes then direct camX/Y stores, save centers17/18 using captured X/live Y, final static-render marker; failure/reentrant-field tests.
+game:0x0600079a	reimplemented	src/core/gameplay/quest_render.cpp	Capture/pause/activity gates, image90 integer sizing, static redraw, scoped viewport queries and actual AppData/world consumption; fresh cleanup and failures tested.
+game:0x0600079b	reimplemented	src/core/gameplay/quest_render.cpp	Short-circuit background/empty/activity predicate only; all gate combinations and null-surface bypass tested.
+game:0x06000796	reimplemented	src/core/gameplay/quest_render.cpp	Capture stored surface image and VIEW rectangle before live viewport queries; logical source and scaled destination tested.
+game:0x06000797	reimplemented	src/core/gameplay/quest_render.cpp	Set shared QuestForm static-render marker; composed callback clears before RenderStatics, including failure.

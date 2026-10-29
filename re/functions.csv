@@ -1896,12 +1896,12 @@ game:0x06000792,game:0x06000792,ui,,5776,0x11db3d4
 game:0x06000793,game:0x06000793,ui,,1012,0x11dd6b4
 game:0x06000794,game:0x06000794,ui,,268,0x11dca80
 game:0x06000795,game:0x06000795,ui,,4572,0x11ddd04
-game:0x06000796,game:0x06000796,ui,,208,0x11df004
-game:0x06000797,game:0x06000797,ui,,12,0x11df46c
+game:0x06000796,form.QuestForm.DrawOffscreen,ui,reimplemented,208,0x11df004
+game:0x06000797,form.QuestForm.UpdateStaticRender,ui,reimplemented,12,0x11df46c
 game:0x06000798,game:0x06000798,ui,,148,0x11df478
 game:0x06000799,game:0x06000799,ui,,472,0x11df50c
-game:0x0600079a,game:0x0600079a,ui,,824,0x11df6e4
-game:0x0600079b,game:0x0600079b,ui,,56,0x11dfa1c
+game:0x0600079a,form.QuestForm.DynamicRender,ui,reimplemented,824,0x11df6e4
+game:0x0600079b,form.QuestForm.StaticRender,ui,reimplemented,56,0x11dfa1c
 game:0x0600079c,game:0x0600079c,ui,,160,0x11df0d4
 game:0x0600079d,game:0x0600079d,ui,,456,0x11dfa54
 game:0x0600079e,game:0x0600079e,ui,,276,0x11dad34
