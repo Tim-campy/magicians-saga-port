@@ -93,7 +93,7 @@ game:0x0600024d	reimplemented	src/core/gameplay/render_draw.cpp	Live queue consu
 kairo:0x0600130b	reimplemented	src/core/gameplay/image_draw.cpp	Reached rectangle wrapper preserves int32 U/V until conversion points, binary32 extents and null-image debug gate; selected SEB/AppData/OPT integration tests.
 kairo:0x0600130c	reimplemented	src/core/gameplay/image_draw.cpp	Reached scaled wrapper preserves separate binary32 destination/source extents, int32 source origin and null-image gate; scaled and clipping contracts tested.
 kairo:0x0600130f	reimplemented	src/core/gameplay/image_draw.cpp	Culling/axis clipping, regular OPT cell or decoded-frame selection, binary32 piece bounds, temporary transforms, bitmap dispatch, live accounting and nested exception cleanup; pixel/profiler/culling services explicit; tests.
-kairo:0x06001310	traced	docs/subsystems/assets.md	Reached bitmap consumer: source/standard/atlas and UV-cache slices ported/tested through selected SEB-to-SDL captures; full matrix/material/grayscale/UI/accounting orchestration remains open.
+kairo:0x06001310	traced	docs/subsystems/assets.md	Reached bitmap consumer: source/standard/atlas and UV-cache slices ported/tested through selected SEB-to-SDL captures; local matrix and ordinary color-pass slices now ported; production world/depth/material/grayscale/UI/accounting orchestration remains open.
 kairo:0x0600139a	reimplemented	src/core/gameplay/bitmap_geometry.cpp	Rectangle bounds to scalar GetTransRectGL with transform enabled; required rectangle, retained output identity, explicit screen/height/fill services and SDL pixel integration tested.
 kairo:0x0600139d	reimplemented	src/core/gameplay/bitmap_geometry.cpp	Sequential corners, existing array length, mesh-selected surface/target/screen Y origin, optional screen transform and fill lookup/store; short-array prefix and extra vertices tested.
 kairo:0x06001666	reimplemented	src/core/gameplay/sprite_matrix.cpp	Reset copies nine identity floats into existing values and preserves tail; identity initializer resolved; short destination fails before copy; tests.
@@ -121,3 +121,22 @@ kairo:0x06001386	reimplemented	src/core/gameplay/render_transform.cpp	PushMatrix
 kairo:0x06001387	reimplemented	src/core/gameplay/render_transform.cpp	PopMatrix wrapping decrement, underflow clamp/debug callback and screen update; failed diagnostic preserves prior screen; tests.
 kairo:0x060013c6	reimplemented	src/core/gameplay/render_transform.cpp	BeginRenderMatrix gate, flag/save counters and reuse, zero-position quirk, explicit local-coordinate callbacks or world pretranslation; failure/pixel tests.
 kairo:0x060013c7	reimplemented	src/core/gameplay/render_transform.cpp	EndRenderMatrix saved-count gate, false-flag asymmetry, world copy/decrement and local-coordinate or screen update; nested/failure tests.
+kairo:0x06001372	reimplemented	src/core/gameplay/render_colors.cpp	Raw int32 factors, wrapping sum256 adjustment, replace flag and cache invalidation; boundary/failure tests.
+kairo:0x06001376	reimplemented	src/core/gameplay/render_colors.cpp	Save render mode in retained three-cell rows, sequential writes and count publication; reuse/failure tests.
+kairo:0x06001377	reimplemented	src/core/gameplay/render_colors.cpp	Save then set render mode with native failure ordering; state scope and pixel tests.
+kairo:0x06001378	reimplemented	src/core/gameplay/render_colors.cpp	Underflow no-op and row acquisition/count decrement before setter; partial-failure tests.
+kairo:0x060013a2	reimplemented	src/core/gameplay/render_colors.cpp	Unsigned 0..3 validation, packed ARGB binary32 normalization and cache dirty after stores; tint/failure tests.
+kairo:0x060013a6	reimplemented	src/core/gameplay/render_colors.cpp	Save blend mode in retained two-cell rows; count increments after complete writes; reuse/failure tests.
+kairo:0x060013a7	reimplemented	src/core/gameplay/render_colors.cpp	Save then set packed blend mode; native ordering and RGB tint integration tests.
+kairo:0x060013a9	reimplemented	src/core/gameplay/render_colors.cpp	Restore saved blend row, decrement count only after successful setter; asymmetric failure tests.
+kairo:0x060013b4	reimplemented	src/core/gameplay/render_colors.cpp	Lazy 0..4-pass caches, forced material, factor decomposition, GUI gate and mixed-alpha copy order; alias/empty/pixel tests.
+kairo:0x06001425	reimplemented	src/core/gameplay/render_colors.cpp	Forced-material pass setup, singleton copy/multiple alias/fallback and shared output cache; opaque material and GUI tests.
+kairo:0x06001427	reimplemented	src/core/gameplay/render_colors.cpp	Owner/mode/factor setup, null-prefix behavior, singleton copy and retained shared color outputs; tests.
+kairo:0x06001428	reimplemented	src/core/gameplay/render_colors.cpp	Shallow pass state/input/output copy preserving destination private singleton work; mixed-alpha alias tests.
+kairo:0x06001429	reimplemented	src/core/gameplay/render_colors.cpp	Explicit GUI callback sequence, render push and temporary additive-color clear; material/failure/scope tests.
+kairo:0x0600142a	reimplemented	src/core/gameplay/render_colors.cpp	Begin state then ordered binary32 RGB/alpha scaling and premultiplied ARGB tint on RGB only; alias/partial-output/pixel tests.
+kairo:0x0600142c	reimplemented	src/core/gameplay/render_colors.cpp	Fresh GUI query/pop then material return or render/blend restoration; callback and restoration tests.
+kairo:0x06001146	reimplemented	src/core/gameplay/render_colors.cpp	Full shader-state bit key including GUI early return, blend families and special masks; pipeline/pixel tests.
+kairo:0x06001140	traced	docs/subsystems/assets.md	Reached textured-sprite Init slice normalizes mode, replace modulation and alpha type; partial port in render_colors, shape/stencil/material setup remains unbound.
+kairo:0x06001143	traced	docs/subsystems/assets.md	Reached shader selection maps to public SDL blend/alpha operations; compiled shader states confirm reverse subtraction of RGB and alpha; full source generator not ported.
+kairo:0x06001532	traced	docs/subsystems/assets.md	Sampled-alpha scalar classifier recovered/tested; native texture tile/readback/liveness and dispatch wrapper not ported.

@@ -46,14 +46,16 @@ class FixtureTests(unittest.TestCase):
 class NativeTests(unittest.TestCase):
     source = [(x * 30 + 1, y * 30 + 2, x + y + 3, (x + y) * 17) for y in range(8) for x in range(8)]
 
-    def preview(self, records, opt=None, frame=0, slot=0, extra=()):
+    def preview(self, records, opt=None, frame=0, slot=0, extra=(), raw=True, source=None):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             image, animation, capture = root / 'texture.png', root / 'clip.seb', root / 'frame.bmp'
-            image.write_bytes(png(8, 8, [v for pixel in self.source for v in pixel]))
+            image.write_bytes(png(8, 8, [v for pixel in (self.source if source is None else source) for v in pixel]))
             animation.write_bytes(seb(records))
             args = [str(EXE), str(image), '--sprite', str(animation), str(frame), '0', str(slot),
                     '--canvas', '12', '12', '--origin', '3', '2', '--headless', '--capture', str(capture)]
+            if raw:
+                args += ['--raw-rgba']
             if opt is not None:
                 grid = root / 'grid.opt'
                 grid.write_bytes(opt)
@@ -165,6 +167,105 @@ class NativeTests(unittest.TestCase):
         result, bitmap = self.preview([(0,) * 10], extra=('--canvas', '200000', '200000'))
         self.assertNotEqual(result.returncode, 0)
         self.assertIsNone(bitmap)
+
+    @staticmethod
+    def blend_reference(pixel, background, mode='alpha', rgb=1.0, alpha=1.0, tint=(1, 1, 1)):
+        a = pixel[3] * alpha / 255
+        if mode == 'alpha':
+            channels = [pixel[i] * rgb * tint[i] * a + background[i] * (1 - a) for i in range(3)]
+            output_alpha = pixel[3] * alpha + background[3] * (1 - a)
+        elif mode == 'attenuate':
+            channels = [background[i] * (1 - a) for i in range(3)]
+            output_alpha = pixel[3] * alpha + background[3] * (1 - a)
+        elif mode == 'add':
+            channels = [background[i] + pixel[i] * a for i in range(3)]
+            output_alpha = background[3] + a * a * 255
+        elif mode == 'subtract':
+            channels = [background[i] - pixel[i] * a for i in range(3)]
+            output_alpha = background[3] * (1 - a) - pixel[3] * alpha
+        else:
+            raise AssertionError('unknown reference blend')
+        return tuple(max(0, min(255, round(v))) for v in channels + [output_alpha])
+
+    def assert_pixels_close(self, actual, expected, tolerance=1):
+        self.assertEqual(len(actual), len(expected))
+        for i, (a, b) in enumerate(zip(actual, expected)):
+            self.assertTrue(all(abs(x - y) <= tolerance for x, y in zip(a, b)), (i, a, b))
+
+    def test_native_default_transparency_tint_and_encoded_fade(self):
+        background = (60, 70, 80, 90)
+        for options, rgb, alpha, tint in (((), 1, 1, (1, 1, 1)),
+                                          (('--alpha', '1128'), 1, 128 / 255, (1, 1, 1)),
+                                          (('--alpha', '128'), 128 / 255, 1, (1, 1, 1)),
+                                          (('--color', '-2130771968'), 1, 1, (128 / 255, 0, 0))):
+            with self.subTest(options=options):
+                args = ('--background', *(str(v) for v in background), *options)
+                result, bitmap = self.preview([(0, 0, 2, 3, 3, 2, 1, 2, 0, 0)], raw=False, extra=args)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                report = json.loads(result.stdout)
+                self.assertFalse(report['raw_rgba'])
+                self.assertEqual(report['image_alpha_type'], 2)
+                self.assertEqual(report['quad_count'], 1)
+                expected = [background] * 144
+                for y in range(2):
+                    for x in range(3):
+                        expected[(4 + y) * 12 + 4 + x] = self.blend_reference(self.source[(3 + y) * 8 + 2 + x], background, rgb=rgb, alpha=alpha, tint=tint)
+                self.assert_pixels_close(bitmap[2], expected)
+
+    def test_native_mixed_alpha_passes_preserve_threshold_pixels(self):
+        source = [(30, 60, 90, 0)] * 64
+        alphas = (0, 2, 3, 128, 252, 253, 254, 255)
+        source[:8] = [(30, 60, 90, a) for a in alphas]
+        background = (100, 110, 120, 130)
+        result, bitmap = self.preview([(0, 0, 0, 0, 8, 1, 0, 0, 0, 0)], raw=False, source=source,
+                                      extra=('--background', *(str(v) for v in background)))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        report = json.loads(result.stdout)
+        self.assertEqual(report['image_alpha_type'], 3)
+        self.assertEqual(report['quad_count'], 2)
+        self.assertTrue(report['shader_keys'][0] & 0x800)
+        self.assertTrue(report['shader_keys'][1] & 0x1000)
+        expected = [background] * 144
+        for x in range(8):
+            expected[2 * 12 + 3 + x] = self.blend_reference(source[x], background)
+        self.assert_pixels_close(bitmap[2], expected)
+
+    def test_native_binary_alpha_discards_values_below_point_zero_one(self):
+        source = [(30, 60, 90, 255)] * 64
+        source[0] = (30, 60, 90, 2)
+        background = (100, 110, 120, 130)
+        result, bitmap = self.preview([(0, 0, 0, 0, 2, 1, 0, 0, 0, 0)], raw=False, source=source,
+                                      extra=('--background', *(str(v) for v in background)))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)['image_alpha_type'], 1)
+        expected = [background] * 144
+        expected[2 * 12 + 4] = source[1]
+        self.assert_pixels_close(bitmap[2], expected)
+
+    def test_native_reverse_subtract_uses_separate_alpha_factors(self):
+        background = (170, 160, 150, 240)
+        result, bitmap = self.preview([(0, 0, 2, 3, 3, 2, 1, 2, 0, 0)], raw=False,
+                                      extra=('--alpha', '2128', '--background', *(str(v) for v in background)))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        expected = [background] * 144
+        for y in range(2):
+            for x in range(3):
+                expected[(4 + y) * 12 + 4 + x] = self.blend_reference(self.source[(3 + y) * 8 + 2 + x], background, mode='subtract', alpha=128 / 255)
+        self.assert_pixels_close(bitmap[2], expected)
+
+    def test_native_general_add_is_ordered_attenuation_then_addition(self):
+        background = (60, 70, 80, 90)
+        result, bitmap = self.preview([(0, 0, 2, 3, 3, 2, 1, 2, 0, 0)], raw=False,
+                                      extra=('--alpha', '3100', '--background', *(str(v) for v in background)))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)['quad_count'], 2)
+        expected = [background] * 144
+        for y in range(2):
+            for x in range(3):
+                source = self.source[(3 + y) * 8 + 2 + x]
+                attenuated = self.blend_reference(source, background, mode='attenuate', alpha=155 / 255)
+                expected[(4 + y) * 12 + 4 + x] = self.blend_reference(source, attenuated, mode='add')
+        self.assert_pixels_close(bitmap[2], expected, tolerance=2)
 
 
 if __name__ == '__main__':

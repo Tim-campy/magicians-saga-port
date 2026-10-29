@@ -17,7 +17,7 @@ struct PreviewMatrix final:RenderMatrix {
     void reset()override{reset_matrix(value);}
 };
 struct PreviewHost final:RenderDrawHost,RenderGraphics,RenderDepth,ImageDrawHost,
-                         BitmapTexture,BitmapAlphaHost,BitmapGeometryHost,RenderTransformHost {
+                         BitmapTexture,BitmapAlphaHost,BitmapGeometryHost,RenderTransformHost,RenderColorHost {
     RenderDrawResource resource_value;
     SebStaticWork seb_work;
     ImageDrawState image_state;
@@ -31,13 +31,16 @@ struct PreviewHost final:RenderDrawHost,RenderGraphics,RenderDepth,ImageDrawHost
     RenderTransformState transform;
     PreviewMatrix application_matrix;
     SpriteMatrix temporary_matrix;
+    RenderColorState colors;RenderColorWork color_work;
+    std::int32_t alpha_class;bool raw_rgba;
     std::int32_t png_width,png_height;
     SpritePreview result;
-    PreviewHost(const SpritePreviewOptions& options,std::int32_t w,std::int32_t h):surface{options.height},png_width(w),png_height(h){
+    PreviewHost(const SpritePreviewOptions& options,std::int32_t w,std::int32_t h,std::int32_t a):surface{options.height},alpha_class(a),raw_rgba(options.raw_rgba),png_width(w),png_height(h){
         geometry.surface=&surface;geometry.mesh_modes=std::make_shared<std::vector<BitmapMeshCoordinates*>>(1,&mode);
         const auto nan=std::numeric_limits<float>::quiet_NaN();
         image_state.culling_disabled=true;image_state.clip=std::make_shared<std::vector<float>>(4,nan);
         image_state.bounds=std::make_shared<ImageBounds>();image_state.statistics=&statistics;
+        colors.cache_dirty=&cache.dirty;set_render_mode(colors,0,255,0);set_blend_mode(colors,0,-1);
     }
     RenderDrawResource* resource(std::int32_t id)override{if(id!=1)unbound();return &resource_value;}
     RenderDrawResource* global_resource(std::int32_t)override{unbound();}
@@ -51,10 +54,10 @@ struct PreviewHost final:RenderDrawHost,RenderGraphics,RenderDepth,ImageDrawHost
     float transform_tangent(float angle)override{return degree_tangent(angle);}
     RenderDepth* mesh_manager()override{return this;}
     void set_depth(std::int32_t,std::int32_t)override{} // One caller-selected layer; no inter-object depth policy.
-    void push_render_mode(std::int32_t,std::int32_t,std::int32_t)override{unbound();}
-    void pop_render_mode()override{unbound();}
-    void push_blend_mode(std::int32_t,std::int32_t)override{unbound();}
-    void pop_blend_mode()override{unbound();}
+    void push_render_mode(std::int32_t m,std::int32_t a,std::int32_t b)override{if(raw_rgba)unbound();core::push_render_mode(colors,m,a,b);}
+    void pop_render_mode()override{if(raw_rgba)unbound();core::pop_render_mode(colors);}
+    void push_blend_mode(std::int32_t m,std::int32_t c)override{if(raw_rgba)unbound();core::push_blend_mode(colors,m,c);}
+    void pop_blend_mode()override{if(raw_rgba)unbound();core::pop_blend_mode(colors);}
     void sync_matrix(){image_state.local_matrix_index=transform.local_index;image_state.local_coordinate_count=transform.local_coordinate_count;}
     void push_matrix(RenderMatrix& matrix)override{
         auto* selected=dynamic_cast<PreviewMatrix*>(&matrix);if(!selected)unbound();
@@ -84,7 +87,21 @@ struct PreviewHost final:RenderDrawHost,RenderGraphics,RenderDepth,ImageDrawHost
                 const auto destination=bitmap_destination(source.draw,0.0F); // Explicit zero-expansion profile.
                 points=transform_bitmap_rectangle(geometry,&destination,points,nullptr,*this);
                 PreviewQuad quad;std::copy_n(points->begin(),4,quad.points.begin());quad.uv=*cache.uv;
-                result.quads.push_back(quad);cache.image=&image;cache.dirty=false;
+                if(raw_rgba)result.quads.push_back(quad);
+                else{
+                    auto passes=get_render_passes(colors,true,color_work.white,color_work,*this);
+                    for(const auto& pass:*passes){
+                        auto value=begin_render_pass(*pass,*this);
+                        try{
+                            if(pass->material||colors.blend_mode==3)unbound(); // Grayscale generation is a separate bitmap path.
+                            const auto shader=sprite_shader_state(colors,true,alpha_class,value->at(0).a,value,pass->alpha_test,false);
+                            quad.shader_key=sprite_shader_key(shader);quad.pipeline=sprite_pixel_pipeline(quad.shader_key);
+                            quad.color=quad.pipeline.modulate?value->at(0):RenderColor{1,1,1,1};result.quads.push_back(quad);
+                        }catch(...){end_render_pass(*pass,*this);throw;}
+                        end_render_pass(*pass,*this);
+                    }
+                }
+                cache.image=&image;cache.dirty=false;
             }
         }catch(...){end_render_matrix(transform,*this);throw;}
         end_render_matrix(transform,*this);
@@ -96,7 +113,7 @@ struct PreviewHost final:RenderDrawHost,RenderGraphics,RenderDepth,ImageDrawHost
     void use_frame(PixelImage&,std::int32_t)override{unbound();}
     std::int32_t width()override{return png_width;}
     std::int32_t height()override{return png_height;}
-    std::int32_t alpha_type(PixelImage&)override{return 0;} // Explicit replace-only technical profile, not inferred game alpha state.
+    std::int32_t alpha_type(PixelImage&)override{return raw_rgba?0:alpha_class;}
     void set_alpha_type(PixelImage&,std::int32_t)override{unbound();}
     bool render_target_alive()override{unbound();}
     std::int32_t render_target_height()override{unbound();}
@@ -107,13 +124,20 @@ struct PreviewHost final:RenderDrawHost,RenderGraphics,RenderDepth,ImageDrawHost
     void matrix_underflow()override{unbound();}
     void begin_local_coordinates(float,float)override{unbound();}
     void end_local_coordinates()override{unbound();}
+    std::int32_t image_alpha_type()override{return alpha_class;}
+    bool render_gui_mode(RenderColorState&)override{return false;} // Explicit mesh/desktop profile.
+    void push_gui_matrix()override{unbound();}
+    void load_gui_pixel_matrix()override{unbound();}
+    std::int32_t screen_width()override{unbound();}
+    void gui_viewport(float,float,float,float)override{unbound();}
+    void pop_gui_matrix()override{unbound();}
 };
 }
 SpritePreview prepare_sprite_preview(const SpritePreviewOptions& o,const assets::Seb& file,const assets::OptGrid* opt,
-                                     std::int32_t png_width,std::int32_t png_height){
+                                     std::int32_t png_width,std::int32_t png_height,std::int32_t alpha_type){
     if(o.texture<0||o.texture>65535||o.width<=0||o.height<=0)throw std::invalid_argument("invalid selected preview binding/canvas");
     PreparedAnimationResource loaded(index_resource_catalog({0}),{&file});
-    PreviewHost host(o,png_width,png_height);
+    PreviewHost host(o,png_width,png_height,alpha_type);
     std::unique_ptr<PixelImage> image=opt?std::make_unique<PreparedOptImage>(*opt):std::make_unique<PixelImage>();
     image->width=png_width;image->height=png_height;image->standard_width=o.standard_width;image->standard_height=o.standard_height;
     auto images=std::make_shared<std::vector<RenderImage*>>(static_cast<std::size_t>(o.texture)+1,nullptr);images->at(static_cast<std::size_t>(o.texture))=image.get();
@@ -123,7 +147,7 @@ SpritePreview prepare_sprite_preview(const SpritePreviewOptions& o,const assets:
     auto value=host.sprite(*loaded.resource().clips->at(0),o.frame,o.layer);
     if(value&&value->at(1)!=-1&&value->at(1)!=o.texture)throw std::invalid_argument("SEB TexId does not match explicit PNG slot");
     RenderQueue queue=make_render_queue();RenderCommand command;
-    command.values={-1,1,0,0,o.frame,o.x,o.y,-1,-1,-1,-1,-1,-1,o.layer,255,-1,o.angle,-1,o.skew?1:0};
+    command.values={-1,1,0,0,o.frame,o.x,o.y,-1,-1,-1,-1,-1,-1,o.layer,o.alpha,o.color,o.angle,-1,o.skew?1:0};
     insert_render_command(queue,command);RenderDrawState draw{&queue,0,&host.application_matrix};draw_render_queue(draw,&host,0,host);
     return std::move(host.result);
 }

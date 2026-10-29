@@ -11,11 +11,13 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <limits>
 #include <memory>
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <utility>
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_ONLY_PNG
@@ -152,6 +154,7 @@ int view(const std::string& filename, bool headless, const std::string& capture,
     const auto target_width = sprite_mode?sprite_options->width:(opt_mode ? composition.width : width);
     const auto target_height = sprite_mode?sprite_options->height:(opt_mode ? composition.height : height);
     saga::desktop::SpritePreview preview;
+    std::int32_t image_alpha=0;
     if(sprite_mode){
         const auto bytes=read_file(sprite_options->seb,saga::assets::SebLimits{}.max_bytes,1);
         const auto file=saga::assets::parse_seb(bytes.data(),bytes.size());
@@ -160,7 +163,11 @@ int view(const std::string& filename, bool headless, const std::string& capture,
             const auto opt_bytes=read_file(opt_file,saga::assets::OptLimits{}.max_bytes,1);
             opt=saga::assets::parse_opt(opt_bytes.data(),opt_bytes.size());
         }
-        preview=saga::desktop::prepare_sprite_preview(*sprite_options,file,opt?&*opt:nullptr,width,height);
+        saga::core::ImageAlphaClassifier classifier;
+        const auto count=static_cast<std::size_t>(width)*static_cast<std::size_t>(height);
+        for(std::size_t i=0;i<count;++i)classifier.add(static_cast<float>(pixels.get()[i*4+3])/255.0F);
+        image_alpha=classifier.finish(static_cast<std::int32_t>(count));
+        preview=saga::desktop::prepare_sprite_preview(*sprite_options,file,opt?&*opt:nullptr,width,height,image_alpha);
     }
 
     // SDL's software QueueGeometry truncates source UV texels before interpolation
@@ -183,6 +190,35 @@ int view(const std::string& filename, bool headless, const std::string& capture,
     require(texture != nullptr, "SDL_CreateTextureFromSurface");
     require(SDL_SetTextureScaleMode(texture.get(), SDL_SCALEMODE_NEAREST), "SDL_SetTextureScaleMode");
     require(SDL_SetTextureBlendMode(texture.get(), SDL_BLENDMODE_NONE), "SDL_SetTextureBlendMode");
+    Texture canvas(sprite_mode?SDL_CreateTexture(renderer.get(),SDL_PIXELFORMAT_RGBA32,SDL_TEXTUREACCESS_TARGET,target_width,target_height):nullptr,SDL_DestroyTexture);
+    if(sprite_mode){require(canvas!=nullptr,"SDL_CreateTexture RGBA canvas");require(SDL_SetTextureBlendMode(canvas.get(),SDL_BLENDMODE_NONE),"SDL_SetTextureBlendMode canvas");}
+    struct MaskTexture {saga::core::SpriteAlphaTest test;float alpha;Texture texture;};
+    std::vector<MaskTexture> masks;
+    std::vector<SDL_Texture*> quad_textures;
+    for(const auto& quad:preview.quads){
+        auto* selected=texture.get();const auto test=quad.pipeline.alpha_test;
+        if(test!=saga::core::SpriteAlphaTest::none){
+            if(quad.pipeline.blend==saga::core::SpriteBlend::replace)
+                throw std::runtime_error("alpha-discard with replace blending requires a shader backend");
+            auto found=std::find_if(masks.begin(),masks.end(),[&](const auto& m){return m.test==test&&m.alpha==quad.color.a;});
+            if(found==masks.end()){
+                const auto bytes=static_cast<std::size_t>(width)*static_cast<std::size_t>(height)*4;
+                std::vector<stbi_uc> masked(pixels.get(),pixels.get()+bytes);
+                for(std::size_t i=3;i<bytes;i+=4){
+                    const float alpha=(static_cast<float>(masked[i])/255.0F)*quad.color.a;
+                    if(!saga::core::accepts_sprite_alpha(test,alpha))masked[i]=0;
+                }
+                Surface mask_surface(SDL_CreateSurfaceFrom(width,height,SDL_PIXELFORMAT_RGBA32,masked.data(),width*4),SDL_DestroySurface);
+                require(mask_surface!=nullptr,"SDL_CreateSurfaceFrom alpha mask");
+                Texture variant(SDL_CreateTextureFromSurface(renderer.get(),mask_surface.get()),SDL_DestroyTexture);
+                require(variant!=nullptr,"SDL_CreateTextureFromSurface alpha mask");
+                require(SDL_SetTextureScaleMode(variant.get(),SDL_SCALEMODE_NEAREST),"SDL_SetTextureScaleMode alpha mask");
+                masks.push_back({test,quad.color.a,std::move(variant)});found=std::prev(masks.end());
+            }
+            selected=found->texture.get();
+        }
+        quad_textures.push_back(selected);
+    }
     if (!headless) require(SDL_SetRenderLogicalPresentation(renderer.get(), target_width, target_height, SDL_LOGICAL_PRESENTATION_LETTERBOX), "SDL_SetRenderLogicalPresentation");
     bool running = true;
     while (running) {
@@ -190,11 +226,13 @@ int view(const std::string& filename, bool headless, const std::string& capture,
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_EVENT_QUIT || (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_ESCAPE)) running = false;
         }
-        require(SDL_SetRenderDrawColor(renderer.get(), 0, 0, 0, 0), "SDL_SetRenderDrawColor");
+        if(sprite_mode)require(SDL_SetRenderTarget(renderer.get(),canvas.get()),"SDL_SetRenderTarget canvas");
+        const auto background=sprite_mode?sprite_options->background:std::array<std::uint8_t,4>{0,0,0,0};
+        require(SDL_SetRenderDrawColor(renderer.get(), background[0],background[1],background[2],background[3]), "SDL_SetRenderDrawColor");
         require(SDL_RenderClear(renderer.get()), "SDL_RenderClear");
         if(sprite_mode){
-            for(const auto& quad:preview.quads)
-                require(saga::desktop::render_preview_quad(renderer.get(),texture.get(),quad,static_cast<float>(target_height)),"SDL_RenderGeometry sprite");
+            for(std::size_t i=0;i<preview.quads.size();++i)
+                require(saga::desktop::render_preview_quad(renderer.get(),quad_textures[i],preview.quads[i],static_cast<float>(target_height)),"SDL_RenderGeometry sprite");
         } else if (opt_mode) {
             for (const auto& piece : composition.pieces) {
                 const SDL_FRect from{static_cast<float>(piece.u), static_cast<float>(piece.v),
@@ -206,6 +244,11 @@ int view(const std::string& filename, bool headless, const std::string& capture,
         } else require(SDL_RenderTexture(renderer.get(), texture.get(), nullptr, nullptr), "SDL_RenderTexture");
         Surface readback(headless&&sprite_mode?SDL_RenderReadPixels(renderer.get(),nullptr):nullptr,SDL_DestroySurface);
         if(headless&&sprite_mode)require(readback!=nullptr,"SDL_RenderReadPixels");
+        if(sprite_mode){
+            require(SDL_SetRenderTarget(renderer.get(),nullptr),"SDL_SetRenderTarget window");
+            require(SDL_SetRenderDrawColor(renderer.get(),0,0,0,0),"SDL_SetRenderDrawColor window");require(SDL_RenderClear(renderer.get()),"SDL_RenderClear window");
+            require(SDL_RenderTexture(renderer.get(),canvas.get(),nullptr,nullptr),"SDL_RenderTexture canvas");
+        }
         require(SDL_RenderPresent(renderer.get()), "SDL_RenderPresent");
         if (headless) {
             // Readback format is backend-selected; explicitly retain four channels.
@@ -222,7 +265,10 @@ int view(const std::string& filename, bool headless, const std::string& capture,
         if(preview.sprite){std::cout<<'[';for(std::size_t i=0;i<12;++i){if(i)std::cout<<',';std::cout<<preview.sprite->at(i);}std::cout<<']';}
         else std::cout<<"null";
         std::cout<<",\"angle\":"<<sprite_options->angle<<",\"skew\":"<<(sprite_options->skew?"true":"false")
-                 <<",\"profile\":\"identity world with native local transforms, no atlas, zero expansion, replace RGBA, no UI overlays\"}\n";
+                 <<",\"image_alpha_type\":"<<image_alpha<<",\"raw_rgba\":"<<(sprite_options->raw_rgba?"true":"false")
+                 <<",\"encoded_alpha\":"<<sprite_options->alpha<<",\"color\":"<<sprite_options->color<<",\"shader_keys\":[";
+        for(std::size_t i=0;i<preview.quads.size();++i){if(i)std::cout<<',';std::cout<<preview.quads[i].shader_key;}
+        std::cout<<"],\"profile\":\"identity world, native local transforms, no atlas, zero expansion, explicit canvas and mesh color state, no UI overlays\"}\n";
     } else if (opt_mode) {
         std::cout << "{\"canvas_kind\":\"occupied_bounds_not_original_dimensions\",\"occupied_bounds\":["
                   << composition.x0 << ',' << composition.y0 << ',' << composition.x1 << ',' << composition.y1
@@ -241,7 +287,8 @@ int main(int argc, char** argv) {
         std::string filename, capture, opt_file;
         std::optional<saga::desktop::SpritePreviewOptions> sprite;
         std::optional<std::array<std::int32_t,2>> canvas,origin,standard;
-        std::optional<std::int32_t> angle;bool skew=false;
+        std::optional<std::int32_t> angle,alpha,color;bool skew=false,raw_rgba=false;
+        std::optional<std::array<std::uint8_t,4>> background;
         const auto number=[](const char* text){
             const std::string value(text);std::int32_t result=0;
             const auto parsed=std::from_chars(value.data(),value.data()+value.size(),result);
@@ -262,11 +309,19 @@ int main(int argc, char** argv) {
             else if(argument=="--standard"&&!standard&&i+2<argc){const auto w=number(argv[++i]),h=number(argv[++i]);standard=std::array<std::int32_t,2>{w,h};}
             else if(argument=="--angle"&&!angle&&i+1<argc)angle=number(argv[++i]);
             else if(argument=="--skew"&&!skew)skew=true;
+            else if(argument=="--alpha"&&!alpha&&i+1<argc)alpha=number(argv[++i]);
+            else if(argument=="--color"&&!color&&i+1<argc)color=number(argv[++i]);
+            else if(argument=="--raw-rgba"&&!raw_rgba)raw_rgba=true;
+            else if(argument=="--background"&&!background&&i+4<argc){
+                std::array<std::uint8_t,4> rgba;
+                for(auto& channel:rgba){const auto value=number(argv[++i]);if(value<0||value>255)throw std::invalid_argument("background channels must be 0..255");channel=static_cast<std::uint8_t>(value);}
+                background=rgba;
+            }
             else if (filename.empty() && argument.rfind("--", 0) != 0) filename = argument;
             else throw std::runtime_error("Invalid or duplicate argument");
         }
         if (filename.empty() || headless != !capture.empty()) {
-            std::cerr << "Usage: asset_viewer image.png [--opt file.opt] [--sprite file.seb frame layer texture-slot --canvas width height [--origin x y] [--standard width height] [--angle degrees [--skew]]] [--headless --capture output.bmp]\n";
+            std::cerr << "Usage: asset_viewer image.png [--opt file.opt] [--sprite file.seb frame layer texture-slot --canvas width height [--origin x y] [--standard width height] [--angle degrees [--skew]] [--alpha encoded] [--color packed-int32] [--background r g b a] [--raw-rgba]] [--headless --capture output.bmp]\n";
             return 2;
         }
         if(sprite){
@@ -278,7 +333,9 @@ int main(int argc, char** argv) {
             if(standard){sprite->standard_width=(*standard)[0];sprite->standard_height=(*standard)[1];}
             if(skew&&!angle)throw std::invalid_argument("--skew requires --angle");
             sprite->angle=angle.value_or(0);sprite->skew=skew;
-        }else if(canvas||origin||standard||angle||skew)throw std::invalid_argument("preview arguments require --sprite");
+            if(raw_rgba&&(alpha||color))throw std::invalid_argument("alpha/color arguments require native color passes");
+            sprite->alpha=alpha.value_or(255);sprite->color=color.value_or(-1);sprite->raw_rgba=raw_rgba;if(background)sprite->background=*background;
+        }else if(canvas||origin||standard||angle||skew||alpha||color||raw_rgba||background)throw std::invalid_argument("preview arguments require --sprite");
         return view(filename, headless, capture, opt_file,sprite);
     } catch (const std::exception& error) {
         std::cerr << "asset_viewer: " << error.what() << '\n';
