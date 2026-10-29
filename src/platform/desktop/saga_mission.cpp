@@ -42,8 +42,10 @@ int main(int argc,char** argv)try{
         std::cout<<"{\"id\":"<<profile.entity_world->id(entity)<<",\"destroyed\":"<<(profile.entity_world->destroyed(entity)?"true":"false");
         if(const auto* p=dynamic_cast<saga::core::ContactPosition*>(entity.get(0)))std::cout<<",\"x\":"<<p->x<<",\"y\":"<<p->y<<",\"z\":"<<p->z;
         if(const auto* h=dynamic_cast<saga::core::HumanRecordLink*>(entity.get(14)))std::cout<<",\"human_state\":"<<h->state<<",\"human_frame\":"<<h->frame<<",\"attack_frame\":"<<h->attack_frame;
+        profile.write_actor_parameters(*profile.created[i],std::cout);
         std::cout<<'}';
     }
-    std::cout<<"],\"render_commands\":"<<profile.queue.counts->at(0)+profile.queue.counts->at(1)
+    std::cout<<']';profile.write_combat_report(std::cout);
+    std::cout<<",\"render_commands\":"<<profile.queue.counts->at(0)+profile.queue.counts->at(1)
              <<",\"scope\":\"selected scene; full schedule, quest bootstrap, input and replay unbound\"}\n";return 0;
 }catch(const std::exception& error){std::cerr<<"saga_mission: "<<error.what()<<'\n';return 1;}

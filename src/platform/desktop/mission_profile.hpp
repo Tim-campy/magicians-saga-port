@@ -4,6 +4,7 @@
 #include "mission_humans.hpp"
 #include <filesystem>
 #include <tuple>
+#include <ostream>
 
 namespace saga::desktop {
 struct SceneResource {
@@ -18,6 +19,8 @@ public:
     MissionProfile(const MissionProfile&)=delete;
     MissionProfile& operator=(const MissionProfile&)=delete;
     void step(); // Move (optional), Animation, Render, Garbage (optional), in native relative order.
+    void write_combat_report(std::ostream&); // Diagnostic JSON fragment; not a complete-state snapshot.
+    void write_actor_parameters(core::ComponentSlots&,std::ostream&);
     std::size_t selected_count=0;
     BitmapApplication application,global;BitmapTextures textures;std::vector<std::unique_ptr<SceneResource>> owners;
     core::SpriteMatrix world;bool has_world=false;core::RenderQueue queue=core::make_render_queue();std::size_t commands=0;

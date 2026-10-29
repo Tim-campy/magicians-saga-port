@@ -10,7 +10,7 @@ template<class T>T& acquire(std::deque<T>& pool){pool.emplace_back();return pool
 }
 MissionEntities::MissionEntities(const GameplayCatalog& data,MissionProgress& saved,std::int32_t slots,StageGeometry* map,Resources resources,ResourceIds names)
     :catalog_(data),progress_(saved),slots_(slots),map_(map),resources_(std::move(resources)),resource_ids_(std::move(names)),
-     groups_(registry_,[this](const ComponentSlots& e){return id(e);}),bullet_world_{ids_,static_cast<BulletFactoryHost&>(*this)},
+     groups_(registry_,[this](const ComponentSlots& e){return id(e);}),bullet_world_{ids_,static_cast<BulletFactoryHost&>(*this)},effect_world_{ids_,static_cast<EffectFactoryHost&>(*this)},
      party_rows_(data.characters.size()),party_(std::make_shared<std::vector<PartyCharacter*>>(data.characters.size(),nullptr)),
      hat_rows_(data.hats.size()),hats_(std::make_shared<std::vector<HumanHat*>>(data.hats.size(),nullptr)),shop_(data.shop.size()){
     if(!resources_||!resource_ids_)throw std::invalid_argument("mission entities need resource providers");
@@ -25,6 +25,11 @@ ComponentSlots& MissionEntities::human(const HumanCreation& args){
 ComponentSlots* MissionEntities::enemy(const EnemyCreation& args){return create_enemy(args,ids_,*this);}
 ComponentSlots& MissionEntities::bullet(const BulletCreation& args){return create_bullet(args,*this);}
 ComponentSlots& MissionEntities::effect(ProjectilePoint p,std::int32_t clip,std::int32_t image,bool loop){return create_visual_effect(p,clip,image,loop,ids_,*this);}
+ComponentSlots& MissionEntities::raw_entity(std::int32_t type){return create_entity(ids_,type,false,static_cast<BulletFactoryHost&>(*this));}
+ProjectileLink& MissionEntities::acquire_projectile(){return acquire(projectiles_);}
+ProjectileModification& MissionEntities::acquire_modification(){return acquire(modifications_);}
+void MissionEntities::return_component(std::int32_t slot,Component* value){retired_.emplace_back(slot,value);}
+void MissionEntities::add_animation(ComponentSlots& e,std::int32_t rate,std::int32_t backup){add_animation_component(e,rate,backup,static_cast<EffectFactoryHost&>(*this));}
 std::int32_t MissionEntities::id(const ComponentSlots& e)const{return node_index_.at(&e)->id;}
 QuestMemberId MissionEntities::handle(const ComponentSlots& e)const{return node_index_.at(&e)->handle;}
 bool MissionEntities::destroyed(const ComponentSlots& e)const{return node_index_.at(&e)->lifetime.destroyed;}

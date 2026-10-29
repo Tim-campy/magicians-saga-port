@@ -12,10 +12,11 @@ struct Cursor final:RenderCursor {
     explicit Cursor(EntitySubset& group):cursor(group.cursor()){}
     std::optional<ComponentSlots*> next()override{return cursor.next();}
 };
-struct MovementWorld final:PassInitializationWorld {
+struct MovementWorld final:PassInitializationWorld,ModificationInitializationWorld {
     MissionEntities& world;
     explicit MovementWorld(MissionEntities& value):world(value){}
     EntitySubset* subset(const std::vector<std::int32_t>& slots)override{return world.subset(slots);}
+    EntitySubset* modification_subset(const EventIntegers& slots)override{return world.subset(slots);}
     void subscribe_impact(EntityEvents::Single,std::optional<EventHashes>)override{
         throw std::logic_error("mission impact dispatch is not bound");
     }
@@ -30,6 +31,7 @@ MissionScene::MissionScene(MissionEntities& world,MissionApplication& app,Entity
     :world_(world),app_(app),visible_(visible),view_(view),map_(map),form_{form_state_,nullptr,this}{
     initialize_render(renderer_,this);initialize_animation(animations_,&world_);
     MovementWorld movement(world_);initialize_movement(movers_,&movement);initialize_garbage(garbage_entities_,&movement);
+    initialize_modifications(modifications_,&movement);
 }
 void MissionScene::advance_animations(SharedAnimationGates gates){update_animations(animations_,gates);}
 void MissionScene::advance_movement(std::int32_t pass,bool enabled){
@@ -38,6 +40,7 @@ void MissionScene::advance_movement(std::int32_t pass,bool enabled){
 void MissionScene::advance_garbage(std::int32_t pass,bool enabled){
     if(gameplay_needs_update(31,enabled,pass))garbage_pass_.update(*this);
 }
+void MissionScene::advance_modifications(std::int32_t pass,bool enabled){if(gameplay_needs_update(18,enabled,pass))update_modifications(modifications_,*this);}
 std::unique_ptr<GarbageCursor> MissionScene::open_garbage_cursor(){return std::make_unique<ExpiringCursor>(world_,required(garbage_entities_));}
 RenderQueue& MissionScene::render(){faults_.clear();clear_render_queue(queue_);update_render(renderer_,*this,*this);return queue_;}
 std::unique_ptr<RenderCursor> MissionScene::visible_render_cursor(){return std::make_unique<Cursor>(visible_);}

@@ -123,8 +123,10 @@ int main(int argc,char** argv)try{
                 if(p)std::cout<<",\"x\":"<<p->x<<",\"y\":"<<p->y<<",\"z\":"<<p->z;
                 else if(!dead)throw std::logic_error("selected live entity has no position");
                 if(const auto* h=dynamic_cast<HumanRecordLink*>(created[i]->get(14)))std::cout<<",\"human_state\":"<<h->state<<",\"human_frame\":"<<h->frame<<",\"attack_frame\":"<<h->attack_frame;
+                profile.write_actor_parameters(*created[i],std::cout);
                 std::cout<<'}';}
-            std::cout<<"],\"profile\":\"selected movement/animation/render/garbage passes; gameplay input and full schedule unbound\"}\n";return 0;
+            std::cout<<']';profile.write_combat_report(std::cout);
+            std::cout<<",\"profile\":\"selected human/projectile/movement/animation/render/garbage passes; gameplay input and full schedule unbound\"}\n";return 0;
         }
         submit();auto pixels=renderer.read_pixels();
         Surface captured(SDL_CreateSurfaceFrom(width,height,SDL_PIXELFORMAT_RGBA32,pixels.rgba.data(),width*4),SDL_DestroySurface);require(captured!=nullptr,"SDL_CreateSurfaceFrom");

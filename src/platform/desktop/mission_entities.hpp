@@ -4,6 +4,7 @@
 #include "core/gameplay/animation_pass.hpp"
 #include "core/gameplay/enemy_factory.hpp"
 #include "core/gameplay/effect_factory.hpp"
+#include "core/gameplay/drop_collection.hpp"
 #include "core/gameplay/stage_cleanup.hpp"
 #include "core/ecs/entity_events.hpp"
 #include "core/gameplay/member_selection.hpp"
@@ -20,7 +21,8 @@ struct MissionProgress {
 // Native world teardown, pooling reuse, input updates and the complete system schedule remain separate.
 class MissionEntities final:public core::HumanFactoryHost,public core::EnemyFactoryHost,
     public core::BulletFactoryHost,public core::EffectFactoryHost,public core::ComponentObserver,
-    public core::AnimationInitializationHost,public core::QuestEntityHost,private core::EntityDeletionHost {
+    public core::AnimationInitializationHost,public core::QuestEntityHost,private core::EntityDeletionHost,
+    public core::ProjectileLaunchHost {
 public:
     using Resources=std::function<core::AnimationResource*(std::int32_t)>;
     using ResourceIds=std::function<std::int32_t(std::string_view)>;
@@ -31,6 +33,12 @@ public:
     core::ComponentSlots* enemy(const core::EnemyCreation&);
     core::ComponentSlots& bullet(const core::BulletCreation&);
     core::ComponentSlots& effect(core::ProjectilePoint,std::int32_t clip,std::int32_t image,bool loop);
+    core::ComponentSlots& raw_entity(std::int32_t type);
+    core::DropEffectWorld& effect_world(){return effect_world_;}
+    core::ProjectileLink& acquire_projectile()override;
+    core::ProjectileModification& acquire_modification()override;
+    void return_component(std::int32_t,core::Component*)override;
+    void add_animation(core::ComponentSlots&,std::int32_t rate,std::int32_t backup)override;
     std::int32_t id(const core::ComponentSlots&)const;
     core::QuestMemberId handle(const core::ComponentSlots&)const;
     bool destroyed(const core::ComponentSlots&)const;
@@ -106,7 +114,7 @@ private:
     core::EntityRegistry registry_{*this};core::DynamicSubsets groups_;
     core::PlayerWorldState player_world_{nullptr,&groups_,0};core::Component player_marker_;
     core::EntityEvents gameplay_events_;
-    core::EntityIdState ids_;core::BulletFactoryWorld bullet_world_;
+    core::EntityIdState ids_;core::BulletFactoryWorld bullet_world_;core::DropEffectWorld effect_world_;
     std::vector<std::optional<core::PartyCharacter>> party_rows_;core::PartyCharacters party_;
     std::vector<std::optional<core::HumanHat>> hat_rows_;core::HumanHats hats_;
     core::ParameterMaximumLevels maxima_=core::initial_parameter_maximum_levels(),enemy_maxima_=core::initial_enemy_parameter_maximum_levels();
@@ -120,5 +128,7 @@ private:
     std::deque<core::ProjectileCollision> collisions_;std::deque<core::EnemyRecordLink> enemies_;std::deque<core::DefeatColor> colors_;
     std::deque<core::BulletComponent> bullets_;std::deque<core::EmitterComponent> emitters_;std::deque<core::ProjectileDamage> damages_;
     std::deque<core::EffectComponent> effects_;std::deque<core::GarbageLifetime> garbage_;
+    std::deque<core::ProjectileLink> projectiles_;std::deque<core::ProjectileModification> modifications_;
+    std::vector<std::pair<std::int32_t,core::Component*>> retired_; // Retain detached objects; pooling reuse remains unbound.
 };
 } // namespace saga::desktop

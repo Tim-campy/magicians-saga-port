@@ -8,13 +8,13 @@ import unittest
 
 EXE = Path(sys.argv.pop(1)).resolve() if len(sys.argv) > 1 else None
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from mission_scene_fixture import make_table_scene
+from mission_scene_fixture import make_table_scene, make_shoot_scene
 
 
 @unittest.skipUnless(EXE, 'saga_mission supplied by CTest')
 class MissionProfileTests(unittest.TestCase):
-    def run_host(self, scene, *extra, fps=25):
-        return subprocess.run([str(EXE), '--scene', str(scene), '--frames', '12', '--headless',
+    def run_host(self, scene, *extra, fps=25, frames=12):
+        return subprocess.run([str(EXE), '--scene', str(scene), '--frames', str(frames), '--headless',
                                '--fps', str(fps), '--debug', '0', '--rng', 'system', '--seed', '42', *extra],
                               capture_output=True, text=True, timeout=30)
 
@@ -59,6 +59,22 @@ class MissionProfileTests(unittest.TestCase):
             self.assertNotEqual(self.run_host(scene).returncode, 0)
             scene.write_text(text + 'runtime 60 0 system 42\n', encoding='utf-8')
             self.assertIn('conflicts', self.run_host(scene).stderr)
+
+    def test_actual_shoot_flight_impact_and_nonlethal_damage(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            scene = root / 'scene.txt'
+            scene.write_text(make_shoot_scene(root), encoding='utf-8')
+            result = self.run_host(scene, frames=80)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            report = json.loads(result.stdout)
+            self.assertGreater(report['shots'], 0)
+            self.assertGreater(report['total_damage'], 0)
+            self.assertGreater(report['rng_draws'], 0)
+            self.assertEqual(report['positions'][0]['mp'], 100 - report['shots'])
+            self.assertEqual(report['positions'][1]['hp'], 100000 - report['total_damage'])
+            repeated = self.run_host(scene, frames=80)
+            self.assertEqual(repeated.stdout, result.stdout)
 
     def test_explicit_contract_failures(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -159,10 +159,28 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
 }
 void MissionProfile::step(){
     if(!mission)throw std::invalid_argument("selected logic requires a table-backed entity scene");
-    if(humans)humans->update();
+    if(humans){humans->update();humans->advance_projectiles();}
     if(simulate)mission->advance_movement(0);
+    if(simulate)mission->advance_modifications(0);
     mission->advance_animations({automatic!=0,application_update!=0});queue=mission->render();
     if(!mission->faults().empty())throw std::invalid_argument("entity render fault: "+mission->faults().front().message);
     if(simulate)mission->advance_garbage(0);
+}
+void MissionProfile::write_actor_parameters(ComponentSlots& actor,std::ostream& out){
+    if(actor.contains(23)){
+        out<<",\"hp\":"<<resolve_combat_parameter(actor,0)->value;
+        if(actor.contains(14))out<<",\"mp\":"<<resolve_combat_parameter(actor,1)->value;
+    }
+}
+void MissionProfile::write_combat_report(std::ostream& out){
+    out<<",\"shots\":"<<(humans?humans->shots():0)<<",\"total_damage\":"<<(humans?humans->total_damage():0)<<",\"projectiles\":[";
+    bool first=true;
+    if(entity_world){auto cursor=entity_world->subset({27,0,1})->cursor();while(const auto e=cursor.next()){
+        const auto* p=dynamic_cast<ContactPosition*>((*e)->get(0));const auto* flight=dynamic_cast<ProjectileLink*>((*e)->get(27));
+        if(!p||!flight)throw std::invalid_argument("missing diagnostic projectile fields");
+        if(!first)out<<',';first=false;
+        out<<"{\"id\":"<<entity_world->id(**e)<<",\"x\":"<<p->x<<",\"y\":"<<p->y<<",\"z\":"<<p->z<<",\"frame\":"<<flight->frame<<",\"max_frame\":"<<flight->max_frame<<'}';
+    }}
+    out<<']';
 }
 } // namespace saga::desktop

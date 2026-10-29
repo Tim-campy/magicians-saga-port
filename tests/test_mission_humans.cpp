@@ -27,15 +27,17 @@ int main()try{
     check(field<EntitySprite>(hero,2).animation.clip==40&&field<ProjectileSpeed>(hero,1).z<0);
     auto* movers=world.subset({0,1});move_subset(*movers);check(field<ContactPosition>(hero,0).z<100);
     humans.set_state(hero,0,0);check(field<EntitySprite>(hero,2).animation.clip==36);
+    hero.add(27,&world.acquire_projectile()); // Event23 is emitted only while Projectile is present.
     world.events().send(23,&hero); // Real Human Init registered the guarded receiver.
     field<HumanRecordLink>(hero,14).state=4;
     unbound([&]{world.events().send(23,&hero);});check(field<EntitySprite>(hero,2).animation.clip==12);
-    check(field<HumanRecordLink>(hero,14).state==4); // Failure preserves the native prefix, no invented success.
+    check(field<HumanRecordLink>(hero,14).state==5); // Real effect + death state precede the unbound stage receiver.
     field<HumanRecordLink>(hero,14).state=0;
     auto* enemy=world.enemy({0,4,7,0,{10,0,20}});check(enemy!=nullptr);
     const auto z=field<ContactPosition>(hero,0).z;
-    unbound([&]{world.events().send(29,&hero,enemy);});
+    world.events().send(29,&hero,enemy);
     check(field<ContactPosition>(hero,0).z==z+3&&field<ContactDirection>(hero,12).locked);
     check(field<EntityPlayback>(hero,10).state.return_clip==36);
+    check(field<HumanRecordLink>(hero,14).state==3);
     std::cout<<"mission human frame, state, RNG and event services ok\n";return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

@@ -27,6 +27,9 @@ MissionHumans::MissionHumans(MissionEntities& world,const GameplayCatalog& data,
         add_member(members_,*actor);
     }
     initialize_humans(system_,this,services_);
+    // Native event23 receiver order: Human, Enemy, Projectile. Full Enemy Init remains separate.
+    world_.events().subscribe(23,EntityEvents::Single([this](ComponentSlots* e){enemy_projectile_impact(e,records_,random_,*this);}));
+    initialize_projectiles(projectiles_,this,*this);
 }
 void MissionHumans::update(std::int32_t pass,bool enabled){if(gameplay_needs_update(4,enabled,pass))update_humans(system_,*this);}
 void MissionHumans::set_state(ComponentSlots& e,std::int32_t state,float speed_z){
@@ -45,9 +48,11 @@ void MissionHumans::subscribe_human_impact(EntityEvents::Single receiver,std::op
 void MissionHumans::subscribe_human_contact(EntityEvents::Pair receiver,std::optional<EventHashes> hash){world_.events().subscribe(29,std::move(receiver),hash);}
 ComponentSlots& MissionHumans::hero(){return required(member_hero(human_world()));}
 void MissionHumans::cut_in_animation(ComponentSlots& e,std::int32_t clip,std::int32_t backup){core::cut_in_animation(live_animation(e),clip,backup);}
-bool MissionHumans::shoot_human(ComponentSlots&,ComponentSlots&){unbound("HumanSystem.Shoot producer and projectile/impact schedule");}
-void MissionHumans::contact_effect(std::int32_t,std::int32_t,std::int32_t,float,float,float){unbound("human contact effect");}
-void MissionHumans::impact_effect(std::int32_t,std::int32_t,std::int32_t,float,float,float){unbound("human death impact effect");}
+bool MissionHumans::shoot_human(ComponentSlots& actor,ComponentSlots& target){
+    const bool made=core::shoot_human(system_,&actor,&target,*this,*this);if(made)++shots_;return made;
+}
+void MissionHumans::contact_effect(std::int32_t clip,std::int32_t image,std::int32_t loop,float x,float y,float z){world_.effect({x,y,z},clip,image,loop!=0);}
+void MissionHumans::impact_effect(std::int32_t clip,std::int32_t image,std::int32_t loop,float x,float y,float z){world_.effect({x,y,z},clip,image,loop!=0);}
 void MissionHumans::send_human_dead(ComponentSlots&){unbound("stage death and enemy retarget receivers");}
 DropPlacementWorld* MissionHumans::drop_world(){unbound("stage drops");}
 } // namespace saga::desktop

@@ -2,6 +2,9 @@
 #include "mission_entities.hpp"
 #include "core/gameplay/human_initialization.hpp"
 #include "core/gameplay/stage_recovery.hpp"
+#include "core/gameplay/human_shoot.hpp"
+#include "core/gameplay/enemy_impact.hpp"
+#include "core/gameplay/pass_initialization.hpp"
 
 namespace saga::desktop {
 struct MissionRuntimeConfig {std::int32_t fps;bool debug;std::int32_t seed;std::string backend;};
@@ -9,13 +12,19 @@ struct MissionHumanScenario {std::int32_t distance,min_z_rate,max_z_rate,attribu
 // Concrete Human Init/frame services. Stage/map entry and player-input producers remain separate.
 class MissionHumans final:private core::HumanFrameHost,private core::HumanInitializationWorld,
     private core::HumanImpactHost,private core::HumanContactHost,private core::StagePlacementHost,
-    private core::MemberFormationHost {
+    private core::MemberFormationHost,private core::HumanShootHost,
+    private core::ProjectileMotionHost,private core::PassInitializationWorld,private core::CombatEventHost,
+    private core::EnemyImpactHost,private core::ImpactEffectHost,private core::ProjectileHitHost,
+    private core::EcsCombatPresentation,private core::DamagePresentationHost {
 public:
     MissionHumans(MissionEntities&,const GameplayCatalog&,MissionProgress&,core::StageGeometry&,MissionRuntimeConfig,MissionHumanScenario);
     MissionHumans(const MissionHumans&)=delete;MissionHumans& operator=(const MissionHumans&)=delete;
     void update(std::int32_t pass=0,bool enabled=true);
+    void advance_projectiles(std::int32_t pass=0,bool enabled=true);
     void set_state(core::ComponentSlots&,std::int32_t,float speed_z);
     std::uint64_t random_draws()const{return random_.draws;}
+    std::uint64_t shots()const{return shots_;}
+    std::int32_t total_damage()const{return stage_.total_damage;}
 private:
     struct Random final:core::RandomSource {core::LegacySystemRandom source;std::uint64_t draws=0;
         explicit Random(std::int32_t seed):source(seed){}std::int32_t next()override{++draws;return source.next();}};
@@ -50,11 +59,52 @@ private:
     void send_human_dead(core::ComponentSlots&)override;
     core::StageGeometry* stage_map()override{return &geometry_;}
     core::DropPlacementWorld* drop_world()override;
+    core::BulletRecords shoot_bullet_records()override{return world_.bullet_records();}
+    core::BulletFactoryHost* shoot_bullet_world()override{return &world_;}
+    core::DropEffectWorld* shoot_effect_world()override{return &world_.effect_world();}
+    core::ProjectileLaunchHost& shoot_launch_host()override{return world_;}
+    core::EventInstruction shoot_attack_animations()override{return attack_clips_;}
+    void play_attack_sound(bool)override;
+    core::EntitySubset* subset(const std::vector<std::int32_t>& slots)override{return world_.subset(slots);}
+    void subscribe_impact(core::EntityEvents::Single,std::optional<core::EventHashes>)override;
+    void send_impact(core::ComponentSlots&)override;
+    void destroy(core::ComponentSlots& e,bool remove)override{world_.destroy(e,remove);}
+    core::ComponentSlots* search_opponent(core::ComponentSlots&)override;
+    void read_bullet_data(core::ComponentSlots&)override;
+    void create_bullet_impact(core::ComponentSlots&,core::ComponentSlots&)override;
+    void bullet_hit(core::ComponentSlots&,core::ComponentSlots*)override;
+    core::ComponentSlots* create_effect(std::int32_t,std::int32_t,std::int32_t,core::ProjectilePoint)override;
+    core::ComponentSlots* create_emitter(std::int32_t,std::int32_t,std::int32_t,std::int32_t,std::int32_t,core::ProjectilePoint)override;
+    void boss_defeated(core::ComponentSlots&)override;
+    core::ProjectileLink& acquire_projectile()override{return world_.acquire_projectile();}
+    core::ProjectileModification& acquire_modification()override{return world_.acquire_modification();}
+    void return_component(std::int32_t slot,core::Component* p)override{world_.return_component(slot,p);}
+    void add_animation(core::ComponentSlots& e,std::int32_t rate,std::int32_t backup)override{world_.add_animation(e,rate,backup);}
+    const core::BulletImpactData* bullet_data(core::ComponentSlots&)override;
+    std::int32_t attribute_value(core::ComponentSlots& e,std::int32_t attribute)override{return static_cast<std::uint32_t>(attribute)<=2U?human_parameter(e,attribute+10):0;}
+    core::ComponentSlots* create_entity(std::int32_t type)override{return &world_.raw_entity(type);}
+    core::ContactPosition& acquire_position()override{return world_.acquire_position();}
+    core::ProjectileCollision& acquire_collision()override{return world_.acquire_collision();}
+    core::ProjectileDamage& acquire_damage()override{return world_.acquire_bullet_damage();}
+    void add_garbage(core::ComponentSlots& e,std::int32_t frames)override{core::add_garbage_lifetime(e,frames,world_);}
+    void add_color(core::ComponentSlots&,std::int32_t,std::int32_t,std::int32_t,std::int32_t)override;
+    bool damage(core::ComponentSlots*,core::ComponentSlots&,std::int32_t,std::int32_t)override;
+    void defeat(core::ComponentSlots&)override;
+    void impact(core::ComponentSlots& e,core::ComponentSlots* parent)override{core::create_impact_effect(&e,parent,records_,*this);}
+    void miss(core::ComponentSlots&)override;
+    void effects(core::ComponentSlots&,const core::DamageNumbers&)override;
+    void send_damage(core::ComponentSlots& e,std::int32_t amount)override{core::record_ecs_stage_damage(stage_.total_damage,e,amount);}
+    void diagnostics(const core::DamageNumbers&)override;
+    void damage_labels(core::ComponentSlots&,const core::DamageNumbers&)override;
+    void positional_damage_effect(core::ProjectilePoint at)override{world_.effect(at,0,1,false);}
     MissionEntities& world_;MissionProgress& saved_;core::StageGeometry& geometry_;MissionRuntimeConfig runtime_;Random random_;
     core::CombatRecordTables records_;core::EventIntegers characters_,equipment_,hats_,cloth_;
     core::CombatSavedLevels levels_{characters_,equipment_,hats_,cloth_};
     core::StageStartState stage_;core::AttackButtonState button_;core::MemberRoster members_;
     core::EnemyCreationSystem enemies_;core::HumanFrameSystem system_;
     core::HumanEventServices services_{records_,*this,*this};
+    core::ProjectileSystemState projectiles_;core::EventInstruction attack_clips_=core::initial_attack_animation_ids();
+    core::AttributeAffinityTables affinities_=core::initial_attribute_affinity_tables();
+    std::uint64_t shots_=0,attack_sounds_=0,damage_presentations_=0;
 };
 } // namespace saga::desktop

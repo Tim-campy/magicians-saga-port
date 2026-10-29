@@ -62,4 +62,15 @@ void fly_away(ComponentSlots& e,std::int32_t min_x,std::int32_t max_x,
         add_projectile_modification(e,8,99,false,false,host);
     }
 }
+void present_combat_damage(ComponentSlots& e,const DamageNumbers& numbers,DamagePresentationHost& host){
+    host.damage_labels(e,numbers);
+    if(e.contains(combat_enemy_slot)){
+        if(e.contains(modify_animation_slot)){
+            auto* previous=e.get(modify_animation_slot);e.remove(modify_animation_slot);host.return_component(modify_animation_slot,previous);
+        }
+        AnimationModificationRequest request;request.type=4;request.max_frame=8;
+        add_animation_modification(e,request,host);
+    }
+    host.positional_damage_effect({position(e).x,position(e).y+10.0F,position(e).z});
+}
 }

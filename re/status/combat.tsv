@@ -26,7 +26,7 @@ game:0x06000e72	documented	docs/subsystems/combat.md	enemy+0x1c % ClampMin(FPS/V
 game:0x060000e8	documented	docs/subsystems/combat.md	value_ + extraValue_ (32-bit)
 game:0x060000fd	reimplemented	src/core/gameplay/combat_rules.cpp	subtract_parameter; tests/test_combat_rules.cpp
 game:0x0600025d	reimplemented	src/core/gameplay/combat_rules.cpp	attribute_affinity with initial tables; tests/test_combat_rules.cpp
-game:0x06000e82	documented	docs/subsystems/combat.md	numeric/state path ported with RNG and explicit host; attacker rate owner resolved; effects/ECS remain partial
+game:0x06000e82	documented	docs/subsystems/combat.md	Numeric damage and stateful post-label shake/positional-effect suffix ported; desktop host binds real stats/RNG/DEBUG and Stage accounting; floating label selection and full event routing remain partial
 game:0x06000e7e	reimplemented	src/core/gameplay/projectile_hit.cpp	Projectile guards; damage/defeat/impact order; owner reread; pool return and speed zeroing; ECS integration test
 game:0x06000e7d	reimplemented	src/core/gameplay/contact_collision.cpp	Full contact orchestration with explicit state/presentation services; tested guards, payloads, callback order and recoil
 game:0x06000e83	reimplemented	src/core/gameplay/enemy_defeat.cpp	Complete motion state color counter and pending reward sequence; shared-RNG ECS damage integration tested
@@ -201,7 +201,7 @@ game:0x06000d41	reimplemented	src/core/gameplay/enemy_frame.cpp	Waiting iff BOSS
 game:0x06000d45	reimplemented	src/core/gameplay/enemy_frame.cpp	Alive iff state!=4, including fleeing; negative and out-of-enum states tested.
 game:0x06000d46	reimplemented	src/core/gameplay/enemy_frame.cpp	Dead iff state==4; complements alive across state boundaries, with dead fixed activation scenario.
 kairo:0x06000ed8	reimplemented	src/core/gameplay/enemy_frame.cpp	Narrow activation contract: separate binary32 squared X/Z distance <= squared radius, ignores Y; boundary/negative radius/NaN tested.
-game:0x06000ebd	reimplemented	src/core/gameplay/human_frame.cpp	Full live state/frame orchestration; MissionHumans connects real tables, saved gear levels, FPS/RNG, stage limits and world events to the scene hosts; Shoot/effect/death services remain explicit reached-path errors there.
+game:0x06000ebd	reimplemented	src/core/gameplay/human_frame.cpp	Full live state/frame orchestration; MissionHumans connects real tables, saved gear levels, FPS/RNG, stage limits and world events to the scene hosts; Shoot and contact effects are concrete; lethal reward and stage death services remain reached-path errors.
 game:0x06000ebe	reimplemented	src/core/gameplay/human_frame.cpp	Actual attack search first, then sub-only live formation and ordered squared-distance walking transition; tested.
 game:0x06000ebf	reimplemented	src/core/gameplay/human_frame.cpp	Captured hero movement gate, main/sub stat speed and formation quirks, dash/0.7 forward factor and exact one-draw HP/MP recovery; shared ECS stat/factory integration tested; table-backed desktop walking profile consumes actual FPS and seeded recovery RNG.
 game:0x06000ec0	reimplemented	src/core/gameplay/human_frame.cpp	Captured target/Human, active/validity gates, actual interval/wait/burst/MP end gates around required Shoot service; no fake producer, result/counter/replacement/failure tests.
@@ -222,7 +222,7 @@ game:0x06000f9a	reimplemented	src/core/gameplay/human_frame.cpp	Required capture
 game:0x06000e81	reimplemented	src/core/gameplay/human_frame.cpp	Live ordered first-nearest XYZ, inclusive squared wrapped distance*28, state-4/HP gates; fleeing/destroyed/decorative remain for caller; actual factory/NaN/tie/wrap tests.
 game:0x06000c3b	reimplemented	src/core/gameplay/human_frame.cpp	Required XYZ operands and separate binary32 squared differences, X+Y then Z sum; used/tested by real nearest selection including Y/NaN/null origins.
 game:0x060000f8	reimplemented	src/core/gameplay/human_frame.cpp	Wrapping base-value addition reuses Sub lower-first base-maximum-only clamp, stores value and returns excess; HP/MP recovery, extras/zero-max/overflow tested.
-game:0x06000ec9	reimplemented	src/core/gameplay/human_shoot.cpp	Actual first-attribute/equipped selection, two MP gates/base consumption, factory/flight/scale/height/clip/flash/sound ordering; real attack to damage/defeat/EXP and impact cleanup tested.
+game:0x06000ec9	reimplemented	src/core/gameplay/human_shoot.cpp	Actual first-attribute/equipped selection and ordered MP/factory/flight/presentation; table-backed desktop hosts run real shots and nonlethal terminal damage/cleanup; audio is a declared output stub.
 game:0x06000ef4	reimplemented	src/core/gameplay/human_shoot.cpp	Required row before stored Stage, compare current bullet attribute to stage attackAttribute; first-match/empty/null/gap behavior tested without reconstructing LINQ.
 game:0x06000bf6	reimplemented	src/core/gameplay/bullet_factory.cpp	Captured bullet table before current-global-world registration; ordered full payloads, separate map divisors, conditional blend, partial failures and callback replacement tested.
 game:0x060010ec	reimplemented	src/core/gameplay/bullet_factory.cpp	Required weapon, -1 exits without catalog query, otherwise bounds-checked nullable bullet row; synthetic lookup and equipment selection tested.

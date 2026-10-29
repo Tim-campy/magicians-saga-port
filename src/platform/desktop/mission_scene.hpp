@@ -3,6 +3,7 @@
 #include "core/gameplay/render_frame.hpp"
 #include "core/gameplay/render_draw.hpp"
 #include "core/gameplay/motion_pass.hpp"
+#include "core/gameplay/modification_frame.hpp"
 
 namespace saga::desktop {
 using MissionApplication=core::ApplicationResourceFields<core::RenderDrawResource>;
@@ -12,7 +13,7 @@ struct MissionView {
 struct MissionRenderFault {std::int32_t entity;std::string message;};
 // Selected entity group and fixed supplied view. Full mission culling/camera/input remain host bindings.
 class MissionScene final:private core::RenderInitializationWorld,private core::RenderFrameHost,
-    private core::QuestCameraHost,private core::QuestViewportView,private core::GarbageUpdateHost {
+    private core::QuestCameraHost,private core::QuestViewportView,private core::GarbageUpdateHost,private core::ModificationFrameHost {
 public:
     MissionScene(MissionEntities&,MissionApplication&,core::EntitySubset& visible,MissionView&,core::MapComponent*);
     MissionScene(const MissionScene&)=delete;
@@ -22,9 +23,12 @@ public:
     void advance_movement(std::int32_t pass,bool enabled=true);
     // Native index31 runs after RenderSystem; commands already produced remain in this frame.
     void advance_garbage(std::int32_t pass,bool enabled=true);
+    void advance_modifications(std::int32_t pass,bool enabled=true);
     core::RenderQueue& render();
     const std::vector<MissionRenderFault>& faults()const{return faults_;}
 private:
+    void destroy_modified_entity(core::ComponentSlots& e)override{world_.destroy(e,true);}
+    void return_modification(core::Component* p)override{world_.return_component(15,p);}
     std::unique_ptr<core::GarbageCursor> open_garbage_cursor()override;
     core::QuestEntityLifetime& entity_lifetime(core::QuestMemberId key)override{return world_.entity_lifetime(key);}
     void delete_from_manager(core::QuestMemberId key,bool remove)override{world_.delete_from_manager(key,remove);}
@@ -49,6 +53,7 @@ private:
     core::StageQuestForm form_state_;core::QuestCameraForm form_;
     core::RenderSystemState renderer_;core::AnimationSystemState animations_;core::SebStaticWork sprite_work_;
     core::EntitySubset *movers_=nullptr,*garbage_entities_=nullptr;core::GarbagePass garbage_pass_;
+    core::ModificationSystemState modifications_;
     core::RenderQueue queue_=core::make_render_queue();std::vector<MissionRenderFault> faults_;
 };
 } // namespace saga::desktop

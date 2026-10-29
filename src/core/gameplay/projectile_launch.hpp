@@ -42,4 +42,12 @@ std::int32_t launch_projectile(ComponentSlots&,ProjectilePoint start,ProjectileP
 // EnemySystem.FlyAway 0x1150fa8. Uses the existing game's inclusive random wrapper.
 void fly_away(ComponentSlots&,std::int32_t min_x,std::int32_t max_x,
     std::int32_t min_z,std::int32_t max_z,bool modify,RandomSource&,ProjectileLaunchHost&);
+class DamagePresentationHost:public ProjectileLaunchHost {
+public:
+    virtual void damage_labels(ComponentSlots&,const DamageNumbers&)=0;
+    virtual void positional_damage_effect(ProjectilePoint)=0;
+};
+// EnemySystem.Damage post-subtraction suffix 0x115069c..0x115078c, before event15.
+// Text-label selection/output is a service; enemy shake and positional effect remain real mutations.
+void present_combat_damage(ComponentSlots&,const DamageNumbers&,DamagePresentationHost&);
 }
