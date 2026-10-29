@@ -535,6 +535,11 @@ add_executable(test_animation_resources test_animation_resources.cpp)
 target_link_libraries(test_animation_resources PRIVATE animation_resources)
 project_warnings(test_animation_resources)
 add_test(NAME animation_resources_contract COMMAND test_animation_resources)
+
+add_executable(test_resource_catalog test_resource_catalog.cpp)
+target_link_libraries(test_resource_catalog PRIVATE resource_catalog animation_resources)
+project_warnings(test_resource_catalog)
+add_test(NAME resource_catalog_contract COMMAND test_resource_catalog)
 add_test(NAME animation_scenario_integration COMMAND "${Python3_EXECUTABLE}" -I "${CMAKE_CURRENT_SOURCE_DIR}/test_animation_scenario.py" "$<TARGET_FILE:animation_trace>")
 
 add_executable(test_drop_collection test_drop_collection.cpp)

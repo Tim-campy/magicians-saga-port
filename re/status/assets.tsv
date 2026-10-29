@@ -18,7 +18,7 @@ kairo:0x060003c8	traced	docs/subsystems/assets.md	GetInputStream: prefixed strea
 kairo:0x060003ce	traced	docs/subsystems/assets.md	GetResourceAsStream: name then name+.bytes
 kairo:0x060003cf	traced	docs/subsystems/assets.md	CheckResourceAsStream: name then name+.bytes
 kairo:0x06000269	documented	docs/subsystems/assets.md	Config.ConvertExtension: selector 2/3/4 replaces all .gif->.png then .mld->.ogg; callers JarInflater.ConvertExtension, GetAccessFilesList
-kairo:0x060016ea	traced	docs/subsystems/assets.md	LoadReady: TAB split + Int32.Parse of catalog lines
+kairo:0x060016ea	traced	docs/subsystems/assets.md	LoadReady selected-row trimming and selected-over-base supplementation ported/tested in resource_catalog; ordinal IDs, retained base duplicates and array publication established; loading/language/exception shell remains partial.
 kairo:0x060016ec	traced	docs/formats/inf.md	Missing-ID first-free assignment, retained row-count length and ordered duplicate overwrite ported as a slice; full async LoadStart remains open.
 kairo:0x0600171d	traced	docs/subsystems/assets.md	LoadStart closure: bin/WxH options, palette, Image ctor 0x06001502
 kairo:0x060016ee	documented	docs/subsystems/assets.md	GetFileName: strips ../ or ..\ prefix then Trim; caller LoadStart
