@@ -16,10 +16,31 @@ MissionSpatial::MissionSpatial(MissionEntities& world,MapComponent& map,MissionV
     initialize_cells(cells_,this);initialize_cell_index(index_,this,*this);
     // LoadMap writes both camera-save slots before reading them; fresh scratch is explicit scenario state.
     load_mission_map(map_system_,std::move(quest),*this);
+    initialize_cursor(cursor_,this,*this);
 }
 void MissionSpatial::advance_camera(std::int32_t pass,bool enabled){if(gameplay_needs_update(8,enabled,pass)){update_quest_camera(camera_,*this);++camera_steps_;}}
 void MissionSpatial::advance_cells(std::int32_t pass,bool enabled){if(gameplay_needs_update(17,enabled,pass)){update_cells(cells_,*this);++cell_steps_;}}
 void MissionSpatial::advance_visibility(std::int32_t pass,bool enabled){if(gameplay_needs_update(20,enabled,pass)){update_cell_visibility(index_,*this);++visibility_steps_;}}
+void MissionSpatial::advance_cursor(std::int32_t pass,bool enabled){if(gameplay_needs_update(24,enabled,pass)){update_cursor(cursor_,*this);++cursor_steps_;}}
+void MissionSpatial::subscribe_cursor_point(std::int32_t event,PointReceiver receiver){
+    if(event!=2&&event!=4)throw std::invalid_argument("unsupported cursor point event");
+    auto& slot=point_receivers_.at(event==2?0:1);
+    auto next=slot?std::make_shared<std::vector<PointReceiver>>(*slot):std::make_shared<std::vector<PointReceiver>>();
+    next->push_back(std::move(receiver));slot=std::move(next);
+}
+void MissionSpatial::touch_cursor(std::int32_t x,std::int32_t y){
+    auto point=std::make_shared<CursorPoint>(CursorPoint{x,y});const auto receivers=point_receivers_[0];
+    if(receivers)for(const auto& receiver:*receivers)receiver(point);++cursor_touches_;
+}
+void MissionSpatial::cursor_cell_changed(CursorPointRef old_cell,CursorPointRef new_cell){
+    // Typed event13 projection. There are no known subscribers in this selected profile;
+    // retain the distinct payload identities for diagnostics, without inventing game consumers.
+    old_cursor_cell_=std::move(old_cell);new_cursor_cell_=std::move(new_cell);++cursor_changes_;
+}
+CursorFocusEffect* MissionSpatial::create_cursor_focus_effect(){
+    // SAGA_STUB(mission-focus-effect): no GameView task/render backend for the selection ping.
+    focus_effects_.emplace_back();return &focus_effects_.back();
+}
 std::int32_t MissionSpatial::camera_view_width(){return view_.width;}
 std::int32_t MissionSpatial::camera_touch_count(){throw std::logic_error("mission camera touch input is unbound");}
 std::int32_t MissionSpatial::quest_view_x(){return view_.margin_x;}
@@ -39,15 +60,23 @@ void MissionSpatial::subscribe_cell_added(EntitySubset& group,ComponentReceiver 
 void MissionSpatial::subscribe_cell_removed(EntitySubset& group,ComponentReceiver f){
     bind_notifications(group);observers_.emplace_back(std::move(f),false);notifications_.events.subscribe_removed(observers_.back());
 }
-void MissionSpatial::subscribe_cell_change(Receiver f,std::optional<EventHashes>){
+void MissionSpatial::subscribe_cell_change(CellChangeEvents::Receiver f,std::optional<EventHashes>){
     // Typed event14 projection: immutable delivery snapshot, no per-send copy/allocation.
-    auto next=cell_receivers_?std::make_shared<std::vector<Receiver>>(*cell_receivers_):std::make_shared<std::vector<Receiver>>();
+    auto next=cell_receivers_?std::make_shared<std::vector<CellChangeEvents::Receiver>>(*cell_receivers_):std::make_shared<std::vector<CellChangeEvents::Receiver>>();
     next->push_back(std::move(f));cell_receivers_=std::move(next);
 }
 void MissionSpatial::send_cell_change(ComponentSlots* e,std::int32_t old_key){
     const auto receivers=cell_receivers_;if(receivers)for(const auto& f:*receivers)f(e,old_key);++changes_;
 }
 void MissionSpatial::report(std::ostream& out){
+    const auto entity_id=[this](ComponentSlots* e){return e?world_.id(*e):-1;};
+    out<<",\"cursor_steps\":"<<cursor_steps_<<",\"cursor_touches\":"<<cursor_touches_<<",\"cursor_cell_events\":"<<cursor_changes_;
+    out<<",\"cursor\":{\"x\":"<<cursor_.last_position->x<<",\"y\":"<<cursor_.last_position->y
+       <<",\"focus\":"<<entity_id(cursor_.focus)<<",\"tracking\":"<<(cursor_.tracking?"true":"false")
+       <<",\"wait\":"<<cursor_.focus_wait<<",\"catch_human\":"<<entity_id(cursor_.catch_human)
+       <<",\"focus_effects\":"<<focus_effects_.size()<<",\"effect_arg\":"<<entity_id(focus_effects_.empty()?nullptr:focus_effects_.back().entity_arg)<<'}';
+    out<<",\"cursor_last_cell_change\":";
+    if(old_cursor_cell_)out<<'['<<old_cursor_cell_->x<<','<<old_cursor_cell_->y<<','<<new_cursor_cell_->x<<','<<new_cursor_cell_->y<<']';else out<<"null";
     out<<",\"camera_steps\":"<<camera_steps_<<",\"cell_steps\":"<<cell_steps_<<",\"visibility_steps\":"<<visibility_steps_
        <<",\"cell_change_events\":"<<changes_<<",\"visible_count\":"<<visible_count_;
     out<<",\"camera\":{\"x\":"<<form_.x<<",\"y\":"<<form_.y<<",\"saved_x\":"<<save_->at(17)<<",\"saved_y\":"<<save_->at(18)<<",\"scale\":"<<form_.state.scale<<'}';

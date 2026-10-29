@@ -54,6 +54,7 @@ void MissionProfile::bind_schedule(){
     bind(20,static_cast<bool>(spatial),[this](auto pass){spatial->advance_visibility(pass);});
     bind(21,true,[this](auto){queue=mission->render();if(!mission->faults().empty())throw std::invalid_argument("entity render fault: "+mission->faults().front().message);});
     bind(23,true,[this](auto pass){mission->advance_effects(pass);});
+    bind(24,static_cast<bool>(spatial),[this](auto pass){spatial->advance_cursor(pass);});
     bind(31,simulate.has_value(),[this](auto pass){mission->advance_garbage(pass);});
     for(const auto id:gameplay_update_order)if(updates_[static_cast<std::size_t>(id)])update_list_.push_back(updates_[static_cast<std::size_t>(id)].get());
     last_updates_.reserve(update_list_.size());
@@ -64,7 +65,18 @@ void MissionProfile::load_replay(const std::filesystem::path& path){
     std::string line;std::uint64_t previous=0,count=0;
     while(std::getline(file,line)){
         std::istringstream row(line);row.imbue(std::locale::classic());row>>std::ws;if(row.eof()||row.peek()=='#')continue;
-        std::string frame,kind,value;if(!(row>>frame>>kind>>value))throw std::invalid_argument("replay requires step keys|attack|pulse value");end(row);
+        std::string frame,kind,value;if(!(row>>frame>>kind>>value))throw std::invalid_argument("replay requires step keys|attack|pulse value or step cursor x y");
+        if(kind=="cursor"){
+            std::string y;if(!(row>>y))throw std::invalid_argument("cursor replay requires signed world x y");end(row);
+            std::uint64_t step=0;InputAction action{InputKind::cursor};
+            const auto a=std::from_chars(frame.data(),frame.data()+frame.size(),step);
+            const auto b=std::from_chars(value.data(),value.data()+value.size(),action.x),c=std::from_chars(y.data(),y.data()+y.size(),action.y);
+            if(a.ec!=std::errc{}||a.ptr!=frame.data()+frame.size()||!step||step<previous||
+               b.ec!=std::errc{}||b.ptr!=value.data()+value.size()||c.ec!=std::errc{}||c.ptr!=y.data()+y.size()||++count>100000)
+                throw std::invalid_argument("invalid or unordered cursor replay action");
+            replay_[step].push_back(action);previous=step;continue;
+        }
+        end(row);
         std::uint64_t step=0;std::uint32_t argument=0;
         const auto a=std::from_chars(frame.data(),frame.data()+frame.size(),step),b=std::from_chars(value.data(),value.data()+value.size(),argument);
         if(a.ec!=std::errc{}||a.ptr!=frame.data()+frame.size()||!step||step<previous||b.ec!=std::errc{}||b.ptr!=value.data()+value.size()||
@@ -343,6 +355,8 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             for(const auto& request:states)humans->set_state(*created.at(std::get<0>(request)),std::get<1>(request),std::get<2>(request));
         }else if(!states.empty())throw std::invalid_argument("actor_state requires human_system");
         bind_schedule();
+        for(const auto& frame:replay_)for(const auto& action:frame.second)
+            if(action.kind==InputKind::cursor&&!spatial)throw std::invalid_argument("cursor replay requires mission_map fresh");
         for(std::int32_t i=0;i<frames;++i)mission->advance_animations({automatic!=0,application_update!=0});
         if(spatial)spatial->advance_visibility();
         if(simulate&&*simulate>0){for(std::int32_t i=0;i<*simulate;++i)if(!step())break;}else{queue=mission->render();if(!mission->faults().empty())throw std::invalid_argument("entity render fault: "+mission->faults().front().message);}
@@ -360,7 +374,8 @@ bool MissionProfile::step(){
     if(input!=replay_.end())for(const auto& action:input->second){
         if(action.kind==InputKind::keys)humans->set_input_keys(action.value);
         else if(action.kind==InputKind::attack)humans->select_input_attack(static_cast<std::int32_t>(action.value));
-        else humans->pulse_stage_keys(action.value);
+        else if(action.kind==InputKind::pulse)humans->pulse_stage_keys(action.value);
+        else spatial->touch_cursor(action.x,action.y);
         ++replay_applied_;
     }
     enabled_=configured_;last_updates_.clear();halted_=false;

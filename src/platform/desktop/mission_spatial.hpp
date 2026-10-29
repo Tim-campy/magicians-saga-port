@@ -1,5 +1,6 @@
 #pragma once
 #include "mission_entities.hpp"
+#include "core/gameplay/cursor_frame.hpp"
 #include <ostream>
 
 namespace saga::desktop {
@@ -8,13 +9,16 @@ struct MissionView;
 class MissionSpatial final:private core::MissionMapHost,private core::MissionMapCursor,
     private core::QuestCameraInitializationWorld,private core::QuestCameraHost,
     private core::QuestViewportView,private core::QuestCameraMapWorld,private core::MemberFormationHost,
-    private core::CellInitializationWorld,private core::CellVisibilityHost,private core::CellChangeEvents {
+    private core::CellInitializationWorld,private core::CellVisibilityHost,private core::CellChangeEvents,
+    private core::CursorInitializationWorld,private core::CursorHost {
 public:
     MissionSpatial(MissionEntities&,core::MapComponent&,MissionView&,core::StageQuestForm&,
                    std::shared_ptr<core::StageQuest>,core::EventInstruction chip_images);
     void advance_camera(std::int32_t pass=0,bool enabled=true);
     void advance_cells(std::int32_t pass=0,bool enabled=true);
     void advance_visibility(std::int32_t pass=0,bool enabled=true);
+    void advance_cursor(std::int32_t pass=0,bool enabled=true);
+    void touch_cursor(std::int32_t x,std::int32_t y); // Normalized world-isometric event2; screen transform remains unbound.
     core::QuestCameraHost& camera_host(){return *this;}
     core::MapComponent& map(){return map_;}
     core::EntitySubset& visible(){return visible_;}
@@ -56,7 +60,7 @@ private:
     core::CellChangeEvents* current_cell_change_world()override{return this;}
     void subscribe_cell_added(core::EntitySubset&,ComponentReceiver)override;
     void subscribe_cell_removed(core::EntitySubset&,ComponentReceiver)override;
-    void subscribe_cell_change(Receiver,std::optional<core::EventHashes>)override;
+    void subscribe_cell_change(core::CellChangeEvents::Receiver,std::optional<core::EventHashes>)override;
     void send_cell_change(core::ComponentSlots*,std::int32_t)override;
     std::int32_t cell_game_width()override{return cell_view_.cell_game_width();}
     std::int32_t cell_game_height()override{return cell_view_.cell_game_height();}
@@ -66,6 +70,13 @@ private:
     std::int32_t cell_visibility_count()override{return static_cast<std::int32_t>(visible_.size());}
     void store_cell_visibility_count(std::int32_t count)override{visible_count_=count;}
     void bind_notifications(core::EntitySubset&);
+    void subscribe_cursor_point(std::int32_t,core::CursorInitializationWorld::Receiver)override;
+    core::EventInstruction cursor_save()override{return save_;}
+    core::MapComponent* cursor_map()override{return &map_;}
+    core::EntitySubset* cursor_humans()override{return world_.subset({14});}
+    bool cursor_destroyed(core::ComponentSlots& e)override{return world_.destroyed(e);}
+    void cursor_cell_changed(core::CursorPointRef,core::CursorPointRef)override;
+    core::CursorFocusEffect* create_cursor_focus_effect()override;
     MissionEntities& world_;core::MapComponent& map_;MissionView& view_;
     core::HeroCameraFormation formation_;core::QuestCameraForm form_;
     core::QuestCameraSystem camera_;core::MissionMapSystem map_system_;
@@ -74,8 +85,14 @@ private:
     core::EventInstruction scratch_=std::make_shared<core::EventIntegers>(2,0);
     core::QuestCameraCellView cell_view_;
     std::deque<Observer> observers_;core::EntitySubset* observed_=nullptr;
-    std::shared_ptr<const std::vector<Receiver>> cell_receivers_;
+    std::shared_ptr<const std::vector<core::CellChangeEvents::Receiver>> cell_receivers_;
     std::uint64_t camera_steps_=0,cell_steps_=0,visibility_steps_=0,changes_=0;
     std::int32_t visible_count_=0;
+    core::CursorState cursor_;
+    using PointReceiver=core::CursorInitializationWorld::Receiver;
+    std::array<std::shared_ptr<const std::vector<PointReceiver>>,2> point_receivers_;
+    std::deque<core::CursorFocusEffect> focus_effects_; // Stable arg storage for the presentation stub.
+    core::CursorPointRef old_cursor_cell_,new_cursor_cell_;
+    std::uint64_t cursor_steps_=0,cursor_changes_=0,cursor_touches_=0;
 };
 }

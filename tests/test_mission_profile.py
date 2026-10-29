@@ -13,6 +13,38 @@ from mission_scene_fixture import make_table_scene, make_shoot_scene, with_missi
 
 @unittest.skipUnless(EXE, 'saga_mission supplied by CTest')
 class MissionProfileTests(unittest.TestCase):
+    def test_cursor_selects_live_human_and_follows_camera_cells(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory);scene = root / 'scene.txt';replay = root / 'cursor.txt'
+            scene.write_text(make_boss_scene(root), encoding='utf-8')
+            replay.write_text('1 cursor -88 341\n2 keys 131072\n', encoding='ascii')
+            result = self.run_host(scene, '--replay', str(replay), frames=12)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            report = json.loads(result.stdout)
+            self.assertEqual(report['cursor_touches'], 1)
+            self.assertEqual(report['cursor_steps'], 12)
+            self.assertEqual(report['cursor']['focus'], report['positions'][0]['id'])
+            self.assertEqual(report['cursor']['effect_arg'], report['cursor']['focus'])
+            self.assertEqual(report['cursor']['focus_effects'], 1)
+            self.assertEqual(report['cursor']['wait'], 6)
+            self.assertEqual(report['cursor']['x'], report['camera']['saved_x'])
+            self.assertEqual(report['cursor']['y'], report['camera']['saved_y'])
+            self.assertLess(report['last_update_order'].index(23), report['last_update_order'].index(24))
+            self.assertLess(report['last_update_order'].index(24), report['last_update_order'].index(31))
+            self.assertEqual(self.run_host(scene, '--replay', str(replay), frames=12).stdout, result.stdout)
+            replay.write_text('1 cursor -88 341\n2 cursor -88 341\n3 cursor 10000 10000\n', encoding='ascii')
+            cleared = json.loads(self.run_host(scene, '--replay', str(replay), frames=3).stdout)
+            self.assertEqual(cleared['cursor']['focus'], -1)
+            self.assertEqual(cleared['cursor']['focus_effects'], 1)
+            self.assertEqual(cleared['cursor_touches'], 3)
+            for bad in ['1 cursor 0\n', '1 cursor 2147483648 0\n', '1 cursor 0 -2147483649\n',
+                        '1 cursor 0 0 1\n', '2 cursor 0 0\n1 cursor 0 0\n']:
+                replay.write_text(bad, encoding='ascii')
+                self.assertNotEqual(self.run_host(scene, '--replay', str(replay)).returncode, 0)
+            replay.write_text('1 cursor 0 0\n', encoding='ascii')
+            scene.write_text(make_boss_scene(root).replace('mission_map fresh 0 1 2 3\n', ''), encoding='utf-8')
+            self.assertIn('mission_map fresh', self.run_host(scene, '--replay', str(replay)).stderr)
+
     def test_enemy_gauge_uses_saved_defeat_threshold(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory);scene = root / 'scene.txt'
@@ -52,8 +84,8 @@ class MissionProfileTests(unittest.TestCase):
             self.assertEqual(report['effect_steps'], 12)
             self.assertEqual(report['effect_updates'], [])
             self.assertFalse(report['update_schedule_complete'])
-            self.assertEqual(report['bound_update_systems'], [0,2,3,4,5,8,9,10,11,12,13,14,15,17,18,19,20,21,23,31])
-            self.assertEqual(report['unbound_update_systems'], [16,22,24,25,26,30])
+            self.assertEqual(report['bound_update_systems'], [0,2,3,4,5,8,9,10,11,12,13,14,15,17,18,19,20,21,23,24,31])
+            self.assertEqual(report['unbound_update_systems'], [16,22,25,26,30])
             self.assertEqual(report['last_update_order'], [2,9,11,13,14,15,18,19,21,23,31])
             self.assertEqual(report['rotation_steps'], 12)
             self.assertEqual(report['battle_steps'], 12)

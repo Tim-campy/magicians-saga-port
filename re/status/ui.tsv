@@ -1,4 +1,12 @@
 id	status	evidence	note
+game:0x06000e18	reimplemented	src/core/gameplay/cursor_frame.cpp	Fresh save17/18 and point publication before ordered event2/4 subscriptions; MissionSpatial initializes after LoadMap; failure/lifecycle contract tests
+game:0x06000e1a	reimplemented	src/core/gameplay/cursor_frame.cpp	Tracking invalidation and exact isometric cell event13; captured save values and fresh point after map/callback; live schedule24 and replay tested
+game:0x06000e1e	reimplemented	src/core/gameplay/cursor_frame.cpp	Native Human selection and focus changes; stable selection-effect output interface preserves post-create focus read and failure prefix
+game:0x06000e1f	reimplemented	src/core/gameplay/cursor_frame.cpp	Inert event4 receiver bound by real Init; null point accepted in contract test
+game:0x06000e20	reimplemented	src/core/gameplay/cursor_frame.cpp	Live ordered And14 scan, five Position reads, int32/binary32 projection, strict rectangle edges and first nearest hit; no HP or state filtering
+game:0x06000e21	reimplemented	src/core/gameplay/cursor_frame.cpp	Nullable focus/catch assignment then tracking true; wait retained and invalidated by next Update; contract tested; producer remains unbound
+game:0x06000a85	reimplemented	src/core/gameplay/cursor_frame.cpp	Native IsometricToCellLocation including TopViewToCellLocation conversion; wrapped int32, binary32 round trip, signed halves and zero divisors tested
+game:0x06000a87	documented	docs/subsystems/ui.md	Full TopViewToCellLocation contract and caller; reused inline by cursor cell conversion without exposing native shared global scratch
 game:0x06000e7a	reimplemented	src/core/gameplay/gauge_drawing.cpp	Complete Enemy DrawDynamic request chain; saved defeat threshold and palette/projection ordering; selected desktop health rendering bound
 game:0x06000eb4	reimplemented	src/core/gameplay/gauge_drawing.cpp	Parameter gates, captured extras, native viewport/anchor/culling and rate/scale helpers; bitmap renderer consumes actual gauge images
 game:0x06000eaf	reimplemented	src/core/gameplay/gauge_drawing.cpp	Two scaled gauge draws with wrapped arithmetic, scaled source inset and minimum fill pixel; scratch/draw failure prefixes tested
