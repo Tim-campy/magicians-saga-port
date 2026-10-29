@@ -2,6 +2,7 @@
 #include "mission_entities.hpp"
 #include "core/gameplay/render_frame.hpp"
 #include "core/gameplay/render_draw.hpp"
+#include "core/gameplay/motion_pass.hpp"
 
 namespace saga::desktop {
 using MissionApplication=core::ApplicationResourceFields<core::RenderDrawResource>;
@@ -17,6 +18,8 @@ public:
     MissionScene(const MissionScene&)=delete;
     MissionScene& operator=(const MissionScene&)=delete;
     void advance_animations(core::SharedAnimationGates);
+    // Selected MoveSystem pass only; Human/Enemy AI, collision and cell migration remain unbound.
+    void advance_movement(std::int32_t pass,bool enabled=true);
     core::RenderQueue& render();
     const std::vector<MissionRenderFault>& faults()const{return faults_;}
 private:
@@ -40,6 +43,7 @@ private:
     MissionEntities& world_;MissionApplication& app_;core::EntitySubset& visible_;MissionView& view_;core::MapComponent* map_;
     core::StageQuestForm form_state_;core::QuestCameraForm form_;
     core::RenderSystemState renderer_;core::AnimationSystemState animations_;core::SebStaticWork sprite_work_;
+    core::EntitySubset* movers_=nullptr;
     core::RenderQueue queue_=core::make_render_queue();std::vector<MissionRenderFault> faults_;
 };
 } // namespace saga::desktop

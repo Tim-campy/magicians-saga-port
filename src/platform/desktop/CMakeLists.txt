@@ -19,7 +19,7 @@ target_link_libraries(gameplay_catalog PUBLIC resource_archive combat_tables bul
 saga_library(mission_entities mission_entities.cpp)
 target_link_libraries(mission_entities PUBLIC gameplay_catalog human_factory enemy_factory effect_factory dynamic_subsets)
 saga_library(mission_scene mission_scene.cpp)
-target_link_libraries(mission_scene PUBLIC mission_entities render_frame render_draw seb_sprite animation_pass)
+target_link_libraries(mission_scene PUBLIC mission_entities render_frame render_draw seb_sprite animation_pass pass_initialization update_scheduler)
 saga_library(archive_resource_manager archive_resource_manager.cpp)
 target_link_libraries(archive_resource_manager PUBLIC resource_archive image_draw)
 saga_library(archive_image_set archive_image_set.cpp)

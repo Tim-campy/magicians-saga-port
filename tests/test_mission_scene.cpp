@@ -21,6 +21,19 @@ int main()try{
     auto& hero=world.human({0,2,5,0,0,13,0,0,0});auto* enemy=world.enemy({0,4,7,0,{10,0,0}});check(enemy!=nullptr);
     auto& queue=scene.render();check(scene.faults().empty()&&queue.counts->at(0)==2);
     const auto& first=*queue.buffers->at(0)->at(0);check(first[render_x]==20&&first[render_y]==30&&first[render_texture]==200);
+    auto& enemy_position=*dynamic_cast<ContactPosition*>(enemy->get(0));
+    const auto speed=dynamic_cast<ProjectileSpeed*>(enemy->get(1))->z;
+    check(speed>0);scene.advance_movement(0,false);check(enemy_position.z==0);
+    scene.advance_movement(1);check(enemy_position.z==speed); // Move ignores the pass index.
+    scene.advance_movement(0);check(enemy_position.z==speed+speed);
+    auto& human_position=*dynamic_cast<ContactPosition*>(hero.get(0));check(human_position.x==0&&human_position.z==0);
+    enemy->remove(1);scene.advance_movement(0);check(enemy_position.z==speed+speed); // Live subset removal.
+    auto& restored=world.acquire_speed();restored.z=3;enemy->add(1,&restored);
+    scene.advance_movement(0);check(enemy_position.z==(speed+speed)+3); // Reinsertion is observed.
+    scene.render();bool saw_enemy=false;
+    for(int i=0;i<queue.counts->at(0);++i){const auto& command=*queue.buffers->at(0)->at(static_cast<std::size_t>(i));
+        if(command[render_resource]==3){saw_enemy=true;check(command[render_x]==static_cast<std::int32_t>(10-enemy_position.z)+20);}}
+    check(saw_enemy);enemy_position.z=0;scene.render();
     scene.advance_animations({false,true});scene.render();check(queue.buffers->at(0)->at(0)->at(render_frame)==1);
     hero.add(21,&world.acquire_input());scene.render();check(queue.counts->at(0)==1&&queue.buffers->at(0)->at(0)->at(render_resource)==3);
     hero.remove(21);dynamic_cast<EntitySprite*>(hero.get(2))->animation.clip=999;scene.render();

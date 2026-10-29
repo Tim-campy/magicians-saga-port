@@ -6,7 +6,7 @@ How far the ported modules run together on the PC, per slice of `docs/ROADMAP.md
 
 | Slice | Host | Run | State |
 | --- | --- | --- | --- |
-| S1 playable mission | `MissionEntities`/`MissionScene` (`src/platform/desktop/mission_*.cpp`), driven by `queue_capture --interactive` (viewer build) | see [assets](assets.md#table-backed-scene-window) | Loads real tables and archives, creates the selected human/enemy, advances animation and draws through GL. No input, no gameplay passes, no stage end. |
+| S1 playable mission | `MissionEntities`/`MissionScene` (`src/platform/desktop/mission_*.cpp`), driven by `queue_capture --interactive` (viewer build) | see [assets](assets.md#table-backed-scene-window) | Loads real tables/archives, creates human/enemy, optionally integrates native velocity, animates and draws through GL. No input, AI, collision or stage end. |
 | S2 town ↔ mission | none | — | `select_*` modules ported and tested in isolation; no host. |
 | S3 boot, title, save | none | — | First form unknown; save envelope not decoded. |
 | S4 dialogue, audio | `event_trace` (text only, no window) | see [events](events.md) | Text pipeline ported in isolation; no font backend, no audio. |
@@ -15,8 +15,16 @@ How far the ported modules run together on the PC, per slice of `docs/ROADMAP.md
 
 Keep this list current: a ported module that no host calls is integration debt. Group by host; one line per module or chain.
 
-- `MissionScene`: gameplay catalog, human/enemy/effect factories, dynamic subsets, render frame/draw, SEB sprite evaluation, animation pass, BitmapMeshFrame/GL.
-- Not reachable from any host yet (tested only): human frame/shoot/contact, enemy frame/impact/defeat, projectile launch/motion/hit, movement, collision, garbage, emitters, modifiers, drops and stage rewards, stage start/update/recovery/return, quest camera, cell system, event catalog/conditions/execution/dispatch, SelectForm passes, text modules, culture/collation/execution-context modules (deferred dependency work).
+- `MissionScene`: gameplay catalog, human/enemy/effect factories, dynamic subsets, MoveSystem.Init/NeedsUpdate/Update (simulate profile), render frame/draw, SEB sprite evaluation, animation pass, BitmapMeshFrame/GL.
+- Not reachable from any host yet (tested only): human frame/shoot/contact, enemy frame/impact/defeat, projectile launch/motion/hit, collision, garbage, emitters, modifiers, drops and stage rewards, stage start/update/recovery/return, quest camera, cell system, event catalog/conditions/execution/dispatch, SelectForm passes, text modules, culture/collation/execution-context modules (deferred dependency work).
+
+### Selected movement pass (S1 A3)
+
+The simulate row enables Move -> Animation -> Render, a subset of the native ordering, without placeholder callbacks for the other systems. MissionScene initializes the live And(0,1) group through initialize_movement; advance_movement uses factory-index11's actual gate and move_subset. No game rule is duplicated. Creation-order positions and movement counts are printed by bounded runs. Real enemies retain the velocity calculated by create_enemy from parameter5 and their record/creation flags. The hero retains its factory's zero velocity.
+
+The complete 26-system schedule is still blocking. Projectile completion requires event23 delivery in Human/Enemy/Projectile subscription order, component-return services and entity teardown; an empty impact callback would discard game rules. Cell migration/culling, AI, collision, damage and mission termination remain unbound. The selected scene uses its fixed visible group even when an entity leaves the viewport.
+
+Local demonstration: `build/viewer/queue_capture.exe research/exports/mission-data-scene/movement.txt 600 220 --run-frames 12`. The profile is the animation scene with simulate 0; tick_ms remains an explicit diagnostic timing input. Human0 remains at (0,0,0); enemy2 moves from (150,0,0) to (150,0,11.5068016) after 12 binary32 integrations. A native capture emits six quads through five textures; movement-loop.json and movement-12.bmp remain local. No Android golden replay is claimed.
 
 ## Stubs and provisional inputs
 
@@ -31,7 +39,7 @@ Keep this list current: a ported module that no host calls is integration debt. 
 
 These were roadmap task texts; they record partial states. Rewrite them into the sections above or into the subsystem docs as the work proceeds, and delete what becomes obsolete.
 
-- **Current gameplay focus.** Turn the table-backed MissionEntities/MissionScene preview into a controllable mission by binding cursor input and the recovered Human/Enemy/Shoot/Projectile/Move/Collision/Garbage passes to its real records. Actual character/enemy creation, clothing/hat/weapon references, animation clocks and GPU drawing now run from the original archives; the current interactive window advances animation only and is not a playable loop ([data](data.md#selected-mission-catalog), [scene](assets.md#table-backed-scene-window)).
+- **Current gameplay focus.** Bind cursor input and the recovered Human/Enemy/Shoot/Projectile/Collision/Garbage passes to MissionEntities. Real tables drive creation, clothing/hat/weapon references, animation and optional Move integration; complete combat and a playable mission remain open ([data](data.md#selected-mission-catalog), [scene](assets.md#table-backed-scene-window)).
 - **Current gameplay focus.** Replace synthetic catalogs/services in the shared 240-frame combat regression with the table-backed owner, preserve explicit saved levels/purchases/RNG/FPS inputs, then bind stage completion. Fresh factories and rendering now have a concrete desktop owner; native teardown/recycling, world events, full camera/culling and the complete 26-system schedule remain to compose. Do not expand optional rendering/public-library helpers before this scene reaches them.
 - **Current gameplay focus.** Connect QuestForm targets/world/viewport/culling and close enclosing OnPostRender callback/exception/cache cleanup. Concrete bitmap -> native quad insertion -> stream order -> GPU now runs throughout both combat variants; live target/sampler/scene inputs remain explicit ([GPU](assets.md#gpu-bitmap-submission), [submission](assets.md#mesh-stream-submission), [UI](ui.md#quest-mission-render-callbacks)).
 - **Current gameplay focus.** Close production constructor/material canonicalization, ConvertMesh/disposal and EndMesh aging only as required by the mission host (top-form predicate unresolved). GetMeshBuilder/GetLayer/Reset and AddQuad group/array insertion now drive the reusable desktop frame owner; native MeshRecord.Add capture remains an optional owner service ([builders](assets.md#mesh-builder-cache-and-record-production)).

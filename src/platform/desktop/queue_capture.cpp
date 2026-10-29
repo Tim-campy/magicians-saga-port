@@ -14,6 +14,7 @@
 #include <iomanip>
 #include <iostream>
 #include <locale>
+#include <limits>
 #include <set>
 #include <sstream>
 #include <tuple>
@@ -68,6 +69,8 @@ int main(int argc,char** argv)try{
     std::optional<StageGeometry> geometry;
     MissionView view{};bool has_view=false,has_slots=false,has_animation=false;std::int32_t slots=0,frames=0,automatic=0,application_update=0;
     std::optional<std::int32_t> tick_ms;
+    std::optional<std::int32_t> simulate;
+    std::vector<ComponentSlots*> created;
     std::map<std::string,std::int32_t> resource_names;
     std::vector<std::variant<HumanCreation,EnemyCreation,SelectedBullet>> selected;
     std::unique_ptr<MissionEntities> entity_world;std::unique_ptr<MissionScene> mission;
@@ -113,6 +116,8 @@ int main(int argc,char** argv)try{
             if(!native||has_slots||!(row>>slots)||slots<1||slots>1024)throw std::invalid_argument("slots requires one component count1..1024 in native mode");has_slots=true;
         }else if(operation=="tick_ms"){
             std::int32_t value=0;if(!native||tick_ms||!(row>>value)||value<1||value>1000)throw std::invalid_argument("tick_ms requires one diagnostic interval1..1000");tick_ms=value;
+        }else if(operation=="simulate"){
+            std::int32_t value=0;if(!native||simulate||!(row>>value)||value<0||value>10000)throw std::invalid_argument("simulate requires one initial movement-pass count0..10000");simulate=value;
         }else if(operation=="animate"){
             if(!native||has_animation||!(row>>frames>>automatic>>application_update)||frames<0||frames>10000||(automatic!=0&&automatic!=1)||(application_update!=0&&application_update!=1))throw std::invalid_argument("animate requires count0..10000 and two flag0/1 values");
             has_animation=true;
@@ -147,7 +152,6 @@ int main(int argc,char** argv)try{
         catalog=std::make_unique<GameplayCatalog>(load_gameplay_catalog(*tables,false,parse_event_decimal));
         entity_world=std::make_unique<MissionEntities>(*catalog,progress,slots,geometry?&*geometry:nullptr,[&](std::int32_t id){auto* r=get_application_resource(application,id);return r?r->animations:nullptr;},
             [&](std::string_view name){auto it=resource_names.find(std::string(name));if(it==resource_names.end())throw std::invalid_argument("unbound enemy resource name: "+std::string(name));return it->second;});
-        std::vector<ComponentSlots*> created;
         for(const auto& request:selected){ComponentSlots* entity=nullptr;
             if(const auto* h=std::get_if<HumanCreation>(&request))entity=&entity_world->human(*h);
             else if(const auto* e=std::get_if<EnemyCreation>(&request))entity=entity_world->enemy(*e);
@@ -158,9 +162,11 @@ int main(int argc,char** argv)try{
         }
         mission=std::make_unique<MissionScene>(*entity_world,application,*entity_world->subset({0,2}),view,nullptr);
         for(std::int32_t i=0;i<frames;++i)mission->advance_animations({automatic!=0,application_update!=0});
+        if(simulate)for(std::int32_t i=0;i<*simulate;++i){mission->advance_movement(0);mission->advance_animations({automatic!=0,application_update!=0});}
         queue=mission->render();if(!mission->faults().empty())throw std::invalid_argument("entity render fault: "+mission->faults().front().message);
         commands=static_cast<std::size_t>(queue.counts->at(0))+static_cast<std::size_t>(queue.counts->at(1));
     }
+    if(simulate&&!mission)throw std::invalid_argument("simulate requires a table-backed entity scene");
     BitmapBackend backend(application,global,textures,height,world);sort_render_queue(queue);
     if(inspect){
         RenderDrawState drawing{&queue,0,&backend.matrix()};draw_render_queue(drawing,&backend.graphics(),0,backend.resources());draw_render_queue(drawing,&backend.graphics(),1,backend.resources());
@@ -204,12 +210,17 @@ int main(int argc,char** argv)try{
                     }
                 }
                 if(!running)break;
-                if(!paused||single_step){mission->advance_animations({automatic!=0,application_update!=0});queue=mission->render();
+                if(!paused||single_step){if(simulate)mission->advance_movement(0);mission->advance_animations({automatic!=0,application_update!=0});queue=mission->render();
                     if(!mission->faults().empty())throw std::invalid_argument("entity render fault: "+mission->faults().front().message);++logic_steps;}
                 submit();renderer.present();++rendered;const auto now=SDL_GetTicks();if(now<deadline)SDL_Delay(static_cast<Uint32>(deadline-now));
             }
             std::cout<<"{\"entities\":"<<selected.size()<<",\"render_frames\":"<<rendered<<",\"logic_steps\":"<<logic_steps
-                     <<",\"profile\":\"selected entities and animation passes; gameplay input and full schedule unbound\"}\n";return 0;
+                     <<",\"movement_steps\":"<<(simulate?logic_steps+static_cast<std::uint64_t>(*simulate):0)<<",\"positions\":[";
+            std::cout<<std::setprecision(std::numeric_limits<float>::max_digits10);
+            for(std::size_t i=0;i<created.size();++i){if(i)std::cout<<',';const auto* p=dynamic_cast<ContactPosition*>(created[i]->get(0));
+                if(!p)throw std::logic_error("selected entity has no position");
+                std::cout<<"{\"id\":"<<entity_world->id(*created[i])<<",\"x\":"<<p->x<<",\"y\":"<<p->y<<",\"z\":"<<p->z<<'}';}
+            std::cout<<"],\"profile\":\"selected movement/animation/render passes; gameplay input and full schedule unbound\"}\n";return 0;
         }
         submit();auto pixels=renderer.read_pixels();
         Surface captured(SDL_CreateSurfaceFrom(width,height,SDL_PIXELFORMAT_RGBA32,pixels.rgba.data(),width*4),SDL_DestroySurface);require(captured!=nullptr,"SDL_CreateSurfaceFrom");
