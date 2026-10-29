@@ -29,6 +29,10 @@ int main()try{
     humans.set_state(hero,0,0);check(field<EntitySprite>(hero,2).animation.clip==36);
     hero.add(27,&world.acquire_projectile()); // Event23 is emitted only while Projectile is present.
     world.events().send(23,&hero); // Real Human Init registered the guarded receiver.
+    const auto original_flags=data.characters.at(2)->flags;data.characters.at(2)->flags=4;
+    field<HumanRecordLink>(hero,14).state=4;world.events().send(23,&hero);
+    check(field<HumanRecordLink>(hero,14).state==5); // Sub-character death dispatches without game-over scenario values.
+    data.characters.at(2)->flags=original_flags;
     field<HumanRecordLink>(hero,14).state=4;
     unbound([&]{world.events().send(23,&hero);});check(field<EntitySprite>(hero,2).animation.clip==12);
     check(field<HumanRecordLink>(hero,14).state==5); // Real effect + death state precede the unbound stage receiver.
@@ -48,6 +52,7 @@ int main()try{
     for(int i=0;i<21;++i){humans.advance_enemies();move_subset(*movers);}
     check(field<EnemyRecordLink>(*enemy,24).state==1&&!field<ContactDirection>(*enemy,12).locked);
     auto& target=field<EnemyRecordLink>(*enemy,24).opponent;target=&hero;
+    humans.enable_notifications({1,7,true,0,false,0,-1});
     field<HumanRecordLink>(hero,14).state=5;world.events().send(30,&hero);
     check(target==nullptr); // Actual event30 search excludes the only, dead party member.
     std::cout<<"mission human frame, state, RNG and event services ok\n";return 0;

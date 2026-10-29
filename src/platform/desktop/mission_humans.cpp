@@ -26,6 +26,7 @@ MissionHumans::MissionHumans(MissionEntities& world,const GameplayCatalog& data,
         static_cast<void>(saved.characters.at(field<HumanRecordLink>(**actor,14).character_id)); // Require saved state for every live actor.
         add_member(members_,*actor);
     }
+    world_.events().subscribe(30,[this](ComponentSlots* e){stage_human_dead(required(e),records_,*this);});
     initialize_humans(system_,this,services_);
     // Native receiver order: Human, Enemy, Projectile (event23); Human, Enemy (event29).
     initialize_enemies(enemies_,this,enemy_services_);
@@ -53,6 +54,8 @@ bool MissionHumans::shoot_human(ComponentSlots& actor,ComponentSlots& target){
 }
 void MissionHumans::contact_effect(std::int32_t clip,std::int32_t image,std::int32_t loop,float x,float y,float z){world_.effect({x,y,z},clip,image,loop!=0);}
 void MissionHumans::impact_effect(std::int32_t clip,std::int32_t image,std::int32_t loop,float x,float y,float z){world_.effect({x,y,z},clip,image,loop!=0);}
-void MissionHumans::send_human_dead(ComponentSlots&){unbound("stage death before enemy retarget");}
+void MissionHumans::send_human_dead(ComponentSlots& e){
+    world_.events().send(30,&e);
+}
 DropPlacementWorld* MissionHumans::drop_world(){unbound("stage drops");}
 } // namespace saga::desktop

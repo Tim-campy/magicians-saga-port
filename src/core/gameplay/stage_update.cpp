@@ -79,10 +79,10 @@ void update_stage_attack_buttons(StageStartState& s){
     const auto buttons=s.attack_buttons;required(buttons.get());
     for(auto* p:*buttons){auto& b=required(p);b.frame=std::min(add(b.frame,1),4);}
 }
-std::shared_ptr<StageDialog> make_stage_retry_dialog(std::int32_t reason,StageUpdateHost& host){
+std::shared_ptr<StageDialog> make_stage_retry_dialog(std::int32_t reason,StageGameOverHost& host){
     auto result=host.make_retry_form(100);required(result.get()).reason=reason;result->kind=98;return result;
 }
-void stage_game_over(StageStartState& s,std::int32_t reason,StageUpdateHost& host){
+void stage_game_over(StageStartState& s,std::int32_t reason,StageGameOverHost& host){
     if(s.retried)change_stage(s,reason==2?6:5);
     else {s.dialog=make_stage_retry_dialog(reason,host);required(host.stage_form_stack()).push(s.dialog.get());}
     host.stop_stage_bgm();

@@ -23,7 +23,6 @@ void MissionHumans::create_bullet_impact(ComponentSlots& e,ComponentSlots& owner
 void MissionHumans::bullet_hit(ComponentSlots& e,ComponentSlots* target){on_projectile_hit(&e,target,*this);}
 ComponentSlots* MissionHumans::create_effect(std::int32_t clip,std::int32_t image,std::int32_t loop,ProjectilePoint at){return &world_.effect(at,clip,image,loop!=0);}
 ComponentSlots* MissionHumans::create_emitter(std::int32_t category,std::int32_t type,std::int32_t interval,std::int32_t maximum,std::int32_t argument,ProjectilePoint at){return &world_.emitter({category,type,interval,maximum,argument,at});}
-void MissionHumans::boss_defeated(ComponentSlots&){unbound("boss completion");}
 void MissionHumans::add_color(ComponentSlots& e,std::int32_t r,std::int32_t g,std::int32_t b,std::int32_t a){
     auto& color=world_.acquire_enemy_color();color.values={{r,g,b,a}};e.add(6,&color);
 }

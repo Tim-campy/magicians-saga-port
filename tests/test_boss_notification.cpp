@@ -25,6 +25,15 @@ struct Fixture {
     void run(){notify_boss_defeat(stage,&enemy,tables,host);}
 };
 int main(){
+    {Fixture f;bool defeated=false;std::int32_t max_z=7;QuestConditionState completed{2,false,std::nullopt};
+     const QuestConditionState* current=f.stage.quest;
+     f.host.on_key=[&]{check(defeated&&max_z==100);current=&completed;};
+     BossStageView view{defeated,max_z,[&]{check(f.host.calls==std::vector<std::string>{"key8","stack"});return current;}};
+     notify_boss_defeat(view,&f.enemy,f.tables,f.host);check(f.host.complete&&defeated&&max_z==100);}
+    {Fixture f;bool defeated=false;std::int32_t max_z=7;
+     BossStageView view{defeated,max_z,[&]{return f.stage.quest;}};
+     f.host.on_make=[](){throw std::runtime_error("presentation failure");};
+     try{notify_boss_defeat(view,&f.enemy,f.tables,f.host);std::abort();}catch(const std::runtime_error&){check(defeated&&max_z==100);}}
     {Fixture f;f.run();check(f.stage.boss_defeated&&f.stage.max_z_rate==100&&!f.host.complete&&f.host.enemy_id==17);
         check(f.host.calls==std::vector<std::string>{"key8","stack","make","push","key2","key8","get1","get2","send1","send2"});}
     for(int flags=0;flags<4;++flags)for(bool completed:{false,true}){Fixture f;f.quest.flags=static_cast<std::uint8_t>(flags);f.quest.completed=completed;f.run();check(f.host.complete==((flags&2)!=0||completed));}

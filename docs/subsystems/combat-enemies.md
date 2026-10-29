@@ -1,6 +1,6 @@
 # Enemy creation, population and frame update
 
-EnemySystem owns enemy creation/target selection, population quotas and the live per-enemy state pass. Its core kernels are ported; the selected desktop host binds native Init, full Update and contact/death receivers through explicit provisional quest/save inputs. The optional Collision12 pass supplies pair production and area delivery; stage startup and boss completion remain separate bindings.
+EnemySystem owns enemy creation/target selection, population quotas and the live per-enemy state pass. Its core kernels are ported; the selected desktop host binds native Init, full Update and contact/death receivers through explicit provisional quest/save inputs. The optional Collision12 pass supplies pair production and area delivery; stage startup and complete mission completion remain separate bindings; stage_notifications binds main death and boss notification.
 
 ## Overview
 
@@ -111,7 +111,7 @@ Evidence: local research/exports/enemy-population/F114c694.asm and enemy-frame/F
 
 ## Port
 
-MissionHumans calls initialize_enemies after Human Init and before Projectile Init, replacing the manually registered Enemy impact receiver. EnemyEventServices borrows the same owner, catalogs and RNG for its lifetime. Event23 runs Human -> Enemy -> Projectile; event29 runs Human -> Enemy; event30 retargeting calls search_enemy_target. Gameplay human-death delivery still stops at the unbound Stage death service before retarget; direct event30 delivery is tested with the real receiver. Gauge lookup is an explicit HUD service stub, and contact sound is an audio stub; neither suppresses contact state/effect mutations.
+MissionHumans calls initialize_enemies after Human Init and before Projectile Init, replacing the manually registered Enemy impact receiver. EnemyEventServices borrows the same owner, catalogs and RNG for its lifetime. Event23 runs Human -> Enemy -> Projectile; event29 runs Human -> Enemy; event30 retargeting calls search_enemy_target. Gameplay human-death delivery runs Stage before Enemy retarget. Main game-over requires stage_notifications; sub-character death skips game-over and still reaches retarget. See [notification binding](integration.md#stage-death-and-boss-notifications-s1-a3a4). Gauge lookup is an explicit HUD service stub, and contact sound is an audio stub; neither suppresses contact state/effect mutations.
 
 Explicit enemy_system/enemy_population/enemy_pool profile rows enable update_enemies with its real population prefix and factory-index5 gate. They supply Yugami, quest population limits/interval/base level, initial counters/boss flag and uniform section limits/counts. The same StageQuest object is used by Human/Stage/Enemy adapters. The existing 256-cell lottery scratch and counted RNG are shared across population calls. No Stage.OnStart is invoked merely to initialize the scenario: it would destroy the selected group. See [integration](integration.md#table-backed-enemy-init-frame-and-population-s1-a3) and [setup](../SETUP.md#headless-mission-host).
 
@@ -124,6 +124,6 @@ Static addresses and local export references are recorded beside the contracts a
 ## Open questions
 
 1. (blocking) Bind decoded quest population groups/limits and saved Yugami/counters through native Stage startup instead of provisional scene rows.
-2. (blocking) Bind cell migration and Stage death/boss callbacks to the full mission schedule.
+2. (blocking) Bind cell migration, complete Stage Update, UI answers/pause and mission transitions to the full schedule.
 3. Establish the original caller/ordering guards against repeated Defeat before corpse expiry; preserve the native method's absent local guard.
 4. Restore original startup target ownership for selected quest enemies through CreateSystemEnemy/OnStart rather than raw scenario factory rows.

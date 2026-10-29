@@ -1,6 +1,7 @@
 #pragma once
 #include "combat_records.hpp"
 #include "event_conditions.hpp"
+#include <functional>
 
 namespace saga::core {
 // Host-owned opaque UI objects; no platform types enter the gameplay core.
@@ -15,6 +16,12 @@ struct BossStageState {
     bool boss_defeated=false; // StageSystem +0x85.
     std::int32_t max_z_rate=0; // +0xac; not a timer.
     const QuestConditionState* quest=nullptr; // +0x30; borrowed live state.
+};
+// Bind actual StageSystem fields; read current quest after the earlier UI callbacks.
+struct BossStageView {
+    bool& boss_defeated;
+    std::int32_t& max_z_rate;
+    std::function<const QuestConditionState*()> quest;
 };
 class BossNotificationHost {
 public:
@@ -32,4 +39,5 @@ public:
 void release_stage_movement(BossNotificationHost&);
 // StageSystem.OnBossDefeat 0x11663e4. A null enemy skips only the victory form.
 void notify_boss_defeat(BossStageState&,ComponentSlots* enemy,const CombatRecordTables&,BossNotificationHost&);
+void notify_boss_defeat(BossStageView,ComponentSlots* enemy,const CombatRecordTables&,BossNotificationHost&);
 }

@@ -6,6 +6,7 @@
 #include "core/gameplay/enemy_impact.hpp"
 #include "core/gameplay/enemy_frame.hpp"
 #include "core/gameplay/enemy_initialization.hpp"
+#include "core/gameplay/stage_update.hpp"
 #include "core/gameplay/pass_initialization.hpp"
 #include <ostream>
 
@@ -13,6 +14,10 @@ namespace saga::desktop {
 struct MissionRuntimeConfig {std::int32_t fps;bool debug;std::int32_t seed;std::string backend;};
 struct MissionHumanScenario {std::int32_t distance,min_z_rate,max_z_rate,attribute,button;};
 struct MissionRewardScenario {std::int32_t defeated,remaining,saved_defeat_count;};
+struct MissionNotificationScenario {
+    std::int32_t state,frame;bool retried;std::int32_t quest_flags;bool quest_completed;
+    std::uint32_t held_keys;std::int32_t retry_answer;
+};
 struct MissionEnemyScenario {
     std::int32_t yugami,maximum,total,interval,level;
     std::int32_t created,defeated,remaining,loop_counter,section_limit,section_created;
@@ -26,7 +31,9 @@ class MissionHumans final:private core::HumanFrameHost,private core::HumanInitia
     private core::ProjectileMotionHost,private core::PassInitializationWorld,private core::CombatEventHost,
     private core::EnemyImpactHost,private core::ImpactEffectHost,private core::ContactCollisionHost,
     private core::EcsCombatPresentation,private core::DamagePresentationHost,private core::EnemyDefeatHost,
-    private core::EnemyInitializationWorld,private core::EnemyFrameHost {
+    private core::EnemyInitializationWorld,private core::EnemyFrameHost,
+    private core::HumanDeathHost,private core::StageGameOverHost,private core::BossNotificationHost,
+    private core::StageFormStack,private core::VictoryFormStack {
 public:
     MissionHumans(MissionEntities&,const GameplayCatalog&,MissionProgress&,core::StageGeometry&,MissionRuntimeConfig,MissionHumanScenario);
     MissionHumans(const MissionHumans&)=delete;MissionHumans& operator=(const MissionHumans&)=delete;
@@ -41,7 +48,21 @@ public:
     void write_reward_report(std::ostream&);
     void enable_enemies(MissionEnemyScenario);
     void write_enemy_report(std::ostream&);
+    void enable_notifications(MissionNotificationScenario);
+    void write_notification_report(std::ostream&);
 private:
+    void game_over(std::int32_t reason)override;
+    core::StageFormStack* stage_form_stack()override{return this;}
+    std::shared_ptr<core::StageDialog> make_retry_form(std::int32_t cost)override;
+    std::shared_ptr<core::StageForm> make_defeat_form(std::int32_t reason)override;
+    void stop_stage_bgm()override;
+    void push(core::StageForm*)override;
+    void push(core::VictoryForm*)override;
+    void key_up(std::int32_t mask)override;
+    core::VictoryFormStack* form_stack()override{return this;}
+    core::VictoryForm* make_victory(std::int32_t,bool)override;
+    core::MovementControl* movement_control(std::int32_t,std::int32_t)override;
+    void send_touch_release(core::MovementControl&,std::int32_t,std::int32_t)override;
     core::EntitySubset* enemy_subset(const core::EventIntegers& slots)override{return world_.subset(slots);}
     core::EnemyGaugeService* enemy_gauge_system()override{return nullptr;} // SAGA_STUB(mission-enemy-gauge): no HUD gauge renderer.
     core::StageStartState* enemy_stage_system()override{return &stage_;}
@@ -158,5 +179,11 @@ private:
     std::uint64_t shots_=0,attack_sounds_=0,damage_presentations_=0;
     std::optional<MissionRewardScenario> reward_scenario_;
     std::optional<MissionEnemyScenario> enemy_scenario_;core::WeightedLotteryState lottery_;
+    std::optional<MissionNotificationScenario> notification_scenario_;
+    std::uint32_t held_keys_=0;
+    std::vector<std::shared_ptr<core::StageForm>> stage_forms_;
+    std::vector<std::unique_ptr<core::VictoryForm>> victory_forms_;
+    std::map<const core::StageForm*,std::string> form_names_;
+    std::vector<std::string> notification_events_; // One ordered presentation stream for both stack projections.
 };
 } // namespace saga::desktop

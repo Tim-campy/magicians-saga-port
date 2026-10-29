@@ -196,6 +196,54 @@ class MissionProfileTests(unittest.TestCase):
             scene.write_text(text.replace('human_system 10 0 100 3 1\n', ''), encoding='utf-8')
             self.assertIn('event receivers', self.run_host(scene).stderr)
 
+    def test_main_death_dispatches_game_over_before_retarget(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory);scene = root / 'scene.txt'
+            text = make_shoot_scene(root, lethal_contact=True)
+            text += ('collisions\nenemy_system 10000 3 10 25 7\n'
+                     'enemy_population 0 0 1 0 0 100 0\nenemy_pool 0\n')
+            scene.write_text(text + 'stage_notifications 1 13 0 0 0 655360 -1\n', encoding='utf-8')
+            result = self.run_host(scene, frames=80)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            report = json.loads(result.stdout)
+            self.assertEqual(report['positions'][0]['hp'], 0)
+            self.assertEqual(report['positions'][0]['human_state'], 5)
+            self.assertEqual(report['retry_dialog'], {'kind': 98, 'reason': 1, 'answer': -1})
+            self.assertEqual((report['stage_state'], report['stage_frame']), (1, 13))
+            self.assertEqual(report['notification_events'], ['make_retry:100', 'push:retry', 'stop_bgm', 'make_defeat:1', 'push:defeat'])
+            scene.write_text(text + 'stage_notifications 1 13 1 0 0 655360 -1\n', encoding='utf-8')
+            retried = self.run_host(scene, frames=80)
+            self.assertEqual(retried.returncode, 0, retried.stderr)
+            report = json.loads(retried.stdout)
+            self.assertEqual((report['stage_state'], report['stage_frame']), (5, 0))
+            self.assertIsNone(report['retry_dialog'])
+            self.assertEqual(report['notification_events'], ['stop_bgm', 'make_defeat:1', 'push:defeat'])
+            scene.write_text(text, encoding='utf-8')
+            self.assertIn('stage_notifications', self.run_host(scene, frames=80).stderr)
+            for invalid in ['stage_notifications 1 13 2 0 0 0 -1\n',
+                            'stage_notifications 1 13 0 0 0 4294967296 -1\n',
+                            'stage_notifications 1 13 0 0 0 0\n']:
+                scene.write_text(text + invalid, encoding='utf-8')
+                self.assertNotEqual(self.run_host(scene).returncode, 0)
+
+    def test_boss_landing_notifies_and_releases_keys(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory);scene = root / 'scene.txt'
+            text = make_shoot_scene(root, rewards=True).replace('enemy 0 4 7 2', 'enemy 0 4 7 1')
+            text += ('enemy_system 10000 3 10 25 7\nenemy_population 0 0 1 0 0 100 0\nenemy_pool 0\n'
+                     'stage_notifications 1 13 0 2 0 655361 -1\n')
+            scene.write_text(text, encoding='utf-8')
+            result = self.run_host(scene, frames=240)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            report = json.loads(result.stdout)
+            self.assertTrue(report['boss_defeated'])
+            self.assertEqual(report['max_z_rate'], 100)
+            self.assertEqual(report['held_keys'], 1)
+            self.assertEqual(report['notification_events'], ['key_up:524288', 'make_victory:4:1', 'push:victory', 'key_up:131072', 'key_up:524288', 'control_lookup:35:65553', 'control_lookup:35:65555'])
+            self.assertEqual(report['stage_state'], 1)  # Notification alone does not clear a quest.
+            self.assertIsNone(report['retry_dialog'])
+            self.assertEqual(self.run_host(scene, frames=240).stdout, result.stdout)
+
 
 if __name__ == '__main__':
     unittest.main()

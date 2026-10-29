@@ -14,13 +14,16 @@ void release_stage_movement(BossNotificationHost& host){
     if(second)host.send_touch_release(*second,1,9);
 }
 void notify_boss_defeat(BossStageState& stage,ComponentSlots* enemy,const CombatRecordTables& tables,BossNotificationHost& host){
+    notify_boss_defeat(BossStageView{stage.boss_defeated,stage.max_z_rate,[&stage]{return stage.quest;}},enemy,tables,host);
+}
+void notify_boss_defeat(BossStageView stage,ComponentSlots* enemy,const CombatRecordTables& tables,BossNotificationHost& host){
     stage.boss_defeated=true;
     stage.max_z_rate=100;
     host.key_up(0x80000);
     if(enemy){
         auto* stack=host.form_stack(); // Capture before record resolution and form construction.
         const auto& data=require(resolve_combat_enemy(*enemy,tables));
-        const auto& quest=require(stage.quest);
+        const auto& quest=require(stage.quest());
         const auto id=data.id;
         const bool completed=(quest.flags&2U)!=0||quest.completed;
         auto* form=host.make_victory(id,completed);

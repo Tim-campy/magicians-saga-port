@@ -35,7 +35,7 @@ Blockers:
 Tasks:
 - [ ] Extend `saga_mission` with real quest/map selection via `--data`/`--quest`, its SDL window and supported gameplay input replays via `--replay` (A1, A5).
 - [ ] Replace the synthetic catalogs/services of the 240-frame combat regression with the table-backed owner used by `saga_mission` (A3).
-- [ ] Bind Stage death and boss notification to the table-backed host, preserving event30 ordering (A3, A4).
+- [ ] Bind retry/defeat/victory form answers and pause/resume to Stage Update without automatic crystal or ad choices (A4).
 - [ ] Bind drop collection, stage reward accumulation and permanent result grants to the host (A3, A4).
 - [ ] Wire Map/MapChip factories and `MapSystem.Init/LoadMap` from InitWorld geometry into the host (A1).
 - [ ] Bind QuestForm's cursor UI to SDL input events (A2).
