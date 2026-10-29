@@ -1,4 +1,5 @@
 #include "render_queue.hpp"
+#include "partition_sort.hpp"
 #include <algorithm>
 #include <limits>
 #include <stdexcept>
@@ -37,29 +38,16 @@ void insert_render_command(RenderQueue& state,const RenderCommand& command){
     auto& fresh=required(state.counts.get()).at(type);fresh=word(static_cast<std::uint32_t>(fresh)+1U);
 }
 std::int32_t render_pivot(RenderRows rows,std::int32_t left,std::int32_t right){
-    for(auto index=word(static_cast<std::uint32_t>(left)+1U);index<=right;index=word(static_cast<std::uint32_t>(index)+1U)){
-        const auto first=depth(rows,left),other=depth(rows,index);
-        if(first!=other)return first<other?index:left;
-    }
-    return -1;
+    auto key=[&](std::int32_t i){return depth(rows,i);};return detail::native_pivot(left,right,key);
 }
 std::int32_t partition_render_rows(RenderRows rows,std::int32_t left,std::int32_t right,std::int32_t pivot){
-    if(left>right)return left;
-    auto index=left,last=right;
-    do{
-        while(index<=right&&depth(rows,index)<pivot)index=word(static_cast<std::uint32_t>(index)+1U);
-        while(last>=left&&depth(rows,last)>=pivot)last=word(static_cast<std::uint32_t>(last)-1U);
-        if(index>last)return index;
-        std::swap(row(rows,index),row(rows,last));index=word(static_cast<std::uint32_t>(index)+1U);last=word(static_cast<std::uint32_t>(last)-1U);
-    }while(index<=last);
-    return index;
+    auto key=[&](std::int32_t i){return depth(rows,i);};
+    auto swap=[&](std::int32_t i,std::int32_t j){std::swap(row(rows,i),row(rows,j));};
+    return detail::native_partition(left,right,pivot,key,swap);
 }
 void quicksort_render_rows(RenderRows rows,std::int32_t left,std::int32_t right){
-    while(left!=right){
-        const auto pivot_index=render_pivot(rows,left,right);if(pivot_index==-1)return;
-        const auto split=partition_render_rows(rows,left,right,depth(rows,pivot_index));
-        quicksort_render_rows(rows,left,word(static_cast<std::uint32_t>(split)-1U));left=split;
-    }
+    auto key=[&](std::int32_t i){return depth(rows,i);};
+    auto swap=[&](std::int32_t i,std::int32_t j){std::swap(row(rows,i),row(rows,j));};detail::native_quicksort(left,right,key,swap);
 }
 void sort_render_queue(RenderQueue& state,std::int32_t type){
     const auto end=word(static_cast<std::uint32_t>(required(state.counts.get()).at(static_cast<std::size_t>(type)))-1U);

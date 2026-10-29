@@ -1,6 +1,8 @@
 saga_library(combat_rules combat_rules.cpp)
 saga_library(mesh_depth mesh_depth.cpp)
 saga_library(offscreen_transform offscreen_transform.cpp)
+saga_library(mesh_submission mesh_submission.cpp)
+target_link_libraries(mesh_submission PUBLIC material_queue offscreen_transform)
 if(MSVC)
   target_compile_options(offscreen_transform PRIVATE /fp:strict)
 else()

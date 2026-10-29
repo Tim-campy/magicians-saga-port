@@ -8501,7 +8501,7 @@ kairo:0x060010c3,kairo:0x060010c3,unassigned,,192,0x1ca4f04
 kairo:0x060010c4,kairo:0x060010c4,unassigned,,1844,0x1ca4fc4
 kairo:0x060010c5,kairo:0x060010c5,unassigned,,316,0x1ca2168
 kairo:0x060010c6,kairo:0x060010c6,unassigned,,84,0x1ca2834
-kairo:0x060010c7,kairo:0x060010c7,unassigned,,156,0x1ca56f8
+kairo:0x060010c7,Layer.GetIndexCount,unassigned,reimplemented,156,0x1ca56f8
 kairo:0x060010c8,kairo:0x060010c8,graphics,,388,0x1ca5794
 kairo:0x060010c9,kairo:0x060010c9,graphics,,404,0x1ca5918
 kairo:0x060010ca,kairo:0x060010ca,graphics,,464,0x1ca5aac
@@ -8523,10 +8523,10 @@ kairo:0x060010d9,kairo:0x060010d9,graphics,,8,0x1ca8074
 kairo:0x060010da,kairo:0x060010da,graphics,,8,0x1ca807c
 kairo:0x060010db,kairo:0x060010db,graphics,,1992,0x1ca67d4
 kairo:0x060010dc,kairo:0x060010dc,graphics,,2032,0x1ca8190
-kairo:0x060010dd,kairo:0x060010dd,graphics,,208,0x1ca80c0
-kairo:0x060010de,kairo:0x060010de,graphics,,232,0x1ca8980
-kairo:0x060010df,kairo:0x060010df,graphics,,368,0x1ca8a68
-kairo:0x060010e0,kairo:0x060010e0,unassigned,,52,0x1ca808c
+kairo:0x060010dd,kairo.unity.graphics.MeshManager.QuickSort,graphics,reimplemented,208,0x1ca80c0
+kairo:0x060010de,kairo.unity.graphics.MeshManager.Pivot,graphics,reimplemented,232,0x1ca8980
+kairo:0x060010df,kairo.unity.graphics.MeshManager.Partition,graphics,reimplemented,368,0x1ca8a68
+kairo:0x060010e0,LayerMesh.Init,unassigned,reimplemented,52,0x1ca808c
 kairo:0x060010e1,kairo:0x060010e1,unassigned,,8,0x1ca8084
 kairo:0x060010e2,kairo:0x060010e2,graphics,,360,0x1ca3134
 kairo:0x060010e3,kairo:0x060010e3,graphics,,168,0x1ca620c

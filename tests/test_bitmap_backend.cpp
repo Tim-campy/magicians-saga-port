@@ -1,4 +1,5 @@
 #include "platform/desktop/bitmap_backend.hpp"
+#include "core/gameplay/mesh_submission.hpp"
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
@@ -24,6 +25,15 @@ struct DepthHost:BitmapDepthHost {
     MeshDepthState& mesh_depth_state()override{return state;}
     MeshBuilderDepth& depth_builder(std::size_t,std::uint32_t,std::int32_t)override{return builder;}
     bool depth_step_enabled()override{return enabled;}
+};
+struct QuadGroup:SubmissionGroup {const BitmapQuad* quad=nullptr;};
+struct SubmissionHost:MeshSubmissionHost {
+    std::vector<const BitmapQuad*> drawn;int clears=0;
+    void clear_depth()override{++clears;}
+    void set_material_pass(SubmissionMaterial& m)override{check(m.unused_frames==0);}
+    void draw_mesh(SubmissionGroup& group,OffscreenMatrix)override{drawn.push_back(static_cast<QuadGroup&>(group).quad);}
+    void after_mesh_draw(SubmissionMaterial&,SubmissionGroup&)override{}
+    std::int32_t check_count()override{check(false);return 0;} // These supplied materials have no image-lifetime binding.
 };
 }
 int main()try{
@@ -55,6 +65,23 @@ int main()try{
     const float first_z=749993.0F-native.builder.step;
     check(depth_quads[0].points[0].z==first_z&&depth_quads[0].points[3].z==first_z);
     check(depth_quads[2].points[0].z<depth_quads[1].points[0].z); // One decrement per material pass, not per vertex.
+    // Feed actual native-Z bitmap passes through ready LayerMesh records. The caller supplies
+    // material/builder ownership; this does not infer production batch construction from texture IDs.
+    {std::array<QuadGroup,4> groups;std::array<SubmissionLayer,4> layers;
+        std::array<SubmissionMaterial,3> materials;std::array<SubmissionRecord,4> records;
+        auto rows=std::make_shared<std::vector<SubmissionRecord*>>();
+        for(std::size_t i=0;i<4;++i){const auto material=i==3?0:i;
+            groups[i].index_count=6;groups[i].quad=&depth_quads[i];materials[material].queue.absolute=depth_quads[i].render_queue;
+            layers[i].index=depth_quads[i].depth.group;layers[i].groups=std::make_shared<SubmissionGroupList>();layers[i].groups->values={&groups[i]};
+            init_submission_record(records[i],&materials[material],&layers[i]);rows->push_back(&records[i]);}
+        sort_submissions(rows,0,3);MeshSubmissionState submission;
+        submission.cursors=std::make_shared<std::vector<std::int32_t>>(1,0);submission.lengths=std::make_shared<std::vector<std::int32_t>>(1,4);
+        submission.lists=std::make_shared<std::vector<SubmissionRecords>>(1,rows);submission.matrices=std::make_shared<std::vector<OffscreenMatrix>>(1);
+        submission.used_materials=std::make_shared<std::vector<SubmissionMaterial*>>();SubmissionHost host;
+        submit_mesh_streams(submission,1,host);
+        check((host.drawn==std::vector<const BitmapQuad*>{&depth_quads[3],&depth_quads[0],&depth_quads[1],&depth_quads[2]}));
+        check(host.clears==2&&submission.used_count==4&&submission.used_materials->at(0)==submission.used_materials->at(1));
+        check(host.drawn[3]->native_depth&&host.drawn[3]->points[0].z==depth_quads[2].points[0].z);}
     check(native.state.layer==0);backend.set_depth_host(nullptr);
     // Existing global AppData override is distinct from the primary manager and its texture dimensions.
     clear_render_queue(queue);insert(queue,1,3,0,3);auto row=queue.buffers->at(0)->at(0);row->at(render_texture)=2;row->at(render_image_resource)=1;
