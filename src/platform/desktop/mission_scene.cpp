@@ -11,7 +11,13 @@ template<class T>T& required(T* p){if(!p)throw std::invalid_argument("missing mi
 struct Cursor final:RenderCursor {
     EntitySubset::Cursor cursor;
     explicit Cursor(EntitySubset& group):cursor(group.cursor()){}
-    std::optional<ComponentSlots*> next()override{return cursor.next();}
+    std::optional<ComponentSlots*> next()override{
+        while(const auto entry=cursor.next()){
+            const auto* effect=dynamic_cast<EffectComponent*>((*entry)->get(26));
+            if(effect&&effect->type==3)continue; // SAGA_STUB(mission-collection-labels): retain native effect/lifetime; numeric glyph rendering is unbound.
+            return entry;
+        }return std::nullopt;
+    }
 };
 struct MovementWorld final:PassInitializationWorld,ModificationInitializationWorld,EmitterInitializationWorld {
     MissionEntities& world;

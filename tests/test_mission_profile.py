@@ -244,6 +244,75 @@ class MissionProfileTests(unittest.TestCase):
             self.assertIsNone(report['retry_dialog'])
             self.assertEqual(self.run_host(scene, frames=240).stdout, result.stdout)
 
+    def test_collection_credits_stage_totals_and_expires_sources_without_character_grants(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory);scene = root / 'scene.txt'
+            text = make_shoot_scene(root, rewards=True)
+            text += ('collisions\nenemy_system 10000 3 10 25 7\nenemy_population 0 0 1 0 0 100 0\nenemy_pool 0\n'
+                     'stage_notifications 1 13 0 0 0 0 -1\ncollection fresh\n')
+            scene.write_text(text, encoding='utf-8')
+            result = self.run_host(scene, frames=240)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            report = json.loads(result.stdout)
+            count = report['defeated_enemies']
+            self.assertGreater(count, 0)
+            self.assertTrue(report['collection_enabled'])
+            self.assertEqual(report['collection_steps'], 240)
+            self.assertEqual(report['stage_rewards'], {'experience': 10 * count, 'money': 0, 'prisoners': 0, 'treasures': [0] * count})
+            self.assertEqual(report['collection_sounds'], 2 * count)
+            self.assertEqual(report['pending_drops'], [])
+            self.assertEqual(report['collecting_drops'], 0)
+            self.assertEqual(report['numeric_effects_live'], 0)
+            self.assertEqual(report['positions'][0]['human_experience'], 0)
+            self.assertEqual(self.run_host(scene, frames=240).stdout, result.stdout)
+            scene.write_text(text.replace('stage_notifications 1 13', 'stage_notifications 0 13'), encoding='utf-8')
+            inactive = self.run_host(scene, frames=240)
+            self.assertEqual(inactive.returncode, 0, inactive.stderr)
+            self.assertEqual(json.loads(inactive.stdout)['collection_steps'], 0)
+            for invalid in [text + 'collection fresh\n', text.replace('collection fresh', 'collection saved'),
+                            text.replace('stage_notifications 1 13 0 0 0 0 -1\n', '')]:
+                scene.write_text(invalid, encoding='utf-8')
+                self.assertNotEqual(self.run_host(scene).returncode, 0)
+
+    def test_selected_money_prisoner_and_treasure_collection(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory);scene = root / 'scene.txt'
+            text = make_shoot_scene(root, rewards=True).replace('human_system 10 0 100 3 1', 'human_system 10 0 100 3 0')
+            text += ('stage_notifications 1 0 0 0 0 0 -1\ncollection fresh\n'
+                     'drop 1 7 25 200 0 100\ndrop 2 999 25 -200 0 100\ndrop 3 0 25 0 0 100\n')
+            scene.write_text(text, encoding='utf-8')
+            result = self.run_host(scene, frames=80)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            report = json.loads(result.stdout)
+            self.assertEqual(report['stage_rewards'], {'experience': 0, 'money': 7, 'prisoners': 1, 'treasures': [0]})
+            self.assertEqual(report['collection_sounds'], 3)
+            self.assertEqual(report['pending_drops'], [])
+            self.assertTrue(all(e['destroyed'] for e in report['positions'][2:]))
+
+    def test_boss_box_waits_for_defeat_then_collects_immediately(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory);scene = root / 'scene.txt'
+            text = make_shoot_scene(root, rewards=True, treasure_flags=1).replace('human_system 10 0 100 3 1', 'human_system 10 0 100 3 0')
+            text += ('stage_notifications 1 0 0 0 0 0 -1\ncollection fresh\ndrop 3 0 25 0 0 100\n'
+                     'enemy_system 10000 3 10 25 7\nenemy_pool 0\n')
+            population = 'enemy_population 0 0 1 0 0 100 0\n'
+            scene.write_text(text + population, encoding='utf-8')
+            blocked = self.run_host(scene, frames=1)
+            self.assertEqual(blocked.returncode, 0, blocked.stderr)
+            report = json.loads(blocked.stdout)
+            self.assertFalse(report['reward_box_picked_up'])
+            self.assertEqual(report['stage_rewards']['treasures'], [])
+            self.assertEqual(len(report['pending_drops']), 1)
+            scene.write_text(text + population.replace('1 0 0 100', '1 0 1 100'), encoding='utf-8')
+            collected = self.run_host(scene, frames=1)
+            self.assertEqual(collected.returncode, 0, collected.stderr)
+            report = json.loads(collected.stdout)
+            self.assertTrue(report['reward_box_picked_up'])
+            self.assertEqual(report['stage_rewards']['treasures'], [0])
+            self.assertEqual(report['collection_jingles'], 1)
+            self.assertEqual(report['collecting_drops'], 0)
+            self.assertEqual(report['pending_drops'], [])
+
 
 if __name__ == '__main__':
     unittest.main()

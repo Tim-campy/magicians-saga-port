@@ -50,7 +50,22 @@ public:
     void write_enemy_report(std::ostream&);
     void enable_notifications(MissionNotificationScenario);
     void write_notification_report(std::ostream&);
+    void enable_collection(); // Explicit fresh accumulator/list selection, not save restoration or full Stage.Start.
+    void advance_collection(std::int32_t pass=0,bool enabled=true);
+    void write_collection_report(std::ostream&);
 private:
+    struct CollectionHost final:core::DropCollectionHost {
+        MissionHumans& owner;
+        explicit CollectionHost(MissionHumans& value):owner(value){}
+        core::ComponentSlots* front_line_human()override;
+        core::EntitySubset* drop_subset()override{return owner.world_.subset({34});}
+        const core::TreasureRecord& treasure(std::int32_t id)override{return owner.world_.treasure(id);}
+        core::ComponentSlots* hero()override{return &owner.hero();}
+        core::DropEffectWorld* effect_world()override{return &owner.world_.effect_world();}
+        core::GarbageLifetime& acquire_garbage()override{return owner.world_.acquire_garbage();}
+        void play_collection_sound()override{++owner.collection_sounds_;} // SAGA_STUB(mission-collection-audio).
+        void play_reward_jingle()override{++owner.collection_jingles_;} // SAGA_STUB(mission-collection-audio).
+    } collection_host_{*this};
     void game_over(std::int32_t reason)override;
     core::StageFormStack* stage_form_stack()override{return this;}
     std::shared_ptr<core::StageDialog> make_retry_form(std::int32_t cost)override;
@@ -185,5 +200,6 @@ private:
     std::vector<std::unique_ptr<core::VictoryForm>> victory_forms_;
     std::map<const core::StageForm*,std::string> form_names_;
     std::vector<std::string> notification_events_; // One ordered presentation stream for both stack projections.
+    bool collection_enabled_=false;std::uint64_t collection_steps_=0,collection_sounds_=0,collection_jingles_=0;
 };
 } // namespace saga::desktop

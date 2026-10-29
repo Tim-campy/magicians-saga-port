@@ -29,6 +29,10 @@ ComponentSlots* MissionEntities::drop(std::int32_t type,std::int32_t value,Proje
     if(!catalog_.treasures)throw std::invalid_argument("reward scene requires the Treasure catalog");
     return create_drop(type,value,at,scale,*catalog_.treasures,ids_,*this);
 }
+const TreasureRecord& MissionEntities::treasure(std::int32_t id)const{
+    if(!catalog_.treasures)throw std::invalid_argument("collection requires the Treasure catalog");
+    const auto& row=catalog_.treasures->at(static_cast<std::size_t>(id));return required(row?&*row:nullptr);
+}
 ComponentSlots& MissionEntities::emitter(EmitterCreation args){return create_emitter(args,*this);}
 DropComponent& MissionEntities::acquire_drop(){return acquire(drops_);}
 ComponentSlots& MissionEntities::raw_entity(std::int32_t type){return create_entity(ids_,type,false,static_cast<BulletFactoryHost&>(*this));}

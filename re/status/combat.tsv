@@ -33,10 +33,10 @@ game:0x06000e83	reimplemented	src/core/gameplay/enemy_defeat.cpp	Complete motion
 game:0x06000d47	traced	docs/subsystems/rewards.md	flag +0x14 via BitUtil.Check; bit meaning unknown
 game:0x060010ca	reimplemented	src/core/gameplay/enemy_defeat.cpp	Wrapping int32 addition then clamp at zero; overflow and negative increment tests
 game:0x060010c7	reimplemented	src/core/gameplay/enemy_rewards.cpp	Binary32 zero-amplitude interpolation with wrapped progress/difference; synthetic edges and full local table audit
-game:0x06000bf9	reimplemented	src/core/gameplay/drop_factory.cpp	All four pending-drop branches with actual Cell/Image payloads; EXP/treasure factory reachable from saga_mission; no collection credit here.
-game:0x06000fa4	reimplemented	src/core/gameplay/drop_collection.cpp	Live drop query, ordered range/boss gates, immediate boss credit or queued start; mutations and failure effects tested.
-game:0x06000fa5	reimplemented	src/core/gameplay/drop_collection.cpp	Captured hero target, live indexed list, reused float curve, 31-pass credit and current-list removal; real factory/expiry integration.
-game:0x06000fb9	reimplemented	src/core/gameplay/drop_collection.cpp	Accumulator then actual number/common effect factories, Garbage(0), explicit sound; partial failures and unknown types tested.
+game:0x06000bf9	reimplemented	src/core/gameplay/drop_factory.cpp	All four pending-drop branches reachable from mission host via explicit drop selection; actual Cell/Image/Sync payloads; grants remain separate.
+game:0x06000fa4	reimplemented	src/core/gameplay/drop_collection.cpp	Native front-Z/boss gates and live drop query bound to mission owner; boss box immediate pickup and queued ordinary pickup tested.
+game:0x06000fa5	reimplemented	src/core/gameplay/drop_collection.cpp	Native hero snapshot/live list/31-update credit bound in Stage3 collection prefix beforeHuman4; dialog/state gates preserve pending work.
+game:0x06000fb9	reimplemented	src/core/gameplay/drop_collection.cpp	Stage credit then real numeric/common effect factories, Garbage0 and audio adapters; numeric glyph output explicitly stubbed, no permanent grants.
 game:0x06000d36	reimplemented	src/core/gameplay/drop_collection.cpp	Signed frame >=0 predicate used by tested live collection pass.
 game:0x06000f9d	reimplemented	src/core/gameplay/stage_update.cpp	Dialog prelude and all seven states; real entry/collection/grants/equipment/completion/return scenario; required boss/retry/UI/storage services remain explicit.
 game:0x06000fa0	documented	docs/subsystems/rewards.md	Reward pipeline composed and tested across inventory/currency/records/member EXP; ECS storage and presentation binding pending

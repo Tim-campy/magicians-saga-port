@@ -49,5 +49,10 @@ int main()try{
     scene.advance_collisions(1,false);check(pairs==0&&scene.collision_events()==0);
     scene.advance_collisions(1);check(pairs==1&&scene.collision_events()==1&&scene.area_collision_events()==0);
     enemy->remove(32);scene.advance_collisions(0);check(pairs==1); // The initialized live group observes removal.
+    auto& effects=world.effect_world();auto& number=create_effect({{0,20,0},3,9,2,58,false,false,30,0,nullptr,-1,false},effects.ids,effects.factory);
+    check(number.contains(26)&&!number.contains(4)&&!number.contains(5));
+    scene.render();check(scene.faults().empty()&&queue.counts->at(0)==2); // Explicit numeric-label presentation stub; no invented Depth.
+    for(int i=0;i<30;++i)scene.advance_garbage(0);
+    check(world.destroyed(number)&&!world.registry().contains(world.id(number)));
     std::cout<<"mission scene render bindings ok\n";return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

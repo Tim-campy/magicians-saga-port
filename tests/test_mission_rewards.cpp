@@ -43,5 +43,10 @@ int main()try{
         else{treasure=true;check(drop.type==3&&drop.value==0&&!e.contains(13)&&field<EntityImage>(e,7).arrays.textures->at(0)==77);}
     }
     check(experience&&treasure&&saved.characters.at(2).experience==13); // Pending drops are not permanent EXP grants.
+    humans.enable_notifications({1,13,false,0,false,0,-1});humans.enable_collection();humans.advance_collection();
+    auto assert_first_tick=[&]{auto pending=world.subset({34})->cursor();while(const auto e=pending.next())check(field<DropComponent>(**e,34).frame==1);};
+    assert_first_tick();field<HumanRecordLink>(hero,14).state=5;resolve_combat_parameter(hero,0)->value=0;
+    world.events().send(30,&hero); // Pending retry dialog keeps Stage state1 but gates subsequent collection.
+    humans.advance_collection();assert_first_tick();check(saved.characters.at(2).experience==13);
     std::cout<<"lethal shot, saved defeat count, EXP/treasure drops, debris/trails and corpse cleanup ok\n";return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

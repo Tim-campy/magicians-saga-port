@@ -19,6 +19,7 @@ std::vector<std::uint8_t> read(const std::filesystem::path& path){
 void end(std::istringstream& row){row>>std::ws;if(!row.eof())throw std::invalid_argument("unexpected scene row fields");}
 struct SelectedBullet {std::int32_t id,damage,attribute,parent;ProjectilePoint position;};
 struct SelectedEffect {std::int32_t clip,image;bool loop;ProjectilePoint position;};
+struct SelectedDrop {std::int32_t type,value,scale;ProjectilePoint position;};
 }
 SceneResource::SceneResource(const std::filesystem::path& path,ResourceProfile profile,ArchiveImageSet::Decoder decoder)
     :archive(read(path),std::move(profile)),manager(archive){
@@ -26,10 +27,11 @@ SceneResource::SceneResource(const std::filesystem::path& path,ResourceProfile p
 }
 MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,ArchiveImageSet::Decoder decoder,std::optional<MissionRuntimeConfig> config):runtime(std::move(config)){
     std::ifstream input(scene);if(!input)throw std::runtime_error("cannot open scene description");
-    std::vector<std::variant<HumanCreation,EnemyCreation,SelectedBullet,SelectedEffect>> selected;
+    std::vector<std::variant<HumanCreation,EnemyCreation,SelectedBullet,SelectedEffect,SelectedDrop>> selected;
     std::optional<MissionHumanScenario> human_scenario;bool runtime_row=false;
     std::optional<MissionRewardScenario> rewards;
     std::optional<MissionNotificationScenario> notifications;
+    bool collection=false,drop_catalog=false;
     MissionEnemyScenario enemy{};bool enemy_config=false,enemy_population=false,enemy_pool=false;
     std::map<std::string,std::int32_t> gear_defaults;
     std::vector<std::size_t> players;
@@ -52,6 +54,8 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         }else if(operation=="enemy_pool"){
             std::int32_t count=0;if(!native||enemy_pool||!(row>>count)||count<0||count>1000)throw std::invalid_argument("enemy_pool requires count0..1000 followed by enemy ID/weight pairs");
             for(std::int32_t i=0;i<count;++i){std::int32_t id=0,weight=0;if(!(row>>id>>weight))throw std::invalid_argument("enemy_pool requires every ID/weight pair");enemy.pool.emplace_back(id,weight);}enemy_pool=true;
+        }else if(operation=="collection"){
+            std::string kind;if(!native||collection||!(row>>kind)||kind!="fresh")throw std::invalid_argument("collection requires one explicit fresh selection");collection=true;
         }else if(operation=="stage_notifications"){
             MissionNotificationScenario value{};std::int32_t retried=0,completed=0;std::uint64_t keys=0;
             if(!native||notifications||!(row>>value.state>>value.frame>>retried>>value.quest_flags>>completed>>keys>>value.retry_answer)||(retried!=0&&retried!=1)||(completed!=0&&completed!=1)||keys>0xffffffffULL)throw std::invalid_argument("stage_notifications requires state frame retried0/1 quest-flags completed0/1 held-keys-uint32 retry-answer");
@@ -118,6 +122,8 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             EnemyCreation e;if(!native||!(row>>e.direction>>e.id>>e.level>>e.flags>>e.position.x>>e.position.y>>e.position.z))throw std::invalid_argument("enemy requires direction ID level flags and XYZ");selected.emplace_back(e);
         }else if(operation=="bullet"){
             SelectedBullet b;if(!native||!(row>>b.id>>b.damage>>b.attribute>>b.parent>>b.position.x>>b.position.y>>b.position.z))throw std::invalid_argument("bullet requires ID damage attribute parent ordinal and XYZ");selected.emplace_back(b);
+        }else if(operation=="drop"){
+            SelectedDrop d;if(!native||!(row>>d.type>>d.value>>d.scale>>d.position.x>>d.position.y>>d.position.z))throw std::invalid_argument("drop requires type value scale and XYZ");selected.emplace_back(d);drop_catalog=true;
         }else if(operation=="effect"){
             SelectedEffect e;std::int32_t repeat=0;
             if(!native||!(row>>e.clip>>e.image>>repeat>>e.position.x>>e.position.y>>e.position.z)||(repeat!=0&&repeat!=1))throw std::invalid_argument("effect requires clip image loop0/1 and XYZ");
@@ -145,10 +151,11 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     const bool enemy_requested=enemy_config||enemy_population||enemy_pool;
     if(collisions&&!human_scenario)throw std::invalid_argument("collisions requires human_system event receivers");
     if(notifications&&!human_scenario)throw std::invalid_argument("stage_notifications requires human_system");
+    if(collection&&(!notifications||!human_scenario))throw std::invalid_argument("collection fresh requires stage_notifications and human_system");
     if(enemy_requested&&!(enemy_config&&enemy_population&&enemy_pool&&human_scenario))throw std::invalid_argument("enemy system requires enemy_system/enemy_population/enemy_pool and human_system");
     if(!selected.empty()){
         if(!tables||!has_view||!has_slots||!has_animation||commands)throw std::invalid_argument("entity capture needs tables/view/slots/animate and no manual draw rows");
-        catalog=std::make_unique<GameplayCatalog>(load_gameplay_catalog(*tables,false,parse_event_decimal,rewards.has_value()));
+        catalog=std::make_unique<GameplayCatalog>(load_gameplay_catalog(*tables,false,parse_event_decimal,rewards.has_value()||collection||drop_catalog));
         for(const auto& entry:gear_defaults){
             const auto& data=entry.first=="equipment"?catalog->equipment:entry.first=="hat"?catalog->hats:catalog->cloth;
             auto& levels=entry.first=="equipment"?progress.equipment_levels:entry.first=="hat"?progress.hat_levels:progress.cloth_levels;
@@ -162,6 +169,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             else if(const auto* b=std::get_if<SelectedBullet>(&request)){ComponentSlots* parent=nullptr;
                 if(b->parent!=-1)parent=created.at(static_cast<std::size_t>(b->parent));
                 entity=&entity_world->bullet({b->id,b->damage,b->attribute,parent,b->position});}
+            else if(const auto* d=std::get_if<SelectedDrop>(&request))entity=entity_world->drop(d->type,d->value,d->position,d->scale);
             else{const auto& fx=std::get<SelectedEffect>(request);entity=&entity_world->effect(fx.position,fx.clip,fx.image,fx.loop);}
             if(!entity)throw std::invalid_argument("selected entity record is unavailable");created.push_back(entity);
         }
@@ -173,6 +181,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             if(rewards)humans->enable_rewards(*rewards);
             if(enemy_requested)humans->enable_enemies(std::move(enemy));
             if(notifications)humans->enable_notifications(*notifications);
+            if(collection)humans->enable_collection();
             for(const auto& request:states)humans->set_state(*created.at(std::get<0>(request)),std::get<1>(request),std::get<2>(request));
         }else if(!states.empty())throw std::invalid_argument("actor_state requires human_system");
         for(std::int32_t i=0;i<frames;++i)mission->advance_animations({automatic!=0,application_update!=0});
@@ -186,7 +195,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
 }
 void MissionProfile::step(){
     if(!mission)throw std::invalid_argument("selected logic requires a table-backed entity scene");
-    if(humans){humans->update();humans->advance_enemies();humans->advance_projectiles();}
+    if(humans){humans->advance_collection();humans->update();humans->advance_enemies();humans->advance_projectiles();}
     if(simulate)mission->advance_movement(0);
     if(collisions)mission->advance_collisions(0);
     if(simulate)mission->advance_emitters(0);
@@ -198,7 +207,7 @@ void MissionProfile::step(){
 void MissionProfile::write_actor_parameters(ComponentSlots& actor,std::ostream& out){
     if(actor.contains(23)){
         out<<",\"hp\":"<<resolve_combat_parameter(actor,0)->value;
-        if(actor.contains(14))out<<",\"mp\":"<<resolve_combat_parameter(actor,1)->value;
+        if(actor.contains(14))out<<",\"mp\":"<<resolve_combat_parameter(actor,1)->value<<",\"human_experience\":"<<dynamic_cast<HumanRecordLink*>(actor.get(14))->experience;
     }
     if(const auto* enemy=dynamic_cast<EnemyRecordLink*>(actor.get(24)))out<<",\"enemy_state\":"<<enemy->state<<",\"enemy_frame\":"<<enemy->frame<<",\"enemy_flags\":"<<enemy->flags;
 }
@@ -212,7 +221,7 @@ void MissionProfile::write_combat_report(std::ostream& out){
         out<<"{\"id\":"<<entity_world->id(**e)<<",\"x\":"<<p->x<<",\"y\":"<<p->y<<",\"z\":"<<p->z<<",\"frame\":"<<flight->frame<<",\"max_frame\":"<<flight->max_frame<<'}';
     }}
     out<<']';
-    if(humans){humans->write_reward_report(out);humans->write_enemy_report(out);humans->write_notification_report(out);}
+    if(humans){humans->write_reward_report(out);humans->write_enemy_report(out);humans->write_notification_report(out);humans->write_collection_report(out);}
     out<<",\"collisions_enabled\":"<<(collisions?"true":"false")<<",\"collision_events\":"<<(mission?mission->collision_events():0)<<",\"area_collision_events\":"<<(mission?mission->area_collision_events():0);
     out<<",\"pending_drops\":[";first=true;
     if(entity_world){auto cursor=entity_world->subset({34})->cursor();while(const auto e=cursor.next()){
