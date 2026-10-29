@@ -1,4 +1,5 @@
 #include "resource_catalog.hpp"
+#include "presentation_text.hpp"
 
 #include <limits>
 #include <stdexcept>
@@ -22,6 +23,42 @@ std::int32_t row_id(const std::u16string& row, std::int32_t current, CatalogText
         : host.parse_id(std::u16string_view(row).substr(0, tab));
 }
 } // namespace
+
+std::vector<std::int32_t> parse_resource_catalog_rows(const CatalogRows& rows, CatalogTextHost& host) {
+    auto captured = rows;
+    auto& values = required(captured.get());
+    std::vector<std::int32_t> ids(values.size(), -1);
+    for (std::size_t i = 0; i < values.size(); ++i) {
+        const auto& original = required(values.at(i).get());
+        const auto fields = split_trimmed_text_fields(&original, u'\t');
+        if (fields.size() >= 2) {
+            ids.at(i) = host.parse_id(fields[0]);
+            values.at(i) = std::make_shared<const std::u16string>(fields[1]);
+        }
+    }
+    return ids;
+}
+
+CatalogText resource_file_name(CatalogText name, ResourceNameHost& host) {
+    const auto& original = required(name.get());
+    if (host.starts_with(original, u"..\\") || host.starts_with(original, u"../")) {
+        auto value = original;
+        auto last = value.find_last_of(u'\\');
+        if (last != value.npos) value = value.substr(last + 1);
+        last = value.find_last_of(u'/');
+        if (last != value.npos) value = value.substr(last + 1);
+        return host.trim(value);
+    }
+    return host.trim(original);
+}
+
+CatalogText image_option_file(CatalogText name) {
+    if (!name) return nullptr;
+    auto value = name->substr(0, name->find(u','));
+    const auto dot = value.find_last_of(u'.');
+    if (dot == value.npos) throw std::out_of_range("image option filename has no dot");
+    return std::make_shared<const std::u16string>(value.substr(0, dot) + u".opt");
+}
 
 void trim_resource_catalog(const CatalogRows& rows, CatalogTextHost& host) {
     auto captured = rows;

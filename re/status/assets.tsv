@@ -19,11 +19,11 @@ kairo:0x060003ce	traced	docs/subsystems/assets.md	GetResourceAsStream: name then
 kairo:0x060003cf	traced	docs/subsystems/assets.md	CheckResourceAsStream: name then name+.bytes
 kairo:0x06000269	reimplemented	src/core/gameplay/resource_lookup.cpp	Selectors 2/3/4 apply ordinal all-occurrence gif-to-png then mld-to-ogg conversion; null/nonmatching modes and uppercase second-conversion integration tests.
 kairo:0x060016ea	traced	docs/subsystems/assets.md	LoadReady selected-row trimming and selected-over-base supplementation ported/tested in resource_catalog; ordinal IDs, retained base duplicates and array publication established; loading/language/exception shell remains partial.
-kairo:0x060016ec	traced	docs/formats/inf.md	Missing-ID first-free assignment, retained row-count length and ordered duplicate overwrite ported as a slice; full async LoadStart remains open.
+kairo:0x060016ec	traced	docs/formats/inf.md	TAB row-prefix parsing and missing-ID first-free/duplicate overwrite slices ported; selected real archive clip/TexId/PNG/OPT preparation demonstrated; full async/cache LoadStart remains open.
 kairo:0x0600171d	traced	docs/subsystems/assets.md	LoadStart closure: bin/WxH options, palette, Image ctor 0x06001502
-kairo:0x060016ee	documented	docs/subsystems/assets.md	GetFileName: strips ../ or ..\ prefix then Trim; caller LoadStart
+kairo:0x060016ee	reimplemented	src/core/gameplay/resource_catalog.cpp	Public current-culture prefix checks before last-backslash/last-slash stripping and Trim; native order, ordinary nested paths, leading spaces and archive binding tested.
 kairo:0x0600170c	documented	docs/subsystems/assets.md	GetImage: image array +0x10[id] unless +0x60 override; caller Seb.GetImage
-kairo:0x0600155c	documented	docs/subsystems/assets.md	GetOptionFile: first comma field, drop extension, append .opt; caller LoadStart
+kairo:0x0600155c	reimplemented	src/core/gameplay/resource_catalog.cpp	Null return, untrimmed first comma field, last-dot substring and opt suffix; missing/leading/directory-dot boundaries and actual archive-sidecar resolution tested.
 kairo:0x0600152e	documented	docs/subsystems/assets.md	GetAreaSize: GIF/PNG/JPEG header dimensions; caller Image ctor 0x06001502
 kairo:0x060014ff	traced	docs/subsystems/assets.md	Image ctor: width/height 0
 kairo:0x06001500	traced	docs/subsystems/assets.md	Image ctor: width/height via Texture.get_width/get_height slots

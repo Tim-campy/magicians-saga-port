@@ -12,6 +12,9 @@ add_executable(animation_trace animation_trace.cpp)
 target_link_libraries(animation_trace PRIVATE animation_resources effect_factory dynamic_subsets)
 project_warnings(animation_trace)
 
+saga_library(resource_archive resource_archive.cpp)
+target_link_libraries(resource_archive PUBLIC jar_archive opt_grid animation_resources resource_lookup resource_catalog event_catalog)
+
 option(SAGA_BUILD_VIEWER "Build the optional desktop PNG research viewer" OFF)
 if(SAGA_BUILD_VIEWER)
   set(FETCHCONTENT_BASE_DIR "${CMAKE_SOURCE_DIR}/build/_deps" CACHE PATH "Local downloaded source dependencies")
@@ -44,7 +47,7 @@ if(SAGA_BUILD_VIEWER)
   add_executable(asset_viewer asset_viewer.cpp sprite_preview.cpp sdl_bitmap.cpp)
   target_compile_features(asset_viewer PRIVATE cxx_std_17)
   target_include_directories(asset_viewer SYSTEM PRIVATE "${STB_DIR}")
-  target_link_libraries(asset_viewer PRIVATE SDL3::SDL3-static bitmap_geometry animation_resources render_transform render_colors)
+  target_link_libraries(asset_viewer PRIVATE SDL3::SDL3-static bitmap_geometry animation_resources render_transform render_colors resource_archive)
   project_warnings(asset_viewer)
 endif()
 

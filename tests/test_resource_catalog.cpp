@@ -19,8 +19,11 @@ CatalogText text(const char16_t* value) { return std::make_shared<const std::u16
 CatalogRows rows(std::initializer_list<CatalogText> values) {
     return std::make_shared<std::vector<CatalogText>>(values);
 }
-struct Host final : CatalogTextHost {
+struct Host final : ResourceNameHost {
     int trims = 0, parses = 0;
+    bool starts_with(const std::u16string& s,std::u16string_view prefix) override {
+        return s.compare(0,prefix.size(),prefix)==0; // Synthetic ASCII fixture provider.
+    }
     CatalogText trim(const std::u16string& value) override {
         ++trims;
         // Synthetic ASCII fixture service, not a Unicode/runtime replacement.
@@ -46,6 +49,23 @@ struct Host final : CatalogTextHost {
 }
 
 int main() {
+    {Host host; auto chosen = rows({text(u" 2\t file.png,bin \tignored"),text(u"plain.seb"),text(u"")});
+     check(parse_resource_catalog_rows(chosen,host) == std::vector<std::int32_t>({2,-1,-1}));
+     check(*chosen->at(0) == u"file.png,bin" && *chosen->at(1) == u"plain.seb");
+     chosen = rows({text(u"1\tfirst"),text(u"bad\tfault")});
+     fails<std::invalid_argument>([&]{parse_resource_catalog_rows(chosen,host);});
+     check(*chosen->at(0) == u"first" && *chosen->at(1) == u"bad\tfault");}
+    {Host host;
+     check(*resource_file_name(text(u"../a/b.png,bin "),host) == u"b.png,bin");
+     check(*resource_file_name(text(u"..\\a/b\\c.png "),host) == u"c.png");
+     check(*resource_file_name(text(u"a/b.png "),host) == u"a/b.png");
+     check(*resource_file_name(text(u" ../a/b.png "),host) == u"../a/b.png");
+     fails<std::invalid_argument>([&]{resource_file_name(nullptr,host);});
+     check(*image_option_file(text(u"chip.png,bin")) == u"chip.opt");
+     check(*image_option_file(text(u"dir.with-dot/file")) == u"dir.opt");
+     check(*image_option_file(text(u".png")) == u".opt");
+     check(!image_option_file(nullptr));
+     fails<std::out_of_range>([]{image_option_file(text(u"no-dot,bin"));});}
     {Host host; auto chosen = rows({text(u" 2\tselected.png,bin "), text(u"3\tchosen3")});
      auto alias = chosen;
      trim_resource_catalog(chosen, host);

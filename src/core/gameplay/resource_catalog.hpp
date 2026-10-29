@@ -31,4 +31,19 @@ void trim_resource_catalog(const CatalogRows&, CatalogTextHost&);
 void merge_resource_catalog(CatalogRows& selected, CatalogRows base,
                             CatalogTextHost&, std::size_t max_mask_slots = 1048576);
 
+// LoadStart row parsing slice, 0x1ba6f04..0x1ba7008. ID defaults to -1;
+// successful explicit IDs strip the prefix in place, ignoring further fields.
+// The host parser here must implement JInteger.ParseInt for the supplied input.
+std::vector<std::int32_t> parse_resource_catalog_rows(const CatalogRows&, CatalogTextHost&);
+class ResourceNameHost : public CatalogTextHost {
+public:
+    // String.StartsWith(string) uses the current culture; the core must not
+    // substitute an ordinal comparison for arbitrary Unicode strings.
+    virtual bool starts_with(const std::u16string&, std::u16string_view) = 0;
+};
+// ResourceManager.GetFileName, 0x1ba7fcc; prefix check precedes public Trim.
+CatalogText resource_file_name(CatalogText, ResourceNameHost&);
+// Image.GetOptionFile, 0x1b91e48; comma split is untrimmed; absent dot faults.
+CatalogText image_option_file(CatalogText);
+
 } // namespace saga::core

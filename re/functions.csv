@@ -9667,7 +9667,7 @@ kairo:0x06001558,kairo.unity.ui.Image.SetStandardResolution,ui,traced,8,0x1b91cf
 kairo:0x06001559,kairo:0x06001559,ui,,104,0x1b91cf8
 kairo:0x0600155a,kairo:0x0600155a,ui,,232,0x1b91d60
 kairo:0x0600155b,kairo:0x0600155b,ui,,344,0x1b91b88
-kairo:0x0600155c,kairo.unity.ui.Image.GetOptionFile,ui,documented,224,0x1b91e48
+kairo:0x0600155c,kairo.unity.ui.Image.GetOptionFile,ui,reimplemented,224,0x1b91e48
 kairo:0x0600155d,kairo:0x0600155d,ui,,128,0x1b91f28
 kairo:0x0600155e,kairo:0x0600155e,ui,,1232,0x1b91fa8
 kairo:0x0600155f,kairo:0x0600155f,ui,,652,0x1b92478
@@ -10069,7 +10069,7 @@ kairo:0x060016ea,kairo.unity.ui.ResourceManager.LoadReady,ui,traced,1900,0x1ba64
 kairo:0x060016eb,kairo:0x060016eb,ui,,240,0x1ba7ed4
 kairo:0x060016ec,kairo.unity.ui.ResourceManager.LoadStart,ui,traced,3516,0x1ba6c58
 kairo:0x060016ed,kairo:0x060016ed,ui,,184,0x1ba80c0
-kairo:0x060016ee,kairo.unity.ui.ResourceManager.GetFileName,ui,documented,236,0x1ba7fcc
+kairo:0x060016ee,kairo.unity.ui.ResourceManager.GetFileName,ui,reimplemented,236,0x1ba7fcc
 kairo:0x060016ef,kairo:0x060016ef,ui,,8,0x1ba7e5c
 kairo:0x060016f0,kairo:0x060016f0,ui,,356,0x1ba8178
 kairo:0x060016f1,kairo:0x060016f1,ui,,8,0x1ba84f0

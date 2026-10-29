@@ -23,6 +23,21 @@ def seb(records):
     return struct.pack('>hhhh', 1, 4, len(records), 0) + b''.join(struct.pack('>10h', *record) for record in records)
 
 
+def jar(members):
+    index = struct.pack('>I', len(members))
+    for name, payload in members:
+        encoded = name.encode('ascii')
+        index += struct.pack('>I', len(encoded)) + encoded
+    offsets, cursor = [], 0
+    for name, payload in members:
+        offsets.append(cursor)
+        cursor += 4 + len(payload)
+    index += b''.join(struct.pack('>I', n) for n in offsets)
+    index += b''.join(struct.pack('>I', len(payload)) for name, payload in members) + bytes(len(members))
+    body = b''.join(struct.pack('>I', len(payload)) + payload for name, payload in members)
+    return struct.pack('>II', len(index) + 4, len(body)) + index + body
+
+
 def bmp_pixels(blob):
     offset = struct.unpack_from('<I', blob, 10)[0]
     width, height = struct.unpack_from('<ii', blob, 18)
@@ -76,6 +91,52 @@ class NativeTests(unittest.TestCase):
             for x in range(3):
                 expected[(4 + y) * 12 + 4 + x] = self.source[(3 + y) * 8 + 2 + x]
         self.assertEqual(pixels, expected)
+
+    def test_archive_catalogs_bind_texid_locale_and_opt_to_pixels(self):
+        grid = struct.pack('>5B7h', 8, 8, 1, 1, 1, -1, 1, 2, 4, 5, 2, 2)
+        payload = jar([
+            ('img.inf', b'7\tmissing-root.png,bin\n'),
+            ('English.lproj/img.inf', b'\xef\xbb\xbf 7\t../choice.gif,bin\r\n'),
+            ('seb.inf', b'3\tclip.seb\n'),
+            ('clip.seb', seb([(0, 7, 0, 0, 8, 8, 0, 0, 0, 0)])),
+            ('English.lproj/choice.png', png(8, 8, [c for p in self.source for c in p])),
+            ('English.lproj/choice.opt', grid),
+        ])
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            archive, capture = root / 'resources.bin', root / 'frame.bmp'
+            archive.write_bytes(payload)
+            args = [str(EXE), str(archive), '--resource', '3', '0', '0', '--language', 'English.lproj', '--dpi', '1',
+                    '--canvas', '12', '12', '--origin', '3', '2', '--raw-rgba', '--headless', '--capture', str(capture)]
+            result = subprocess.run(args, text=True, capture_output=True, timeout=20)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            report = json.loads(result.stdout)
+            self.assertEqual(report['texture_slot'], 7)
+            self.assertEqual(report['resource_clip'], 3)
+            self.assertEqual(report['image_catalog'], 'English.lproj/img.inf')
+            self.assertEqual(report['animation_member'], 'clip.seb')
+            self.assertEqual(report['image_member'], 'English.lproj/choice.png')
+            self.assertEqual(report['opt_member'], 'English.lproj/choice.opt')
+            bitmap = bmp_pixels(capture.read_bytes())
+        expected = [(0, 0, 0, 0)] * 144
+        for y in range(2):
+            for x in range(2):
+                expected[(4 + y) * 12 + 4 + x] = self.source[(5 + y) * 8 + 4 + x]
+        self.assertEqual(bitmap[2], expected)
+
+    def test_archive_unknown_loading_options_fail_before_capture(self):
+        payload = jar([('img.inf', b'7\timage.png,bin,q+1'), ('seb.inf', b'0\tclip.seb'),
+                       ('clip.seb', seb([(0, 7, 0, 0, 1, 1, 0, 0, 0, 0)]))])
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            archive, capture = root / 'resources.bin', root / 'frame.bmp'
+            archive.write_bytes(payload)
+            result = subprocess.run([str(EXE), str(archive), '--resource', '0', '0', '0', '--language', 'English.lproj',
+                                     '--dpi', '0', '--canvas', '2', '2', '--headless', '--capture', str(capture)],
+                                    text=True, capture_output=True, timeout=20)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('unbound image loading option', result.stderr)
+            self.assertFalse(capture.exists())
 
     def test_opt_offsets_and_external_slot_guard(self):
         opt = struct.pack('>5B7h', 8, 8, 1, 1, 1, -1, 1, 2, 4, 5, 2, 2)

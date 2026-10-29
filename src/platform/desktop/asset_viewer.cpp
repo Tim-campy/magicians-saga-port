@@ -1,5 +1,7 @@
 // Technical PNG/OPT and explicitly bound SEB previews; no playable mission yet.
 #include "assets/opt_grid.hpp"
+#include "assets/jar_archive.hpp"
+#include "resource_archive.hpp"
 #include "sprite_preview.hpp"
 #include "sdl_bitmap.hpp"
 #include <SDL3/SDL.h>
@@ -34,6 +36,18 @@
 namespace {
 constexpr std::uint64_t max_encoded_bytes = 64U * 1024U * 1024U;
 constexpr std::uint64_t max_pixels = 16U * 1024U * 1024U;
+void json_string(std::string_view value) {
+    constexpr char hex[]="0123456789abcdef";
+    std::cout << '"';
+    for (const char raw:value) {
+        const auto c=static_cast<unsigned char>(raw);
+        if (c=='"'||c=='\\') std::cout << '\\' << raw;
+        else if (c<32) std::cout << "\\u00" << hex[c>>4U] << hex[c&15U];
+        else std::cout << raw;
+    }
+    std::cout << '"';
+}
+struct ArchivePreview {saga::desktop::ResourceProfile profile;std::int32_t clip;};
 void require(bool ok, const char* operation) {
     if (!ok) throw std::runtime_error(std::string(operation) + ": " + SDL_GetError());
 }
@@ -129,12 +143,22 @@ Composition compose_geometry(const std::string& filename, int png_width, int png
 }
 
 int view(const std::string& filename, bool headless, const std::string& capture, const std::string& opt_file,
-         const std::optional<saga::desktop::SpritePreviewOptions>& sprite_options) {
+         std::optional<saga::desktop::SpritePreviewOptions> sprite_options,
+         const std::optional<ArchivePreview>& archive_options) {
     if (!capture.empty()) {
         const auto target = std::filesystem::u8path(capture);
         if (std::filesystem::exists(target)) throw std::runtime_error("Capture destination already exists");
     }
-    const auto encoded = read_file(filename, max_encoded_bytes, 8);
+    std::optional<saga::desktop::ArchiveSprite> archive_sprite;
+    std::vector<stbi_uc> encoded;
+    if(archive_options){
+        saga::desktop::ResourceArchive archive(read_file(filename,saga::assets::JarLimits{}.max_bytes,8),archive_options->profile);
+        archive_sprite=archive.sprite(archive_options->clip,sprite_options->frame,sprite_options->layer);
+        encoded=std::move(archive_sprite->png);
+        if(encoded.size()<8||encoded.size()>max_encoded_bytes)throw std::invalid_argument("archive PNG size outside preview limits");
+        sprite_options->texture=archive_sprite->texture;
+        sprite_options->standard_width=archive_sprite->standard_width;sprite_options->standard_height=archive_sprite->standard_height;
+    }else encoded=read_file(filename, max_encoded_bytes, 8);
     constexpr std::array<stbi_uc, 8> signature{{137, 80, 78, 71, 13, 10, 26, 10}};
     if (!std::equal(signature.begin(), signature.end(), encoded.begin())) throw std::runtime_error("Input is not PNG");
     int width = 0, height = 0, channels = 0;
@@ -156,10 +180,11 @@ int view(const std::string& filename, bool headless, const std::string& capture,
     saga::desktop::SpritePreview preview;
     std::int32_t image_alpha=0;
     if(sprite_mode){
-        const auto bytes=read_file(sprite_options->seb,saga::assets::SebLimits{}.max_bytes,1);
-        const auto file=saga::assets::parse_seb(bytes.data(),bytes.size());
+        const auto bytes=archive_sprite?std::vector<stbi_uc>{}:read_file(sprite_options->seb,saga::assets::SebLimits{}.max_bytes,1);
+        const auto file=archive_sprite?archive_sprite->animation:saga::assets::parse_seb(bytes.data(),bytes.size());
         std::optional<saga::assets::OptGrid> opt;
-        if(!opt_file.empty()){
+        if(archive_sprite)opt=archive_sprite->opt;
+        else if(!opt_file.empty()){
             const auto opt_bytes=read_file(opt_file,saga::assets::OptLimits{}.max_bytes,1);
             opt=saga::assets::parse_opt(opt_bytes.data(),opt_bytes.size());
         }
@@ -268,7 +293,17 @@ int view(const std::string& filename, bool headless, const std::string& capture,
                  <<",\"image_alpha_type\":"<<image_alpha<<",\"raw_rgba\":"<<(sprite_options->raw_rgba?"true":"false")
                  <<",\"encoded_alpha\":"<<sprite_options->alpha<<",\"color\":"<<sprite_options->color<<",\"shader_keys\":[";
         for(std::size_t i=0;i<preview.quads.size();++i){if(i)std::cout<<',';std::cout<<preview.quads[i].shader_key;}
-        std::cout<<"],\"profile\":\"identity world, native local transforms, no atlas, zero expansion, explicit canvas and mesh color state, no UI overlays\"}\n";
+        std::cout<<']';
+        if(archive_sprite){
+            std::cout<<",\"resource_clip\":"<<archive_options->clip<<",\"animation_member\":";json_string(archive_sprite->animation_member);
+            std::cout<<",\"image_member\":";json_string(archive_sprite->image_member);
+            std::cout<<",\"opt_member\":";json_string(archive_sprite->opt_member);
+            std::cout<<",\"image_catalog\":";json_string(archive_sprite->image_catalog);
+            std::cout<<",\"animation_catalog\":";json_string(archive_sprite->animation_catalog);
+            std::cout<<",\"resource_dpi\":"<<archive_options->profile.dpi<<",\"resource_language\":";json_string(archive_options->profile.language_folder);
+            std::cout<<",\"resource_text_profile\":\"ASCII/invariant, Config selector 2, no language-pack overrides\"";
+        }
+        std::cout<<",\"profile\":\"identity world, native local transforms, no atlas, zero expansion, explicit canvas and mesh color state, no UI overlays\"}\n";
     } else if (opt_mode) {
         std::cout << "{\"canvas_kind\":\"occupied_bounds_not_original_dimensions\",\"occupied_bounds\":["
                   << composition.x0 << ',' << composition.y0 << ',' << composition.x1 << ',' << composition.y1
@@ -288,6 +323,8 @@ int main(int argc, char** argv) {
         std::optional<saga::desktop::SpritePreviewOptions> sprite;
         std::optional<std::array<std::int32_t,2>> canvas,origin,standard;
         std::optional<std::int32_t> angle,alpha,color;bool skew=false,raw_rgba=false;
+        std::optional<std::int32_t> resource_clip,dpi;
+        std::optional<std::string> language;
         std::optional<std::array<std::uint8_t,4>> background;
         const auto number=[](const char* text){
             const std::string value(text);std::int32_t result=0;
@@ -304,6 +341,11 @@ int main(int argc, char** argv) {
             else if(argument=="--sprite"&&!sprite&&i+4<argc){
                 sprite.emplace();sprite->seb=argv[++i];sprite->frame=number(argv[++i]);sprite->layer=number(argv[++i]);sprite->texture=number(argv[++i]);
             }
+            else if(argument=="--resource"&&!sprite&&i+3<argc){
+                sprite.emplace();resource_clip=number(argv[++i]);sprite->frame=number(argv[++i]);sprite->layer=number(argv[++i]);
+            }
+            else if(argument=="--language"&&!language&&i+1<argc)language=argv[++i];
+            else if(argument=="--dpi"&&!dpi&&i+1<argc)dpi=number(argv[++i]);
             else if(argument=="--canvas"&&!canvas&&i+2<argc){const auto w=number(argv[++i]),h=number(argv[++i]);canvas=std::array<std::int32_t,2>{w,h};}
             else if(argument=="--origin"&&!origin&&i+2<argc){const auto x=number(argv[++i]),y=number(argv[++i]);origin=std::array<std::int32_t,2>{x,y};}
             else if(argument=="--standard"&&!standard&&i+2<argc){const auto w=number(argv[++i]),h=number(argv[++i]);standard=std::array<std::int32_t,2>{w,h};}
@@ -321,9 +363,15 @@ int main(int argc, char** argv) {
             else throw std::runtime_error("Invalid or duplicate argument");
         }
         if (filename.empty() || headless != !capture.empty()) {
-            std::cerr << "Usage: asset_viewer image.png [--opt file.opt] [--sprite file.seb frame layer texture-slot --canvas width height [--origin x y] [--standard width height] [--angle degrees [--skew]] [--alpha encoded] [--color packed-int32] [--background r g b a] [--raw-rgba]] [--headless --capture output.bmp]\n";
+            std::cerr << "Usage: asset_viewer image.png [--opt file.opt] [--sprite file.seb frame layer texture-slot --canvas width height [--origin x y] [--standard width height] [--angle degrees [--skew]] [--alpha encoded] [--color packed-int32] [--background r g b a] [--raw-rgba]] [--headless --capture output.bmp]\n"
+                         "Archive: asset_viewer decoded.bin --resource clip frame layer --language folder --dpi index --canvas width height [preview options] [--headless --capture output.bmp]\n";
             return 2;
         }
+        std::optional<ArchivePreview> archive;
+        if(resource_clip){
+            if(!language||!dpi||!opt_file.empty()||standard)throw std::invalid_argument("--resource requires --language and --dpi; image/OPT/standard dimensions come from catalogs");
+            archive=ArchivePreview{{*language,*dpi},*resource_clip};
+        }else if(language||dpi)throw std::invalid_argument("--language/--dpi require --resource");
         if(sprite){
             if(!canvas||(*canvas)[0]<=0||(*canvas)[1]<=0||(*canvas)[0]>8192||(*canvas)[1]>8192||
                static_cast<std::uint64_t>((*canvas)[0])*static_cast<std::uint64_t>((*canvas)[1])>max_pixels)
@@ -336,7 +384,7 @@ int main(int argc, char** argv) {
             if(raw_rgba&&(alpha||color))throw std::invalid_argument("alpha/color arguments require native color passes");
             sprite->alpha=alpha.value_or(255);sprite->color=color.value_or(-1);sprite->raw_rgba=raw_rgba;if(background)sprite->background=*background;
         }else if(canvas||origin||standard||angle||skew||alpha||color||raw_rgba||background)throw std::invalid_argument("preview arguments require --sprite");
-        return view(filename, headless, capture, opt_file,sprite);
+        return view(filename, headless, capture, opt_file,sprite,archive);
     } catch (const std::exception& error) {
         std::cerr << "asset_viewer: " << error.what() << '\n';
         return 1;

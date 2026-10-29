@@ -1,4 +1,5 @@
 #include "assets/jar_archive.hpp"
+#include "jar_fixture.hpp"
 #include <algorithm>
 #include <iostream>
 #include <string>
@@ -10,37 +11,10 @@ using Bytes = std::vector<std::uint8_t>;
 void require(bool condition, const char* message) {
     if (!condition) throw std::runtime_error(message);
 }
-void append32(Bytes& out, std::uint32_t n) {
-    for (unsigned shift : {24U, 16U, 8U, 0U}) out.push_back(static_cast<std::uint8_t>(n >> shift));
-}
 void set32(Bytes& out, std::size_t pos, std::uint32_t n) {
     for (unsigned shift : {24U, 16U, 8U, 0U}) out.at(pos++) = static_cast<std::uint8_t>(n >> shift);
 }
-Bytes fixture(const std::vector<std::pair<std::string, Bytes>>& members) {
-    Bytes index, body;
-    append32(index, static_cast<std::uint32_t>(members.size()));
-    for (const auto& member : members) {
-        append32(index, static_cast<std::uint32_t>(member.first.size()));
-        index.insert(index.end(), member.first.begin(), member.first.end());
-    }
-    std::uint32_t cursor = 0;
-    for (const auto& member : members) {
-        append32(index, cursor);
-        cursor += 4U + static_cast<std::uint32_t>(member.second.size());
-    }
-    for (const auto& member : members) append32(index, static_cast<std::uint32_t>(member.second.size()));
-    index.insert(index.end(), members.size(), 0);
-    for (const auto& member : members) {
-        append32(body, static_cast<std::uint32_t>(member.second.size()));
-        body.insert(body.end(), member.second.begin(), member.second.end());
-    }
-    Bytes out;
-    append32(out, static_cast<std::uint32_t>(index.size() + 4U));
-    append32(out, static_cast<std::uint32_t>(body.size()));
-    out.insert(out.end(), index.begin(), index.end());
-    out.insert(out.end(), body.begin(), body.end());
-    return out;
-}
+using saga::test::jar_fixture;
 void rejects(const Bytes& data, saga::assets::JarLimits limits = {}) {
     try { (void)saga::assets::parse_jar(data.data(), data.size(), limits); }
     catch (const saga::assets::JarError&) { return; }
@@ -50,17 +24,17 @@ void rejects(const Bytes& data, saga::assets::JarLimits limits = {}) {
 
 int main() {
     try {
-        const auto good = fixture({{"first", {0, 1, 255}}, {"empty", {}}, {"first", {42}}});
+        const auto good = jar_fixture({{"first", {0, 1, 255}}, {"empty", {}}, {"first", {42}}});
         const auto parsed = saga::assets::parse_jar(good.data(), good.size());
         require(parsed.members.size() == 3, "Count mismatch");
         require(parsed.members[0].name == "first" && parsed.members[0].size == 3, "Name/size mismatch");
         require(parsed.members[1].offset == 7 && parsed.members[1].size == 0, "Empty payload mismatch");
         require(parsed.members[2].offset == 11 && good.at(parsed.members[2].payload_offset) == 42, "Payload offset mismatch");
-        const auto zero = fixture({});
+        const auto zero = jar_fixture({});
         require(saga::assets::parse_jar(zero.data(), zero.size()).members.empty(), "Empty archive rejected");
         // No original game names or payload bytes are required for these fixtures.
         const std::string unusual = std::string("a\"\\\n\0", 5) + u8"é魔😀";
-        const auto utf = fixture({{unusual, {1}}});
+        const auto utf = jar_fixture({{unusual, {1}}});
         require(saga::assets::parse_jar(utf.data(), utf.size()).members[0].name == unusual, "UTF-8/control bytes changed");
         for (std::size_t length = 0; length < good.size(); ++length)
             rejects(Bytes(good.begin(), good.begin() + static_cast<std::ptrdiff_t>(length)));
@@ -78,7 +52,7 @@ int main() {
         bad = good; bad.push_back(0); set32(bad, 4, 17); rejects(bad);
         for (const auto& name : {std::string("\xc0\xaf"), std::string("\xed\xa0\x80"),
                                  std::string("\xf4\x90\x80\x80"), std::string("\xe2\x82"), std::string("\x80")})
-            rejects(fixture({{name, {}}}));
+            rejects(jar_fixture({{name, {}}}));
         auto limits = saga::assets::JarLimits{};
         limits.max_bytes = good.size() - 1U; rejects(good, limits);
         limits = {}; limits.max_members = 2; rejects(good, limits);
