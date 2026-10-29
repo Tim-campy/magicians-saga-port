@@ -11,13 +11,21 @@ struct SubmissionMaterial {
     MaterialQueueState queue;
     std::int32_t unused_frames=0; // Material.NotAccessFrame +0x38.
     SubmissionImage* image=nullptr; // +0x18, borrowed.
+    bool uniform_color=false; // Material.UntiColor +0x3c; builder vertex colors use its inverse.
 };
-struct SubmissionGroup {std::int32_t index_count=0;}; // Mesh group +0x40; actual GPU mesh belongs to host.
+struct SubmissionGroup {
+    std::int32_t index_count=0; // Mesh group +0x40; actual GPU mesh/storage belongs to host.
+    std::int32_t vertex_count=0,head=0; // +0x20/+0x5c; Reset does not release buffers or clear change.
+    bool change=false; // +0x68.
+};
 // Standard vector storage plus the public List enumeration revision contract.
 // The owning builder increments revision for every list mutation, including replacing an entry.
 struct SubmissionGroupList {std::vector<SubmissionGroup*> values;std::uint32_t revision=0;};
 using SubmissionGroups=std::shared_ptr<SubmissionGroupList>;
-struct SubmissionLayer {std::int32_t index=0;SubmissionGroups groups;}; // Layer +0x10/+0x18.
+struct SubmissionLayer {
+    std::int32_t index=0;SubmissionGroups groups; // Layer +0x10/+0x18.
+    std::int32_t current_group=0; // +0x20; notably retained by MeshBuilder.Reset.
+};
 struct SubmissionRecord {
     SubmissionMaterial* material=nullptr;SubmissionLayer* layer=nullptr;
     std::int32_t key=0; // LayerMesh.Queue, not the material's raw render queue.

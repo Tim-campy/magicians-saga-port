@@ -158,7 +158,7 @@ kairo:0x060010cb	traced	docs/subsystems/assets.md	BeginMesh final depth reset se
 kairo:0x060010a1	traced	docs/subsystems/assets.md	MeshBuilder constructor depth-bit/surface arithmetic sets scale and step; bounded projection ported, full layer/material construction not ported.
 kairo:0x060010ad	traced	docs/subsystems/assets.md	Bitmap AddQuad decrements manager current once per pass, maps source Z with separate multiply/add and accumulates DepthTotal per vertex; buffer/layer bodies remain.
 kairo:0x060010c1	traced	docs/subsystems/assets.md	Static initializer sets shared DepthStepEnable true; explicit live host flag retained.
-kairo:0x060010c0	traced	docs/subsystems/assets.md	MeshBuilder GetLayer indexes its own manager CurrentDepthLayer; scalar Z and layer grouping are distinct.
+kairo:0x060010c0	reimplemented	src/core/gameplay/mesh_builder.cpp	Signed manager-layer lookup, cached null and constructor capture/fresh insertion reads; two-frame bitmap GPU fixture creates layer1 from AppData depth150000.
 kairo:0x060013d4	traced	docs/subsystems/assets.md	Graphics.GetDepthBits selects Offscreen static DepthBits for a nonnull surface, otherwise Graphics static DepthBits; effective values remain host inputs.
 kairo:0x0600110f	traced	docs/subsystems/assets.md	Offscreen static initializer sets lowDepthScaling=1 and DepthBits=-1; live configuration writers remain outside this depth slice.
 kairo:0x060010f7	reimplemented	src/core/gameplay/offscreen_transform.cpp	Binary32 effective-density translation, negative Y/depth, identity-rotation public TRS and full static matrix propagation; QuestForm reset composed in tests.
@@ -175,3 +175,8 @@ kairo:0x060010dd	reimplemented	src/core/gameplay/mesh_submission.cpp	Native comp
 kairo:0x060010de	reimplemented	src/core/gameplay/mesh_submission.cpp	First differing key chooses the larger pivot; all-equal and no-read range behavior preserved with shared native sort implementation.
 kairo:0x060010df	reimplemented	src/core/gameplay/mesh_submission.cpp	Two-end partition places signed keys below pivot first, with native swaps/tie behavior and no-read inverted ranges; composed sort and bitmap submission tests.
 kairo:0x06001123	traced	docs/subsystems/assets.md	CreateOffscreen UI closure loads Prefabs/Offscreen, instantiates Camera and writes order-100; resource binding locates serialized orthographic clip range and transform.
+kairo:0x060010ca	reimplemented	src/core/gameplay/mesh_builder.cpp	Reference-identity builder cache, inverse uniform-color constructor input, captured dictionary publication before new-equal-first queue insertion; retained two-frame GPU reuse tested.
+kairo:0x060010a2	reimplemented	src/core/gameplay/mesh_builder.cpp	Reset each group vertex/index/head counts, then depth total; retains buffers/groups/current layer/current group/change/empty frames; partial failures and GPU frame reuse tested.
+kairo:0x060010db	traced	docs/subsystems/assets.md	Active-prefix record reuse, signed group sums, positive-group conversion gate and multi-layer-only sort ported/tested; full ConvertMesh/public mesh services remain explicit.
+kairo:0x060010cc	traced	docs/subsystems/assets.md	EndMesh clears AlterStaticMesh; top-form predicate gates empty-builder aging and retirement at exactly100, followed by UpdateLayerMeshes; predicate and disposal ownership unresolved.
+kairo:0x060010cf	traced	docs/subsystems/assets.md	Invalid material/image disposal removes builder and active/sorted entries before dictionary removal; production disposal/resource ownership not yet bound.

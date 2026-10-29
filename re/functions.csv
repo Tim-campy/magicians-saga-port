@@ -8464,7 +8464,7 @@ kairo:0x0600109e,kairo:0x0600109e,graphics,,332,0x1ca1dc8
 kairo:0x0600109f,kairo:0x0600109f,graphics,,88,0x1ca1f14
 kairo:0x060010a0,kairo:0x060010a0,graphics,,96,0x1ca1f6c
 kairo:0x060010a1,kairo.unity.graphics.MeshBuilder..ctor,graphics,traced,412,0x1ca1fcc
-kairo:0x060010a2,kairo:0x060010a2,graphics,,652,0x1ca22a4
+kairo:0x060010a2,kairo.unity.graphics.MeshBuilder.Reset,graphics,reimplemented,652,0x1ca22a4
 kairo:0x060010a3,kairo:0x060010a3,graphics,,236,0x1ca2530
 kairo:0x060010a4,kairo:0x060010a4,graphics,,304,0x1ca261c
 kairo:0x060010a5,kairo:0x060010a5,graphics,,352,0x1ca2a18
@@ -8494,7 +8494,7 @@ kairo:0x060010bc,kairo:0x060010bc,graphics,,8,0x1ca488c
 kairo:0x060010bd,kairo:0x060010bd,graphics,,776,0x1ca4894
 kairo:0x060010be,kairo:0x060010be,graphics,,788,0x1ca4b9c
 kairo:0x060010bf,kairo:0x060010bf,graphics,,8,0x1ca4eb0
-kairo:0x060010c0,kairo.unity.graphics.MeshBuilder.GetLayer,graphics,traced,232,0x1ca274c
+kairo:0x060010c0,kairo.unity.graphics.MeshBuilder.GetLayer,graphics,reimplemented,232,0x1ca274c
 kairo:0x060010c1,kairo.unity.graphics.MeshBuilder..cctor,graphics,traced,76,0x1ca4eb8
 kairo:0x060010c2,kairo:0x060010c2,unassigned,,400,0x1ca2888
 kairo:0x060010c3,kairo:0x060010c3,unassigned,,192,0x1ca4f04
@@ -8504,12 +8504,12 @@ kairo:0x060010c6,kairo:0x060010c6,unassigned,,84,0x1ca2834
 kairo:0x060010c7,Layer.GetIndexCount,unassigned,reimplemented,156,0x1ca56f8
 kairo:0x060010c8,kairo:0x060010c8,graphics,,388,0x1ca5794
 kairo:0x060010c9,kairo:0x060010c9,graphics,,404,0x1ca5918
-kairo:0x060010ca,kairo:0x060010ca,graphics,,464,0x1ca5aac
+kairo:0x060010ca,kairo.unity.graphics.MeshManager.GetMeshBuilder,graphics,reimplemented,464,0x1ca5aac
 kairo:0x060010cb,kairo.unity.graphics.MeshManager.BeginMesh,graphics,traced,536,0x1ca5c7c
-kairo:0x060010cc,kairo:0x060010cc,graphics,,1312,0x1ca62b4
+kairo:0x060010cc,kairo.unity.graphics.MeshManager.EndMesh,graphics,traced,1312,0x1ca62b4
 kairo:0x060010cd,kairo:0x060010cd,graphics,,1288,0x1ca6f9c
 kairo:0x060010ce,kairo:0x060010ce,graphics,,1564,0x1ca74a4
-kairo:0x060010cf,kairo:0x060010cf,graphics,,888,0x1ca5e94
+kairo:0x060010cf,kairo.unity.graphics.MeshManager.RemoveInvalidMeshes,graphics,traced,888,0x1ca5e94
 kairo:0x060010d0,kairo:0x060010d0,graphics,,400,0x1ca7ac0
 kairo:0x060010d1,kairo.unity.graphics.MeshManager.SetDepth,graphics,reimplemented,280,0x1ca7c50
 kairo:0x060010d2,kairo.unity.graphics.MeshManager.SetDepthLayer,graphics,reimplemented,8,0x1ca7e4c
@@ -8521,7 +8521,7 @@ kairo:0x060010d7,kairo.unity.graphics.MeshManager.SetDepthFront,graphics,reimple
 kairo:0x060010d8,kairo:0x060010d8,graphics,,492,0x1ca7e88
 kairo:0x060010d9,kairo:0x060010d9,graphics,,8,0x1ca8074
 kairo:0x060010da,kairo:0x060010da,graphics,,8,0x1ca807c
-kairo:0x060010db,kairo:0x060010db,graphics,,1992,0x1ca67d4
+kairo:0x060010db,kairo.unity.graphics.MeshManager.UpdateLayerMeshes,graphics,traced,1992,0x1ca67d4
 kairo:0x060010dc,kairo:0x060010dc,graphics,,2032,0x1ca8190
 kairo:0x060010dd,kairo.unity.graphics.MeshManager.QuickSort,graphics,reimplemented,208,0x1ca80c0
 kairo:0x060010de,kairo.unity.graphics.MeshManager.Pivot,graphics,reimplemented,232,0x1ca8980

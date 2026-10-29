@@ -1,4 +1,5 @@
 #include "platform/desktop/gl_bitmap.hpp"
+#include "core/gameplay/mesh_builder.hpp"
 #include <SDL3/SDL_main.h>
 #include <algorithm>
 #include <array>
@@ -25,14 +26,53 @@ void save(const DecodedImage& image,const std::filesystem::path& path){
     std::unique_ptr<SDL_Surface,decltype(&SDL_DestroySurface)> surface(SDL_CreateSurfaceFrom(image.width,image.height,SDL_PIXELFORMAT_RGBA32,const_cast<std::uint8_t*>(image.rgba.data()),image.width*4),SDL_DestroySurface);
     check(surface&&SDL_SaveBMP(surface.get(),path.string().c_str()));
 }
-struct Depth:BitmapDepthHost {
-    MeshDepthState state;MeshBuilderDepth builder{&state};
-    Depth(){begin_mesh_depth_frame(state);configure_mesh_builder_depth(builder,24,false);}
+struct Depth:BitmapDepthHost,MeshBuilderFactory,MeshRecordHost {
+    MeshDepthState state;
+    MeshBuilderCache cache{std::make_shared<std::map<SubmissionMaterial*,MeshBuilderState*>>(),std::make_shared<MeshBuilderOrder>()};
+    std::array<SubmissionMaterial,2> materials;std::array<bool,2> registered{};
+    std::vector<std::unique_ptr<MeshBuilderState>> builders;
+    std::vector<std::unique_ptr<SubmissionLayer>> layers;
+    std::vector<std::unique_ptr<SubmissionGroup>> groups;
+    std::vector<std::unique_ptr<SubmissionRecord>> records;
+    std::vector<SubmissionGroup*> emissions;
+    std::map<SubmissionGroup*,std::vector<BitmapQuad>> pending,uploaded;
+    GlMeshBindings gpu;
+    Depth(){begin_mesh_depth_frame(state);}
     bool surface_is_null(MeshDepthSurface*)override{check(false);return false;}
     float low_depth_scaling()override{check(false);return 0;}
     MeshDepthState& mesh_depth_state()override{return state;}
-    MeshBuilderDepth& depth_builder(std::size_t,std::uint32_t,std::int32_t)override{return builder;}
+    MeshBuilderDepth& depth_builder(std::size_t texture,std::uint32_t shader,std::int32_t queue)override{
+        // Explicit fixture material identities, not a guessed production MaterialManager cache key.
+        auto& material=materials.at(texture);
+        if(!registered.at(texture)){material.queue.absolute=queue;gpu.materials[&material]=shader;registered.at(texture)=true;}
+        else check(material.queue.absolute==queue&&gpu.materials.at(&material)==shader);
+        auto* builder=get_mesh_builder(cache,&material,*this);builder->current_layer=get_mesh_layer(*builder,*this);
+        emissions.push_back(builder->current_layer->groups->values.at(static_cast<std::size_t>(builder->current_layer->current_group)));
+        return builder->depth;
+    }
     bool depth_step_enabled()override{return true;}
+    MeshBuilderState* create_builder(MeshBuilderCache&,bool color,SubmissionMaterial* material)override{
+        auto b=std::make_unique<MeshBuilderState>();b->depth.manager=&state;b->material=material;b->vertex_color=color;
+        b->layers=std::make_shared<MeshBuilderLayers>();b->layers->set(0,create_layer(*b,0));
+        configure_mesh_builder_depth(b->depth,24,false);reset_mesh_builder(*b);
+        auto* value=b.get();builders.push_back(std::move(b));return value;
+    }
+    SubmissionLayer* create_layer(MeshBuilderState&,std::int32_t index)override{
+        auto g=std::make_unique<SubmissionGroup>();auto l=std::make_unique<SubmissionLayer>();l->index=index;
+        l->groups=std::make_shared<SubmissionGroupList>();l->groups->values={g.get()};gpu.groups[g.get()]={nullptr,0};groups.push_back(std::move(g));
+        auto* value=l.get();layers.push_back(std::move(l));return value;
+    }
+    SubmissionRecord* create_record()override{auto r=std::make_unique<SubmissionRecord>();auto* value=r.get();records.push_back(std::move(r));return value;}
+    bool has_surface()override{return true;}
+    void prepare_group(MeshBuilderState&,SubmissionGroup& group)override{
+        auto& geometry=uploaded[&group];geometry=pending.at(&group);gpu.groups[&group]={geometry.data(),geometry.size()};
+    }
+    void collect(const std::vector<BitmapQuad>& quads){
+        // Explicit successful-quad graphics storage; native AddQuad allocation/failure phases remain unbound.
+        check(quads.size()==emissions.size());
+        for(std::size_t i=0;i<quads.size();++i){auto* group=emissions.at(i);pending[group].push_back(quads.at(i));group->vertex_count+=4;group->index_count+=6;}
+    }
+    void next_frame(){for(auto& b:builders)reset_mesh_builder(*b);begin_mesh_depth_frame(state);pending.clear();emissions.clear();}
 };
 struct Quit {~Quit(){SDL_Quit();}};
 }
@@ -91,20 +131,23 @@ int main(int argc,char** argv)try{
     RenderDrawResource red_resource{&animations.resource(),red_images},blue_resource{&animations.resource(),blue_images};
     BitmapApplication app,global;app.characters=&red_resource;app.enemies=&blue_resource;BitmapTextures bindings;
     check(bindings.bind(red,1,1,0)==0&&bindings.bind(blue,1,1,0)==1);SpriteMatrix world;BitmapBackend backend(app,global,bindings,32,world);Depth depth;backend.set_depth_host(&depth);
-    RenderQueue queue=make_render_queue();for(int resource:{1,3}){RenderCommand c;c.values={-1,resource,resource==1?100:0,0,0,8,8,16,16,-1,-1,-1,-1,0,255,-1,0,-1,0};insert_render_command(queue,c);}
+    RenderQueue queue=make_render_queue();for(int resource:{3,1}){RenderCommand c;c.values={-1,resource,resource==1?100:0,0,0,8,8,16,16,-1,-1,-1,-1,0,255,-1,0,-1,0};insert_render_command(queue,c);}
     RenderDrawState drawing{&queue,0,&backend.matrix()};draw_render_queue(drawing,&backend.graphics(),0,backend.resources());const auto& quads=backend.quads();
-    check(quads.size()==2&&quads[0].native_depth&&quads[0].points[0].z<quads[1].points[0].z);
-    std::array<SubmissionMaterial,2> materials;std::array<SubmissionGroup,2> groups;std::array<SubmissionLayer,2> layers;std::array<SubmissionRecord,2> records;GlMeshBindings gpu_bindings;
-    auto rows=std::make_shared<std::vector<SubmissionRecord*>>();
-    for(std::size_t i=0;i<2;++i){gpu_bindings.materials[&materials[i]]=quads[i].shader_key;materials[i].queue.absolute=quads[i].render_queue;
-        groups[i].index_count=6;gpu_bindings.groups[&groups[i]]={&quads[i],1};layers[i].index=quads[i].depth.group;
-        layers[i].groups=std::make_shared<SubmissionGroupList>();layers[i].groups->values={&groups[i]};init_submission_record(records[i],&materials[i],&layers[i]);rows->push_back(&records[i]);}
-    sort_submissions(rows,0,1);MeshSubmissionState submission;submission.cursors=std::make_shared<std::vector<std::int32_t>>(1,0);submission.lengths=std::make_shared<std::vector<std::int32_t>>(1,2);
+    check(quads.size()==2&&quads[0].native_depth&&quads[1].native_depth&&quads[1].points[0].z<quads[0].points[0].z);
+    depth.collect(quads);MeshRecordList ready{std::make_shared<std::vector<SubmissionRecord*>>()};update_mesh_records(depth.cache,ready,depth);auto rows=ready.rows;
+    check(ready.active_count==2&&rows->at(0)->material==&depth.materials[0]); // New equal-queue red precedes blue: Z must reject the later far draw.
+    MeshSubmissionState submission;submission.cursors=std::make_shared<std::vector<std::int32_t>>(1,0);submission.lengths=std::make_shared<std::vector<std::int32_t>>(1,ready.active_count);
     submission.lists=std::make_shared<std::vector<SubmissionRecords>>(1,rows);submission.matrices=std::make_shared<std::vector<OffscreenMatrix>>(1,unit);submission.used_materials=std::make_shared<std::vector<SubmissionMaterial*>>();
-    GlMeshSubmissionHost host(renderer,gpu_bindings,[](auto&,auto&){},[]()->std::int32_t{throw std::logic_error("no image check expected");});
+    GlMeshSubmissionHost host(renderer,depth.gpu,[](auto&,auto&){},[]()->std::int32_t{throw std::logic_error("no image check expected");});
     OffscreenMatrix vp=unit;vp.values[0]=vp.values[5]=2.0F/32;vp.values[10]=2.0F/1500100;vp.values[12]=vp.values[13]=vp.values[14]=-1;
     renderer.begin_frame(GlBitmapClear::color_and_depth,{0,0,0,0},vp);submit_mesh_streams(submission,1,host);auto overlap=renderer.read_pixels();check(pixel(overlap)[0]==255&&pixel(overlap)[2]==0);
-    layers[1].index=1;init_submission_record(records[1],&materials[1],&layers[1]);sort_submissions(rows,0,1);submission.cursors->at(0)=0;
+    const auto* blue_builder=depth.cache.builders->at(&depth.materials[1]);const auto allocated_records=depth.records.size();
+    depth.next_frame();backend.clear_quads();queue.buffers->at(0)->at(0)->at(render_depth)=150000;
+    draw_render_queue(drawing,&backend.graphics(),0,backend.resources());depth.collect(backend.quads());update_mesh_records(depth.cache,ready,depth);
+    check(ready.active_count==2&&depth.builders.size()==2&&depth.records.size()==allocated_records);
+    check(depth.cache.builders->at(&depth.materials[1])==blue_builder&&blue_builder->layers->entries.size()==2);
+    check(blue_builder->layers->entries.at(0)->groups->values.at(0)->index_count==0&&rows->at(1)->layer->index==1);
+    submission.cursors->at(0)=0;submission.lengths->at(0)=ready.active_count;
     renderer.begin_frame(GlBitmapClear::color_and_depth,{0,0,0,0},vp);submit_mesh_streams(submission,1,host);auto layer=renderer.read_pixels();check(pixel(layer)[2]==255&&pixel(layer)[0]==0);
     if(argc==2){const std::filesystem::path path(argv[1]);std::filesystem::create_directories(path);save(overlap,path/"same-layer-depth.bmp");save(layer,path/"next-layer-clear.bmp");save(oriented,path/"texture-orientation.bmp");save(cleared,path/"viewport-clear.bmp");}
     // Unsupported input is rejected, rather than silently flattening or guessing a material.
