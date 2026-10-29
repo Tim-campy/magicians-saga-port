@@ -41,6 +41,7 @@ MissionScene::MissionScene(MissionEntities& world,MissionApplication& app,Entity
     :world_(world),app_(app),visible_(visible),view_(view),map_(map),form_{form_state_,nullptr,this}{
     initialize_render(renderer_,this);initialize_animation(animations_,&world_);
     MovementWorld movement(world_);initialize_movement(movers_,&movement);initialize_collisions(collisions_,&movement);initialize_garbage(garbage_entities_,&movement);
+    initialize_battle(battle_,&movement);
     initialize_modifications(modifications_,&movement);
     initialize_emitters(emitters_,&movement);
     initialize_parameter_experience(experience_,this);initialize_parameters(this);
@@ -52,10 +53,12 @@ void MissionScene::subscribe_parameter_experience(ParameterExperienceInitializat
     if(hashes||experience_receiver_)throw std::logic_error("parameter experience requires fresh scene initialization");experience_receiver_=std::move(receiver);
 }
 void MissionScene::send_parameter_experience(ComponentSlots* e,std::int32_t key){experience_receiver_(e,key);}
+void MissionScene::advance_battle(std::int32_t pass,bool enabled){if(gameplay_needs_update(2,enabled,pass)){update_battle(battle_);++battle_steps_;}}
 void MissionScene::advance_parameter_experience(std::int32_t pass,bool enabled){if(gameplay_needs_update(9,enabled,pass)){update_parameter_experience(experience_);++experience_steps_;}}
 void MissionScene::advance_parameters(std::int32_t pass,bool enabled){if(gameplay_needs_update(14,enabled,pass)){update_parameters();++parameter_steps_;}}
 void MissionScene::advance_effects(std::int32_t pass,bool enabled){if(gameplay_needs_update(23,enabled,pass)){update_effects(effects_,*this);++effect_steps_;}}
 void MissionScene::write_pass_report(std::ostream& out){
+    out<<",\"battle_steps\":"<<battle_steps_;
     std::size_t pending=0;for(const auto& queue:*experience_.queues)pending+=queue->size();
     out<<",\"parameter_experience_steps\":"<<experience_steps_<<",\"parameter_steps\":"<<parameter_steps_<<",\"parameter_experience_pending\":"<<pending<<",\"effect_steps\":"<<effect_steps_<<",\"effect_updates\":[";
     bool first=true;auto cursor=required(effects_.subset).cursor();while(const auto entity=cursor.next()){

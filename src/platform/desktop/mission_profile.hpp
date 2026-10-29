@@ -3,6 +3,8 @@
 #include "mission_scene.hpp"
 #include "mission_humans.hpp"
 #include "mission_spatial.hpp"
+#include "core/ecs/update_scheduler.hpp"
+#include <chrono>
 #include <filesystem>
 #include <tuple>
 #include <ostream>
@@ -43,6 +45,19 @@ public:
     std::unique_ptr<MissionSpatial> spatial;
     bool accepts_live_input()const{return humans&&humans->input_enabled()&&!humans->transition_pending()&&!replay_bound_;}
 private:
+    struct Timer final:core::UpdateStopwatch {
+        using Clock=std::chrono::steady_clock;
+        Clock::time_point started;Clock::duration elapsed{};
+        void reset()override{elapsed=Clock::duration::zero();}
+        void start()override{started=Clock::now();}
+        void stop()override{elapsed+=Clock::now()-started;}
+    } timer_;
+    void bind_schedule();
+    std::array<bool,32> configured_{},enabled_{};
+    std::array<std::unique_ptr<core::GameplayUpdate>,32> updates_;
+    std::vector<core::UpdateSystem*> update_list_;
+    std::vector<std::int32_t> last_updates_;
+    bool halted_=false;
     enum class InputKind {keys,attack,pulse};
     struct InputAction {InputKind kind;std::uint32_t value;};
     std::map<std::uint64_t,std::vector<InputAction>> replay_;

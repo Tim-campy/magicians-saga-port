@@ -26,6 +26,36 @@ SceneResource::SceneResource(const std::filesystem::path& path,ResourceProfile p
     :archive(read(path),std::move(profile)),manager(archive){
     if(decoder)images=std::make_unique<ArchiveImageSet>(manager,std::move(decoder));
 }
+void MissionProfile::bind_schedule(){
+    const auto bind=[&](std::int32_t id,bool enabled,std::function<void(std::int32_t)> body){
+        const auto index=static_cast<std::size_t>(id);configured_[index]=enabled;
+        updates_[index]=std::make_unique<GameplayUpdate>(id,enabled_[index],[this,id,body=std::move(body)](std::int32_t pass){last_updates_.push_back(id);body(pass);});
+    };
+    bind(0,humans&&humans->input_enabled(),[this](auto pass){humans->advance_input(pass);});
+    bind(2,true,[this](auto pass){mission->advance_battle(pass);});
+    bind(3,static_cast<bool>(humans),[this](auto pass){
+        halted_=!humans->advance_stage(pass);
+        if(halted_||humans->transition_pending())for(std::size_t i=0;i<enabled_.size();++i)if(halted_||i!=21)enabled_[i]=false;
+    });
+    bind(4,static_cast<bool>(humans),[this](auto pass){humans->update(pass);});
+    bind(5,static_cast<bool>(humans),[this](auto pass){humans->advance_enemies(pass);});
+    bind(8,static_cast<bool>(spatial),[this](auto pass){spatial->advance_camera(pass);});
+    bind(9,true,[this](auto pass){mission->advance_parameter_experience(pass);});
+    bind(10,static_cast<bool>(humans),[this](auto pass){humans->advance_projectiles(pass);});
+    bind(11,simulate.has_value(),[this](auto pass){mission->advance_movement(pass);++movement_steps;});
+    bind(12,collisions,[this](auto pass){mission->advance_collisions(pass);});
+    bind(14,true,[this](auto pass){mission->advance_parameters(pass);});
+    bind(15,simulate.has_value(),[this](auto pass){mission->advance_emitters(pass);});
+    bind(17,static_cast<bool>(spatial),[this](auto pass){spatial->advance_cells(pass);});
+    bind(18,simulate.has_value(),[this](auto pass){mission->advance_modifications(pass);});
+    bind(19,true,[this](auto){mission->advance_animations({automatic!=0,application_update!=0});});
+    bind(20,static_cast<bool>(spatial),[this](auto pass){spatial->advance_visibility(pass);});
+    bind(21,true,[this](auto){queue=mission->render();if(!mission->faults().empty())throw std::invalid_argument("entity render fault: "+mission->faults().front().message);});
+    bind(23,true,[this](auto pass){mission->advance_effects(pass);});
+    bind(31,simulate.has_value(),[this](auto pass){mission->advance_garbage(pass);});
+    for(const auto id:gameplay_update_order)if(updates_[static_cast<std::size_t>(id)])update_list_.push_back(updates_[static_cast<std::size_t>(id)].get());
+    last_updates_.reserve(update_list_.size());
+}
 void MissionProfile::load_replay(const std::filesystem::path& path){
     if(std::filesystem::file_size(path)>8U*1024U*1024U)throw std::length_error("input replay exceeds8MiB");
     std::ifstream file(path);if(!file)throw std::invalid_argument("cannot read input replay");
@@ -252,6 +282,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             if(map_images){spatial=std::make_unique<MissionSpatial>(*entity_world,*live_map,view,humans->quest_form(),humans->quest(),map_images);mission->bind_spatial(*spatial);}
             for(const auto& request:states)humans->set_state(*created.at(std::get<0>(request)),std::get<1>(request),std::get<2>(request));
         }else if(!states.empty())throw std::invalid_argument("actor_state requires human_system");
+        bind_schedule();
         for(std::int32_t i=0;i<frames;++i)mission->advance_animations({automatic!=0,application_update!=0});
         if(spatial)spatial->advance_visibility();
         if(simulate&&*simulate>0){for(std::int32_t i=0;i<*simulate;++i)if(!step())break;}else{queue=mission->render();if(!mission->faults().empty())throw std::invalid_argument("entity render fault: "+mission->faults().front().message);}
@@ -272,26 +303,9 @@ bool MissionProfile::step(){
         else humans->pulse_stage_keys(action.value);
         ++replay_applied_;
     }
-    if(humans)humans->advance_input();
-    if(humans&&!humans->advance_stage())return false;
-    const bool held=humans&&humans->transition_pending();
-    if(!held){
-        if(humans){humans->update();humans->advance_enemies();}
-        if(spatial)spatial->advance_camera();
-        mission->advance_parameter_experience();
-        if(humans)humans->advance_projectiles();
-        if(simulate){mission->advance_movement(0);++movement_steps;}
-        if(collisions)mission->advance_collisions(0);
-        mission->advance_parameters();
-        if(simulate)mission->advance_emitters(0);
-        if(spatial)spatial->advance_cells();
-        if(simulate)mission->advance_modifications(0);
-        mission->advance_animations({automatic!=0,application_update!=0});
-        if(spatial)spatial->advance_visibility();
-    }queue=mission->render();
-    if(!mission->faults().empty())throw std::invalid_argument("entity render fault: "+mission->faults().front().message);
-    if(!held)mission->advance_effects(); // Native index23 follows Render21, before Garbage31.
-    if(simulate&&!held)mission->advance_garbage(0);
+    enabled_=configured_;last_updates_.clear();halted_=false;
+    UpdateSchedule schedule{&update_list_,&timer_};update_systems(schedule,0);
+    if(halted_)return false;
     ++logic_steps;return true;
 }
 void MissionProfile::write_actor_parameters(ComponentSlots& actor,std::ostream& out){
@@ -303,6 +317,11 @@ void MissionProfile::write_actor_parameters(ComponentSlots& actor,std::ostream& 
     if(const auto* enemy=dynamic_cast<EnemyRecordLink*>(actor.get(24)))out<<",\"enemy_state\":"<<enemy->state<<",\"enemy_frame\":"<<enemy->frame<<",\"enemy_flags\":"<<enemy->flags;
 }
 void MissionProfile::write_combat_report(std::ostream& out){
+    const auto write_indices=[&](const char* name,const auto& indices){out<<",\""<<name<<"\":[";bool first=true;for(const auto id:indices){if(!first)out<<',';first=false;out<<id;}out<<']';};
+    std::vector<std::int32_t> bound,unbound;
+    for(const auto id:gameplay_update_order)(updates_[static_cast<std::size_t>(id)]?bound:unbound).push_back(id);
+    write_indices("bound_update_systems",bound);write_indices("unbound_update_systems",unbound);write_indices("last_update_order",last_updates_);
+    out<<",\"update_schedule_complete\":"<<(unbound.empty()?"true":"false");
     if(mission)mission->write_pass_report(out);
     out<<",\"movement_steps\":"<<movement_steps;
     out<<",\"replay_bound\":"<<(replay_bound_?"true":"false")<<",\"replay_actions\":"<<replay_applied_;

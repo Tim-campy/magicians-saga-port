@@ -315,7 +315,7 @@ IPausable membership, in factory order: Battle, Human, Enemy, Exp, Projectile, M
 
 Evidence: local `research/exports/ecs-order/update-membership.json` derived from metadata type/interface arrays (including inherited interfaces), the existing factory allocation/order evidence, `research/exports/system-gates/*.asm`, and `ecs-order/M37221_Update.asm`. The gate exports are 8 bytes for enabled-only and 28 bytes for pass-zero gates. Confidence high; no Android comparison.
 
-Port: `src/core/ecs/update_scheduler.hpp/.cpp` implements indexed dispatch, all 26 gates and ordered binding of the 26 required system bodies. Tests cover callback mutations, timer ordering, failure propagation and live enabled changes. This does not implement the missing system bodies, initialization/event subscriptions or a complete playable frame.
+Port: `src/core/ecs/update_scheduler.hpp/.cpp` implements indexed dispatch, all 26 gates and ordered binding of the 26 required system bodies. Tests cover callback mutations, timer ordering, failure propagation and live enabled changes. MissionProfile uses the actual dispatcher for its nineteen available adapters, with selected scenario gates and explicit reports of the seven missing entries. It does not implement the missing bodies, complete initialization/event subscriptions or a complete playable frame.
 
 ### Entity event delivery
 

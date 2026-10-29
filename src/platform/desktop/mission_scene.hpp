@@ -35,6 +35,7 @@ public:
     void advance_emitters(std::int32_t pass,bool enabled=true);
     void advance_collisions(std::int32_t pass,bool enabled=true);
     void advance_parameter_experience(std::int32_t pass=0,bool enabled=true);
+    void advance_battle(std::int32_t pass=0,bool enabled=true);
     void advance_parameters(std::int32_t pass=0,bool enabled=true);
     void advance_effects(std::int32_t pass=0,bool enabled=true);
     // Typed event21 boundary; no reward-orb or character-EXP producer is inferred.
@@ -90,9 +91,10 @@ private:
     core::EmitterSystemState emitters_;
     core::CollisionSystemState collisions_;std::uint64_t collision_events_=0,area_collision_events_=0;
     core::ParameterExperienceSystem experience_;
+    core::BattleSystemState battle_;
     core::ParameterExperienceInitializationWorld::Receiver experience_receiver_;
     core::EffectSystemState effects_;
-    std::uint64_t experience_steps_=0,parameter_steps_=0,effect_steps_=0;
+    std::uint64_t experience_steps_=0,parameter_steps_=0,effect_steps_=0,battle_steps_=0;
     core::RenderQueue queue_=core::make_render_queue();std::vector<MissionRenderFault> faults_;
     MissionSpatial* spatial_=nullptr;
 };

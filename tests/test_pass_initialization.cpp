@@ -15,8 +15,9 @@ struct World final:PassInitializationWorld {
     EntitySubset group{filter,[](const ComponentSlots&){return 1;}};
     EntityEvents events;ProjectileSystemState* observing=nullptr;
     bool fail_subset=false,fail_subscription=false,null_subset=false;
+    std::size_t fail_request=0;
     EntitySubset* subset(const std::vector<std::int32_t>& all)override{
-        requests.push_back(all);if(fail_subset)throw std::runtime_error("subset");
+        requests.push_back(all);if(fail_subset||requests.size()==fail_request)throw std::runtime_error("subset");
         return null_subset?nullptr:&group; // Synthetic world service, not dynamic GetSubSet.
     }
     void subscribe_impact(EntityEvents::Single callback,std::optional<EventHashes> hashes)override{
@@ -27,6 +28,15 @@ struct World final:PassInitializationWorld {
 };
 template<class F>void fails(F f){bool caught=false;try{f();}catch(const std::exception&){caught=true;}check(caught);}
 int main(){
+    {World w;BattleSystemState battle;initialize_battle(battle,&w);
+     check(w.requests==std::vector<std::vector<std::int32_t>>{{20,14},{20,16}});
+     check(battle.humans==&w.group&&battle.monsters==&w.group);
+     ComponentSlots e(35);Component value;e.add(0,&value);e.add(1,&value);w.group.add(&e);
+     battle.monsters=nullptr;update_battle(battle);check(w.group.size()==1&&e.get(0)==&value);
+     battle.monsters=&w.group;w.null_subset=true;w.fail_request=w.requests.size()+2;
+     fails([&]{initialize_battle(battle,&w);});check(!battle.humans&&battle.monsters==&w.group);
+     fails([&]{update_battle(battle);});fails([&]{initialize_battle(battle,nullptr);});
+     w.fail_request=0;initialize_battle(battle,&w);check(!battle.humans&&!battle.monsters);}
     World world;Host host;ProjectileSystemState projectile;CollisionSystemState collision;
     EntitySubset* move=nullptr;EntitySubset* garbage=nullptr;world.observing=&projectile;
     initialize_projectiles(projectile,&world,host,EventHashes{1,101});

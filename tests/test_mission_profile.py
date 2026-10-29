@@ -38,6 +38,11 @@ class MissionProfileTests(unittest.TestCase):
             self.assertEqual(report['parameter_experience_pending'], 0)
             self.assertEqual(report['effect_steps'], 12)
             self.assertEqual(report['effect_updates'], [])
+            self.assertFalse(report['update_schedule_complete'])
+            self.assertEqual(report['bound_update_systems'], [0,2,3,4,5,8,9,10,11,12,14,15,17,18,19,20,21,23,31])
+            self.assertEqual(report['unbound_update_systems'], [13,16,22,24,25,26,30])
+            self.assertEqual(report['last_update_order'], [2,9,11,14,15,18,19,21,23,31])
+            self.assertEqual(report['battle_steps'], 12)
 
     def test_live_human_walking_uses_saved_gear_fps_and_rng(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -496,6 +501,8 @@ class MissionProfileTests(unittest.TestCase):
             self.assertEqual(cleared['parameter_experience_steps'], 200)
             self.assertEqual(cleared['parameter_steps'], 200)
             self.assertEqual(cleared['effect_steps'], 200)
+            self.assertEqual(cleared['battle_steps'], 201)
+            self.assertEqual(cleared['last_update_order'], [0,2,3,21])
             self.assertEqual(cleared['replay_actions'], 1)
             no_confirmation = self.run_host(scene, frames=240)
             self.assertEqual(no_confirmation.returncode, 0, no_confirmation.stderr)

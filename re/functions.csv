@@ -3312,9 +3312,9 @@ game:0x06000dc1,ecs.AnimationSystem.RestoreAnimation,ecs,reimplemented,264,0x114
 game:0x06000dc2,ecs.AnimationSystem.Serialize,ecs,documented,4,0x1142220
 game:0x06000dc3,ecs.AnimationSystem.Deserialize,ecs,documented,4,0x1142224
 game:0x06000dc4,ecs.AnimationSystem..ctor,ecs,traced,84,0x1142228
-game:0x06000dc5,game:0x06000dc5,ecs,,232,0x114227c
+game:0x06000dc5,ecs.BattleSystem.Init,ecs,reimplemented,232,0x114227c
 game:0x06000dc6,ecs.BattleSystem.NeedsUpdate,ecs,reimplemented,8,0x1142364
-game:0x06000dc7,ecs.BattleSystem.Update,ecs,traced,308,0x114236c
+game:0x06000dc7,ecs.BattleSystem.Update,ecs,reimplemented,308,0x114236c
 game:0x06000dc8,game:0x06000dc8,ecs,,588,0x11424a0
 game:0x06000dc9,game:0x06000dc9,ecs,,52,0x11426ec
 game:0x06000dca,game:0x06000dca,ecs,,4,0x1142720

@@ -20,6 +20,9 @@ int main()try{
     MissionEntities world(data,saved,35,nullptr,[&](std::int32_t id){auto* r=get_application_resource(app,id);return r?r->animations:nullptr;},[](std::string_view){return 3;});
     auto* visible=world.subset({0,2});MissionView view{128,96,100,-20,-30,0,0,100};MissionScene scene(world,app,*visible,view,nullptr);
     auto& hero=world.human({0,2,5,0,0,13,0,0,0});auto* enemy=world.enemy({0,4,7,0,{10,0,0}});check(enemy!=nullptr);
+    auto* battles=world.subset({20,14});check(battles->size()==0); // Main hero has Input28, not AI20.
+    hero.add(20,&world.acquire_ai());scene.advance_battle(0,false);scene.advance_battle(-1);
+    check(battles->size()==1&&world.subset({20,16})->size()==0);hero.remove(20);check(battles->size()==0);
     auto& queue=scene.render();check(scene.faults().empty()&&queue.counts->at(0)==2);
     const auto& first=*queue.buffers->at(0)->at(0);check(first[render_x]==20&&first[render_y]==30&&first[render_texture]==200);
     auto& enemy_position=*dynamic_cast<ContactPosition*>(enemy->get(0));

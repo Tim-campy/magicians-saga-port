@@ -8,6 +8,13 @@ PassInitializationWorld& require(PassInitializationWorld* world){
     return *world;
 }
 }
+void initialize_battle(BattleSystemState& state,PassInitializationWorld* world){
+    auto& target=require(world);state.humans=target.subset({20,14});state.monsters=target.subset({20,16});
+}
+void update_battle(BattleSystemState& state){
+    if(!state.humans)throw std::invalid_argument("missing battle human subset");
+    auto cursor=state.humans->cursor();while(cursor.next()){}
+}
 void initialize_projectiles(ProjectileSystemState& state,PassInitializationWorld* world,CombatEventHost& host,
                             std::optional<EventHashes> hashes){
     auto& target=require(world);

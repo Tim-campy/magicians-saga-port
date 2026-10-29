@@ -72,7 +72,7 @@ game:0x06000bd5	documented	docs/subsystems/ecs.md
 game:0x06000ce4	documented	docs/subsystems/ecs.md	
 game:0x06000ce5	documented	docs/subsystems/ecs.md	
 game:0x06000ce7	reimplemented	src/core/ecs/system_initialization.cpp	Versioned initialization order, borrowed world forwarding, success-only pause reset and partial event binding tested.
-game:0x06000ce8	reimplemented	src/core/ecs/update_scheduler.cpp	Ordered dispatch or concrete enabled/pass gate; contract test; runtime comparison pending.
+game:0x06000ce8	reimplemented	src/core/ecs/update_scheduler.cpp	Live indexed list, stopwatch Reset/Start/NeedsUpdate/Update/Stop ordering; MissionProfile invokes actual dispatcher for19 bound adapters; seven unbound systems and Init dispatch remain explicit.
 game:0x06000cee	documented	docs/subsystems/ecs.md	
 game:0x06000cf0	documented	docs/subsystems/ecs.md	
 game:0x06000ce2	documented	docs/subsystems/ecs.md	
@@ -250,3 +250,5 @@ game:0x06000e44	reimplemented	src/core/gameplay/effect_frame.cpp	Current Effect 
 game:0x06000e45	reimplemented	src/core/gameplay/effect_frame.cpp	Current Effect frame wrapping increment, dispatcher type5; shared tested helper.
 game:0x06000e46	reimplemented	src/core/gameplay/effect_frame.cpp	Current Effect frame wrapping increment, dispatcher type6; shared tested helper.
 game:0x06000e47	reimplemented	src/core/gameplay/effect_frame.cpp	Current Effect frame wrapping increment, dispatcher type7; native MP notice host clock and expiry tested.
+game:0x06000dc5	reimplemented	src/core/gameplay/pass_initialization.cpp	Supplied-world And20/14 then And20/16, ordered nullable stores; repeated/partial/null initialization and real MissionScene live membership tests.
+game:0x06000dc7	reimplemented	src/core/gameplay/pass_initialization.cpp	Drain captured human-AI subset cursor only; no Current/monster/stat reads or combat logic; actual MissionProfile index2 before Stage3.

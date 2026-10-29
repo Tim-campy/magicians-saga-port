@@ -17,7 +17,6 @@ kairo:0x060000bb	reimplemented	src/core/gameplay/game_random.cpp	Explicit source
 kairo:0x060000bc	documented	docs/subsystems/rng.md	NextLong: one draw sign-extended
 kairo:0x060000c2	traced	docs/subsystems/rng.md	slot-5 override used when Logic==2; algorithm not read
 kairo:0x060000c5	traced	docs/subsystems/rng.md	reflection-based init of inherited System.Random state
-game:0x06000dc7	traced	docs/subsystems/combat.md	enumerator drain only, no combat work
 game:0x06000ec5	reimplemented	src/core/gameplay/human_frame.cpp	Active/MP gates, captured EnemySystem and Position before distance, actual nearest XYZ then destroyed/dead/fleeing/decorative rejection, target/zero-speed/state 2; tested.
 game:0x06000eea	reimplemented	src/core/gameplay/human_frame.cpp	Actual stored-member total P6, wrapping +100 then truncating signed /2; frame, zero and burst tests.
 game:0x06000ee8	reimplemented	src/core/gameplay/human_frame.cpp	Live FPS before actual stored-member attack speed; ARM SDIV of wrapped FPS*100, floor 2; full frame/state and zero-speed tests.

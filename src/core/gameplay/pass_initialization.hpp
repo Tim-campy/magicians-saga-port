@@ -15,6 +15,11 @@ public:
 };
 struct ProjectileSystemState {EntitySubset* subset=nullptr;std::optional<ProjectilePass> pass;};
 struct CollisionSystemState {EntitySubset* subset=nullptr;std::optional<CollisionPass> pass;};
+struct BattleSystemState {EntitySubset* humans=nullptr;EntitySubset* monsters=nullptr;};
+// BattleSystem.Init 0x114227c: And20/14 then And20/16; nullable results.
+void initialize_battle(BattleSystemState&,PassInitializationWorld*);
+// Update 0x114236c drains humans only; no attacks, Current reads or monster search.
+void update_battle(BattleSystemState&);
 // Original Init methods: Projectile 0x115febc, Move 0x115fa0c,
 // Collision 0x1145e68 and Garbage 0x11530b8. No enabled/pause guard.
 void initialize_projectiles(ProjectileSystemState&,PassInitializationWorld*,CombatEventHost&,
