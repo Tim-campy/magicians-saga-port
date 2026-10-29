@@ -20,7 +20,7 @@ public:
     MissionScene(const MissionScene&)=delete;
     MissionScene& operator=(const MissionScene&)=delete;
     void advance_animations(core::SharedAnimationGates);
-    // Selected MoveSystem pass only; Human/Enemy AI, collision and cell migration remain unbound.
+    // Selected MoveSystem pass; actor/projectile/emitter updates are advanced separately.
     void advance_movement(std::int32_t pass,bool enabled=true);
     // Native index31 runs after RenderSystem; commands already produced remain in this frame.
     void advance_garbage(std::int32_t pass,bool enabled=true);

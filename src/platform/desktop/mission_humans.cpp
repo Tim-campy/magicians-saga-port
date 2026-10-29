@@ -27,8 +27,8 @@ MissionHumans::MissionHumans(MissionEntities& world,const GameplayCatalog& data,
         add_member(members_,*actor);
     }
     initialize_humans(system_,this,services_);
-    // Native event23 receiver order: Human, Enemy, Projectile. Full Enemy Init remains separate.
-    world_.events().subscribe(23,EntityEvents::Single([this](ComponentSlots* e){enemy_projectile_impact(e,records_,random_,*this);}));
+    // Native receiver order: Human, Enemy, Projectile (event23); Human, Enemy (event29).
+    initialize_enemies(enemies_,this,enemy_services_);
     initialize_projectiles(projectiles_,this,*this);
 }
 void MissionHumans::update(std::int32_t pass,bool enabled){if(gameplay_needs_update(4,enabled,pass))update_humans(system_,*this);}
@@ -53,6 +53,6 @@ bool MissionHumans::shoot_human(ComponentSlots& actor,ComponentSlots& target){
 }
 void MissionHumans::contact_effect(std::int32_t clip,std::int32_t image,std::int32_t loop,float x,float y,float z){world_.effect({x,y,z},clip,image,loop!=0);}
 void MissionHumans::impact_effect(std::int32_t clip,std::int32_t image,std::int32_t loop,float x,float y,float z){world_.effect({x,y,z},clip,image,loop!=0);}
-void MissionHumans::send_human_dead(ComponentSlots&){unbound("stage death and enemy retarget receivers");}
+void MissionHumans::send_human_dead(ComponentSlots&){unbound("stage death before enemy retarget");}
 DropPlacementWorld* MissionHumans::drop_world(){unbound("stage drops");}
 } // namespace saga::desktop

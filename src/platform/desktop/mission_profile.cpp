@@ -29,6 +29,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     std::vector<std::variant<HumanCreation,EnemyCreation,SelectedBullet,SelectedEffect>> selected;
     std::optional<MissionHumanScenario> human_scenario;bool runtime_row=false;
     std::optional<MissionRewardScenario> rewards;
+    MissionEnemyScenario enemy{};bool enemy_config=false,enemy_population=false,enemy_pool=false;
     std::map<std::string,std::int32_t> gear_defaults;
     std::vector<std::size_t> players;
     std::vector<std::tuple<std::size_t,std::int32_t,float>> states;
@@ -42,6 +43,14 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             if(runtime&&(runtime->fps!=value.fps||runtime->debug!=value.debug||runtime->backend!=value.backend||runtime->seed!=value.seed))throw std::invalid_argument("scene runtime conflicts with CLI inputs");runtime=value;
         }else if(operation=="rewards"){
             MissionRewardScenario value;if(!native||rewards||!(row>>value.defeated>>value.remaining>>value.saved_defeat_count))throw std::invalid_argument("rewards requires initial defeated/remaining/saved defeat counts");rewards=value;
+        }else if(operation=="enemy_system"){
+            if(!native||enemy_config||!(row>>enemy.yugami>>enemy.maximum>>enemy.total>>enemy.interval>>enemy.level))throw std::invalid_argument("enemy_system requires yugami maximum total interval base level");enemy_config=true;
+        }else if(operation=="enemy_population"){
+            std::int32_t boss=0;
+            if(!native||enemy_population||!(row>>enemy.created>>enemy.defeated>>enemy.remaining>>enemy.loop_counter>>boss>>enemy.section_limit>>enemy.section_created)||(boss!=0&&boss!=1))throw std::invalid_argument("enemy_population requires created defeated remaining loop boss0/1 uniform section limit/count");enemy.boss_defeated=boss!=0;enemy_population=true;
+        }else if(operation=="enemy_pool"){
+            std::int32_t count=0;if(!native||enemy_pool||!(row>>count)||count<0||count>1000)throw std::invalid_argument("enemy_pool requires count0..1000 followed by enemy ID/weight pairs");
+            for(std::int32_t i=0;i<count;++i){std::int32_t id=0,weight=0;if(!(row>>id>>weight))throw std::invalid_argument("enemy_pool requires every ID/weight pair");enemy.pool.emplace_back(id,weight);}enemy_pool=true;
         }else if(operation=="human_system"){
             MissionHumanScenario value;if(!native||human_scenario||!(row>>value.distance>>value.min_z_rate>>value.max_z_rate>>value.attribute>>value.button))throw std::invalid_argument("human_system requires distance min/max Z rates attribute button state");human_scenario=value;
         }else if(operation=="gear_levels"){
@@ -126,6 +135,8 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         end(row);
     }
     if(!has_world)throw std::invalid_argument("an explicit world matrix is required");
+    const bool enemy_requested=enemy_config||enemy_population||enemy_pool;
+    if(enemy_requested&&!(enemy_config&&enemy_population&&enemy_pool&&human_scenario))throw std::invalid_argument("enemy system requires enemy_system/enemy_population/enemy_pool and human_system");
     if(!selected.empty()){
         if(!tables||!has_view||!has_slots||!has_animation||commands)throw std::invalid_argument("entity capture needs tables/view/slots/animate and no manual draw rows");
         catalog=std::make_unique<GameplayCatalog>(load_gameplay_catalog(*tables,false,parse_event_decimal,rewards.has_value()));
@@ -151,6 +162,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             if(!runtime||!geometry||!simulate)throw std::invalid_argument("human_system requires runtime, geometry and simulate rows");
             humans=std::make_unique<MissionHumans>(*entity_world,*catalog,progress,*geometry,*runtime,*human_scenario);
             if(rewards)humans->enable_rewards(*rewards);
+            if(enemy_requested)humans->enable_enemies(std::move(enemy));
             for(const auto& request:states)humans->set_state(*created.at(std::get<0>(request)),std::get<1>(request),std::get<2>(request));
         }else if(!states.empty())throw std::invalid_argument("actor_state requires human_system");
         for(std::int32_t i=0;i<frames;++i)mission->advance_animations({automatic!=0,application_update!=0});
@@ -164,7 +176,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
 }
 void MissionProfile::step(){
     if(!mission)throw std::invalid_argument("selected logic requires a table-backed entity scene");
-    if(humans){humans->update();humans->advance_projectiles();}
+    if(humans){humans->update();humans->advance_enemies();humans->advance_projectiles();}
     if(simulate)mission->advance_movement(0);
     if(simulate)mission->advance_emitters(0);
     if(simulate)mission->advance_modifications(0);
@@ -177,6 +189,7 @@ void MissionProfile::write_actor_parameters(ComponentSlots& actor,std::ostream& 
         out<<",\"hp\":"<<resolve_combat_parameter(actor,0)->value;
         if(actor.contains(14))out<<",\"mp\":"<<resolve_combat_parameter(actor,1)->value;
     }
+    if(const auto* enemy=dynamic_cast<EnemyRecordLink*>(actor.get(24)))out<<",\"enemy_state\":"<<enemy->state<<",\"enemy_frame\":"<<enemy->frame<<",\"enemy_flags\":"<<enemy->flags;
 }
 void MissionProfile::write_combat_report(std::ostream& out){
     out<<",\"shots\":"<<(humans?humans->shots():0)<<",\"total_damage\":"<<(humans?humans->total_damage():0)<<",\"projectiles\":[";
@@ -188,7 +201,7 @@ void MissionProfile::write_combat_report(std::ostream& out){
         out<<"{\"id\":"<<entity_world->id(**e)<<",\"x\":"<<p->x<<",\"y\":"<<p->y<<",\"z\":"<<p->z<<",\"frame\":"<<flight->frame<<",\"max_frame\":"<<flight->max_frame<<'}';
     }}
     out<<']';
-    if(humans)humans->write_reward_report(out);
+    if(humans){humans->write_reward_report(out);humans->write_enemy_report(out);}
     out<<",\"pending_drops\":[";first=true;
     if(entity_world){auto cursor=entity_world->subset({34})->cursor();while(const auto e=cursor.next()){
         const auto* drop=dynamic_cast<DropComponent*>((*e)->get(34));const auto* p=dynamic_cast<ContactPosition*>((*e)->get(0));

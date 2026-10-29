@@ -39,5 +39,16 @@ int main()try{
     check(field<ContactPosition>(hero,0).z==z+3&&field<ContactDirection>(hero,12).locked);
     check(field<EntityPlayback>(hero,10).state.return_clip==36);
     check(field<HumanRecordLink>(hero,14).state==3);
+    // Native Enemy Init registered the second contact receiver after Human Init.
+    check(field<EnemyRecordLink>(*enemy,24).state==3&&field<ContactDirection>(*enemy,12).locked);
+    MissionEnemyScenario scenario{};scenario.yugami=10000;scenario.maximum=3;scenario.total=10;
+    scenario.interval=2;scenario.level=7;scenario.remaining=1;scenario.section_limit=100;
+    humans.enable_enemies(scenario);
+    humans.advance_enemies(0,false);check(field<EnemyRecordLink>(*enemy,24).state==3);
+    for(int i=0;i<21;++i){humans.advance_enemies();move_subset(*movers);}
+    check(field<EnemyRecordLink>(*enemy,24).state==1&&!field<ContactDirection>(*enemy,12).locked);
+    auto& target=field<EnemyRecordLink>(*enemy,24).opponent;target=&hero;
+    field<HumanRecordLink>(hero,14).state=5;world.events().send(30,&hero);
+    check(target==nullptr); // Actual event30 search excludes the only, dead party member.
     std::cout<<"mission human frame, state, RNG and event services ok\n";return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

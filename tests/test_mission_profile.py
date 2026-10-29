@@ -111,11 +111,67 @@ class MissionProfileTests(unittest.TestCase):
             self.assertEqual(report['projectiles'], [])
             self.assertGreaterEqual(report['rng_draws'], 19)
             self.assertEqual(self.run_host(scene, frames=240).stdout, result.stdout)
+            scene.write_text(text + 'enemy_system 10000 3 10 2 7\nenemy_population 0 0 1 0 0 100 0\nenemy_pool 1 4 1\n', encoding='utf-8')
+            full = self.run_host(scene, frames=240)
+            self.assertEqual(full.returncode, 0, full.stderr)
+            full_report = json.loads(full.stdout)
+            self.assertEqual(full_report['enemies'], [])
+            # Two in-flight hits can reach Defeat before corpse expiry in this partial schedule.
+            # Defeat has no local already-dead guard; do not invent host reward deduplication.
+            self.assertEqual(full_report['defeated_enemies'], 2)
+            self.assertEqual(full_report['saved_defeats'], [{'enemy_id': 4, 'count': 6}])
+            self.assertEqual([(d['type'], d['value']) for d in full_report['pending_drops']], [(0, 10), (3, 0)] * 2)
             # Lethal rules require explicit initial counters; no fabricated reward state.
             scene.write_text(text.replace('rewards 0 1 4\n', ''), encoding='utf-8')
             missing = self.run_host(scene, frames=240)
             self.assertNotEqual(missing.returncode, 0)
             self.assertIn('enemy defeat requires explicit counters', missing.stderr)
+            scene.write_text(text + 'enemy_system 10000 3 10 2 7\nenemy_population 0 0 10 0 0 100 0\nenemy_pool 0\n', encoding='utf-8')
+            self.assertIn('counters conflict', self.run_host(scene).stderr)
+
+    def test_enemy_activation_population_targets_and_repeatability(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            scene = root / 'scene.txt'
+            text = make_shoot_scene(root).replace('human_system 10 0 100 3 1', 'human_system 10 0 100 3 0')
+            config = 'enemy_system 10000 3 10 2 7\nenemy_pool 1 4 1\n'
+            initial = 'enemy_population 0 0 1 0 0 100 0\n'
+            scene.write_text(text + config + initial, encoding='utf-8')
+            result = self.run_host(scene, frames=12)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            report = json.loads(result.stdout)
+            self.assertTrue(report['enemy_system_enabled'])
+            self.assertEqual(report['enemy_created'], 0)
+            self.assertEqual(report['enemy_loop_counter'], 12)
+            self.assertEqual(report['positions'][1]['enemy_state'], 1)
+            self.assertEqual(report['positions'][1]['enemy_flags'], 6)
+            self.assertEqual(report['positions'][1]['enemy_frame'], 11)
+            self.assertAlmostEqual(report['positions'][1]['z'], 70 + 12 * 0.5575, places=4)
+            self.assertEqual(report['shots'], 0)
+            # Run the actual population prefix, lottery and CreateSystemEnemy target assignment.
+            initial = 'enemy_population 0 0 10 0 0 100 0\n'
+            scene.write_text(text + config + initial, encoding='utf-8')
+            result = self.run_host(scene, frames=6)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            report = json.loads(result.stdout)
+            self.assertEqual(report['enemy_created'], 2)
+            self.assertEqual(len(report['enemies']), 3)
+            spawned = report['enemies'][1:]
+            self.assertEqual([e['target'] for e in spawned], [0, 0])
+            self.assertTrue(all(e['state'] == 1 and e['level'] == 7 for e in spawned))
+            self.assertGreater(report['rng_draws'], 0)
+            self.assertEqual(self.run_host(scene, frames=6).stdout, result.stdout)
+            # The alternate save branch changes cadence/limits and the link level after factory stats.
+            scene.write_text(text + config.replace('10000', '9999') + initial, encoding='utf-8')
+            alternate = self.run_host(scene, frames=2)
+            self.assertEqual(alternate.returncode, 0, alternate.stderr)
+            alternate_report = json.loads(alternate.stdout)
+            self.assertEqual(alternate_report['enemy_created'], 2)
+            self.assertEqual([e['level'] for e in alternate_report['enemies'][1:]], [350, 350])
+            for bad in [config, config + initial + 'enemy_pool 0\n',
+                        config.replace('enemy_pool 1 4 1', 'enemy_pool 2 4 1') + initial]:
+                scene.write_text(text + bad, encoding='utf-8')
+                self.assertNotEqual(self.run_host(scene).returncode, 0)
 
 
 if __name__ == '__main__':

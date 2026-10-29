@@ -4,6 +4,8 @@
 #include "core/gameplay/stage_recovery.hpp"
 #include "core/gameplay/human_shoot.hpp"
 #include "core/gameplay/enemy_impact.hpp"
+#include "core/gameplay/enemy_frame.hpp"
+#include "core/gameplay/enemy_initialization.hpp"
 #include "core/gameplay/pass_initialization.hpp"
 #include <ostream>
 
@@ -11,25 +13,66 @@ namespace saga::desktop {
 struct MissionRuntimeConfig {std::int32_t fps;bool debug;std::int32_t seed;std::string backend;};
 struct MissionHumanScenario {std::int32_t distance,min_z_rate,max_z_rate,attribute,button;};
 struct MissionRewardScenario {std::int32_t defeated,remaining,saved_defeat_count;};
+struct MissionEnemyScenario {
+    std::int32_t yugami,maximum,total,interval,level;
+    std::int32_t created,defeated,remaining,loop_counter,section_limit,section_created;
+    bool boss_defeated;
+    std::vector<std::pair<std::int32_t,std::int32_t>> pool;
+};
 // Concrete Human Init/frame services. Stage/map entry and player-input producers remain separate.
 class MissionHumans final:private core::HumanFrameHost,private core::HumanInitializationWorld,
     private core::HumanImpactHost,private core::HumanContactHost,private core::StagePlacementHost,
     private core::MemberFormationHost,private core::HumanShootHost,
     private core::ProjectileMotionHost,private core::PassInitializationWorld,private core::CombatEventHost,
-    private core::EnemyImpactHost,private core::ImpactEffectHost,private core::ProjectileHitHost,
-    private core::EcsCombatPresentation,private core::DamagePresentationHost,private core::EnemyDefeatHost {
+    private core::EnemyImpactHost,private core::ImpactEffectHost,private core::ContactCollisionHost,
+    private core::EcsCombatPresentation,private core::DamagePresentationHost,private core::EnemyDefeatHost,
+    private core::EnemyInitializationWorld,private core::EnemyFrameHost {
 public:
     MissionHumans(MissionEntities&,const GameplayCatalog&,MissionProgress&,core::StageGeometry&,MissionRuntimeConfig,MissionHumanScenario);
     MissionHumans(const MissionHumans&)=delete;MissionHumans& operator=(const MissionHumans&)=delete;
     void update(std::int32_t pass=0,bool enabled=true);
     void advance_projectiles(std::int32_t pass=0,bool enabled=true);
+    void advance_enemies(std::int32_t pass=0,bool enabled=true);
     void set_state(core::ComponentSlots&,std::int32_t,float speed_z);
     std::uint64_t random_draws()const{return random_.draws;}
     std::uint64_t shots()const{return shots_;}
     std::int32_t total_damage()const{return stage_.total_damage;}
     void enable_rewards(MissionRewardScenario);
     void write_reward_report(std::ostream&);
+    void enable_enemies(MissionEnemyScenario);
+    void write_enemy_report(std::ostream&);
 private:
+    core::EntitySubset* enemy_subset(const core::EventIntegers& slots)override{return world_.subset(slots);}
+    core::EnemyGaugeService* enemy_gauge_system()override{return nullptr;} // SAGA_STUB(mission-enemy-gauge): no HUD gauge renderer.
+    core::StageStartState* enemy_stage_system()override{return &stage_;}
+    core::MemberRoster* enemy_member_system()override{return &members_;}
+    void subscribe_enemy_impact(core::EntityEvents::Single,std::optional<core::EventHashes>)override;
+    void subscribe_enemy_contact(core::EntityEvents::Pair,std::optional<core::EventHashes>)override;
+    void subscribe_enemy_human_dead(core::EntityEvents::Single,std::optional<core::EventHashes>)override;
+    core::EnemyFactoryWorld* current_enemy_factory()override{return &world_.enemy_factory_world();}
+    core::PlayerWorldState* enemy_world()override{return &world_.player_world();}
+    core::StageGeometry* enemy_map()override{return &geometry_;}
+    core::StagePlacementHost& enemy_coordinates()override{return *this;}
+    bool target_destroyed(core::ComponentSlots& e)override{return world_.destroyed(e);}
+    std::int32_t system_yugami()override;
+    core::AnimationModificationPool& enemy_modifications()override{return static_cast<core::ProjectileLaunchHost&>(world_);}
+    core::QuestEntityHost* population_destruction_world()override{return &world_;}
+    core::QuestMemberId population_entity_id(core::ComponentSlots& e)override{return world_.handle(e);}
+    core::RandomSource& population_random()override{return random_;}
+    core::WeightedLotteryState& population_lottery()override{return lottery_;}
+    core::EnemyRecords population_records()override{return world_.enemy_records();}
+    const core::ParameterMaximumLevels& frame_enemy_maximum_levels()override{return world_.enemy_maximum_levels();}
+    std::int32_t enemy_frames_per_second()override{return runtime_.fps;}
+    void release_enemy_garbage(core::Component* p)override{world_.return_component(22,p);}
+    core::GarbageLifetime& acquire_garbage()override{return world_.acquire_garbage();}
+    bool collision_blocked(core::ComponentSlots& e)override{return world_.destroyed(e);}
+    void change_animation(core::ComponentSlots& e,std::int32_t clip,std::int32_t backup)override{cut_in_animation(e,clip,backup);}
+    void effect(std::int32_t clip,std::int32_t image,std::int32_t loop,float x,float y,float z)override{world_.effect({x,y,z},clip,image,loop!=0);}
+    void fly_away(core::ComponentSlots&,std::int32_t,std::int32_t,std::int32_t,std::int32_t,bool)override;
+    void human_state(core::ComponentSlots& e,std::int32_t state)override{core::change_human_state(e,state,static_cast<core::HumanFrameHost&>(*this));}
+    void enemy_state(core::ComponentSlots& e,std::int32_t state)override{core::change_enemy_state(e,state);}
+    std::int32_t progress_rate(float)override;
+    void contact_sound()override; // SAGA_STUB(mission-contact-audio): output only.
     struct Random final:core::RandomSource {core::LegacySystemRandom source;std::uint64_t draws=0;
         explicit Random(std::int32_t seed):source(seed){}std::int32_t next()override{++draws;return source.next();}};
     const core::CombatRecordTables& human_records()override{return records_;}
@@ -109,9 +152,11 @@ private:
     core::StageStartState stage_;core::AttackButtonState button_;core::MemberRoster members_;
     core::EnemyCreationSystem enemies_;core::HumanFrameSystem system_;
     core::HumanEventServices services_{records_,*this,*this};
+    core::EnemyEventServices enemy_services_{records_,world_.enemy_maximum_levels(),random_,*this,*this,*this};
     core::ProjectileSystemState projectiles_;core::EventInstruction attack_clips_=core::initial_attack_animation_ids();
     core::AttributeAffinityTables affinities_=core::initial_attribute_affinity_tables();
     std::uint64_t shots_=0,attack_sounds_=0,damage_presentations_=0;
     std::optional<MissionRewardScenario> reward_scenario_;
+    std::optional<MissionEnemyScenario> enemy_scenario_;core::WeightedLotteryState lottery_;
 };
 } // namespace saga::desktop

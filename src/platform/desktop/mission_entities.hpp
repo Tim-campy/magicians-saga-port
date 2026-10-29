@@ -37,6 +37,7 @@ public:
     core::ComponentSlots& effect(core::ProjectilePoint,std::int32_t clip,std::int32_t image,bool loop);
     core::ComponentSlots& raw_entity(std::int32_t type);
     core::DropEffectWorld& effect_world(){return effect_world_;}
+    core::EnemyFactoryWorld& enemy_factory_world(){return enemy_world_;}
     bool reward_catalog_ready()const{return catalog_.treasures.has_value();}
     core::ComponentSlots* drop(std::int32_t type,std::int32_t value,core::ProjectilePoint,std::int32_t scale);
     core::ComponentSlots& emitter(core::EmitterCreation);
@@ -125,7 +126,7 @@ private:
     core::EntityRegistry registry_{*this};core::DynamicSubsets groups_;
     core::PlayerWorldState player_world_{nullptr,&groups_,0};core::Component player_marker_;
     core::EntityEvents gameplay_events_;
-    core::EntityIdState ids_;core::BulletFactoryWorld bullet_world_;core::DropEffectWorld effect_world_;
+    core::EntityIdState ids_;core::BulletFactoryWorld bullet_world_;core::DropEffectWorld effect_world_;core::EnemyFactoryWorld enemy_world_;
     core::Component sync_marker_;std::deque<core::DropComponent> drops_;
     std::vector<std::optional<core::PartyCharacter>> party_rows_;core::PartyCharacters party_;
     std::vector<std::optional<core::HumanHat>> hat_rows_;core::HumanHats hats_;

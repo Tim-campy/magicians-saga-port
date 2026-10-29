@@ -28,7 +28,7 @@ game:0x060000fd	reimplemented	src/core/gameplay/combat_rules.cpp	subtract_parame
 game:0x0600025d	reimplemented	src/core/gameplay/combat_rules.cpp	attribute_affinity with initial tables; tests/test_combat_rules.cpp
 game:0x06000e82	documented	docs/subsystems/combat.md	Numeric damage and stateful post-label shake/positional-effect suffix ported; desktop host binds real stats/RNG/DEBUG and Stage accounting; floating label selection and full event routing remain partial
 game:0x06000e7e	reimplemented	src/core/gameplay/projectile_hit.cpp	Projectile guards; damage/defeat/impact order; owner reread; pool return and speed zeroing; ECS integration test
-game:0x06000e7d	reimplemented	src/core/gameplay/contact_collision.cpp	Full contact orchestration with explicit state/presentation services; tested guards, payloads, callback order and recoil
+game:0x06000e7d	reimplemented	src/core/gameplay/contact_collision.cpp	Full contact damage/state/effects/recoil; native ordered Human/Enemy event29 receivers are bound by mission host; pair production remains separate.
 game:0x06000e83	reimplemented	src/core/gameplay/enemy_defeat.cpp	Complete motion/state/color/counters/pending rewards; table-backed saga_mission lethal shots and saved defeat counts tested.
 game:0x06000d47	traced	docs/subsystems/rewards.md	flag +0x14 via BitUtil.Check; bit meaning unknown
 game:0x060010ca	reimplemented	src/core/gameplay/enemy_defeat.cpp	Wrapping int32 addition then clamp at zero; overflow and negative increment tests
@@ -114,7 +114,7 @@ game:0x06000e0a	reimplemented	src/core/gameplay/pass_initialization.cpp	Concrete
 game:0x06000e0b	reimplemented	src/core/ecs/update_scheduler.cpp	Ordered dispatch or concrete enabled/pass gate; contract test; runtime comparison pending.
 game:0x06000e0c	reimplemented	src/core/gameplay/collision_pass.cpp	Complete pair selection and deferred delivery; live subset gated scheduler and both real contact receivers composed in tests
 game:0x06000e7f	reimplemented	src/core/gameplay/combat_event_receivers.cpp	Live current-subset retargeting after human death; actual SearchTarget bound in Init tests, including nested landing/death and captured-component stores.
-game:0x06000e67	reimplemented	src/core/gameplay/enemy_initialization.cpp	Supplied-world subset/Gauge/Stage/Member stores, separate zero quota arrays and actual ordered 23/29/30 handlers; failure/repeat/hash and recoil/damage/drop/nested-death integrations tested.
+game:0x06000e67	reimplemented	src/core/gameplay/enemy_initialization.cpp	Supplied-world subset/system stores, independent quota arrays and actual event23/29/30 receivers; saga_mission binds native Init between Human and Projectile.
 game:0x06000ebb	reimplemented	src/core/gameplay/human_initialization.cpp	Supplied-world subset/map/Stage/Enemy/Member stores, ordered real event 23/29 receivers, nullable results and failure/repeat/hash tests; MissionHumans binds world catalogs and services in both desktop hosts.
 game:0x06000ed0	reimplemented	src/core/gameplay/human_contact.cpp	Complete human contact receiver composed with real state transitions; guards displacement callbacks and failures tested.
 game:0x06001236	reimplemented	src/core/gameplay/drop_collection.cpp	Boss reward reads inherited int32 flags mask 1; decoded treasure rows and pickup gates tested.
@@ -181,7 +181,7 @@ game:0x06000d6c	reimplemented	src/core/gameplay/stage_recovery.cpp	Exactly Human
 game:0x06000d71	traced	docs/subsystems/rewards.md	INVINCIBLE_TIME assignment is wrap32(3*initial FPS); only duration initialization ported/tested, full static constructor remains unported.
 game:0x06000e77	reimplemented	src/core/gameplay/enemy_creation.cpp	Current world factory, captured target publication then live Yugami!=10000 level*50 with no parameter rebuild; partial-failure tests.
 game:0x06000e76	reimplemented	src/core/gameplay/enemy_creation.cpp	Captured boss ID, cache query/map/GetZ(98), live level, boss then hero-X/GetZ(96) extra enemy and type-9 looping modifier; actual stage integration.
-game:0x06000e73	reimplemented	src/core/gameplay/enemy_creation.cpp	Retain live cached target, boss -> global hero, otherwise ordered nearest alive member using binary32 X/Z; ties/dead/NaN/infinity tested.
+game:0x06000e73	reimplemented	src/core/gameplay/enemy_creation.cpp	Cached/boss/nearest living member target selection; saga_mission population spawns and event30 retarget receiver use the actual method.
 game:0x06000e85	reimplemented	src/core/gameplay/enemy_factory.cpp	No-animation flag -> zero; parameter 5 binary32 multiply 2.23 then /100 and ordered floor 0.5575; factory tested.
 game:0x060000e3	reimplemented	src/core/gameplay/character_parameter_set.cpp	Enemy key order/growth/maxima into existing owning ParamSet; first duplicate retained, explicit level/maxLevel fields; actual factory tests.
 game:0x060010c9	reimplemented	src/core/gameplay/enemy_factory.cpp	Unsigned index<2; reuse matching character predicate, parameter map integration and boundary tests.
@@ -189,10 +189,10 @@ game:0x06000e68	reimplemented	src/core/gameplay/enemy_population.cpp	Counter res
 game:0x06000e78	reimplemented	src/core/gameplay/enemy_population.cpp	Capture current world before stored-group snapshot, require it after snapshot and destroy true; callback-created enemies survive; tested.
 game:0x06000e75	reimplemented	src/core/gameplay/enemy_population.cpp	Captured fixed rows/map, live map fields and current quest base level, actual fixed enemy creation; empty/null and mutation tests.
 game:0x06000e7b	reimplemented	src/core/gameplay/enemy_population.cpp	Publish quest, Reset/fixed/initial enemy, two-map coordinates and spinning entry, quotas/last-three 99999, live Yugami*100; concrete StageStart adapter tested.
-game:0x06000e74	reimplemented	src/core/gameplay/enemy_population.cpp	Attempt-before-validation, full weight projection, exact Lot then column draw, captured player/maps, actual spawn, late section increment then walking; tested.
+game:0x06000e74	reimplemented	src/core/gameplay/enemy_population.cpp	Native weighted spawn and section bookkeeping use shared owner IDs/RNG/lottery in saga_mission; explicit pool and quota inputs.
 game:0x06000e8d	reimplemented	src/core/gameplay/enemy_population.cpp	Required entity/Enemy/data, count iff record NO_ANIMATION is clear; does not filter dead state; population cap tests.
 game:0x06000e8e	reimplemented	src/core/gameplay/enemy_population.cpp	Required second row integer before weighted draw; short later rows fault before selection even if earlier weight saturates the table; tested.
-game:0x06000e6a	reimplemented	src/core/gameplay/enemy_frame.cpp	Full population/live pass, captured HP/Enemy, blink and wrapping counter, actual state helpers, culling and fixed activation; same-frame spawn and Enemy->Move tests.
+game:0x06000e6a	reimplemented	src/core/gameplay/enemy_frame.cpp	Full population/live frame; saga_mission binds activation, state dispatch, HP blink, culling and generated enemies with explicit quest/save scenario inputs.
 game:0x06000e6c	reimplemented	src/core/gameplay/enemy_frame.cpp	Live speed, target X following only within strict 150 Z, destroyed-target gate and boss hero-Z clamp; binary32 boundaries/NaN and movement composition tested.
 game:0x06000e6e	reimplemented	src/core/gameplay/enemy_frame.cpp	0.8 damping/strict 0.1 settle, direction unlock, boss/stage/data gates, exact 20-percent draw and remove/pool/3FPS/remaining/state ordering; tested.
 game:0x06000e70	reimplemented	src/core/gameplay/enemy_frame.cpp	Required entity/Speed, Z=-10, no frame or position advance; helper and full-frame fleeing transition tested.

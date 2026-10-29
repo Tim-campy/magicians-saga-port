@@ -10,7 +10,7 @@ template<class T>T& acquire(std::deque<T>& pool){pool.emplace_back();return pool
 }
 MissionEntities::MissionEntities(const GameplayCatalog& data,MissionProgress& saved,std::int32_t slots,StageGeometry* map,Resources resources,ResourceIds names)
     :catalog_(data),progress_(saved),slots_(slots),map_(map),resources_(std::move(resources)),resource_ids_(std::move(names)),
-     groups_(registry_,[this](const ComponentSlots& e){return id(e);}),bullet_world_{ids_,static_cast<BulletFactoryHost&>(*this)},effect_world_{ids_,static_cast<EffectFactoryHost&>(*this)},
+     groups_(registry_,[this](const ComponentSlots& e){return id(e);}),bullet_world_{ids_,static_cast<BulletFactoryHost&>(*this)},effect_world_{ids_,static_cast<EffectFactoryHost&>(*this)},enemy_world_{ids_,static_cast<EnemyFactoryHost&>(*this)},
      party_rows_(data.characters.size()),party_(std::make_shared<std::vector<PartyCharacter*>>(data.characters.size(),nullptr)),
      hat_rows_(data.hats.size()),hats_(std::make_shared<std::vector<HumanHat*>>(data.hats.size(),nullptr)),shop_(data.shop.size()){
     if(!resources_||!resource_ids_)throw std::invalid_argument("mission entities need resource providers");

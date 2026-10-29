@@ -14,7 +14,7 @@ void MissionHumans::advance_projectiles(std::int32_t pass,bool enabled){
 void MissionHumans::play_attack_sound(bool){++attack_sounds_;} // SAGA_STUB(mission-attack-audio): no audio output backend.
 void MissionHumans::subscribe_impact(EntityEvents::Single receiver,std::optional<EventHashes> hash){world_.events().subscribe(23,std::move(receiver),hash);}
 void MissionHumans::send_impact(ComponentSlots& e){world_.events().send(23,&e);}
-ComponentSlots* MissionHumans::search_opponent(ComponentSlots&){unbound("enemy retarget");}
+ComponentSlots* MissionHumans::search_opponent(ComponentSlots& e){return search_enemy_target(enemies_,&e,*this);}
 const BulletImpactData* MissionHumans::bullet_data(ComponentSlots& e){
     auto* component=dynamic_cast<BulletComponent*>(e.get(29));return resolve_bullet_record(required(component),world_);
 }
@@ -34,6 +34,7 @@ bool MissionHumans::damage(ComponentSlots* attacker,ComponentSlots& target,std::
 }
 void MissionHumans::enable_rewards(MissionRewardScenario scenario){
     if(reward_scenario_||!world_.reward_catalog_ready())throw std::invalid_argument("rewards require one explicit scenario and a loaded Treasure catalog");
+    if(enemy_scenario_&&(scenario.defeated!=enemies_.defeated_enemies||scenario.remaining!=enemies_.remaining_enemies))throw std::invalid_argument("reward counters conflict with enemy_population");
     enemies_.defeated_enemies=scenario.defeated;enemies_.remaining_enemies=scenario.remaining;
     for(const auto& row:records_.enemies)if(row)saved_.enemy_defeat_counts.emplace(row->id,scenario.saved_defeat_count);
     reward_scenario_=scenario;
@@ -44,8 +45,10 @@ void MissionHumans::defeat(ComponentSlots& e){
 }
 void MissionHumans::write_reward_report(std::ostream& out){
     out<<",\"rewards_enabled\":"<<(reward_scenario_?"true":"false");
+    if(!reward_scenario_&&!enemy_scenario_)return;
+    out<<",\"defeated_enemies\":"<<enemies_.defeated_enemies<<",\"remaining_enemies\":"<<enemies_.remaining_enemies;
     if(!reward_scenario_)return;
-    out<<",\"defeated_enemies\":"<<enemies_.defeated_enemies<<",\"remaining_enemies\":"<<enemies_.remaining_enemies<<",\"saved_defeats\":[";bool first=true;
+    out<<",\"saved_defeats\":[";bool first=true;
     for(const auto& entry:saved_.enemy_defeat_counts)if(entry.second!=reward_scenario_->saved_defeat_count){
         if(!first)out<<',';first=false;out<<"{\"enemy_id\":"<<entry.first<<",\"count\":"<<entry.second<<'}';}
     out<<']';

@@ -59,6 +59,7 @@ Manifest: portrait orientation (`1`), `hardwareAccelerated=false`, `resizeableAc
 | [save.md](save.md) | Persistence entry points, save order and streams |
 | [data.md](data.md) | Base data, data lists, game tables |
 | [combat.md](combat.md) | Combat entry, hit, damage, easing |
+| [combat-enemies.md](combat-enemies.md) | Enemy creation, target selection, population and live frame |
 | [rewards.md](rewards.md) | Defeat, drops, quest results, treasure, town return |
 | [events.md](events.md) | Event tables, opcodes, delays, progression |
 | [integration.md](integration.md) | Slice hosts, wiring state, stubs and provisional inputs |

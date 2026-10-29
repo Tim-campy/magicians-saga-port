@@ -9,7 +9,7 @@ The plan in one page. Work happens in **vertical slices**: each ends in somethin
 | M0 | APK inventory, architecture, subsystem map | Done: [overview](subsystems/overview.md). |
 | M1 | Asset extraction and technical rendering | Partial: archives, OPT, SEB, Unity media verified; sprites of real entities render through GL; fonts and audio not ported. |
 | M2 | Boot, forms/menus and input | Static research; SelectForm passes ported in isolation (slice S2/S3). |
-| M3 | First playable gameplay loop | **Current = slice S1.** Scene host runs table-backed shots, terminal damage, enemy defeat, pending drops and debris cleanup; AI, collection and full stage schedule remain open. |
+| M3 | First playable gameplay loop | **Current = slice S1.** Scene host runs table-backed shots, terminal damage, enemy defeat, pending drops, enemy updates/population and cleanup; collisions, collection and full stage schedule remain open. |
 | M4 | Save/load, progression, economy, content | Slice S3; save envelope not decoded. |
 | M5 | Windows/Linux release candidate | Windows builds and CTest; Linux builds in CI. |
 | M6 | 3DS feasibility benchmark | Not started; nothing is claimed. |
@@ -36,7 +36,7 @@ Tasks:
 - [ ] Extend `saga_mission` with real quest/map selection via `--data`/`--quest`, its SDL window and supported gameplay input replays via `--replay` (A1, A5).
 - [ ] Replace the synthetic catalogs/services of the 240-frame combat regression with the table-backed owner used by `saga_mission` (A3).
 - [ ] Bind collision pair dispatch and area damage to the live shot pipeline (A2, A3).
-- [ ] Bind full Enemy Init/Update/contact/retarget and boss notification to the table-backed host (A3).
+- [ ] Bind Stage death and boss notification to the table-backed host, preserving event30 ordering (A3, A4).
 - [ ] Bind drop collection, stage reward accumulation and permanent result grants to the host (A3, A4).
 - [ ] Wire Map/MapChip factories and `MapSystem.Init/LoadMap` from InitWorld geometry into the host (A1).
 - [ ] Bind QuestForm's cursor UI to SDL input events (A2).
