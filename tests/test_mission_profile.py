@@ -103,6 +103,46 @@ class MissionProfileTests(unittest.TestCase):
             incomplete = subprocess.run([str(EXE), '--headless'], capture_output=True, text=True, timeout=30)
             self.assertNotEqual(incomplete.returncode, 0)
 
+    def test_quest_table_drives_map_boss_and_preserves_saved_fields(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory);scene = root / 'scene.txt'
+            original = make_boss_scene(root)
+            substitutions = {
+                'geometry 312 312 12': 'geometry quest',
+                'human_system 10 0 95 0 0': 'human_system quest 0 95 0 0',
+                'enemy_system 10000 0 10 25 7': 'enemy_system quest 10000',
+                'enemy_pool 0\n': '',
+                'stage_notifications 1 0 0 2 0 0 -1': 'stage_notifications 1 0 0 quest 1 0 -1',
+                'stage_events fresh 0': 'stage_events quest',
+                'stage_loop 5000 0 20 hold': 'stage_loop quest 0 20 hold',
+                'stage_boss 4 7': 'stage_boss quest',
+                'mission_map fresh 0 1 2 3': 'mission_map quest',
+            }
+            text = original
+            for before, after in substitutions.items():
+                self.assertIn(before, text);text = text.replace(before, after)
+            text += 'quest 2 2\n'
+            scene.write_text(text, encoding='utf-8')
+            result = self.run_host(scene, frames=1)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            report = json.loads(result.stdout)
+            self.assertEqual(report['selected_quest'], 2)
+            self.assertEqual(report['quest_distance'], 10)
+            self.assertEqual(report['quest_flags'], 2)
+            self.assertEqual(report['quest_money_rate'], 150)
+            self.assertEqual((report['quest_completion_byte'], report['quest_rescued']), (1, 2))
+            self.assertEqual(report['boss_creation_calls'], 1)
+            self.assertEqual(report['remaining_time'], 4999)
+            self.assertEqual(report['mission_map']['height'], 12)
+            self.assertEqual(self.run_host(scene, frames=1).stdout, result.stdout)
+            for invalid in [text.replace('quest 2 2', 'quest 1 2'),
+                            text.replace('quest 2 2\n', ''),
+                            text + 'enemy_pool 0\n',
+                            text.replace('mission_map quest', 'mission_map fresh 0 1 2 3'),
+                            text.replace('stage_events quest', 'stage_events fresh 0')]:
+                scene.write_text(invalid, encoding='utf-8')
+                self.assertNotEqual(self.run_host(scene, frames=1).returncode, 0)
+
     def test_lethal_shot_pending_rewards_and_cleanup(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

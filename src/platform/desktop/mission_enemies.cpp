@@ -9,11 +9,13 @@ using namespace core;
 void MissionHumans::enable_enemies(MissionEnemyScenario scenario){
     if(enemy_scenario_)throw std::invalid_argument("enemy system requires one explicit scenario");
     if(reward_scenario_&&(scenario.defeated!=enemies_.defeated_enemies||scenario.remaining!=enemies_.remaining_enemies))throw std::invalid_argument("enemy_population counters conflict with rewards");
-    auto& quest=*stage_.quest;quest.enemy_maximum=scenario.maximum;quest.enemy_total_limit=scenario.total;
-    quest.enemy_interval=scenario.interval;quest.base_level=scenario.level;
-    auto rows=std::make_shared<std::vector<EventInstruction>>();
-    for(const auto& row:scenario.pool)rows->push_back(std::make_shared<EventIntegers>(EventIntegers{row.first,row.second}));
-    quest.normal_enemies=std::make_shared<std::vector<EventScript>>(1,std::move(rows));
+    if(!table_quest_){
+        auto& quest=*stage_.quest;quest.enemy_maximum=scenario.maximum;quest.enemy_total_limit=scenario.total;
+        quest.enemy_interval=scenario.interval;quest.base_level=scenario.level;
+        auto rows=std::make_shared<std::vector<EventInstruction>>();
+        for(const auto& row:scenario.pool)rows->push_back(std::make_shared<EventIntegers>(EventIntegers{row.first,row.second}));
+        quest.normal_enemies=std::make_shared<std::vector<EventScript>>(1,std::move(rows));
+    }
     enemies_.quest=stage_.quest;enemies_.created_enemies=scenario.created;
     enemies_.defeated_enemies=scenario.defeated;enemies_.remaining_enemies=scenario.remaining;enemies_.loop_counter=scenario.loop_counter;
     stage_.collection.boss_defeated=scenario.boss_defeated;

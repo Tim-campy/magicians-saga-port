@@ -12,6 +12,28 @@ How far the ported modules run together on the PC, per slice of `docs/ROADMAP.md
 | S3 boot, title, save | none | — | First form unknown; save envelope not decoded. |
 | S4 dialogue, audio | `event_trace` (text only, no window) | see [events](events.md) | Text pipeline ported in isolation; no font backend, no audio. |
 
+### Table-selected quests (S1 A1/A3)
+
+The shared profile accepts `quest <id> <saved-rescued-count>` and loads Quest.txt from the selected `tables` archive. Missing ids/gaps fail; no synthetic record is substituted. The scenario remains an explicit mid-mission state, rather than New Game or complete Stage.Start. Human, Enemy, Stage and Map hold one StageQuest projection. The following source forms replace static numeric inputs:
+
+```text
+quest 1 0
+human_system quest 0 95 0 0
+geometry quest
+enemy_system quest 10000
+stage_notifications 1 0 0 quest 1 0 -1
+stage_events quest
+stage_boss quest
+stage_loop quest 0 20 hold
+mission_map quest
+```
+
+These illustrative state inputs are provisional: saved prisoner/completion values, Yugami, state/frame, bounds, selected attack and boss-started/fade state come from the scenario. Quest source derives distance, InitWorld map steps/quest height, chip images, enemy levels/limits/interval/pool, boss, flags and complete event groups. Enemy counters/section populations, actor equipment/progression, input, results and resource-name bindings still require their existing explicit rows. `enemy_pool` and numeric static overrides are rejected in selected-quest mode. An explicit numeric remaining-time snapshot is allowed; `stage_loop quest` instead invokes the existing native ResetTimer port with QuestData.timeLimit and the supplied FPS, preserving int32 wrap. Stage events use fresh zeroed flags sized from the actual first group; reaching an unbound event dispatcher still faults.
+
+Local demonstration: `build/desktop/saga_mission.exe --scene research/exports/mission-data-scene/quest-table-1.txt --frames 450 --headless --fps 25 --debug 0 --rng system --seed 42 --replay research/exports/mission-data-scene/quest-table-1.replay`. Quest1 loads distance3, a 3×5 map (15 live chips) and time limit240, producing a fresh timer6000 at FPS25. The explicit near-end party state/replay reaches native boss creation, two shots, clear/result grants and held return at tick401, with 58 RNG draws; repeated reports are byte-identical. `build/viewer/queue_capture.exe research/exports/mission-data-scene/quest-table-1.txt 600 640 --run-frames 450 --replay research/exports/mission-data-scene/quest-table-1.replay` executes the same401 ticks; all91 shared report fields agree. A local tick200 capture shows the map/hero/boss combat through42 quads and14 textures, with explicit local material bindings. Party level10/EXP1499, completed byte1, rescued0, wallet/inventory, initial world/counters and replay actions are provisional scenario inputs. This is a local port run, not an original-runtime golden replay or complete-state hash.
+
+Limits: this removes manual quest rules from selected profiles; `saga_mission --data/--quest`, automatic party/resource bootstrap, full Stage.Start, complete schedule and Android verification remain open.
+
 ## Reachable from the hosts
 
 Keep this list current: a ported module that no host calls is integration debt. Group by host; one line per module or chain.
@@ -204,12 +226,12 @@ The synthetic host contract checks real grants, recruitment, inventory, level-up
 | mission-attack-audio | MissionHumans | attack sound output | service stub (counter only) | audio backend is bound |
 | mission-damage-labels | MissionHumans | floating miss/numeric/critical labels and their display-table selection | presentation stub; no shake/impact suppression | label/effect renderer is bound |
 | mission-damage-diagnostics | numeric damage host | optional diagnostic logging | service stub; diagnostic logging disabled | diagnostic output is bound |
-| human-scenario | human_system/player/actor_state/gear_levels rows | quest geometry/bounds, attack button, initial actor state and saved gear levels | provisional scenario inputs, no implicit gear levels | quest/save/bootstrap/input producers are bound |
+| human-scenario | human_system/player/actor_state/gear_levels rows | bounds, attack button, initial actor state and saved gear levels | provisional inputs; selected-quest mode derives distance/geometry from Quest.txt; no implicit gear levels | save/bootstrap/input producers are bound |
 | reward-scenario | rewards row | initial EnemySystem defeated/remaining counters and uniform per-record saved defeat count | provisional scenario inputs; no implicit reward state | stage entry and decoded save restoration are bound |
-| enemy-scenario | enemy_system/enemy_population/enemy_pool rows | Yugami, quest spawn parameters, initial system/boss/section state and enemy weights | provisional inputs; required together, counters must agree with rewards | native quest/save/Stage startup is bound |
+| enemy-scenario | enemy_system/enemy_population/enemy_pool rows | Yugami and initial system/boss/section state; static fields only in numeric mode | provisional saved state; selected-quest mode uses actual spawn parameters/pool; counters must agree with rewards | decoded save and Stage startup are bound |
 | mission-enemy-gauge | MissionHumans Enemy Init | HUD GaugeSystem identity/display | service stub (null lookup, permitted by Init) | gauge renderer is bound |
 | mission-contact-audio | MissionHumans contact receiver | contact sound output | service stub; state, damage, effects and recoil execute | audio backend is bound |
-| notification-scenario | stage_notifications row | initial Stage state/frame/retried, quest flags/completed, held-key bitmap and retry answer | provisional inputs; no automatic answer | native quest/save/input and Stage startup are bound |
+| notification-scenario | stage_notifications row | initial Stage state/frame/retried, saved completion, held keys and retry answer | provisional saved/input state; selected-quest mode reads actual flags; no automatic answer | save/input and Stage startup are bound |
 | mission-stage-forms | MissionHumans stage/victory/result factories and stacks | dialog/defeat/victory/result drawing and form-manager integration | service stub; retained objects and ordered push observations | form renderer, pause/resume and answer input are bound |
 | mission-stage-audio | MissionHumans StopBGM / MissionStage boss callbacks | stage/boss music and boss sound output | service stub; ordered observations | audio backend is bound |
 | mission-movement-controls | MissionHumans boss movement release without input fresh | QuestForm surface lookup | service stub (null controls); input fresh binds native IDs and Input -> Stage event9 release | full Surface control construction is bound |
@@ -219,11 +241,11 @@ The synthetic host contract checks real grants, recruitment, inventory, level-up
 | mission-mp-notices | MissionScene presentation cursor | type7 MP notice output | presentation stub; native value/no-Depth/playback/lifetime retained | dedicated notice renderer is bound |
 | mission-collection-labels | MissionScene presentation cursor | type3 numeric effect glyph output | presentation stub; real effect entity, no fabricated Depth, native lifetime retained | numeric effect renderer is bound |
 | mission-collection-audio | CollectionHost | pickup sound and boss-reward jingle output | service stub; ordered counts retained | audio backend is bound |
-| stage-loop-scenario | stage_loop/stage_events/stage_pulse rows | timer, initial boss-started flag, fade, fresh event flags and explicit confirmation pulses | provisional inputs; reached script/Retry/pause/dialog branches fail | native Stage.Start/quest scripts and input owner are bound |
-| mission-boss-scenario | stage_boss row | QuestData boss ID/level | provisional explicit inputs; absent binding fails at threshold; native auxiliary1 and fence7/44 retained | decoded quest selection and Stage.Start are bound |
+| stage-loop-scenario | stage_loop/stage_events/stage_pulse rows | initial boss-started/fade, fresh event flags and confirmation pulses | provisional state; quest mode uses actual event groups/ResetTimer; reached script/Retry/pause/dialog branches fail | Stage.Start, script dispatcher and form input are bound |
+| mission-boss-scenario | stage_boss row | optional explicit boss ID/level in numeric mode | provisional in numeric mode; quest mode uses actual ID/level; absent binding fails at threshold; native auxiliary1 and fence7/44 retained | complete Stage.Start is bound |
 | result-state-scenario | result_wallet/result_record/result_inventory/result_recruits rows | decoded wallet, rescued count, quest counters, uniform initial stock/recruitment state | provisional saved-state inputs; only present catalog IDs are seeded | decoded save restoration is bound |
 | mission-return-transition | MissionResults::make_transition and stage_loop hold policy | transition drawing/timing and old-world lifecycle | service stub; callback retained, old mission held; town callback unexecuted | form transition and S2 town host are bound |
-| mission-map-scenario | mission_map fresh and view rows | selected chip image IDs, fresh in-memory camera-save scratch and effective GameView dimensions | provisional scenario inputs; native InitWorld map constants/LoadMap camera writes, no save restoration | quest catalog, Stage.Start and live SDL viewport are bound |
+| mission-map-scenario | mission_map and view rows | fresh camera-save scratch/effective GameView dimensions; chip IDs only in numeric mode | provisional state; quest mode uses actual chip images; native InitWorld constants/LoadMap writes, no save restoration | Stage.Start, save restoration and live SDL viewport are bound |
 
 ### Headless execution limits
 

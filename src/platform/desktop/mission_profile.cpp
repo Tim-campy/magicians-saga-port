@@ -7,6 +7,7 @@
 #include <variant>
 #include <cmath>
 #include <charconv>
+#include <set>
 
 namespace saga::desktop {
 using namespace core;
@@ -86,10 +87,16 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     std::map<std::string,std::int32_t> gear_defaults;
     std::vector<std::size_t> players;
     std::vector<std::tuple<std::size_t,std::int32_t,float>> states;
+    std::set<std::string> quest_fields;
+    std::int32_t rescued_prisoners=0;
     for(std::string line;std::getline(input,line);){
         std::istringstream row(line);row.imbue(std::locale::classic());std::string operation;
         if(!(row>>operation)||operation.front()=='#')continue;
-        if(operation=="runtime"){
+        if(operation=="quest"){
+            std::int32_t id=0;
+            if(!native||selected_quest||!(row>>id>>rescued_prisoners)||id<0)throw std::invalid_argument("quest requires one nonnegative ID and explicit saved rescued count");
+            selected_quest=id;
+        }else if(operation=="runtime"){
             MissionRuntimeConfig value;std::int32_t debug=0;
             if(!native||runtime_row||!(row>>value.fps>>debug>>value.backend>>value.seed)||value.fps<1||value.fps>1000||(debug!=0&&debug!=1)||value.backend!="system")throw std::invalid_argument("runtime requires FPS1..1000 DEBUG0/1 system seed-int32");
             value.debug=debug!=0;runtime_row=true;
@@ -97,7 +104,15 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         }else if(operation=="rewards"){
             MissionRewardScenario value;if(!native||rewards||!(row>>value.defeated>>value.remaining>>value.saved_defeat_count))throw std::invalid_argument("rewards requires initial defeated/remaining/saved defeat counts");rewards=value;
         }else if(operation=="enemy_system"){
-            if(!native||enemy_config||!(row>>enemy.yugami>>enemy.maximum>>enemy.total>>enemy.interval>>enemy.level))throw std::invalid_argument("enemy_system requires yugami maximum total interval base level");enemy_config=true;
+            std::string mode;
+            if(!native||enemy_config||!(row>>mode))throw std::invalid_argument("enemy_system requires inputs");
+            if(mode=="quest"){
+                if(!(row>>enemy.yugami))throw std::invalid_argument("enemy_system quest requires explicit saved yugami");
+                quest_fields.insert(operation);
+            }else{
+                enemy.yugami=parse_event_decimal(mode);
+                if(!(row>>enemy.maximum>>enemy.total>>enemy.interval>>enemy.level))throw std::invalid_argument("enemy_system requires yugami maximum total interval base level");
+            }enemy_config=true;
         }else if(operation=="enemy_population"){
             std::int32_t boss=0;
             if(!native||enemy_population||!(row>>enemy.created>>enemy.defeated>>enemy.remaining>>enemy.loop_counter>>boss>>enemy.section_limit>>enemy.section_created)||(boss!=0&&boss!=1))throw std::invalid_argument("enemy_population requires created defeated remaining loop boss0/1 uniform section limit/count");enemy.boss_defeated=boss!=0;enemy_population=true;
@@ -117,13 +132,22 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             std::int32_t fresh=0;auto& r=result_state.recruits;
             if(!native||recruits||!(row>>r.discovery_state>>fresh>>r.recruited)||(fresh!=0&&fresh!=1))throw std::invalid_argument("result_recruits requires found is-new0/1 recruited");r.is_new=fresh!=0;recruits=true;
         }else if(operation=="stage_boss"){
-            MissionBossScenario value;if(!native||stage_scenario.boss||!(row>>value.id>>value.level))throw std::invalid_argument("stage_boss requires one explicit boss ID and level");stage_scenario.boss=value;
+            std::string mode;MissionBossScenario value{};
+            if(!native||stage_scenario.boss||!(row>>mode))throw std::invalid_argument("stage_boss requires one selection");
+            if(mode=="quest")quest_fields.insert(operation);
+            else{value.id=parse_event_decimal(mode);if(!(row>>value.level))throw std::invalid_argument("stage_boss requires ID and level");}
+            stage_scenario.boss=value;
         }else if(operation=="stage_loop"){
-            std::int32_t boss=0;std::string policy;
-            if(!native||stage_loop||!(row>>stage_scenario.remaining_time>>boss>>stage_scenario.fade_frame>>policy)||(boss!=0&&boss!=1)||policy!="hold")throw std::invalid_argument("stage_loop requires remaining-time boss-started0/1 fade-frame hold");stage_scenario.boss_started=boss!=0;stage_loop=true;
+            std::int32_t boss=0;std::string time,policy;
+            if(!native||stage_loop||!(row>>time>>boss>>stage_scenario.fade_frame>>policy)||(boss!=0&&boss!=1)||policy!="hold")throw std::invalid_argument("stage_loop requires remaining-time boss-started0/1 fade-frame hold");
+            if(time=="quest"){quest_fields.insert(operation);stage_scenario.reset_timer=true;}
+            else stage_scenario.remaining_time=parse_event_decimal(time);
+            stage_scenario.boss_started=boss!=0;stage_loop=true;
         }else if(operation=="stage_events"){
             std::string policy;std::int32_t count=0;
-            if(!native||stage_events||!(row>>policy>>count)||policy!="fresh"||count<0||count>1000)throw std::invalid_argument("stage_events requires fresh count0..1000 and event-ID/progress pairs");
+            if(!native||stage_events||!(row>>policy))throw std::invalid_argument("stage_events requires a selection");
+            if(policy=="quest")quest_fields.insert(operation);
+            else if(policy!="fresh"||!(row>>count)||count<0||count>1000)throw std::invalid_argument("stage_events requires fresh count0..1000 and event-ID/progress pairs");
             for(std::int32_t i=0;i<count;++i){std::int32_t id=0,rate=0;if(!(row>>id>>rate))throw std::invalid_argument("missing stage event pair");stage_scenario.events.emplace_back(id,rate);}stage_events=true;
         }else if(operation=="stage_pulse"){
             row>>std::ws;if(row.peek()=='-')throw std::invalid_argument("stage_pulse requires a positive logic step");
@@ -132,7 +156,9 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             std::string kind;if(!native||collection||!(row>>kind)||kind!="fresh")throw std::invalid_argument("collection requires one explicit fresh selection");collection=true;
         }else if(operation=="stage_notifications"){
             MissionNotificationScenario value{};std::int32_t retried=0,completed=0;std::uint64_t keys=0;
-            if(!native||notifications||!(row>>value.state>>value.frame>>retried>>value.quest_flags>>completed>>keys>>value.retry_answer)||(retried!=0&&retried!=1)||(completed!=0&&completed!=1)||keys>0xffffffffULL)throw std::invalid_argument("stage_notifications requires state frame retried0/1 quest-flags completed0/1 held-keys-uint32 retry-answer");
+            std::string flags;
+            if(!native||notifications||!(row>>value.state>>value.frame>>retried>>flags>>completed>>keys>>value.retry_answer)||(retried!=0&&retried!=1)||(completed!=0&&completed!=1)||keys>0xffffffffULL)throw std::invalid_argument("stage_notifications requires state frame retried0/1 quest-flags completed0/1 held-keys-uint32 retry-answer");
+            if(flags=="quest")quest_fields.insert(operation);else value.quest_flags=parse_event_decimal(flags);
             value.retried=retried!=0;value.quest_completed=completed!=0;value.held_keys=static_cast<std::uint32_t>(keys);notifications=value;
         }else if(operation=="collisions"){
             if(!native||collisions)throw std::invalid_argument("collisions requires native mode and one row with no fields");collisions=true;
@@ -143,11 +169,18 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             value.held_keys=static_cast<std::uint32_t>(held);value.front_pushed=front!=0;input_scenario=value;
         }else if(operation=="mission_map"){
             std::string mode;EventIntegers values(4,0);
-            if(!native||map_images||!(row>>mode)||mode!="fresh")throw std::invalid_argument("mission_map requires fresh and four explicit chip IDs");
-            for(auto& value:values)if(!(row>>value))throw std::invalid_argument("mission_map requires start/middle/end/background chip IDs");
+            if(!native||map_images||!(row>>mode))throw std::invalid_argument("mission_map requires a selection");
+            if(mode=="quest")quest_fields.insert(operation);
+            else{
+                if(mode!="fresh")throw std::invalid_argument("mission_map requires fresh or quest");
+                for(auto& value:values)if(!(row>>value))throw std::invalid_argument("mission_map requires start/middle/end/background chip IDs");
+            }
             map_images=std::make_shared<EventIntegers>(std::move(values));
         }else if(operation=="human_system"){
-            MissionHumanScenario value;if(!native||human_scenario||!(row>>value.distance>>value.min_z_rate>>value.max_z_rate>>value.attribute>>value.button))throw std::invalid_argument("human_system requires distance min/max Z rates attribute button state");human_scenario=value;
+            MissionHumanScenario value{};std::string distance;
+            if(!native||human_scenario||!(row>>distance>>value.min_z_rate>>value.max_z_rate>>value.attribute>>value.button))throw std::invalid_argument("human_system requires distance min/max Z rates attribute button state");
+            if(distance=="quest")quest_fields.insert(operation);else value.distance=parse_event_decimal(distance);
+            human_scenario=value;
         }else if(operation=="gear_levels"){
             std::string kind;std::int32_t level=0;
             if(!native||!(row>>kind>>level)||(kind!="equipment"&&kind!="hat"&&kind!="cloth")||!gear_defaults.emplace(kind,level).second)throw std::invalid_argument("gear_levels requires unique equipment/hat/cloth kind and explicit saved level");
@@ -187,7 +220,9 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         }else if(operation=="resource_name"){
             std::string name;std::int32_t id=0;if(!native||!(row>>std::quoted(name)>>id)||!resource_names.emplace(name,id).second)throw std::invalid_argument("resource_name requires unique quoted name and explicit AppData ID");
         }else if(operation=="geometry"){
-            StageGeometry g;if(!native||geometry||!(row>>g.step_x>>g.step_z>>g.height))throw std::invalid_argument("geometry requires step X/Z and height in native mode");geometry=g;
+            StageGeometry g;std::string mode;if(!native||geometry||!(row>>mode))throw std::invalid_argument("geometry requires a selection");
+            if(mode=="quest")quest_fields.insert(operation);
+            else{g.step_x=parse_event_decimal(mode);if(!(row>>g.step_z>>g.height))throw std::invalid_argument("geometry requires step X/Z and height");}geometry=g;
         }else if(operation=="view"){
             if(!native||has_view||!(row>>view.width>>view.height>>view.scale>>view.camera_x>>view.camera_y>>view.margin_x>>view.margin_y>>view.extra_depth_rate))throw std::invalid_argument("view requires eight int32 values in native mode");
             has_view=true;
@@ -232,11 +267,29 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         end(row);
     }
     if(!has_world)throw std::invalid_argument("an explicit world matrix is required");
+    const bool result_requested=wallet||record||recruits||stocks[0]||stocks[1]||stocks[2];
+    if(!quest_fields.empty()&&!selected_quest)throw std::invalid_argument("quest source requires a quest selection row");
+    if(selected_quest){
+        if(!tables||selected.empty()||!human_scenario||!notifications)throw std::invalid_argument("quest requires tables, selected actors, human_system and stage_notifications");
+        for(const auto* required:{"human_system","stage_notifications"})if(!quest_fields.count(required))throw std::invalid_argument("selected quest requires quest source for static fields");
+        for(const auto& field:std::vector<std::pair<bool,const char*>>{{enemy_config,"enemy_system"},{stage_events,"stage_events"},{stage_scenario.boss.has_value(),"stage_boss"},{static_cast<bool>(map_images),"mission_map"},{geometry.has_value(),"geometry"}})
+            if(field.first&&!quest_fields.count(field.second))throw std::invalid_argument("selected quest conflicts with explicit static scenario fields");
+        if(enemy_pool)throw std::invalid_argument("selected quest supplies enemy_pool; remove explicit override");
+        catalog=std::make_unique<GameplayCatalog>(load_gameplay_catalog(*tables,false,parse_event_decimal,rewards.has_value()||collection||drop_catalog,result_requested,true));
+        const auto& definition=catalog->quests->at(static_cast<std::size_t>(*selected_quest));
+        if(!definition)throw std::invalid_argument("selected quest ID is a table gap");
+        auto q=std::make_shared<StageQuest>(definition->stage);q->rescued_prisoners=rescued_prisoners;
+        human_scenario->distance=q->distance;human_scenario->quest=q;notifications->quest_flags=q->flags;
+        enemy.maximum=q->enemy_maximum;enemy.total=q->enemy_total_limit;enemy.interval=q->enemy_interval;enemy.level=q->base_level;
+        if(enemy_config)enemy_pool=true;
+        if(stage_scenario.boss)stage_scenario.boss=MissionBossScenario{q->boss_id,q->boss_level};
+        if(map_images){map_images=q->chip_images;if(!map_images||map_images->size()<4)throw std::invalid_argument("selected quest requires four map chips");}
+        if(geometry){const auto initial=initial_mission_map_creation();*geometry={initial.step_x,initial.step_z,stage_quest_height(*q)};}
+    }
     const bool enemy_requested=enemy_config||enemy_population||enemy_pool;
     if(collisions&&!human_scenario)throw std::invalid_argument("collisions requires human_system event receivers");
     if(notifications&&!human_scenario)throw std::invalid_argument("stage_notifications requires human_system");
     if(collection&&(!notifications||!human_scenario))throw std::invalid_argument("collection fresh requires stage_notifications and human_system");
-    const bool result_requested=wallet||record||recruits||stocks[0]||stocks[1]||stocks[2];
     if(result_requested&&!(wallet&&record&&recruits&&stocks[0]&&stocks[1]&&stocks[2]&&stage_loop&&collection))throw std::invalid_argument("results require wallet/record/all inventory kinds/recruits, stage_loop and collection fresh");
     if((stage_loop||stage_events||!stage_scenario.pulses.empty())&&!(stage_loop&&stage_events&&collection))throw std::invalid_argument("stage_loop requires explicit stage_events and collection fresh");
     if(stage_scenario.boss&&!(stage_loop&&enemy_requested))throw std::invalid_argument("stage_boss requires stage_loop and enemy system inputs");
@@ -251,7 +304,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     }
     if(!selected.empty()){
         if(!tables||!has_view||!has_slots||!has_animation||commands)throw std::invalid_argument("entity capture needs tables/view/slots/animate and no manual draw rows");
-        catalog=std::make_unique<GameplayCatalog>(load_gameplay_catalog(*tables,false,parse_event_decimal,rewards.has_value()||collection||drop_catalog,result_requested));
+        if(!catalog)catalog=std::make_unique<GameplayCatalog>(load_gameplay_catalog(*tables,false,parse_event_decimal,rewards.has_value()||collection||drop_catalog,result_requested));
         for(const auto& entry:gear_defaults){
             const auto& data=entry.first=="equipment"?catalog->equipment:entry.first=="hat"?catalog->hats:catalog->cloth;
             auto& levels=entry.first=="equipment"?progress.equipment_levels:entry.first=="hat"?progress.hat_levels:progress.cloth_levels;
@@ -320,6 +373,8 @@ void MissionProfile::write_actor_parameters(ComponentSlots& actor,std::ostream& 
     if(const auto* enemy=dynamic_cast<EnemyRecordLink*>(actor.get(24)))out<<",\"enemy_state\":"<<enemy->state<<",\"enemy_frame\":"<<enemy->frame<<",\"enemy_flags\":"<<enemy->flags;
 }
 void MissionProfile::write_combat_report(std::ostream& out){
+    out<<",\"selected_quest\":";if(selected_quest)out<<*selected_quest;else out<<"null";
+    if(selected_quest&&humans){const auto q=humans->quest();out<<",\"quest_distance\":"<<q->distance<<",\"quest_flags\":"<<q->flags<<",\"quest_money_rate\":"<<q->money_rate<<",\"quest_completion_byte\":"<<static_cast<int>(q->completed)<<",\"quest_rescued\":"<<q->rescued_prisoners;}
     const auto write_indices=[&](const char* name,const auto& indices){out<<",\""<<name<<"\":[";bool first=true;for(const auto id:indices){if(!first)out<<',';first=false;out<<id;}out<<']';};
     std::vector<std::int32_t> bound,unbound;
     for(const auto id:gameplay_update_order)(updates_[static_cast<std::size_t>(id)]?bound:unbound).push_back(id);

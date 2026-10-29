@@ -14,14 +14,16 @@ struct MissionStageScenario {
     std::vector<std::pair<std::int32_t,std::int32_t>> events;
     std::map<std::uint64_t,std::uint32_t> pulses;
     std::optional<MissionBossScenario> boss;
+    bool reset_timer=false; // Explicit fresh timer from selected QuestData; not saved-state restoration.
 };
-class MissionStage final:private core::StageUpdateHost,private core::StageBossHost {
+class MissionStage final:private core::StageUpdateHost,private core::StageBossHost,private core::StageTimerHost {
 public:
     MissionStage(MissionHumans&,MissionStageScenario);
     bool advance(std::int32_t pass,bool enabled);
     void pulse(std::uint32_t mask){pending_pulse_|=mask;}
     void report(std::ostream&);
 private:
+    std::int32_t frames_per_second()override;
     core::StageGeometry* stage_map()override;
     core::DropPlacementWorld* drop_world()override;
     core::DropCollectionHost& collection_host()override;

@@ -8,7 +8,7 @@ std::int32_t multiply(std::int32_t a,std::int32_t b){const auto v=static_cast<st
     return static_cast<std::int32_t>(v<=0x7fffffffU?static_cast<std::int64_t>(v):static_cast<std::int64_t>(v)-0x100000000LL);}
 }
 void change_attack_button_state(AttackButtonState& button,std::int32_t state){button.state=state;button.frame=0;}
-void reset_stage_timer(StageStartState& state,StageStartHost& host){
+void reset_stage_timer(StageStartState& state,StageTimerHost& host){
     const auto time=required(state.quest.get()).time_limit;
     state.remaining_time=multiply(time,host.frames_per_second());
 }

@@ -32,6 +32,7 @@ public:
     std::map<std::int32_t,core::SubmissionMaterial> materials;
     std::map<std::tuple<std::size_t,std::uint32_t,std::int32_t>,std::int32_t> material_bindings;
     std::unique_ptr<ResourceArchive> tables;std::unique_ptr<GameplayCatalog> catalog;MissionProgress progress;
+    std::optional<std::int32_t> selected_quest;
     std::optional<core::StageGeometry> geometry;
     MissionView view{};bool has_view=false,has_slots=false,has_animation=false;std::int32_t slots=0,frames=0,automatic=0,application_update=0;
     std::optional<std::int32_t> tick_ms;

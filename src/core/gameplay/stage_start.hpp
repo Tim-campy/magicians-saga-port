@@ -36,10 +36,14 @@ struct StageStartState:StagePlacementState {
 private:
     std::shared_ptr<StageRewards> rewards_;
 };
-class StageStartHost:public StagePlacementHost {
+class StageTimerHost {
+public:
+    virtual ~StageTimerHost()=default;
+    virtual std::int32_t frames_per_second()=0; // MyConfig.FPS, queried after timeLimit capture.
+};
+class StageStartHost:public StagePlacementHost,public StageTimerHost {
 public:
     virtual StageCleanupHost& cleanup_host()=0;
-    virtual std::int32_t frames_per_second()=0; // MyConfig.FPS, queried after timeLimit capture.
     virtual StageMapLoader* current_map_system()=0;
     virtual PartyStartHost& party_host()=0;
     virtual StageQuestForm* quest_form()=0; // Current BaseSystem.apdat_.frmQuest_.
@@ -48,7 +52,7 @@ public:
     virtual void play_stage_bgm()=0;
     virtual void play_stage_sound()=0;
 };
-void reset_stage_timer(StageStartState&,StageStartHost&);
+void reset_stage_timer(StageStartState&,StageTimerHost&);
 // StageSystem.Start 0x1165198: complete orchestration. Map loading and enemy
 // startup remain required services; captured quest argument survives field replacement.
 void start_stage(StageStartState&,EventObject area,std::shared_ptr<StageQuest> quest,

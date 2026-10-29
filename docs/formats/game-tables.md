@@ -30,6 +30,8 @@ Line count, max id and array size are distinct quantities. Example (modelled, `b
 - Audit: `python tools/audit_game_table_text.py data/extracted/members/06_xls --output build/research/game-table-text-audit.json` — 44 files strict UTF-8, no BOM, 5103 CR = 5103 LF = 5103 CRLF pairs, no lone CR. Records hashes/sizes/segment counts, no content. Not an emulation of the original decoder.
 - `src/core/gameplay/event_catalog.cpp` applies this framing and indexing to EventData with an explicit CRLF-normalization gate. It preserves trailing CR and drops only zero-length LF segments. `progression_tables.cpp` also reads TableData and the CharaData progression projection using the same framing and shared token reader; schemas and limits are in [data.md](../subsystems/data.md#progression-record-readers). `enemy_rewards.cpp` reads EnemyData and its count-prefixed nested arrays; `quest_rewards.cpp` reads TreasureData; its framing/indexing helper is shared with progression readers. Remaining record types and invalid UTF-8 decoding remain unported.
 
+Quest.txt is also read by `quest_catalog.cpp` using the same framing/indexing. Its static schema, nullable nested arrays and in-place failure contract are documented in [data.md](../subsystems/data.md#quest-record-reader). Save fields remain separate from table fields.
+
 ## Evidence
 
 - [../archive/reports/73-game-data-id-indexing.md](../archive/reports/73-game-data-id-indexing.md), [74-game-data-text-source.md](../archive/reports/74-game-data-text-source.md), [75-table-encoding-and-line-endings.md](../archive/reports/75-table-encoding-and-line-endings.md)

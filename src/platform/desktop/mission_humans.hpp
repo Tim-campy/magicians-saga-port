@@ -15,7 +15,10 @@
 
 namespace saga::desktop {
 struct MissionRuntimeConfig {std::int32_t fps;bool debug;std::int32_t seed;std::string backend;};
-struct MissionHumanScenario {std::int32_t distance,min_z_rate,max_z_rate,attribute,button;};
+struct MissionHumanScenario {
+    std::int32_t distance,min_z_rate,max_z_rate,attribute,button;
+    std::shared_ptr<core::StageQuest> quest; // Selected static table plus explicit saved state.
+};
 struct MissionRewardScenario {std::int32_t defeated,remaining,saved_defeat_count;};
 struct MissionNotificationScenario {
     std::int32_t state,frame;bool retried;std::int32_t quest_flags;bool quest_completed;
@@ -75,6 +78,7 @@ public:
     void pulse_stage_keys(std::uint32_t);
 private:
     friend class MissionResults;friend class MissionStage;
+    bool table_quest_=false;
     friend class MissionInput;
     struct CollectionHost final:core::DropCollectionHost {
         MissionHumans& owner;

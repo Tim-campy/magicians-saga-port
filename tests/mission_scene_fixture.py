@@ -4,6 +4,8 @@ from test_sprite_preview import jar, png, seb
 def make_table_scene(root, valid_png=True, human_frame=False, shoot=False, rewards=False, area=False, lethal_contact=False, treasure_flags=0, spell_attribute=3, boss_entry=False):
     params = '13' + '\t2\t100\t1000' * 13
     tables = {
+        'Quest.txt': ('2\tSynthetic quest\t0\tmap\t4\t0\t1\t2\t3\tunused\tunused\t7\t7\t10\t200\t25\t0\t10\t150\t'
+                      '1\t0\t1\t0\t4\t1\t0\t1\t0\t3\t0\t0\t2\t1'),
         'Chara.txt': f'2\tHero\t0\tchara\t8\tchara\t1\t0\t0\t99\t0\t100\t{params}\t0\t0\t0\t-1\t0\t2',
         'Equipment.txt': f'1\tWeapon\t0\t2\t0\t0\tweapon\t12\t3\t0\t0\t0\t0\t10\t8\t80\t1\t20\t3\t0\t0\t{params}\tText\t0',
         'Cloth.txt': f'0\tCloth\t0\tcloth\t11\t0\t0\t0\t0\t{params}\tText\t0',

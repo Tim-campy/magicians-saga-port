@@ -6,7 +6,8 @@ using namespace core;
 void MissionHumans::enable_notifications(MissionNotificationScenario scenario){
     if(notification_scenario_)throw std::invalid_argument("stage_notifications requires one explicit scenario");
     stage_.state=scenario.state;stage_.frame=scenario.frame;stage_.retried=scenario.retried;
-    stage_.quest->flags=scenario.quest_flags;stage_.quest->completed=scenario.quest_completed?1:0;
+    if(!table_quest_)stage_.quest->flags=scenario.quest_flags;
+    stage_.quest->completed=scenario.quest_completed?1:0;
     held_keys_=scenario.held_keys;notification_scenario_=scenario;
 }
 void MissionHumans::game_over(std::int32_t reason){

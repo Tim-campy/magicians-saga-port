@@ -1,4 +1,5 @@
 id	status	evidence	note
+game:0x060011e2	reimplemented	src/core/gameplay/quest_catalog.cpp	Complete static quest loader with in-place prefix mutation; nested arrays and shared host selection tested; saved fields stay separate
 game:0x0600120a	documented	docs/subsystems/data.md	Ten int32 fields mapped; fresh-record loader tested; existing-object partial failure semantics not ported
 game:0x060010a0	documented	docs/subsystems/data.md	Full field read order and rate token mapped; progression projection tested on both local languages
 game:0x06001235	documented	docs/subsystems/data.md	Twelve-field treasure schema decoded and fresh records tested on both languages; in-place failure mutation not ported

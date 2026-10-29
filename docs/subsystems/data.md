@@ -48,6 +48,7 @@ Types were resolved from metadata return types and SZARRAY element pointers, not
 | `data.BaseData.NewGame` | `game:0x06001038` | Virtual slot 18; base = RET | high |
 | `data.BaseData.Find` | `game:0x06001027` | Slot 8; `+0x10 = 1`, `byte+0x14 = arg&1` | high |
 | `data.QuestData.Find` | `game:0x060011f0` | Sets `+0x10`/`+0x14` to 1 only if `+0x10 == 0` | high |
+| `data.QuestData.Load` | `game:0x060011e2` | In-place static quest fields, nested groups and retained failure prefix | high |
 | `data.BaseData.GetTiming` | `game:0x0600102d` | Slot 14; returns 0 | high |
 | `data.BaseData.CheckTerm` / `CheckNotFind` | `game:0x0600102e`, `game:0x0600102f` | Slots 15/16; return 0 | high |
 | `data.BaseData.Deserialize` / `Deserialized` / `DeserializeShare` | `game:0x06001029`, `game:0x0600102a`, `game:0x0600102c` | Slots 10/11/13 used by `DeserializeData` | medium |
@@ -177,7 +178,29 @@ Tests [gameplay catalog](../../tests/test_gameplay_catalog.cpp), [entity factory
 
 `src/core/gameplay/progression_tables.cpp` loads complete level-table records and a character progression projection, preserving id gaps and last-duplicate-wins indexing. It shares token parsing with the event reader and accepts the existing integer-parser callback. `TableExperienceHost` resolves the live character id/rate and level row for the experience kernel. The character projection consumes and validates all fields but retains id, needExpRate, image, weaponId, initLevel, parameters and inherited flags. These fresh-record readers do not expose partial mutation of an existing record on failure; neither original Load method is claimed fully reimplemented. BaseData lifecycle, the general loader, data list and check-script groups remain unported. `tools/audit_game_table_text.py` audits the extracted tables (encoding/line endings) only; `tools/inspect_event_table.py` belongs to the events subsystem.
 
+### Quest record reader
+
+`data.QuestData.Load` (`game:0x060011e2`, ELF `0x1172b44`, 512 bytes) takes a nullable line and returns its receiver. Null/empty lines leave it unchanged. Nonempty lines use `StringArrayStream`; each successful field read stores immediately, so a later failure preserves the prefix and the previous destination array when its nested read fails. Extra tokens are ignored. Confidence high from the complete bounded ARM64 body and metadata field offsets.
+
+The logical fields below are TAB-separated; each array includes its count prefixes. Offsets refer to the managed object, sizes to its fields (`int32` 4 bytes, references 8 bytes).
+
+| Read order | Fields and offsets |
+| --- | --- |
+| 1–5 | id `+0x18`, name `+0x20`, image `+0x28`, resource `+0x30`, chip image array `+0x38` |
+| 6–7 | Two skipped tokens; neither is parsed as an integer |
+| 8–11 | base level `+0x40`, boss level `+0x44`, distance `+0x48`, time limit `+0x4c` |
+| 12–15 | enemy interval `+0x50`, simultaneous maximum `+0x54`, total limit `+0x58`, money rate `+0x5c` |
+| 16–18 | normal enemies `+0x60`, fixed enemies `+0x68`, boss id `+0x70` |
+| 19–20 | event groups `+0x78`, fixed treasure groups `+0x80` |
+| 21–25 | prisoner maximum `+0x88`, reward treasure `+0x8c`, cleared reward treasure `+0x90`, inherited flags `+0x1c`, stamina requirement `+0x94` |
+
+Chip images use `GetIntArray`; the four group fields use `GetIntTripleArray`. Any negative outer count means null, zero means a distinct empty array, and negative inner group/row counts fault. Saved stage details `+0x98`, rescued prisoners `+0xa0`, completion byte `+0xa4` and quest record `+0xa8` are not loaded here. The completion getter tests flags mask2 OR the saved byte; static flags must not be copied into that byte.
+
+Port: [quest_catalog.cpp](../../src/core/gameplay/quest_catalog.cpp) provides the in-place reader and the shared table framing/id indexing. Its projection preserves saved prisoner/completion fields across Load. The caller supplies the decimal parser; full runtime numeric culture and QuestData construction/NewGame are separate contracts. [Tests](../../tests/test_quest_catalog.cpp) cover field mapping, nonnumeric skips, ignored suffixes, null/empty distinction, nested failures, partial mutation, duplicates, gaps and CRLF framing. `MissionProfile` requests Quest.txt only for an explicit quest selection and shares its static projection with Human, Enemy, Stage and Map; see [integration](integration.md#table-selected-quests-s1-a1a3).
+
 ## Evidence
+
+- Quest loader: ignored `research/exports/mission-quest-table/`, complete bounded coverage, library SHA256 `17a6cf3a3cef9bd7b387c4b9627df113a8b214f0deb07e1778585dac1143526f`; exported Ghidra addresses include image base `0x100000`, while this document uses ELF addresses. Both shipped English and Japanese Quest.txt tables load 76 populated slots through the portable reader. This is static artifact validation, not an Android comparison.
 
 - Presentation fields: ignored `research/exports/gameplay-catalog/presentation-fields.json` resolves six selected properties through registered field offsets at ELF0x277ece8, metadata types4507/4509/4515 and the hash-verified ARM64 library (`17a6cf3a3cef9bd7b387c4b9627df113a8b214f0deb07e1778585dac1143526f`). Existing full bounded `combat-loaders/{EquipmentLoad,ClothLoad,HatLoad}.asm` establish their token read/store order; no new Ghidra/REA run was needed. Original-data scene/probe inputs and screenshots remain local in `research/exports/mission-data-scene/`; the explicit resource-name binding selects enemy->AppData3. The catalog audit identifies enemy-resource first ID2 and quest-resource first ID0; record0 is therefore not assumed to be the first ordinary enemy. Test data is entirely synthetic in Git.
 

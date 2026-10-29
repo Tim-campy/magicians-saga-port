@@ -14,11 +14,16 @@ MissionStage::MissionStage(MissionHumans& owner,MissionStageScenario scenario):o
         owner_.stage_.enemies=enemy_entry_.get();
     }
     owner_.stage_.remaining_time=scenario_.remaining_time;owner_.stage_.boss_started=scenario_.boss_started;
+    if(scenario_.reset_timer)reset_stage_timer(owner_.stage_,*this);
     owner_.quest_form_.fade_frame=scenario_.fade_frame;
-    auto rows=std::make_shared<std::vector<EventInstruction>>();
-    for(const auto& e:scenario_.events)rows->push_back(std::make_shared<EventIntegers>(EventIntegers{e.first,e.second}));
-    owner_.stage_.quest->events=std::make_shared<std::vector<EventScript>>(1,std::move(rows));
-    owner_.stage_.event_states=std::make_shared<std::vector<std::uint8_t>>(scenario_.events.size(),std::uint8_t{0});
+    if(!owner_.table_quest_){
+        auto rows=std::make_shared<std::vector<EventInstruction>>();
+        for(const auto& e:scenario_.events)rows->push_back(std::make_shared<EventIntegers>(EventIntegers{e.first,e.second}));
+        owner_.stage_.quest->events=std::make_shared<std::vector<EventScript>>(1,std::move(rows));
+    }
+    const auto& groups=owner_.stage_.quest->events;
+    if(!groups||groups->empty()||!groups->at(0))throw std::invalid_argument("stage events require a first group");
+    owner_.stage_.event_states=std::make_shared<std::vector<std::uint8_t>>(groups->at(0)->size(),std::uint8_t{0});
 }
 bool MissionStage::advance(std::int32_t pass,bool enabled){
     if(owner_.transition_pending())return false;
@@ -30,6 +35,7 @@ bool MissionStage::advance(std::int32_t pass,bool enabled){
     update_stage(owner_.stage_,*this);return true;
 }
 StageGeometry* MissionStage::stage_map(){return &owner_.geometry_;}
+std::int32_t MissionStage::frames_per_second(){return owner_.runtime_.fps;}
 StageQuestForm* MissionStage::update_quest_form(){return &owner_.quest_form_;}
 DropPlacementWorld* MissionStage::drop_world(){return owner_.drop_world();}
 DropCollectionHost& MissionStage::collection_host(){return owner_.collection_host_;}

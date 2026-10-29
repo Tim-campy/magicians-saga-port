@@ -18,7 +18,9 @@ MissionHumans::MissionHumans(MissionEntities& world,const GameplayCatalog& data,
      equipment_(levels(data.equipment,saved.equipment_levels)),hats_(levels(data.hats,saved.hat_levels)),cloth_(levels(data.cloth,saved.cloth_levels)){
     if(runtime_.backend!="system"||runtime_.fps<1)throw std::invalid_argument("mission human runtime requires positive FPS and system RNG backend");
     for(const auto& entry:saved.characters)characters_.at(static_cast<std::size_t>(entry.first))=entry.second.level;
-    stage_.quest=std::make_shared<StageQuest>();stage_.quest->distance=scenario.distance;
+    table_quest_=static_cast<bool>(scenario.quest);
+    stage_.quest=scenario.quest?std::move(scenario.quest):std::make_shared<StageQuest>();
+    if(!table_quest_)stage_.quest->distance=scenario.distance;
     stage_.min_z_rate=scenario.min_z_rate;stage_.max_z_rate=scenario.max_z_rate;stage_.attack_attribute=scenario.attribute;
     button_.state=scenario.button;stage_.attack_buttons=std::make_shared<std::vector<AttackButtonState*>>(1,&button_);
     enemies_.subset=world_.subset({24});stage_.members=&members_;stage_.humans=&system_;system_.transitions=static_cast<HumanFrameHost*>(this);

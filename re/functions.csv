@@ -4360,7 +4360,7 @@ game:0x060011de,game:0x060011de,data,,8,0x1172b24
 game:0x060011df,game:0x060011df,data,,8,0x1172b2c
 game:0x060011e0,game:0x060011e0,data,,8,0x1172b34
 game:0x060011e1,game:0x060011e1,data,,8,0x1172b3c
-game:0x060011e2,game:0x060011e2,data,,512,0x1172b44
+game:0x060011e2,data.QuestData.Load,data,reimplemented,512,0x1172b44
 game:0x060011e3,data.QuestData.get_widthNum,data,reimplemented,8,0x1172d44
 game:0x060011e4,data.QuestData.get_heightNum,data,reimplemented,12,0x1172d4c
 game:0x060011e5,data.QuestData.get_startChipImg,data,reimplemented,40,0x1172d58
