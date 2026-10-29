@@ -84,7 +84,7 @@ Host: `saga`. Acceptance: talk and event forms show their text with the correct 
 - [ ] Close the chain TexId → `img.inf` id → ResourceManager → Image/OPT, including `Image.GetOptimizeSeb`.
 - [ ] Bind the SEB evaluator to the pixel consumer, including negative TexId commands and automatic drawing clocks.
 - [ ] Decide whether the PC/3DS builds read the Python extractor output or port the XOR decode and Unity media extraction to C++.
-- [ ] Revisit cell relation hooks, parameter event21/restored queues and RotateSystem when the mission host reaches them.
+- [ ] Revisit cell relation hooks and parameter event21/restored queues when the mission host reaches them.
 - [ ] Bind registry consumers to the ordered Values cursor and audit remaining writers of `entity+0x28`.
 - [ ] Extract `declaringTypeIndex` from `global-metadata.dat` so compiler-generated closures get their owner's registry group.
 - [ ] Map the 516 null-slot methods (generic instantiations) or record why they have no code.

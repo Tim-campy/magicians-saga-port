@@ -28,6 +28,11 @@ struct World final:PassInitializationWorld {
 };
 template<class F>void fails(F f){bool caught=false;try{f();}catch(const std::exception&){caught=true;}check(caught);}
 int main(){
+    {World w;EntitySubset* rotation=&w.group;initialize_rotation(rotation,&w);
+     check(rotation==&w.group&&w.requests==std::vector<std::vector<std::int32_t>>{{12,1,2,7}});
+     w.fail_subset=true;fails([&]{initialize_rotation(rotation,&w);});check(rotation==&w.group);
+     fails([&]{initialize_rotation(rotation,nullptr);});check(rotation==&w.group);
+     w.fail_subset=false;w.null_subset=true;initialize_rotation(rotation,&w);check(!rotation);}
     {World w;BattleSystemState battle;initialize_battle(battle,&w);
      check(w.requests==std::vector<std::vector<std::int32_t>>{{20,14},{20,16}});
      check(battle.humans==&w.group&&battle.monsters==&w.group);

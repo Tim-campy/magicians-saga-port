@@ -45,6 +45,7 @@ void MissionProfile::bind_schedule(){
     bind(10,static_cast<bool>(humans),[this](auto pass){humans->advance_projectiles(pass);});
     bind(11,simulate.has_value(),[this](auto pass){mission->advance_movement(pass);++movement_steps;});
     bind(12,collisions,[this](auto pass){mission->advance_collisions(pass);});
+    bind(13,true,[this](auto pass){mission->advance_rotation(pass);});
     bind(14,true,[this](auto pass){mission->advance_parameters(pass);});
     bind(15,simulate.has_value(),[this](auto pass){mission->advance_emitters(pass);});
     bind(17,static_cast<bool>(spatial),[this](auto pass){spatial->advance_cells(pass);});
@@ -365,6 +366,8 @@ bool MissionProfile::step(){
     ++logic_steps;return true;
 }
 void MissionProfile::write_actor_parameters(ComponentSlots& actor,std::ostream& out){
+    if(const auto* direction=dynamic_cast<ContactDirection*>(actor.get(12)))out<<",\"direction\":"<<direction->direction<<",\"direction_locked\":"<<(direction->locked?"true":"false");
+    if(const auto* sprite=dynamic_cast<EntitySprite*>(actor.get(2)))out<<",\"animation_clip\":"<<sprite->animation.clip;
     if(const auto* cell=dynamic_cast<CellComponent*>(actor.get(5)))out<<",\"cell_xi\":"<<cell->xi<<",\"cell_yi\":"<<cell->yi;
     if(actor.contains(23)){
         out<<",\"hp\":"<<resolve_combat_parameter(actor,0)->value;

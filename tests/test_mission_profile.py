@@ -39,9 +39,10 @@ class MissionProfileTests(unittest.TestCase):
             self.assertEqual(report['effect_steps'], 12)
             self.assertEqual(report['effect_updates'], [])
             self.assertFalse(report['update_schedule_complete'])
-            self.assertEqual(report['bound_update_systems'], [0,2,3,4,5,8,9,10,11,12,14,15,17,18,19,20,21,23,31])
-            self.assertEqual(report['unbound_update_systems'], [13,16,22,24,25,26,30])
-            self.assertEqual(report['last_update_order'], [2,9,11,14,15,18,19,21,23,31])
+            self.assertEqual(report['bound_update_systems'], [0,2,3,4,5,8,9,10,11,12,13,14,15,17,18,19,20,21,23,31])
+            self.assertEqual(report['unbound_update_systems'], [16,22,24,25,26,30])
+            self.assertEqual(report['last_update_order'], [2,9,11,13,14,15,18,19,21,23,31])
+            self.assertEqual(report['rotation_steps'], 12)
             self.assertEqual(report['battle_steps'], 12)
 
     def test_live_human_walking_uses_saved_gear_fps_and_rng(self):
@@ -69,6 +70,31 @@ class MissionProfileTests(unittest.TestCase):
             self.assertNotEqual(self.run_host(scene).returncode, 0)
             scene.write_text(text + 'runtime 60 0 system 42\n', encoding='utf-8')
             self.assertIn('conflicts', self.run_host(scene).stderr)
+
+    def test_rotate_pass_follows_input_and_respects_human_attack_facing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory);scene = root / 'scene.txt';replay = root / 'replay.txt'
+            text = make_shoot_scene(root, spell_attribute=0).replace('human_system 10 0 100 3 1', 'human_system 10 0 100 0 0')
+            text += 'input fresh 0 0 0 0 0 0 0 0 0\n'
+            scene.write_text(text, encoding='utf-8')
+            replay.write_text('2 keys 524288\n8 keys 0\n', encoding='ascii')
+            moving = self.run_host(scene, '--replay', str(replay), frames=6)
+            self.assertEqual(moving.returncode, 0, moving.stderr)
+            a = json.loads(moving.stdout)
+            self.assertEqual(a['positions'][0]['direction'], 2)
+            self.assertEqual(a['positions'][0]['animation_clip'] % 4, 2)
+            self.assertGreater(a['positions'][0]['z'], 100)
+            self.assertFalse(a['positions'][0]['direction_locked'])
+            self.assertLess(a['last_update_order'].index(11), a['last_update_order'].index(13))
+            self.assertLess(a['last_update_order'].index(13), a['last_update_order'].index(19))
+            released = self.run_host(scene, '--replay', str(replay), frames=10)
+            self.assertEqual(released.returncode, 0, released.stderr)
+            b = json.loads(released.stdout)
+            # Release restores attack selection; Human4 faces the acquired target before Rotate13.
+            self.assertEqual(b['positions'][0]['human_state'], 2)
+            self.assertEqual(b['positions'][0]['direction'], 0)
+            self.assertEqual(b['positions'][0]['animation_clip'] % 4, 0)
+            self.assertEqual(b['rotation_steps'], 10)
 
     def test_actual_shoot_flight_impact_and_nonlethal_damage(self):
         with tempfile.TemporaryDirectory() as directory:

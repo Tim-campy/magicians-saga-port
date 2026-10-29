@@ -158,6 +158,8 @@ game:0x06000f68	reimplemented	src/core/ecs/update_scheduler.cpp	Concrete enabled
 game:0x06000f75	reimplemented	src/core/ecs/update_scheduler.cpp	Concrete enabled/pass gate; tested across all 26 update systems.
 game:0x06000f86	reimplemented	src/core/ecs/update_scheduler.cpp	Concrete enabled/pass gate; tested across all 26 update systems.
 game:0x06000f8d	reimplemented	src/core/ecs/update_scheduler.cpp	Concrete enabled/pass gate; tested across all 26 update systems.
+game:0x06000f8c	reimplemented	src/core/gameplay/pass_initialization.cpp	Exact metadata-backed And12/1/2/7 filter; nullable store and lookup failure ordering tested; live mission group bound
+game:0x06000f8e	reimplemented	src/core/gameplay/motion_pass.cpp	Strict dominant-axis facing, locked branch, negative clip groups and int32 wrap; failure prefixes tested and mission index13 bound
 game:0x06000f9c	reimplemented	src/core/ecs/update_scheduler.cpp	Concrete enabled/pass gate; tested across all 26 update systems.
 game:0x06000c95	documented	docs/subsystems/ecs.md	World.Destroy caller; wrapper-hash removal during versioned list enumeration then tracking and dictionary clears; entity projection tested.
 game:0x06000cad	reimplemented	src/core/ecs/filter_identity.cpp	Concrete Filter identity hash/cache and ordered equality; collisions mutation and failure tests.

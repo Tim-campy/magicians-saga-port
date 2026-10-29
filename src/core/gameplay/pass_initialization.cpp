@@ -2,6 +2,10 @@
 #include <stdexcept>
 
 namespace saga::core {
+void initialize_rotation(EntitySubset*& destination,PassInitializationWorld* world){
+    if(!world)throw std::invalid_argument("missing rotation initialization world");
+    destination=world->subset({12,1,2,7});
+}
 namespace {
 PassInitializationWorld& require(PassInitializationWorld* world){
     if(!world)throw std::invalid_argument("missing gameplay initialization world");

@@ -5,6 +5,9 @@
 namespace saga::core {
 // MoveSystem.Update 0x115faac over its live And({0,1}) group.
 void move_subset(EntitySubset&);
+// RotateSystem.Update 0x1161eac: unlocked Direction12 follows dominant Speed1 X/Z;
+// ties keep direction. Seb2's four-direction clip group and frame are retained.
+void rotate_subset(EntitySubset&);
 // ProjectileSystem.Update 0x1160018 over its live And({27,0,1}) group.
 // The scheduler owns enabled gating and invokes movement after completion events.
 class ProjectilePass {

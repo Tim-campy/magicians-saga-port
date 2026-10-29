@@ -1,10 +1,12 @@
 #include "core/gameplay/pass_initialization.hpp"
 #include "core/ecs/update_scheduler.hpp"
 #include "core/gameplay/motion_pass.hpp"
+#include "core/gameplay/entity_visual.hpp"
 #include <array>
 #include <cstdlib>
 #include <functional>
 #include <stdexcept>
+#include <limits>
 using namespace saga::core;
 void check(bool v){if(!v)std::abort();}
 struct World final:ProjectileMotionHost,ProjectileLaunchHost,ComponentObserver,PassInitializationWorld {
@@ -44,7 +46,38 @@ struct Cleanup final:CombatEventHost {
     void destroy(ComponentSlots&,bool)override{check(false);}
     ComponentSlots* search_opponent(ComponentSlots&)override{check(false);return nullptr;}
 };
+void rotation_contract(){
+    ComponentSlots a(35),b(35),c(35);ProjectileSpeed speed;ContactDirection direction;EntitySprite sprite;Component image;
+    a.add(1,&speed).add(2,&sprite).add(7,&image).add(12,&direction);
+    const EventIntegers all{};SubsetFilter filter{&all};
+    EntitySubset group{filter,[&](const ComponentSlots& e){return &e==&a?1:&e==&b?2:3;}};group.add(&a);
+    const auto test=[&](float x,float z,std::int32_t initial,std::int32_t expected){
+        speed.x=x;speed.y=100;speed.z=z;direction.direction=initial;direction.locked=false;sprite.animation={7,36,19};
+        rotate_subset(group);check(direction.direction==expected&&sprite.animation.clip==36+expected&&sprite.animation.frame==19&&sprite.animation.resource==7);
+    };
+    test(1,-2,3,0);test(2,-1,0,1);test(1,2,0,2);test(-2,1,0,3);
+    test(0,0,2,2);test(-0.0F,0,3,3);test(1,1,3,3);test(-1,-1,2,2);test(1,-1,2,2);test(-1,1,0,0);
+    const auto nan=std::numeric_limits<float>::quiet_NaN(),inf=std::numeric_limits<float>::infinity();
+    test(nan,-1,2,2);test(1,nan,3,3);test(inf,1,0,1);test(0,-inf,3,0);test(inf,-inf,2,2);
+    speed.x=0;speed.z=0;direction.direction=2;sprite.animation.clip=-5;rotate_subset(group);check(sprite.animation.clip==-2);
+    sprite.animation.clip=-1;rotate_subset(group);check(sprite.animation.clip==2);
+    sprite.animation.clip=4;direction.direction=std::numeric_limits<std::int32_t>::max();rotate_subset(group);
+    check(sprite.animation.clip==std::numeric_limits<std::int32_t>::min()+3);
+    direction.locked=true;a.remove(1);a.remove(2);rotate_subset(group); // Locked skips even missing payloads.
+    a.add(1,&image);bool wrong_type=false;try{rotate_subset(group);}catch(const std::invalid_argument&){wrong_type=true;}
+    check(wrong_type);a.remove(1); // A wrong Speed type faults in its getter even while locked.
+    direction.locked=false;bool failed=false;try{rotate_subset(group);}catch(const std::invalid_argument&){failed=true;}check(failed);
+    a.add(1,&speed).add(2,&sprite);direction.direction=0;speed.z=1;sprite.animation.clip=36;
+    ContactDirection later;ProjectileSpeed later_speed;later_speed.x=1;later.direction=3;b.add(1,&later_speed).add(12,&later);group.add(&b);group.add(&c);
+    failed=false;try{rotate_subset(group);}catch(const std::invalid_argument&){failed=true;}
+    check(failed&&direction.direction==2&&sprite.animation.clip==38&&later.direction==1); // Earlier stores survive missing Seb.
+    group.clear_entities();group.add(&a);bool enabled=false;int calls=0;
+    GameplayUpdate system(13,enabled,[&](auto){rotate_subset(group);++calls;});
+    if(system.needs_update(-7))system.update(-7);check(calls==0);
+    enabled=true;if(system.needs_update(-7))system.update(-7);check(calls==1);
+}
 int main(){
+    rotation_contract();
     {World w;Cleanup cleanup;ProjectileSystemState state;initialize_projectiles(state,&w,cleanup);w.launch(0,true);
         w.on_impact=[](ComponentSlots&){throw std::runtime_error("retain completion");};bool failed=false;
         try{state.pass->update(*state.subset,w);}catch(const std::runtime_error&){failed=true;}

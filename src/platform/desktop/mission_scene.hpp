@@ -29,6 +29,7 @@ public:
     void advance_animations(core::SharedAnimationGates);
     // Selected MoveSystem pass; actor/projectile/emitter updates are advanced separately.
     void advance_movement(std::int32_t pass,bool enabled=true);
+    void advance_rotation(std::int32_t pass,bool enabled=true);
     // Native index31 runs after RenderSystem; commands already produced remain in this frame.
     void advance_garbage(std::int32_t pass,bool enabled=true);
     void advance_modifications(std::int32_t pass,bool enabled=true);
@@ -86,7 +87,7 @@ private:
     MissionEntities& world_;MissionApplication& app_;core::EntitySubset& visible_;MissionView& view_;core::MapComponent* map_;
     core::StageQuestForm form_state_;core::QuestCameraForm form_;
     core::RenderSystemState renderer_;core::AnimationSystemState animations_;core::SebStaticWork sprite_work_;
-    core::EntitySubset *movers_=nullptr,*garbage_entities_=nullptr;core::GarbagePass garbage_pass_;
+    core::EntitySubset *movers_=nullptr,*rotating_=nullptr,*garbage_entities_=nullptr;core::GarbagePass garbage_pass_;
     core::ModificationSystemState modifications_;
     core::EmitterSystemState emitters_;
     core::CollisionSystemState collisions_;std::uint64_t collision_events_=0,area_collision_events_=0;
@@ -95,6 +96,7 @@ private:
     core::ParameterExperienceInitializationWorld::Receiver experience_receiver_;
     core::EffectSystemState effects_;
     std::uint64_t experience_steps_=0,parameter_steps_=0,effect_steps_=0,battle_steps_=0;
+    std::uint64_t rotation_steps_=0;
     core::RenderQueue queue_=core::make_render_queue();std::vector<MissionRenderFault> faults_;
     MissionSpatial* spatial_=nullptr;
 };

@@ -25,6 +25,8 @@ void update_battle(BattleSystemState&);
 void initialize_projectiles(ProjectileSystemState&,PassInitializationWorld*,CombatEventHost&,
                             std::optional<EventHashes> =std::nullopt);
 void initialize_movement(EntitySubset*& destination,PassInitializationWorld*);
+// RotateSystem.Init 0x1161e00: exact metadata-backed And({12,1,2,7}), nullable result.
+void initialize_rotation(EntitySubset*& destination,PassInitializationWorld*);
 void initialize_collisions(CollisionSystemState&,PassInitializationWorld*);
 void initialize_garbage(EntitySubset*& destination,PassInitializationWorld*);
 class ParameterInitializationWorld {

@@ -3767,9 +3767,9 @@ game:0x06000f88,game:0x06000f88,ecs,,8,0x1161d4c
 game:0x06000f89,game:0x06000f89,ecs,,8,0x1161d54
 game:0x06000f8a,game:0x06000f8a,ecs,,88,0x1161d5c
 game:0x06000f8b,ecs.RenderSystem..cctor,ecs,documented,76,0x1161db4
-game:0x06000f8c,game:0x06000f8c,ecs,,164,0x1161e00
+game:0x06000f8c,ecs.RotateSystem.Init,ecs,reimplemented,164,0x1161e00
 game:0x06000f8d,ecs.RotateSystem.NeedsUpdate,ecs,reimplemented,8,0x1161ea4
-game:0x06000f8e,game:0x06000f8e,ecs,,828,0x1161eac
+game:0x06000f8e,ecs.RotateSystem.Update,ecs,reimplemented,828,0x1161eac
 game:0x06000f8f,game:0x06000f8f,ecs,,16,0x11621e8
 game:0x06000f90,game:0x06000f90,ecs,,8,0x11621f8
 game:0x06000f91,game:0x06000f91,ecs,,8,0x1162200
