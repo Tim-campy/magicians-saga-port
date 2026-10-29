@@ -35,7 +35,7 @@ Blockers:
 Tasks:
 - [ ] Extend `saga_mission` with real quest/map selection via `--data`/`--quest`, its SDL window and supported gameplay input replays via `--replay` (A1, A5).
 - [ ] Replace the synthetic catalogs/services of the 240-frame combat regression with the table-backed owner used by `saga_mission` (A3).
-- [ ] Wire Human Init/Update, Shoot/Bullet/impact and contact receivers into the host world (A2).
+- [ ] Bind Human Shoot/Bullet/impact services and complete contact effects around the live Human Init/Update pass (A2).
 - [ ] Wire Enemy Init/Update/impact/defeat and the reward/drop/collection pipeline into the host world (A3).
 - [ ] Wire Map/MapChip factories and `MapSystem.Init/LoadMap` from InitWorld geometry into the host (A1).
 - [ ] Bind QuestForm's cursor UI to SDL input events (A2).

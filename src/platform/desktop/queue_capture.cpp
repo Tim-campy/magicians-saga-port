@@ -115,13 +115,15 @@ int main(int argc,char** argv)try{
                 submit();renderer.present();++rendered;const auto now=SDL_GetTicks();if(now<deadline)SDL_Delay(static_cast<Uint32>(deadline-now));
             }
             std::cout<<"{\"entities\":"<<profile.selected_count<<",\"render_frames\":"<<rendered<<",\"logic_steps\":"<<logic_steps
-                     <<",\"movement_steps\":"<<(simulate?logic_steps+static_cast<std::uint64_t>(*simulate):0)<<",\"positions\":[";
+                     <<",\"movement_steps\":"<<(simulate?logic_steps+static_cast<std::uint64_t>(*simulate):0)<<",\"rng_draws\":"<<(profile.humans?profile.humans->random_draws():0)<<",\"positions\":[";
             std::cout<<std::setprecision(std::numeric_limits<float>::max_digits10);
             for(std::size_t i=0;i<created.size();++i){if(i)std::cout<<',';const auto* p=dynamic_cast<ContactPosition*>(created[i]->get(0));
                 const bool dead=entity_world->destroyed(*created[i]);
                 std::cout<<"{\"id\":"<<entity_world->id(*created[i])<<",\"destroyed\":"<<(dead?"true":"false");
                 if(p)std::cout<<",\"x\":"<<p->x<<",\"y\":"<<p->y<<",\"z\":"<<p->z;
-                else if(!dead)throw std::logic_error("selected live entity has no position");std::cout<<'}';}
+                else if(!dead)throw std::logic_error("selected live entity has no position");
+                if(const auto* h=dynamic_cast<HumanRecordLink*>(created[i]->get(14)))std::cout<<",\"human_state\":"<<h->state<<",\"human_frame\":"<<h->frame<<",\"attack_frame\":"<<h->attack_frame;
+                std::cout<<'}';}
             std::cout<<"],\"profile\":\"selected movement/animation/render/garbage passes; gameplay input and full schedule unbound\"}\n";return 0;
         }
         submit();auto pixels=renderer.read_pixels();

@@ -1,0 +1,53 @@
+#include "mission_humans.hpp"
+#include "core/ecs/update_scheduler.hpp"
+#include <stdexcept>
+
+namespace saga::desktop {
+using namespace core;
+namespace {
+template<class T>T& required(T* p){if(!p)throw std::invalid_argument("missing mission human input");return *p;}
+template<class T>T& field(ComponentSlots& e,std::int32_t slot){return required(dynamic_cast<T*>(e.get(slot)));}
+EventIntegers levels(const EquipmentCombatTable& table,const std::map<std::int32_t,std::int32_t>& saved){
+    EventIntegers result(table.size(),0);for(std::size_t i=0;i<table.size();++i)if(table[i])result[i]=saved.at(static_cast<std::int32_t>(i));return result;
+}
+[[noreturn]]void unbound(const char* service){throw std::logic_error(std::string("mission service unbound: ")+service);}
+}
+MissionHumans::MissionHumans(MissionEntities& world,const GameplayCatalog& data,MissionProgress& saved,StageGeometry& geometry,MissionRuntimeConfig runtime,MissionHumanScenario scenario)
+    :world_(world),saved_(saved),geometry_(geometry),runtime_(std::move(runtime)),random_(runtime_.seed),
+     records_{data.characters,required(data.enemies.get()),data.equipment,data.hats,data.cloth},characters_(data.characters.size(),0),
+     equipment_(levels(data.equipment,saved.equipment_levels)),hats_(levels(data.hats,saved.hat_levels)),cloth_(levels(data.cloth,saved.cloth_levels)){
+    if(runtime_.backend!="system"||runtime_.fps<1)throw std::invalid_argument("mission human runtime requires positive FPS and system RNG backend");
+    for(const auto& entry:saved.characters)characters_.at(static_cast<std::size_t>(entry.first))=entry.second.level;
+    stage_.quest=std::make_shared<StageQuest>();stage_.quest->distance=scenario.distance;
+    stage_.min_z_rate=scenario.min_z_rate;stage_.max_z_rate=scenario.max_z_rate;stage_.attack_attribute=scenario.attribute;
+    button_.state=scenario.button;stage_.attack_buttons=std::make_shared<std::vector<AttackButtonState*>>(1,&button_);
+    enemies_.subset=world_.subset({24});stage_.members=&members_;stage_.humans=&system_;system_.transitions=static_cast<HumanFrameHost*>(this);
+    auto cursor=required(world_.subset({14})).cursor();while(const auto actor=cursor.next()){
+        saved.characters.at(field<HumanRecordLink>(**actor,14).character_id); // Require saved state for every live actor.
+        add_member(members_,*actor);
+    }
+    initialize_humans(system_,this,services_);
+}
+void MissionHumans::update(std::int32_t pass,bool enabled){if(gameplay_needs_update(4,enabled,pass))update_humans(system_,*this);}
+void MissionHumans::set_state(ComponentSlots& e,std::int32_t state,float speed_z){
+    change_human_state(e,state,static_cast<HumanFrameHost&>(*this));field<ProjectileSpeed>(e,1).z=speed_z;
+}
+std::int32_t MissionHumans::human_parameter(ComponentSlots& e,std::int32_t key){
+    const auto id=field<HumanRecordLink>(e,14).character_id;
+    characters_.at(static_cast<std::size_t>(id))=saved_.characters.at(id).level;
+    return ecs_member_total_parameter(e,key,records_,levels_,world_);
+}
+bool MissionHumans::playing_cut_in(ComponentSlots& e){return field<EntityPlayback>(e,10).state.return_clip!=-1;}
+void MissionHumans::change_animation(ComponentSlots& e,std::int32_t clip,bool reset){core::change_animation(live_animation(e),clip,reset);}
+std::int32_t MissionHumans::celebration_frame_period(){return world_.clip_max_frame(1,0);}
+void MissionHumans::remove_human_modification(ComponentSlots& e){e.remove(15);} // Detached objects remain owned; pool reuse is unbound.
+void MissionHumans::subscribe_human_impact(EntityEvents::Single receiver,std::optional<EventHashes> hash){world_.events().subscribe(23,std::move(receiver),hash);}
+void MissionHumans::subscribe_human_contact(EntityEvents::Pair receiver,std::optional<EventHashes> hash){world_.events().subscribe(29,std::move(receiver),hash);}
+ComponentSlots& MissionHumans::hero(){return required(member_hero(human_world()));}
+void MissionHumans::cut_in_animation(ComponentSlots& e,std::int32_t clip,std::int32_t backup){core::cut_in_animation(live_animation(e),clip,backup);}
+bool MissionHumans::shoot_human(ComponentSlots&,ComponentSlots&){unbound("HumanSystem.Shoot producer and projectile/impact schedule");}
+void MissionHumans::contact_effect(std::int32_t,std::int32_t,std::int32_t,float,float,float){unbound("human contact effect");}
+void MissionHumans::impact_effect(std::int32_t,std::int32_t,std::int32_t,float,float,float){unbound("human death impact effect");}
+void MissionHumans::send_human_dead(ComponentSlots&){unbound("stage death and enemy retarget receivers");}
+DropPlacementWorld* MissionHumans::drop_world(){unbound("stage drops");}
+} // namespace saga::desktop

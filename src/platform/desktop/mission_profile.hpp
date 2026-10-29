@@ -1,6 +1,7 @@
 #pragma once
 #include "bitmap_mesh_frame.hpp"
 #include "mission_scene.hpp"
+#include "mission_humans.hpp"
 #include <filesystem>
 #include <tuple>
 
@@ -13,7 +14,7 @@ struct SceneResource {
 // This is a selected scene, not the original quest/map/bootstrap or full system schedule.
 class MissionProfile {
 public:
-    MissionProfile(const std::filesystem::path&,bool native,ArchiveImageSet::Decoder = {});
+    MissionProfile(const std::filesystem::path&,bool native,ArchiveImageSet::Decoder = {},std::optional<MissionRuntimeConfig> = std::nullopt);
     MissionProfile(const MissionProfile&)=delete;
     MissionProfile& operator=(const MissionProfile&)=delete;
     void step(); // Move (optional), Animation, Render, Garbage (optional), in native relative order.
@@ -31,5 +32,7 @@ public:
     std::vector<core::ComponentSlots*> created;
     std::map<std::string,std::int32_t> resource_names;
     std::unique_ptr<MissionEntities> entity_world;std::unique_ptr<MissionScene> mission;
+    std::optional<MissionRuntimeConfig> runtime;
+    std::unique_ptr<MissionHumans> humans;
 };
 } // namespace saga::desktop

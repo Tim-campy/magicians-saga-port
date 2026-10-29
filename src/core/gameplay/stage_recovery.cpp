@@ -9,7 +9,7 @@ ContactPosition* position(ComponentSlots& e){return dynamic_cast<ContactPosition
 HumanRecordLink& human(ComponentSlots& e){return component<HumanRecordLink>(e,14);}
 std::int32_t word(std::uint32_t v){return static_cast<std::int32_t>(v<=0x7fffffffU?static_cast<std::int64_t>(v):static_cast<std::int64_t>(v)-0x100000000LL);}
 std::int32_t add(std::int32_t a,std::int32_t b){return word(static_cast<std::uint32_t>(a)+static_cast<std::uint32_t>(b));}
-float formation(ComponentSlots* input,StageRecoveryHost& host,bool z){
+float formation(ComponentSlots* input,MemberFormationHost& host,bool z){
     auto& first=required(member_hero(host.recovery_world()));
     auto& first_position=required(position(first));const float origin=z?first_position.z:first_position.x;
     auto& second=required(member_hero(host.recovery_world()));auto& hero_human=human(second);
@@ -22,8 +22,8 @@ float formation(ComponentSlots* input,StageRecoveryHost& host,bool z){
 bool stage_human_dead(const HumanRecordLink& h){return (static_cast<std::uint32_t>(h.state)&0xfffffffeU)==4U;}
 std::int32_t initial_human_invincible_time(std::int32_t fps){return word(static_cast<std::uint32_t>(fps)*3U);}
 bool is_retry_removable_effect(ComponentSlots* e){return component<EntitySprite>(required(e),2).animation.clip==100;}
-float member_formation_x(ComponentSlots* e,StageRecoveryHost& host){return formation(e,host,false);}
-float member_formation_z(ComponentSlots* e,StageRecoveryHost& host){return formation(e,host,true);}
+float member_formation_x(ComponentSlots* e,MemberFormationHost& host){return formation(e,host,false);}
+float member_formation_z(ComponentSlots* e,MemberFormationHost& host){return formation(e,host,true);}
 namespace {
 float indexed_formation(std::int32_t index,StageRecoveryHost& host,bool z){
     auto& first=required(member_hero(host.recovery_world()));

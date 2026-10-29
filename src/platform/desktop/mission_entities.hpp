@@ -5,6 +5,8 @@
 #include "core/gameplay/enemy_factory.hpp"
 #include "core/gameplay/effect_factory.hpp"
 #include "core/gameplay/stage_cleanup.hpp"
+#include "core/ecs/entity_events.hpp"
+#include "core/gameplay/member_selection.hpp"
 #include <deque>
 
 namespace saga::desktop {
@@ -12,6 +14,7 @@ namespace saga::desktop {
 struct MissionProgress {
     std::map<std::int32_t,core::SavedCharacterProgression> characters;
     std::map<std::int32_t,std::int32_t> shop_purchases;
+    std::map<std::int32_t,std::int32_t> equipment_levels,hat_levels,cloth_levels;
 };
 // Fresh desktop entity/component ownership around the existing game factories.
 // Native world teardown, pooling reuse, input updates and the complete system schedule remain separate.
@@ -31,6 +34,9 @@ public:
     std::int32_t id(const core::ComponentSlots&)const;
     core::QuestMemberId handle(const core::ComponentSlots&)const;
     bool destroyed(const core::ComponentSlots&)const;
+    core::PlayerWorldState& player_world(){return player_world_;}
+    core::EntityEvents& events(){return gameplay_events_;}
+    void mark_player(core::ComponentSlots& e){e.add(30,&player_marker_);}
     void destroy(core::ComponentSlots&,bool remove_registration=true);
     core::QuestEntityLifetime& entity_lifetime(core::QuestMemberId)override;
     void delete_from_manager(core::QuestMemberId,bool)override;
@@ -98,6 +104,8 @@ private:
     std::deque<Node> nodes_;std::map<const core::ComponentSlots*,Node*> node_index_;
     std::vector<Node*> handles_; // Stable host identity, including multiple native temporary ID -1 entities.
     core::EntityRegistry registry_{*this};core::DynamicSubsets groups_;
+    core::PlayerWorldState player_world_{nullptr,&groups_,0};core::Component player_marker_;
+    core::EntityEvents gameplay_events_;
     core::EntityIdState ids_;core::BulletFactoryWorld bullet_world_;
     std::vector<std::optional<core::PartyCharacter>> party_rows_;core::PartyCharacters party_;
     std::vector<std::optional<core::HumanHat>> hat_rows_;core::HumanHats hats_;

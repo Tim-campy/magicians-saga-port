@@ -5,6 +5,7 @@
 #include <locale>
 #include <sstream>
 #include <variant>
+#include <cmath>
 
 namespace saga::desktop {
 using namespace core;
@@ -23,13 +24,32 @@ SceneResource::SceneResource(const std::filesystem::path& path,ResourceProfile p
     :archive(read(path),std::move(profile)),manager(archive){
     if(decoder)images=std::make_unique<ArchiveImageSet>(manager,std::move(decoder));
 }
-MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,ArchiveImageSet::Decoder decoder){
+MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,ArchiveImageSet::Decoder decoder,std::optional<MissionRuntimeConfig> config):runtime(std::move(config)){
     std::ifstream input(scene);if(!input)throw std::runtime_error("cannot open scene description");
     std::vector<std::variant<HumanCreation,EnemyCreation,SelectedBullet,SelectedEffect>> selected;
+    std::optional<MissionHumanScenario> human_scenario;bool runtime_row=false;
+    std::map<std::string,std::int32_t> gear_defaults;
+    std::vector<std::size_t> players;
+    std::vector<std::tuple<std::size_t,std::int32_t,float>> states;
     for(std::string line;std::getline(input,line);){
         std::istringstream row(line);row.imbue(std::locale::classic());std::string operation;
         if(!(row>>operation)||operation.front()=='#')continue;
-        if(operation=="world"){
+        if(operation=="runtime"){
+            MissionRuntimeConfig value;std::int32_t debug=0;
+            if(!native||runtime_row||!(row>>value.fps>>debug>>value.backend>>value.seed)||value.fps<1||value.fps>1000||(debug!=0&&debug!=1)||value.backend!="system")throw std::invalid_argument("runtime requires FPS1..1000 DEBUG0/1 system seed-int32");
+            value.debug=debug!=0;runtime_row=true;
+            if(runtime&&(runtime->fps!=value.fps||runtime->debug!=value.debug||runtime->backend!=value.backend||runtime->seed!=value.seed))throw std::invalid_argument("scene runtime conflicts with CLI inputs");runtime=value;
+        }else if(operation=="human_system"){
+            MissionHumanScenario value;if(!native||human_scenario||!(row>>value.distance>>value.min_z_rate>>value.max_z_rate>>value.attribute>>value.button))throw std::invalid_argument("human_system requires distance min/max Z rates attribute button state");human_scenario=value;
+        }else if(operation=="gear_levels"){
+            std::string kind;std::int32_t level=0;
+            if(!native||!(row>>kind>>level)||(kind!="equipment"&&kind!="hat"&&kind!="cloth")||!gear_defaults.emplace(kind,level).second)throw std::invalid_argument("gear_levels requires unique equipment/hat/cloth kind and explicit saved level");
+        }else if(operation=="player"){
+            std::size_t ordinal=0;if(!native||!(row>>ordinal))throw std::invalid_argument("player requires an entity creation ordinal");players.push_back(ordinal);
+        }else if(operation=="actor_state"){
+            std::size_t ordinal=0;std::int32_t state=0;float speed=0;
+            if(!native||!(row>>ordinal>>state>>speed)||!std::isfinite(speed))throw std::invalid_argument("actor_state requires ordinal state finite Z speed");states.emplace_back(ordinal,state,speed);
+        }else if(operation=="world"){
             if(has_world)throw std::invalid_argument("duplicate world matrix");
             for(auto& v:*world.values)if(!(row>>v))throw std::invalid_argument("world requires nine binary32 values");
             has_world=true;
@@ -106,6 +126,11 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     if(!selected.empty()){
         if(!tables||!has_view||!has_slots||!has_animation||commands)throw std::invalid_argument("entity capture needs tables/view/slots/animate and no manual draw rows");
         catalog=std::make_unique<GameplayCatalog>(load_gameplay_catalog(*tables,false,parse_event_decimal));
+        for(const auto& entry:gear_defaults){
+            const auto& data=entry.first=="equipment"?catalog->equipment:entry.first=="hat"?catalog->hats:catalog->cloth;
+            auto& levels=entry.first=="equipment"?progress.equipment_levels:entry.first=="hat"?progress.hat_levels:progress.cloth_levels;
+            for(std::size_t i=0;i<data.size();++i)if(data[i])levels.emplace(static_cast<std::int32_t>(i),entry.second);
+        }
         entity_world=std::make_unique<MissionEntities>(*catalog,progress,slots,geometry?&*geometry:nullptr,[&](std::int32_t id){auto* r=get_application_resource(application,id);return r?r->animations:nullptr;},
             [&](std::string_view name){auto it=resource_names.find(std::string(name));if(it==resource_names.end())throw std::invalid_argument("unbound enemy resource name: "+std::string(name));return it->second;});
         for(const auto& request:selected){ComponentSlots* entity=nullptr;
@@ -118,15 +143,23 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             if(!entity)throw std::invalid_argument("selected entity record is unavailable");created.push_back(entity);
         }
         mission=std::make_unique<MissionScene>(*entity_world,application,*entity_world->subset({0,2}),view,nullptr);
+        for(const auto ordinal:players){auto& actor=*created.at(ordinal);if(!actor.contains(14))throw std::invalid_argument("selected player needs Human component");entity_world->mark_player(actor);}
+        if(human_scenario){
+            if(!runtime||!geometry||!simulate)throw std::invalid_argument("human_system requires runtime, geometry and simulate rows");
+            humans=std::make_unique<MissionHumans>(*entity_world,*catalog,progress,*geometry,*runtime,*human_scenario);
+            for(const auto& request:states)humans->set_state(*created.at(std::get<0>(request)),std::get<1>(request),std::get<2>(request));
+        }else if(!states.empty())throw std::invalid_argument("actor_state requires human_system");
         for(std::int32_t i=0;i<frames;++i)mission->advance_animations({automatic!=0,application_update!=0});
         if(simulate&&*simulate>0)for(std::int32_t i=0;i<*simulate;++i)step();else{queue=mission->render();if(!mission->faults().empty())throw std::invalid_argument("entity render fault: "+mission->faults().front().message);}
         commands=static_cast<std::size_t>(queue.counts->at(0))+static_cast<std::size_t>(queue.counts->at(1));
     }
     if(simulate&&!mission)throw std::invalid_argument("simulate requires a table-backed entity scene");
+    if((human_scenario||!states.empty()||!players.empty()||!gear_defaults.empty())&&!mission)throw std::invalid_argument("human scenario rows require a table-backed entity scene");
     selected_count=selected.size();
 }
 void MissionProfile::step(){
     if(!mission)throw std::invalid_argument("selected logic requires a table-backed entity scene");
+    if(humans)humans->update();
     if(simulate)mission->advance_movement(0);
     mission->advance_animations({automatic!=0,application_update!=0});queue=mission->render();
     if(!mission->faults().empty())throw std::invalid_argument("entity render fault: "+mission->faults().front().message);

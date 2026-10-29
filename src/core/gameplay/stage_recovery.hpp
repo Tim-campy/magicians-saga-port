@@ -5,10 +5,14 @@ namespace saga::core {
 struct StageObjectWorld {EntityIdState& ids;EntityVisualHost& factory;};
 // Current-world and stored-system boundaries are separate: callbacks can replace
 // the global world between lookups, and pooled payloads must outlive all entities.
-class StageRecoveryHost:public AnimationModificationPool {
+class MemberFormationHost {
+public:
+    virtual ~MemberFormationHost()=default;
+    virtual PlayerWorldState* recovery_world()=0;
+};
+class StageRecoveryHost:public AnimationModificationPool,public MemberFormationHost {
 public:
     virtual StageStartHost& recovery_start_host()=0;
-    virtual PlayerWorldState* recovery_world()=0;
     virtual EntitySubset* recovery_effect_subset()=0; // Current-world And(26).
     virtual QuestEntityHost* recovery_destruction_world()=0; // Fresh world after snapshot.
     virtual QuestMemberId recovery_entity_id(ComponentSlots&)=0;
@@ -28,8 +32,8 @@ bool stage_human_dead(const HumanRecordLink&);
 // initialization, not recomputed on each retry. The other static fields are separate.
 std::int32_t initial_human_invincible_time(std::int32_t initial_fps);
 bool is_retry_removable_effect(ComponentSlots*); // <Retry>b__57_0: Seb animation ID ==100.
-float member_formation_x(ComponentSlots*,StageRecoveryHost&); // MemberSystem.GetFormationX.
-float member_formation_z(ComponentSlots*,StageRecoveryHost&); // MemberSystem.GetFormationZ.
+float member_formation_x(ComponentSlots*,MemberFormationHost&); // MemberSystem.GetFormationX.
+float member_formation_z(ComponentSlots*,MemberFormationHost&); // MemberSystem.GetFormationZ.
 float indexed_member_formation_x(std::int32_t,StageRecoveryHost&); // GetFormationX(int) 0x115dfbc.
 float indexed_member_formation_z(std::int32_t,StageRecoveryHost&); // GetFormationZ(int) 0x115e034.
 void remove_recovery_modification(ComponentSlots&,StageRecoveryHost&);

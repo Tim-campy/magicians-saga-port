@@ -13,9 +13,9 @@ from mission_scene_fixture import make_table_scene
 
 @unittest.skipUnless(EXE, 'saga_mission supplied by CTest')
 class MissionProfileTests(unittest.TestCase):
-    def run_host(self, scene, *extra):
+    def run_host(self, scene, *extra, fps=25):
         return subprocess.run([str(EXE), '--scene', str(scene), '--frames', '12', '--headless',
-                               '--fps', '25', '--debug', '0', '--rng', 'system', '--seed', '42', *extra],
+                               '--fps', str(fps), '--debug', '0', '--rng', 'system', '--seed', '42', *extra],
                               capture_output=True, text=True, timeout=30)
 
     def test_relative_archives_headless_passes_and_repeatability(self):
@@ -33,6 +33,32 @@ class MissionProfileTests(unittest.TestCase):
             self.assertEqual(report['positions'][0]['z'], 0)
             self.assertGreater(report['positions'][1]['z'], 0)
             self.assertEqual(report['render_commands'], 2)
+
+    def test_live_human_walking_uses_saved_gear_fps_and_rng(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            scene = root / 'scene.txt'
+            text = make_table_scene(root, valid_png=False, human_frame=True)
+            text = text.replace('human 0 2 5 0 0 13 0 0 0', 'human 0 2 5 0 0 13 0 0 100')
+            text += ('simulate 0\ngeometry 24 24 6\n'
+                     'human_system 10 0 100 0 0\nplayer 0\nactor_state 0 1 -1\n'
+                     'gear_levels equipment 1\ngear_levels hat 1\ngear_levels cloth 1\n')
+            scene.write_text(text, encoding='utf-8')
+            a = self.run_host(scene)
+            self.assertEqual(a.returncode, 0, a.stderr)
+            report = json.loads(a.stdout)
+            self.assertEqual(report['positions'][0]['human_state'], 1)
+            self.assertEqual(report['positions'][0]['human_frame'], 12)
+            self.assertLess(report['positions'][0]['z'], 100)
+            self.assertEqual(report['rng_draws'], 1)
+            fast = self.run_host(scene, fps=5)
+            self.assertEqual(fast.returncode, 0, fast.stderr)
+            self.assertEqual(json.loads(fast.stdout)['rng_draws'], 3)
+            # Total-stat provider requires all saved gear levels, never a silent level1.
+            scene.write_text(text.replace('gear_levels cloth 1\n', ''), encoding='utf-8')
+            self.assertNotEqual(self.run_host(scene).returncode, 0)
+            scene.write_text(text + 'runtime 60 0 system 42\n', encoding='utf-8')
+            self.assertIn('conflicts', self.run_host(scene).stderr)
 
     def test_explicit_contract_failures(self):
         with tempfile.TemporaryDirectory() as directory:
