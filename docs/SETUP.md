@@ -182,6 +182,8 @@ For table-backed entity scenes, replace manual draw rows with tables, progress a
 | geometry | map step X/Z and height; required when a selected bullet reaches the map |
 | animate | initial animation-pass count0..10000, automatic flag0/1, application-update flag0/1 |
 | system_init | loaded-world byte1..255; requires native human_system, input fresh and mission_map providers; dispatches all32 concrete initializers before map/snapshot application; byte0/fresh-town bootstrap is unsupported |
+| system_construct | literal empty_manager; requires system_init and stage_start; runs constructor enable phases before registration/Init, with native Menu/SubMenu/Debug hooks; exclusive with system_enabled/menu_visible overrides; current world/configuration remain explicit |
+| menu_visible | bool0/1; optional provisional Init-only visibility snapshot with declared legacy default true; requires system_init and excludes system_construct, whose native constructor supplies false |
 | system_enabled | factory index0..31 and bool0/1; optional declared Init-only snapshot flag, once per slot; unspecified flags default true from CreateSystems' selected enabled state; requires system_init; no constructor or hook is implied |
 | human | direction, character ID, level, formation X/Z, EXP, position X/Y/Z |
 | enemy | direction, enemy ID, level, flags, position X/Y/Z |

@@ -84,8 +84,8 @@ game:0x06000cf7	documented	docs/subsystems/ecs.md
 game:0x06000cc6	reimplemented	src/core/ecs/update_scheduler.cpp	set_system_enabled stores before changed-value hook; tests/test_update_scheduler.cpp checks no-op, failure prefix and live mission pause/resume gates.
 game:0x06000cc8	documented	docs/subsystems/ecs.md	
 game:0x06000cc9	documented	docs/subsystems/ecs.md	
-game:0x06000cc0	documented	docs/subsystems/ecs.md	
-game:0x06000cc1	documented	docs/subsystems/ecs.md	
+game:0x06000cc0	reimplemented	src/core/ecs/update_scheduler.cpp	BasePause OnEnabled requires captured manager then PauseSystems(true); native constructor-phase host binding and failure-prefix tests.
+game:0x06000cc1	reimplemented	src/core/ecs/update_scheduler.cpp	BasePause OnDisabled requires captured manager then PauseSystems(false); changed-value no-op and null-manager tests.
 game:0x06000bfb	traced	docs/subsystems/ecs.md	
 game:0x06000c02	reimplemented	src/core/ecs/world_teardown.cpp	Ordered world teardown or live registered-entity destruction then Clear; retained groups, failures and mutation integration tested.
 game:0x06000c46	traced	docs/subsystems/ecs.md	
@@ -254,6 +254,7 @@ game:0x06000e46	reimplemented	src/core/gameplay/effect_frame.cpp	Current Effect 
 game:0x06000e47	reimplemented	src/core/gameplay/effect_frame.cpp	Current Effect frame wrapping increment, dispatcher type7; native MP notice host clock and expiry tested.
 game:0x06000dc5	reimplemented	src/core/gameplay/pass_initialization.cpp	Supplied-world And20/14 then And20/16, ordered nullable stores; repeated/partial/null initialization and real MissionScene live membership tests.
 game:0x06000dc7	reimplemented	src/core/gameplay/pass_initialization.cpp	Drain captured human-AI subset cursor only; no Current/monster/stat reads or combat logic; actual MissionProfile index2 before Stage3.
-game:0x06000f5d	documented	docs/subsystems/ecs.md	Menu OnEnabled: Base RET then event11 registration on freshly resolved global world; Init-only host appends the known receiver, constructor subscription remains bootstrap debt.
-game:0x06000f5e	documented	docs/subsystems/ecs.md	Menu OnDisabled: Base RET then event11 removal, first matching tracking record; orientation27 retained; native delegate-hash collisions outside host adapter.
-game:0x06000f62	documented	docs/subsystems/ecs.md	Menu Pause writes enabled=!pause through BaseSystem.set_enabled; native fixed gameplay cohort in update_scheduler, full constructor/delegate lifecycle not counted as ported.
+game:0x06000f5d	documented	docs/subsystems/ecs-lifecycle.md	Menu OnEnabled: Base RET then event11 registration on freshly resolved global world; explicit empty-manager constructor mode preserves constructor/Init duplicates, generic delegate hashing remains external.
+game:0x06000f5e	documented	docs/subsystems/ecs-lifecycle.md	Menu OnDisabled: Base RET then event11 removal, first matching tracking record; orientation27 retained; native delegate-hash collisions outside host adapter.
+game:0x06000f62	documented	docs/subsystems/ecs-lifecycle.md	Menu Pause writes enabled=!pause through BaseSystem.set_enabled; fixed gameplay cohort and known constructor/Init callbacks reach host, generic delegate lifecycle not counted as ported.
+game:0x06000cc4	reimplemented	src/core/ecs/update_scheduler.cpp	Base constructor binds supplied current-world manager even when enabled, then changed-value enable/virtual hook; missing world/null manager/failure prefix and host factory phase tested; CLR class initialization external.

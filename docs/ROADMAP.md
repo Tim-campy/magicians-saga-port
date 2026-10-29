@@ -28,7 +28,7 @@ Host: `saga_mission` (headless or SDL window; explicit scenario state remains re
 - [ ] A6. Every service the host fakes is listed in the stub table of integration.md.
 
 Tasks:
-- [ ] Bind saved-state/configuration and complete system construction to `saga_mission --data/--quest` so a diagnostic `--scene` profile is no longer required (A1).
+- [ ] Bind saved-state/configuration and original world entry to `saga_mission --data/--quest` so a diagnostic `--scene` profile is no longer required (A1).
 - [ ] Replace the synthetic catalogs/services of the 240-frame combat regression with the table-backed owner used by `saga_mission` (A3).
 - [ ] Add complete reached-world state hashing and record local per-quest golden replays (A5).
 - [ ] Bind retry/defeat/victory form answers and modal form lifecycle to Stage Update without automatic crystal or ad choices (A4).

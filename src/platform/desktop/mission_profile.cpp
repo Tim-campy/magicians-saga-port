@@ -38,6 +38,10 @@ void MissionProfile::refresh_enabled(){
     for(std::size_t i=0;i<enabled_.size();++i)enabled_[i]=configured_[i]&&system_states_[i].enabled;
 }
 void MissionProfile::pause_systems(bool value){
+    if(constructing_systems_){
+        // CreateSystems finishes its array before AddSystems: this explicitly fresh manager has empty lists.
+        ++pause_requests_;initialization_.paused=value;mission->set_manager_paused(value);return;
+    }
     if(!initialization_complete_)throw std::logic_error("stage pause requires system_init's declared loaded-world lifecycle");
     ++pause_requests_;mission->set_manager_paused(value);
     try{pause_gameplay_systems(initialization_.paused,system_states_,value);}
@@ -52,9 +56,7 @@ void MissionProfile::initialize_factory(std::int32_t id,InitializationWorld* arg
     case 1:case 8:case 17:case 20:case 24:spatial->initialize_system(id);break;
     case 7:initialize_town_entry(this,[](const TownReturnEvent&){throw std::logic_error("town return requires S2 progression/event1133 services");});break;
     case 27:initialize_submenu(this,[this](const InputTouch* event,ComponentSlots*){submenu_button_touch(event);++submenu_touches_;});break;
-    case 28:initialize_menu(menu_shapes_,this,[this](const InputTouch* event,ComponentSlots*){
-        menu_button_touch(menu_visible_,event,[]{throw std::logic_error("native menu layout/draw-off is unbound");});++menu_touches_;
-        },[]{throw std::logic_error("native menu orientation layout is unbound");});break;
+    case 28:initialize_menu(menu_shapes_,this,menu_button_receiver_,[]{throw std::logic_error("native menu orientation layout is unbound");});break;
     case 29:initialize_status_render();break;
     default:
         mission->initialize_system(id);
@@ -65,18 +67,41 @@ void MissionProfile::initialize_factory(std::int32_t id,InitializationWorld* arg
 void MissionProfile::initialize_loaded_world(){
     entity_world->player_world().loaded=*initialized_loaded_;
     initialization_world_.state=&entity_world->player_world();std::array<InitSystem*,32> factory{};
+    menu_button_receiver_=[this](const InputTouch* event,ComponentSlots*){
+        menu_button_touch(menu_visible_,event,[]{throw std::logic_error("native menu layout/draw-off is unbound");});++menu_touches_;
+    };
+    system_states_[28].on_enabled=[this]{mission->observe_button_event(28,menu_button_receiver_);};
+    system_states_[28].on_disabled=[this]{mission->remove_button_observer(28);};
+    system_states_[25].on_pause=[this]{mission->pause_info();};
+    system_states_[27].on_enabled=[this]{enable_pause_system(system_states_[27]);};
+    system_states_[27].on_disabled=[this]{disable_pause_system(system_states_[27]);};
+    system_states_[30].on_enabled=[this]{mission->set_debug_enabled(true);};
+    system_states_[30].on_disabled=[this]{mission->set_debug_enabled(false);};
+    if(construct_systems_)construct_systems();
     for(std::size_t id=0;id<factory.size();++id){
         initializer_owners_[id]=std::make_unique<CallbackInitializer>([this,id](InitializationWorld* world){initialize_factory(static_cast<std::int32_t>(id),world);});
         factory[id]=initializer_owners_[id].get();
     }
     append_gameplay_initializers(initializers_,factory);initialize_systems(initialization_,&initialization_world_);
     initialization_complete_=true;
-    system_states_[28].on_enabled=[this]{mission->observe_button_event(28,menu_button_receiver_);};
-    system_states_[28].on_disabled=[this]{mission->remove_button_observer(28);};
-    system_states_[25].on_pause=[this]{mission->pause_info();};
+    mission->set_manager_paused(initialization_.paused); // Init clears the flag without dispatching Pause(false).
     if(humans->stage_input_enabled())humans->bind_stage_pause([this](bool value){pause_systems(value);});
     if(!native_stage_entry_)spatial->load_selected_map();
     humans->apply_initialized_scenario(); // Explicit input/population snapshot; Start replaces its native entry fields.
+}
+void MissionProfile::construct_systems(){
+    // Native CreateSystems allocation order; storage owners precede this phase, with no Init subscriptions.
+    SystemConstructionWorld world{this};constructing_systems_=true;menu_visible_=false; // CLR-zeroed Menu visible flag.
+    for(std::size_t id=0;id<system_states_.size();++id){
+        if(id==8)spatial->construct_camera();
+        auto& state=system_states_[id];state.enabled=false;
+        construct_base_system(state,&world);
+        if(id==6)humans->construct_member_roster();
+        mission->construct_system_payload(static_cast<std::int32_t>(id));
+        set_system_enabled(state,true); // Factory's second enable is an unchanged-value no-op.
+        construction_order_.push_back(static_cast<std::int32_t>(id));
+    }
+    construction_pause_=initialization_.paused;constructing_systems_=false;construction_complete_=true;
 }
 void MissionProfile::resize_viewport(std::int32_t width,std::int32_t height){
     if(!offscreen_camera_||!has_view)throw std::invalid_argument("viewport resize requires mission_presentation");
@@ -198,7 +223,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     std::ifstream input(scene);if(!input)throw std::runtime_error("cannot open scene description");
     std::vector<std::variant<HumanCreation,EnemyCreation,SelectedBullet,SelectedEffect,SelectedDrop>> selected;
     std::optional<MissionHumanScenario> human_scenario;bool runtime_row=false;
-    std::array<bool,32> enabled_rows{};
+    std::array<bool,32> enabled_rows{};bool menu_snapshot=false;
     std::optional<MissionRewardScenario> rewards;
     std::optional<MissionNotificationScenario> notifications;
     bool collection=false,drop_catalog=false;
@@ -268,6 +293,16 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             std::int32_t loaded=0;
             if(initialized_loaded_||!(row>>loaded)||loaded<1||loaded>255)throw std::invalid_argument("system_init requires one explicit loaded-world byte1..255; fresh-game bootstrap is unbound");
             initialized_loaded_=static_cast<std::uint8_t>(loaded);end(row);continue;
+        }
+        if(operation=="system_construct"){
+            std::string mode;
+            if(construct_systems_||!(row>>mode)||mode!="empty_manager")throw std::invalid_argument("system_construct requires one explicit empty_manager entry");
+            end(row);construct_systems_=true;continue;
+        }
+        if(operation=="menu_visible"){
+            std::int32_t value=0;
+            if(menu_snapshot||!(row>>value)||(value!=0&&value!=1))throw std::invalid_argument("menu_visible requires one explicit bool0/1");
+            end(row);menu_snapshot=true;menu_visible_=value!=0;continue;
         }
         if(operation=="system_enabled"){
             std::int32_t id=0,value=0;
@@ -497,6 +532,9 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     if(selection.quest&&!selected_quest)throw std::invalid_argument("--quest requires a scenario quest row with explicit saved rescued count");
     if(!has_world)throw std::invalid_argument("an explicit world matrix is required");
     const bool result_requested=wallet||record||recruits||stocks[0]||stocks[1]||stocks[2];
+    if(construct_systems_&&(!initialized_loaded_||!stage_entry||menu_snapshot||std::find(enabled_rows.begin(),enabled_rows.end(),true)!=enabled_rows.end()))
+        throw std::invalid_argument("system_construct requires system_init and stage_start without system_enabled/menu_visible snapshot overrides");
+    if(menu_snapshot&&!initialized_loaded_)throw std::invalid_argument("menu_visible snapshot requires system_init");
     if(std::find(enabled_rows.begin(),enabled_rows.end(),true)!=enabled_rows.end()&&!initialized_loaded_)
         throw std::invalid_argument("system_enabled snapshot requires system_init");
     if(offscreen_camera_&&(!initialized_loaded_||!map_images))throw std::invalid_argument("mission_presentation requires system_init and mission_map");
@@ -660,6 +698,10 @@ void MissionProfile::write_actor_parameters(ComponentSlots& actor,std::ostream& 
     if(const auto* enemy=dynamic_cast<EnemyRecordLink*>(actor.get(24)))out<<",\"enemy_state\":"<<enemy->state<<",\"enemy_frame\":"<<enemy->frame<<",\"enemy_flags\":"<<enemy->flags;
 }
 void MissionProfile::write_combat_report(std::ostream& out){
+    out<<",\"system_construction_complete\":"<<(construction_complete_?"true":"false")<<",\"construction_pause_before_init\":";
+    if(construction_pause_)out<<(*construction_pause_?"true":"false");else out<<"null";
+    out<<",\"construction_order\":[";for(std::size_t i=0;i<construction_order_.size();++i){if(i)out<<',';out<<construction_order_[i];}out<<']';
+    out<<",\"menu_visible\":"<<(menu_visible_?"true":"false")<<",\"menu_button_receivers\":"<<(mission?mission->button_observer_count(28):0);
     if(offscreen_camera_){
         out<<",\"viewport\":{\"width\":"<<view.width<<",\"height\":"<<view.height<<",\"changes\":"<<viewport_changes_<<",\"projection\":[";
         for(std::size_t i=0;i<projection.values.size();++i){if(i)out<<',';out<<projection.values[i];}out<<"]}";

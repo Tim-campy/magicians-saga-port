@@ -22,6 +22,22 @@ struct System final:UpdateSystem {
     void update(std::int32_t p)override{log.push_back(name+"!"+std::to_string(p));if(on_update)on_update();}
 };
 int main(){
+    {struct Manager final:SystemPauseManager {std::vector<bool> calls;void pause_systems(bool value)override{calls.push_back(value);}} a,b;
+        SystemConstructionWorld world{&a};GameplaySystemState system;system.enabled=false;int enabled=0;
+        system.on_enabled=[&]{check(system.enabled&&system.manager==&a);++enabled;};
+        construct_base_system(system,&world);check(enabled==1&&system.manager==&a);
+        world.manager=&b;construct_base_system(system,&world);check(enabled==1&&system.manager==&b); // Rebind even if enabled.
+        bool failed=false;try{construct_base_system(system,nullptr);}catch(const std::invalid_argument&){failed=true;}
+        check(failed&&system.manager==&b&&system.enabled);
+        GameplaySystemState pause;pause.enabled=false;
+        pause.on_enabled=[&]{enable_pause_system(pause);};pause.on_disabled=[&]{disable_pause_system(pause);};
+        world.manager=&a;construct_base_system(pause,&world);set_system_enabled(pause,true);set_system_enabled(pause,false);
+        check(a.calls==std::vector<bool>{true,false});
+        world.manager=nullptr;pause.enabled=false;failed=false;
+        try{construct_base_system(pause,&world);}catch(const std::invalid_argument&){failed=true;}
+        check(failed&&pause.enabled&&!pause.manager); // The enable store survives the captured-manager failure.
+        GameplaySystemState plain;plain.enabled=false;construct_base_system(plain,&world);check(plain.enabled&&!plain.manager);
+    }
     {std::array<GameplaySystemState,32> systems;bool paused=false;std::vector<int> calls;
         for(std::size_t i=0;i<systems.size();++i){
             systems[i].on_disabled=[&,i]{check(paused&&!systems[i].enabled);calls.push_back(static_cast<int>(i));};

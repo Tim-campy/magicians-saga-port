@@ -22,6 +22,12 @@ void set_system_enabled(GameplaySystemState& system,bool value){
     const auto& hook=value?system.on_enabled:system.on_disabled;
     if(hook)hook();
 }
+void construct_base_system(GameplaySystemState& system,SystemConstructionWorld* world){
+    system.manager=require(world).manager;
+    set_system_enabled(system,true);
+}
+void enable_pause_system(GameplaySystemState& system){require(system.manager).pause_systems(true);}
+void disable_pause_system(GameplaySystemState& system){require(system.manager).pause_systems(false);}
 void pause_gameplay_systems(bool& paused,std::array<GameplaySystemState,32>& systems,bool value){
     paused=value;
     for(const auto index:gameplay_pause_order)set_system_enabled(systems[static_cast<std::size_t>(index)],!value);

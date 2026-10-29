@@ -1,6 +1,6 @@
 # Overview
 
-*Magician's Saga* 1.4.0 (Kairosoft) is a Unity 2022.3 / IL2CPP Android game whose rules live in two managed assemblies compiled to ARM64 native code. Identity, packaging, the Android/JNI bootstrap, the IL2CPP metadata catalogue and a complete method→address map are established statically. The original has never been run under observation; the port has asset readers and isolated rule modules, but no boot path, frame loop or playable build.
+*Magician's Saga* 1.4.0 (Kairosoft) is a Unity 2022.3 / IL2CPP Android game whose rules live in two managed assemblies compiled to ARM64 native code. Identity, packaging, the Android/JNI bootstrap, the IL2CPP metadata catalogue and a complete method→address map are established statically. The port has a selected mission host with real assets, combat, native entry, pause and result/retreat paths; original boot/save selection and the town loop remain incomplete. The original has never been run under observation; see [integration](integration.md) for the demonstrable slice and its limits.
 
 ## Overview
 
@@ -55,6 +55,7 @@ Manifest: portrait orientation (`1`), `hardwareAccelerated=false`, `resizeableAc
 | [ui.md](ui.md) | Form manager, form events, pass counting, pause interface |
 | [assets.md](assets.md) | Unity assets, resource reader/encryption, extraction, images, catalogues |
 | [ecs.md](ecs.md) | Entity/component/system framework, lifecycle, save fields |
+| [ecs-lifecycle.md](ecs-lifecycle.md) | System construction, enable hooks, pause, registration and positional lifecycle |
 | [animation.md](animation.md) | SEB/INF animation, transitions, timing |
 | [save.md](save.md) | Persistence entry points, save order and streams |
 | [data.md](data.md) | Base data, data lists, game tables |

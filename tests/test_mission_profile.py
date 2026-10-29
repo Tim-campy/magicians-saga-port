@@ -13,6 +13,58 @@ from mission_scene_fixture import make_table_scene, make_shoot_scene, with_missi
 
 @unittest.skipUnless(EXE, 'saga_mission supplied by CTest')
 class MissionProfileTests(unittest.TestCase):
+    def test_factory_construction_runs_enable_hooks_before_init_and_keeps_menu_duplicates(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);scene=root/'scene.txt';replay=root/'construct.txt'
+            text=make_boss_scene(root,stage_entry=True)
+            replacements={'geometry 312 312 12':'geometry quest','human_system 10 0 95 0 0':'human_system quest 0 95 0 0',
+                          'enemy_system 10000 0 10 25 7':'enemy_system quest 10000','enemy_pool 0\n':'',
+                          'stage_notifications 1 0 0 2 0 0 -1':'stage_notifications 1 0 0 quest 1 0 -1',
+                          'stage_events fresh 0':'stage_events quest','stage_loop 5000 0 20 hold':'stage_loop quest 0 20 hold',
+                          'stage_boss 4 7':'stage_boss quest','mission_map fresh 0 1 2 3':'mission_map quest'}
+            for before,after in replacements.items():self.assertIn(before,text);text=text.replace(before,after)
+            text+=('quest 2 0\nsystem_init 1\nstage_start 0 null\n'
+                   'party_formation 2 3 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1\n'
+                   'progress 3 1 0\nsorties 2 7\nsorties 3 9\n'
+                   'result_wallet 10 20 0\nresult_record 0 0 0 0 0 0 0\n'
+                   'result_inventory equipment 0 0 0\nresult_inventory cloth 0 0 0\n'
+                   'result_inventory hat 0 0 0\nresult_recruits 0 0 0\n')
+            scene.write_text(text,encoding='utf-8');baseline=self.run_host(scene,frames=1)
+            self.assertEqual(baseline.returncode,0,baseline.stderr);old=json.loads(baseline.stdout)
+            scene.write_text(text+'system_construct empty_manager\n',encoding='utf-8')
+            replay.write_text('2 touch 5 35 0\n3 pulse 33554432\n4 touch 5 35 0\n6 pulse 67108864\n7 touch 5 35 0\n',encoding='ascii')
+            def run(frames):
+                result=self.run_host(scene,'--replay',str(replay),frames=frames)
+                self.assertEqual(result.returncode,0,result.stderr);return json.loads(result.stdout)
+            first=run(1)
+            self.assertTrue(first['system_construction_complete']);self.assertEqual(first['construction_order'],list(range(32)))
+            self.assertTrue(first['construction_pause_before_init']);self.assertFalse(first['init_manager_paused'])
+            self.assertEqual(first['pause_requests'],1);self.assertTrue(all(first['system_enabled']))
+            self.assertFalse(first['menu_visible']);self.assertEqual(first['menu_button_receivers'],2)
+            self.assertEqual(first['button_receiver_order'],[28,25,27,28])
+            self.assertTrue(first['debug_path_visualize']);self.assertEqual(first['debug_path_wait_ms'],0)
+            for key in ('positions','entry_members','sortie_counts','remaining_time','rng_draws','shots'):
+                self.assertEqual(first[key],old[key],key)
+            paused=run(5)
+            self.assertTrue(paused['init_manager_paused']);self.assertEqual(paused['menu_button_receivers'],1)
+            self.assertEqual(paused['button_receiver_order'],[25,27,28])
+            self.assertEqual(paused['menu_button_events'],3);self.assertEqual(paused['info_button_events'],2)
+            resumed=run(7)
+            self.assertFalse(resumed['init_manager_paused']);self.assertEqual(resumed['menu_button_receivers'],2)
+            self.assertEqual(resumed['button_receiver_order'],[25,27,28,28])
+            self.assertEqual(resumed['menu_button_events'],5);self.assertEqual(resumed['submenu_button_events'],3)
+            self.assertEqual(run(7),resumed)
+            for bad in [text+'system_construct restore\n',text+'system_construct empty_manager extra\n',
+                        text+'system_construct empty_manager\nsystem_construct empty_manager\n',
+                        text.replace('stage_start 0 null\n','')+'system_construct empty_manager\n',
+                        text+'system_construct empty_manager\nsystem_enabled 9 0\n',
+                        text+'system_construct empty_manager\nmenu_visible 1\n',text+'menu_visible 2\n',
+                        text+'menu_visible 0\nmenu_visible 1\n']:
+                scene.write_text(bad,encoding='utf-8');self.assertNotEqual(self.run_host(scene).returncode,0)
+            scene.write_text(text+'menu_visible 0\n',encoding='utf-8')
+            legacy=self.run_host(scene,'--replay',str(replay),frames=7)
+            self.assertEqual(legacy.returncode,0,legacy.stderr);self.assertFalse(json.loads(legacy.stdout)['menu_visible'])
+
     def test_native_pause_resume_and_explicit_exit_answers(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);scene=root/'scene.txt';replay=root/'pause.txt'

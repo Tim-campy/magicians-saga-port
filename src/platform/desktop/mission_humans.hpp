@@ -87,6 +87,7 @@ public:
     bool stage_input_enabled()const{return static_cast<bool>(stage_loop_);}
     void pulse_stage_keys(std::uint32_t);
     void bind_stage_pause(std::function<void(bool)>);
+    void construct_member_roster(){members_=core::MemberRoster{};} // MemberSystem ctor post-base lists/formation.
     std::int32_t stage_state()const{return stage_.state;}
     bool exit_dialog_pending()const;
     void answer_stage_dialog(std::int32_t);

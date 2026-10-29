@@ -3063,11 +3063,11 @@ game:0x06000cbb,game:0x06000cbb,ecs,,140,0x113ad94
 game:0x06000cbd,game:0x06000cbd,ecs,,108,0x113ae20
 game:0x06000cbe,game:0x06000cbe,ecs,,108,0x113ae8c
 game:0x06000cbf,game:0x06000cbf,ecs,,84,0x113aef8
-game:0x06000cc0,kairo.unity.ecs.BasePauseSystem.OnEnabled,ecs,documented,28,0x113b020
-game:0x06000cc1,kairo.unity.ecs.BasePauseSystem.OnDisabled,ecs,documented,28,0x113b324
+game:0x06000cc0,kairo.unity.ecs.BasePauseSystem.OnEnabled,ecs,reimplemented,28,0x113b020
+game:0x06000cc1,kairo.unity.ecs.BasePauseSystem.OnDisabled,ecs,reimplemented,28,0x113b324
 game:0x06000cc2,kairo.unity.ecs.BasePauseSystem..ctor,ecs,traced,84,0x113b340
 game:0x06000cc3,game:0x06000cc3,ecs,,248,0x113b394
-game:0x06000cc4,game:0x06000cc4,ecs,,212,0x113af4c
+game:0x06000cc4,kairo.unity.ecs.BaseSystem..ctor,ecs,reimplemented,212,0x113af4c
 game:0x06000cc5,game:0x06000cc5,ecs,,8,0x113b4bc
 game:0x06000cc6,kairo.unity.ecs.BaseSystem.set_enabled,ecs,reimplemented,48,0x113b48c
 game:0x06000cc7,game:0x06000cc7,ecs,,92,0x113b4c4

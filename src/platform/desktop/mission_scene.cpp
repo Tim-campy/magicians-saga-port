@@ -65,6 +65,15 @@ MissionScene::MissionScene(MissionEntities& world,MissionApplication& app,Entity
     :world_(world),app_(app),visible_(visible),view_(view),map_(map),form_{form_state_,nullptr,this}{
     if(!defer)for(const auto id:{21,19,11,12,31,2,16,30,22,25,26,13,18,15,9,14,23})initialize_system(id);
 }
+void MissionScene::construct_system_payload(std::int32_t id){
+    // Existing owners supply the concrete post-base constructor state.
+    if(id==9)experience_=ParameterExperienceSystem{};
+    else if(id==16)bubbles_=BubbleFrameState{};
+    else if(id==25)info_=InfoState{};
+}
+void MissionScene::subscribe_info_button(InfoInitializationWorld::Button receiver){
+    observe_button_event(25,[this,receiver=std::move(receiver)](const InputTouch* event,ComponentSlots* target){receiver(event,target);++info_button_events_;});
+}
 void MissionScene::initialize_system(std::int32_t id){
     MovementWorld movement(world_);
     switch(id){
@@ -109,7 +118,6 @@ void MissionScene::advance_debug(bool application_debug,std::int32_t pass,bool e
 void MissionScene::advance_buttons(std::int32_t pass,bool enabled){if(gameplay_needs_update(26,enabled,pass)){update_buttons(buttons_,*this);++button_steps_;}}
 void MissionScene::deliver_button_touch(const InputTouch* touch){required(button_touch_receiver_?&button_touch_receiver_:nullptr)(touch);}
 void MissionScene::send_button_event(const InputTouch* touch,ComponentSlots* target){
-    info_button_(touch,target);++info_button_events_; // Original Info receiver deliberately ignores the target.
     const auto receivers=auxiliary_buttons_;if(receivers)for(const auto& f:*receivers)f.callback(touch,target);
     last_button_target_=target;last_button_event_type_=required(touch).type;++button_events_;
 }
@@ -124,10 +132,17 @@ void MissionScene::remove_button_observer(std::int32_t factory){
     if(it!=next->end())next->erase(it);
     auxiliary_buttons_=std::move(next);
 }
+std::size_t MissionScene::button_observer_count(std::int32_t factory)const{
+    if(!auxiliary_buttons_)return 0;
+    return static_cast<std::size_t>(std::count_if(auxiliary_buttons_->begin(),auxiliary_buttons_->end(),[=](const auto& e){return e.factory==factory;}));
+}
 void MissionScene::advance_parameter_experience(std::int32_t pass,bool enabled){if(gameplay_needs_update(9,enabled,pass)){update_parameter_experience(experience_);++experience_steps_;}}
 void MissionScene::advance_parameters(std::int32_t pass,bool enabled){if(gameplay_needs_update(14,enabled,pass)){update_parameters();++parameter_steps_;}}
 void MissionScene::advance_effects(std::int32_t pass,bool enabled){if(gameplay_needs_update(23,enabled,pass)){update_effects(effects_,*this);++effect_steps_;}}
 void MissionScene::write_pass_report(std::ostream& out){
+    out<<",\"button_receiver_order\":[";
+    if(auxiliary_buttons_)for(std::size_t i=0;i<auxiliary_buttons_->size();++i){if(i)out<<',';out<<auxiliary_buttons_->at(i).factory;}out<<']';
+    out<<",\"debug_path_visualize\":"<<(debug_path_.visualize?"true":"false")<<",\"debug_path_wait_ms\":"<<debug_path_.wait_milliseconds;
     out<<",\"gauge_steps\":"<<gauge_steps_<<",\"gauge_destroy_calls\":"<<gauge_destroy_calls_<<",\"gauge_pending\":"<<gauges_.pending->size();
     out<<",\"gauges\":[";bool first_gauge=true;auto gauge_cursor=world_.subset({19})->cursor();
     while(const auto item=gauge_cursor.next()){

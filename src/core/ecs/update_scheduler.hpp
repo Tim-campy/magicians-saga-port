@@ -32,12 +32,24 @@ inline constexpr std::array<std::int32_t,26> gameplay_update_order{{
 inline constexpr std::array<std::int32_t,12> gameplay_pause_order{{
     2,4,5,9,10,11,13,14,15,19,23,28
 }};
+class SystemPauseManager {
+public:
+    virtual ~SystemPauseManager()=default;
+    virtual void pause_systems(bool)=0;
+};
+struct SystemConstructionWorld {SystemPauseManager* manager=nullptr;};
 struct GameplaySystemState {
     bool enabled=true;
+    SystemPauseManager* manager=nullptr; // BaseSystem +0x10; borrowed, captured by the base constructor.
     std::function<void()> on_enabled,on_disabled,on_pause; // Empty means BaseSystem's RET hook.
 };
 // BaseSystem.set_enabled 0x113b48c: store before hook, unchanged values do nothing.
 void set_system_enabled(GameplaySystemState&,bool);
+// BaseSystem..ctor 0x113af4c: require current world, bind its manager even when already enabled, then enable.
+// The caller supplies the current static-world binding and the freshly allocated enabled=false state.
+void construct_base_system(GameplaySystemState&,SystemConstructionWorld*);
+void enable_pause_system(GameplaySystemState&); // BasePauseSystem.OnEnabled 0x113b020.
+void disable_pause_system(GameplaySystemState&); // BasePauseSystem.OnDisabled 0x113b324.
 // Fixed Systems.CreateSystems projection of SystemManager.PauseSystems 0x113b03c.
 // Every concrete IPausable.Pause writes !value through set_enabled; resume does not restore a snapshot.
 // Dynamic manager list mutation is outside this fixed gameplay binding.

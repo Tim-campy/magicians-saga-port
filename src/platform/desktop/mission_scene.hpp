@@ -68,6 +68,9 @@ public:
     void remove_button_observer(std::int32_t factory); // First known-method identity; no native delegate-hash emulation.
     void set_manager_paused(bool value){info_paused_=value;}
     void pause_info(){core::pause_info(info_);}
+    void construct_system_payload(std::int32_t);
+    void set_debug_enabled(bool value){if(value)core::debug_visualization_enabled(debug_path_);else core::debug_visualization_disabled(debug_path_);}
+    std::size_t button_observer_count(std::int32_t factory)const;
     core::QuestCameraHost& gauge_camera_host();
     void draw_enemy_gauges(const std::function<void(const core::ParameterGaugeRequest&)>&);
     std::uint64_t collision_events()const{return collision_events_;}
@@ -83,7 +86,7 @@ private:
     void destroy_bubble(core::ComponentSlots& e,bool remove)override{world_.destroy(e,remove);++bubble_destroy_calls_;}
     core::EntitySubset* debug_subset(const core::EventIntegers& all,const core::EventIntegers& none)override{return world_.subset(all,none);}
     void subscribe_info_click(core::InfoInitializationWorld::Click f)override{info_click_=std::move(f);}
-    void subscribe_info_button(core::InfoInitializationWorld::Button f)override{info_button_=std::move(f);}
+    void subscribe_info_button(core::InfoInitializationWorld::Button)override;
     void subscribe_info_town(core::InfoInitializationWorld::Town f)override{info_town_=std::move(f);}
     std::int32_t info_view_height()override{return view_.height;}
     bool info_world_paused()override{return info_paused_;}
@@ -147,11 +150,12 @@ private:
     core::ParameterExperienceSystem experience_;
     core::BattleSystemState battle_;
     core::BubbleFrameState bubbles_;core::DebugVisualizationState debug_visualization_;
+    core::DebugPathVisualization debug_path_;
     core::GaugeFrameState gauges_;std::uint64_t gauge_steps_=0,gauge_destroy_calls_=0;
     std::uint64_t bubble_steps_=0,bubble_destroy_calls_=0,debug_steps_=0;
     core::ButtonFrameState buttons_;core::ButtonInitializationWorld::Receiver button_touch_receiver_;
     core::InfoState info_;core::InfoInitializationWorld::Click info_click_;
-    core::InfoInitializationWorld::Button info_button_;core::InfoInitializationWorld::Town info_town_;
+    core::InfoInitializationWorld::Town info_town_;
     bool info_paused_=false;std::uint64_t info_steps_=0,info_clicks_=0,info_button_events_=0,info_popup_disposals_=0;
     std::vector<std::shared_ptr<core::PopupBar>> scenario_popups_; // Keep diagnostic payload identity after native removal.
     std::vector<std::shared_ptr<core::SlideBar>> scenario_slides_;

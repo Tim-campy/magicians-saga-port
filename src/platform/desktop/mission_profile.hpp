@@ -20,7 +20,7 @@ struct MissionSelection {
 };
 // Shared strict scenario loader. An empty decoder decodes only images needed by Gauge22 logic.
 // Scenario state remains explicit; selecting a table row does not perform Stage.Start.
-class MissionProfile:private core::GaugeDrawingHost,private core::AuxiliaryInitializationWorld,private core::TownInitializationWorld {
+class MissionProfile:private core::GaugeDrawingHost,private core::AuxiliaryInitializationWorld,private core::TownInitializationWorld,private core::SystemPauseManager {
 public:
     MissionProfile(const std::filesystem::path&,bool native,ArchiveImageSet::Decoder = {},std::optional<MissionRuntimeConfig> = std::nullopt,std::optional<std::filesystem::path> replay =std::nullopt,MissionSelection = {});
     MissionProfile(const MissionProfile&)=delete;
@@ -58,7 +58,11 @@ public:
     bool native_stage_controls()const{return initialization_complete_&&humans&&humans->stage_input_enabled();}
 private:
     void initialize_loaded_world();
-    void pause_systems(bool);
+    void pause_systems(bool)override;
+    void construct_systems();
+    bool construct_systems_=false,constructing_systems_=false,construction_complete_=false;
+    std::optional<bool> construction_pause_;
+    std::vector<std::int32_t> construction_order_;
     void refresh_enabled();
     bool native_stage_entry_=false;
     std::optional<BitmapCamera> offscreen_camera_;
