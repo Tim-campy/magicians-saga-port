@@ -11,7 +11,7 @@ void check_at(bool value,int line){if(!value){std::cerr<<"bitmap backend line "<
 #define check(x) check_at((x),__LINE__)
 template<class F>void fails(F f){bool caught=false;try{f();}catch(const std::exception&){caught=true;}check(caught);}
 saga::assets::Seb file(std::int16_t texture){
-    saga::assets::Seb s{0,4,{{0,1,0}},{{}}};auto& r=s.records[0];r.value_count=10;
+    saga::assets::Seb s{0,4,{{0,1,std::int16_t{0}}},{{}}};auto& r=s.records[0];r.value_count=10;
     r.values={0,texture,0,0,2,2,0,0,0,0};return s;
 }
 void insert(RenderQueue& queue,int resource,int clip,int depth,int x){

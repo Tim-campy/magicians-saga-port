@@ -1,4 +1,5 @@
 #include "gl_bitmap.hpp"
+#include "bitmap_mesh_frame.hpp"
 #define GL_GLEXT_PROTOTYPES 1
 #include <SDL3/SDL_opengl.h>
 #include <algorithm>
@@ -8,6 +9,11 @@
 #include <stdexcept>
 
 namespace saga::desktop {
+void bind_bitmap_mesh_frame(GlMeshBindings& bindings,const BitmapMeshFrame& frame){
+    bindings.materials.clear();bindings.groups.clear();
+    for(const auto& entry:frame.materials())bindings.materials.emplace(entry.first,entry.second);
+    for(const auto& entry:frame.uploaded())bindings.groups.emplace(entry.first,GlMeshQuads{entry.second.data(),entry.second.size()});
+}
 namespace {
 void require(bool value,const char* name){if(!value)throw std::runtime_error(std::string(name)+": "+SDL_GetError());}
 // SDL's public loader owns platform lookup. Function pointers stay with their context.
@@ -155,7 +161,7 @@ void GlBitmapRenderer::set_material(std::uint32_t key){
 void GlBitmapRenderer::draw(const BitmapQuad& quad,const core::OffscreenMatrix& model){
     auto& s=*impl_;s.ready();if(!quad.native_depth||!s.material_ready||quad.shader_key!=s.active_key)throw std::invalid_argument("GL draw requires native depth and matching material");
     const auto p=core::sprite_pixel_pipeline(quad.shader_key);if(p.blend!=quad.pipeline.blend||p.alpha_test!=quad.pipeline.alpha_test||p.modulate!=quad.pipeline.modulate||p.depth_write!=quad.pipeline.depth_write)throw std::invalid_argument("inconsistent GL bitmap pipeline");finite_matrix(model);
-    const auto& c=quad.color;const auto& uv=quad.uv;const std::array<std::array<float,2>,4> coords{{{uv.left,1-uv.bottom},{uv.right,1-uv.bottom},{uv.right,1-uv.top},{uv.left,1-uv.top}}};
+    const auto& c=quad.color;const auto& uv=quad.uv;const auto coords=quad.native_uv.value_or(std::array<std::array<float,2>,4>{{{uv.left,1-uv.bottom},{uv.right,1-uv.bottom},{uv.right,1-uv.top},{uv.left,1-uv.top}}});
     constexpr std::array<std::size_t,6> indices{0,1,2,0,2,3};std::array<Vertex,6> vertices;
     for(std::size_t i=0;i<indices.size();++i){const auto j=indices[i];const auto& v=quad.points[j];vertices[i]={v.x,v.y,v.z,coords[j][0],coords[j][1],c.r,c.g,c.b,c.a};
         for(float f:{v.x,v.y,v.z,coords[j][0],coords[j][1],c.r,c.g,c.b,c.a})if(!std::isfinite(f))throw std::invalid_argument("nonfinite GL bitmap vertex");}

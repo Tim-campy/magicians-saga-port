@@ -16,6 +16,7 @@ struct BitmapQuad {
     std::int32_t queue_offset=0,render_queue=2000;
     std::size_t texture=0;BitmapDepthKey depth; // Native depth input, not a guessed Z mapping.
     bool native_depth=false;
+    std::optional<std::array<std::array<float,2>,4>> native_uv; // Exact AddQuad stores, including binary32 rounding.
 };
 class BitmapDepthHost:public core::MeshDepthHost {
 public:
@@ -23,6 +24,12 @@ public:
     // Actual builder/material identity and lifetime are supplied by the mesh host.
     virtual core::MeshBuilderDepth& depth_builder(std::size_t texture,std::uint32_t shader,std::int32_t queue)=0;
     virtual bool depth_step_enabled()=0;
+    virtual void emit_quad(BitmapQuad& quad){
+        auto& builder=depth_builder(quad.texture,quad.shader_key,quad.render_queue);
+        core::begin_mesh_quad_depth(builder,depth_step_enabled());
+        for(auto& point:quad.points)point.z=core::append_mesh_vertex_depth(builder,point.z);
+        quad.native_depth=true;
+    }
 };
 struct BitmapTextureBinding {
     std::int32_t width,height,alpha_type;

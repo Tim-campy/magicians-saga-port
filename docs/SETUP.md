@@ -149,7 +149,24 @@ resource 1 "local-characters.bin" "English.lproj" 1
 draw -1 1 0 0 0 32 64 -1 -1 -1 -1 -1 -1 0 255 -1 0 -1 0
 ```
 
-This uses the shared bitmap backend, source-specific texture/mask caches, native command sorting and stable material-queue composition on an explicit transparent RGBA canvas. Native depth-buffer/order semantics, camera/offscreen state and gameplay are not inferred. Use separated sprites when comparing independent pixel captures; overlap equivalence awaits the scene-depth contract. A graphics-backed desktop renderer is required. Captures refuse existing destinations. `queue_capture_pixels` checks synthetic multi-image, OPT, transparency, global override and world-transform scenarios through CTest.
+The default mode uses the shared bitmap backend, source-specific texture/mask caches, native command sorting and stable material-queue composition on an explicit transparent RGBA canvas. Its SDL 2D path does not infer native depth-buffer/order semantics. A graphics-backed desktop renderer is required. Captures refuse existing destinations. `queue_capture_pixels` checks synthetic multi-image, OPT, transparency, global override and world-transform scenarios through CTest.
+
+For the native-Z GPU path, append --native-depth and supply these additional scene rows:
+
+```text
+projection 0.0625 0 0 0 0 0.125 0 0 0 0 0.00000133324445 0 -1 -1 -1 1
+gpu_depth 24 1
+material 0 65808 2000 10 0
+```
+
+This illustrative projection is for a 32x16 target, near0/far1500100 and column-major OpenGL clip coordinates; it is not the mission's inferred live camera. projection requires sixteen binary32 cells. gpu_depth supplies native depth bits17..32 and the depth-step flag0/1; the actual desktop target is RGBA8/D24 with nearest/clamp sampling and an initial color+depth clear. Each material row supplies texture key, decimal shader key, absolute queue, explicit identity ID and uniform-color flag0/1. The example describes one synthetic opaque texture pass; supply the bindings actually reached by your selected assets. Missing bindings report their tuple and fail without writing a capture. Reused identity IDs must have consistent queue/color/shader state. This makes material identity a declared diagnostic input rather than an invented production cache policy.
+
+```powershell
+build/viewer/queue_capture.exe scene.txt 32 16 new-native-output.bmp --native-depth
+build/viewer/test_combat_pixels.exe build/viewer/combat-contract
+```
+
+The GPU mode uses BitmapMeshFrame, the recovered group/array/quad kernels and native stream submission. Its pixel tests distinguish same-layer Z occlusion from next-layer depth clearing. test_combat_pixels exercises 240 frames of the shared combat scenario with synthetic catalogs; selected real archives can be supplied to queue_capture, but neither tool establishes original boot, complete mission resource selection or Android equivalence.
 
 Use the extractor's decoded textassets/*.bin output, not the XOR-obfuscated APK member. Language folder and DPI index are explicit preparation inputs. The text profile is ASCII/invariant, Config selector 2, no pack overrides; all shipped member names/catalogs fit it. The selected PNG, OPT and standard resolution come from the catalogs, so --opt/--standard cannot override them. SEB u/v/c and image bin/WxH/q+N/q-N options are supported. q is a relative material queue offset; unknown image tokens such as a1 are retained in JSON and do not alter the image; actual @ atlas and other recognized unbound services fail before capture. --resource now prepares every present image in the selected catalog, so unrelated missing/corrupt files also prevent a full-ready capture. In the maintainer's local copy, enemy container clip6/frame0/layer0 and character container clip41/frame0/layer1 render; enemy clip4 and character clip42 also apply u, and effect clip101 applies q+1 with material queues 2451/3001. JSON reports ready SEB/image counts, reversal flags, render queues and unrecognized image tokens. Native async/cache/bootstrap and mission resource population remain separate work.
 

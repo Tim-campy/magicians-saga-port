@@ -39,6 +39,8 @@ struct GlMeshBindings {
     std::map<const core::SubmissionMaterial*,std::uint32_t> materials;
     std::map<const core::SubmissionGroup*,GlMeshQuads> groups;
 };
+class BitmapMeshFrame;
+void bind_bitmap_mesh_frame(GlMeshBindings&,const BitmapMeshFrame&);
 class GlMeshSubmissionHost:public core::MeshSubmissionHost {
 public:
     using Diagnostics=std::function<void(core::SubmissionMaterial&,core::SubmissionGroup&)>;

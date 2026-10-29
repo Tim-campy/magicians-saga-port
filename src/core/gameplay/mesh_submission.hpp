@@ -6,6 +6,7 @@
 #include <vector>
 
 namespace saga::core {
+struct MeshGeometry;
 struct SubmissionImage {std::int32_t access_check=0;}; // Image +0xc4, asset-use check counter, not a frame timestamp.
 struct SubmissionMaterial {
     MaterialQueueState queue;
@@ -17,6 +18,7 @@ struct SubmissionGroup {
     std::int32_t index_count=0; // Mesh group +0x40; actual GPU mesh/storage belongs to host.
     std::int32_t vertex_count=0,head=0; // +0x20/+0x5c; Reset does not release buffers or clear change.
     bool change=false; // +0x68.
+    std::shared_ptr<MeshGeometry> geometry{}; // Fixed per-group identity; original positions/UV/colors/index fields.
 };
 // Standard vector storage plus the public List enumeration revision contract.
 // The owning builder increments revision for every list mutation, including replacing an entry.

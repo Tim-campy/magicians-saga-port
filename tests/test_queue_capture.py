@@ -34,11 +34,34 @@ class QueuePixels(unittest.TestCase):
             ('c.seb', seb([(0, 2, 0, 0, 2, 2, 0, 0, 0, 0)])), ('c.png', png(2, 2, [0, 255, 255, 255] * 4))]))
         return a, b, c
 
-    def run_capture(self, root, text, name='combined.bmp'):
+    def run_capture(self, root, text, name='combined.bmp', native=False):
         scene, output = root / 'scene.txt', root / name
         scene.write_text(text, encoding='utf-8')
-        result = subprocess.run([str(EXE), str(scene), '32', '16', str(output)], capture_output=True, text=True, timeout=30)
+        args = [str(EXE), str(scene), '32', '16', str(output)]
+        if native:
+            args.append('--native-depth')
+        result = subprocess.run(args, capture_output=True, text=True, timeout=30)
         return result, output
+
+    def test_native_depth_overlap_and_explicit_material_inputs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.make_resources(root)
+            prefix = ('world 1 0 0 0 1 0 0 0 1\n'
+                      'projection 0.0625 0 0 0 0 0.125 0 0 0 0 0.00000133324445 0 -1 -1 -1 1\n'
+                      'gpu_depth 24 1\n'
+                      'resource 1 "first.bin" "English.lproj" 0\n'
+                      'resource 3 "global.bin" "English.lproj" 0\n')
+            bindings = 'material 0 65808 2000 10 0\nmaterial 1 65808 2000 11 0\n'
+            for depth, expected in [(0, (255, 0, 0, 255)), (150000, (0, 255, 255, 255))]:
+                result, output = self.run_capture(root, prefix + bindings + command(1, 3, 2, 2, 100) + command(3, 0, 2, 2, depth), f'native-{depth}.bmp', native=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(bmp_pixels(output.read_bytes())[2][3 * 32 + 3], expected)
+                self.assertIn('native depth', json.loads(result.stdout)['profile'])
+            result, output = self.run_capture(root, prefix + command(1, 3, 2, 2), 'unbound.bmp', native=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('unbound material:', result.stderr)
+            self.assertFalse(output.exists())
 
     def test_different_sizes_alpha_opt_and_same_image_ids(self):
         with tempfile.TemporaryDirectory() as directory:

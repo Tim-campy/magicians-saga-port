@@ -69,12 +69,7 @@ struct BitmapBackend::Impl final:RenderDrawHost,RenderGraphics,RenderDepth,Image
         if(depth_host){auto& state=depth_host->mesh_depth_state();state.layer=group;set_mesh_depth(state,index,relative,*depth_host);}
     }
     void emit(BitmapQuad quad){
-        if(depth_host){
-            auto& builder=depth_host->depth_builder(quad.texture,quad.shader_key,quad.render_queue);
-            begin_mesh_quad_depth(builder,depth_host->depth_step_enabled());
-            for(auto& point:quad.points)point.z=append_mesh_vertex_depth(builder,point.z);
-            quad.native_depth=true;
-        }
+        if(depth_host)depth_host->emit_quad(quad);
         output.push_back(quad);
     }
     void push_render_mode(std::int32_t m,std::int32_t a,std::int32_t b)override{if(raw_rgba)unbound();core::push_render_mode(colors,m,a,b);}
