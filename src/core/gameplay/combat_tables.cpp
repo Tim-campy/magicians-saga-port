@@ -16,14 +16,14 @@ EquipmentCombatTable load_equipment_combat_table(std::string_view text,Equipment
         if(kind==EquipmentTableKind::weapon_or_shield) {
             // EquipmentData.Load 0x116f428, status_ +0x88; attribute is fixed token 9.
             t.integer();r.type=t.integer();t.integer();t.integer();
-            t.take();t.integer();r.bullet_id=t.integer();r.attribute=t.integer();
+            r.resource=t.take();r.image=t.integer();r.bullet_id=t.integer();r.attribute=t.integer();
             t.integer();t.integer();t.integer();r.max_height=t.integer();r.bullet_speed=t.integer();
             r.distance=t.integer();r.burst_count=t.integer();
             r.range=t.integer(); // EquipmentData.range +0x78, fixed token 17.
             r.use_mp=t.integer();for(int i=0;i<2;++i)t.integer();
         } else {
             // ClothData.Load 0x116e704 and HatData.Load 0x1171734 share token framing.
-            t.integer();t.take();for(int i=0;i<5;++i)t.integer();
+            t.integer();r.resource=t.take();r.image=t.integer();for(int i=0;i<4;++i)t.integer();
         }
         r.parameters=t.script();t.take();r.flags=t.integer();return r;
     });

@@ -168,6 +168,34 @@ build/viewer/test_combat_pixels.exe build/viewer/combat-contract
 
 The GPU mode uses BitmapMeshFrame, the recovered group/array/quad kernels and native stream submission. Its pixel tests distinguish same-layer Z occlusion from next-layer depth clearing. test_combat_pixels exercises 240 frames of the shared combat scenario with synthetic catalogs; selected real archives can be supplied to queue_capture, but neither tool establishes original boot, complete mission resource selection or Android equivalence.
 
+For table-backed entity scenes, replace manual draw rows with tables, progress and entity rows. The same archive lookup reads Chara/Equipment/Cloth/Hat/MagicShop/Enemy/Bullet.txt, without requiring img.inf/seb.inf in that data archive. Use these additional row shapes (all inputs are explicit):
+
+| Row | Fields |
+| --- | --- |
+| tables | quoted decoded table archive, quoted language folder, DPI index |
+| progress | character ID, saved level, saved EXP |
+| purchase | shop ID, saved purchase count; every reached shop needs a supplied value |
+| resource_name | quoted record resource name, AppData resource ID |
+| global_alias | global target ID, ready application source ID; declare after that resource |
+| slots | component-slot count (diagnostic limit1..1024) |
+| view | width, height, scale, camera X/Y, VIEW margins X/Y, extra-depth rate |
+| geometry | map step X/Z and height; required when a selected bullet reaches the map |
+| animate | initial animation-pass count0..10000, automatic flag0/1, application-update flag0/1 |
+| human | direction, character ID, level, formation X/Z, EXP, position X/Y/Z |
+| enemy | direction, enemy ID, level, flags, position X/Y/Z |
+| bullet | bullet ID, damage, attribute, parent creation ordinal (-1 means null), position X/Y/Z |
+| tick_ms | diagnostic animation/render interval1..1000; required for loop modes |
+
+Scene views select all constructed position/sprite entities as their explicit visible group. They run the recovered render producer and animations; actual mission visibility/camera/input and the complete combat schedule are not supplied by this diagnostic profile. A human's creation level and supplied saved level remain distinct from its table initial_level. Unknown saved values do not default to zero. The native Data.Load bootstrap, original resource-name resolver and save envelope remain separate work.
+
+```powershell
+build/viewer/queue_capture.exe scene.txt 600 220 --material-inputs
+build/viewer/queue_capture.exe scene.txt 600 220 --interactive
+build/viewer/queue_capture.exe scene.txt 600 220 --run-frames 12
+```
+
+--material-inputs reports only reached tuples and writes no capture. Assign explicit material identity rows before GPU execution. --interactive is a visible technical window: Space pauses, N advances one animation pass while paused, Escape closes. --run-frames uses a hidden window and reports render/animation-step counts. tick_ms controls this selected preview only; it does not establish the original frame timing or make the scene playable. The maintainer's generated original-data profile is local at research/exports/mission-data-scene/scene.txt and requires the supplied decoded archives.
+
 Use the extractor's decoded textassets/*.bin output, not the XOR-obfuscated APK member. Language folder and DPI index are explicit preparation inputs. The text profile is ASCII/invariant, Config selector 2, no pack overrides; all shipped member names/catalogs fit it. The selected PNG, OPT and standard resolution come from the catalogs, so --opt/--standard cannot override them. SEB u/v/c and image bin/WxH/q+N/q-N options are supported. q is a relative material queue offset; unknown image tokens such as a1 are retained in JSON and do not alter the image; actual @ atlas and other recognized unbound services fail before capture. --resource now prepares every present image in the selected catalog, so unrelated missing/corrupt files also prevent a full-ready capture. In the maintainer's local copy, enemy container clip6/frame0/layer0 and character container clip41/frame0/layer1 render; enemy clip4 and character clip42 also apply u, and effect clip101 applies q+1 with material queues 2451/3001. JSON reports ready SEB/image counts, reversal flags, render queues and unrecognized image tokens. Native async/cache/bootstrap and mission resource population remain separate work.
 
 `--opt` and `--origin` are optional; `--standard <width> <height>` supplies explicit Image standard dimensions (zero by default). In manual --sprite mode, supply the PNG matching the selected SEB TexId yourself. The --resource mode resolves selected archive catalogs, while mission manager population and effective runtime locale remain separate. Canvas is required and limited to 8,192 pixels/axis and 16,777,216 pixels total. The profile is an identity world matrix with the native local matrix stack, no atlas, zero destination expansion, native texture blend/color passes and no UI overlays; JSON reports the selected sprite, image alpha classification, shader keys and emitted quad count. SEB horizontal/vertical mirrors and their OPT piece translations use native matrix scopes. `--angle <degrees>` supplies the original command rotation; append `--skew` to select its tangent-shear branch. `--alpha <int32>` supplies the original encoded command factor (default 255); `--color <int32>` supplies packed ARGB tint (default -1, disabled). Mode-0 factors dim RGB; mode-1 factors change opacity. `--background <r> <g> <b> <a>` supplies explicit 0..255 clear channels. `--raw-rgba` selects the earlier diagnostic replacement profile and cannot be combined with alpha/color overrides. Split alpha passes use retained masks with nearest sampling; capture reads an explicit RGBA8 canvas. Unbound local-coordinate/forced-material/grayscale/stencil/external-image paths fail before capture. Captures must target new files. `sprite_preview_pixels` is registered in CTest when SAGA_BUILD_VIEWER=ON; its PNG/SEB/OPT fixtures are synthetic and use only Python's standard library. For this mode, `--headless` uses an invisible graphics-backed window plus SDL readback: a desktop video/graphics driver is required. SDL 3.4.18 software geometry truncates source UV texels and is refused here; ordinary PNG/occupied-bounds OPT capture still uses its original software path. No Android comparison or playable mission is implied.

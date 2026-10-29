@@ -1,0 +1,29 @@
+#include "mission_data_fixture.hpp"
+#include "platform/desktop/mission_scene.hpp"
+#include "core/animation/seb_sprite.hpp"
+#include <cstdlib>
+#include <iostream>
+
+using namespace saga::core;
+using namespace saga::desktop;
+namespace {
+void check(bool v){if(!v)std::abort();}
+}
+int main()try{
+    ResourceArchive archive(saga::test::jar_fixture(saga::test::mission_tables()),{"English.lproj",1},ArchiveContents::data_only);
+    const auto data=load_gameplay_catalog(archive,false,parse_event_decimal);MissionProgress saved;saved.characters[2]={5,13};for(int i=0;i<8;++i)saved.shop_purchases[i]=0;
+    saga::assets::Seb seb{0,100,{{0,2,std::int16_t{0}}},std::vector<saga::assets::SebRecord>(2)};
+    for(std::size_t i=0;i<2;++i){seb.records[i].value_count=10;seb.records[i].values={static_cast<std::int16_t>(i*100),0,0,0,2,2,0,0,0,0};}
+    PreparedAnimationResource animations(std::vector<const saga::assets::Seb*>(64,&seb));RenderDrawResource resource{&animations.resource(),nullptr};
+    MissionApplication app;app.characters=&resource;app.enemies=&resource;
+    MissionEntities world(data,saved,35,nullptr,[&](std::int32_t id){auto* r=get_application_resource(app,id);return r?r->animations:nullptr;},[](std::string_view){return 3;});
+    auto* visible=world.subset({0,2});MissionView view{128,96,100,-20,-30,0,0,100};MissionScene scene(world,app,*visible,view,nullptr);
+    auto& hero=world.human({0,2,5,0,0,13,0,0,0});auto* enemy=world.enemy({0,4,7,0,{10,0,0}});check(enemy!=nullptr);
+    auto& queue=scene.render();check(scene.faults().empty()&&queue.counts->at(0)==2);
+    const auto& first=*queue.buffers->at(0)->at(0);check(first[render_x]==20&&first[render_y]==30&&first[render_texture]==200);
+    scene.advance_animations({false,true});scene.render();check(queue.buffers->at(0)->at(0)->at(render_frame)==1);
+    hero.add(21,&world.acquire_input());scene.render();check(queue.counts->at(0)==1&&queue.buffers->at(0)->at(0)->at(render_resource)==3);
+    hero.remove(21);dynamic_cast<EntitySprite*>(hero.get(2))->animation.clip=999;scene.render();
+    check(scene.faults().size()==1&&scene.faults().front().entity==world.id(hero)&&queue.counts->at(0)==0);
+    std::cout<<"mission scene render bindings ok\n";return 0;
+}catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

@@ -45,10 +45,11 @@ struct ResourceArchive::Impl final : JarResourceHost, ResourceNameHost, Resource
     JarResourceLookup jar{this};
     std::map<std::u16string,std::size_t> members;
     ArchiveCatalog image_catalog, animation_catalog;
+    bool catalogs=false;
     std::map<std::int32_t,ArchiveAnimation> animation_cache;
     std::map<std::int32_t,ArchiveImage> image_cache;
 
-    Impl(std::vector<std::uint8_t> data, ResourceProfile selected)
+    Impl(std::vector<std::uint8_t> data, ResourceProfile selected,ArchiveContents contents)
         : bytes(std::move(data)), archive(assets::parse_jar(bytes.data(),bytes.size())), profile(std::move(selected)) {
         state.country = wide(""); // Explicit prepared locale; never invoke Android initialization.
         state.dpi = profile.dpi;
@@ -57,8 +58,9 @@ struct ResourceArchive::Impl final : JarResourceHost, ResourceNameHost, Resource
             const auto key = lower_case(*wide(archive.members[i].name));
             if (!members.emplace(*key,i).second) throw std::invalid_argument("case-folded archive member collision");
         }
-        image_catalog = catalog("img.inf");
-        animation_catalog = catalog("seb.inf");
+        if(contents==ArchiveContents::images_and_animation){
+            image_catalog = catalog("img.inf");animation_catalog = catalog("seb.inf");catalogs=true;
+        }else if(contents!=ArchiveContents::data_only)throw std::invalid_argument("unknown archive contents profile");
     }
     void initialize(ResourceLookupState&) override { throw std::logic_error("unbound Android resource initialization"); }
     std::int32_t extension_selector() override { return 2; } // Shipped Config initial selector.
@@ -180,11 +182,15 @@ struct ResourceArchive::Impl final : JarResourceHost, ResourceNameHost, Resource
     }
 };
 
-ResourceArchive::ResourceArchive(std::vector<std::uint8_t> bytes,ResourceProfile profile)
-    : impl_(std::make_unique<Impl>(std::move(bytes),std::move(profile))) {}
+ResourceArchive::ResourceArchive(std::vector<std::uint8_t> bytes,ResourceProfile profile,ArchiveContents contents)
+    : impl_(std::make_unique<Impl>(std::move(bytes),std::move(profile),contents)) {}
 ResourceArchive::~ResourceArchive()=default;
-const ArchiveCatalog& ResourceArchive::images() const { return impl_->image_catalog; }
-const ArchiveCatalog& ResourceArchive::animations() const { return impl_->animation_catalog; }
+const ArchiveCatalog& ResourceArchive::images() const {if(!impl_->catalogs)throw std::logic_error("data archive has no image catalog");return impl_->image_catalog;}
+const ArchiveCatalog& ResourceArchive::animations() const {if(!impl_->catalogs)throw std::logic_error("data archive has no animation catalog");return impl_->animation_catalog;}
+std::optional<ArchiveData> ResourceArchive::data(std::string_view name){
+    const auto index=impl_->lookup(name);if(!index)return std::nullopt;
+    return ArchiveData{std::string(impl_->archive.members.at(*index).name),impl_->payload(*index)};
+}
 const ArchiveAnimation& ResourceArchive::animation(std::int32_t clip){return impl_->animation(clip);}
 const ArchiveImage& ResourceArchive::image(std::int32_t texture){return impl_->image(texture);}
 ArchiveSprite ResourceArchive::sprite(std::int32_t clip,std::int32_t frame,std::int32_t layer) { return impl_->sprite(clip,frame,layer); }

@@ -63,6 +63,53 @@ class QueuePixels(unittest.TestCase):
             self.assertIn('unbound material:', result.stderr)
             self.assertFalse(output.exists())
 
+    def test_table_backed_entities_reach_gpu_without_manual_draw_rows(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            params = '13' + '\t2\t100\t1000' * 13
+            tables = {
+                'Chara.txt': f'2\tHero\t0\tchara\t8\tchara\t1\t0\t0\t99\t0\t100\t{params}\t0\t0\t0\t-1\t0\t2',
+                'Equipment.txt': f'1\tWeapon\t0\t2\t0\t0\tweapon\t12\t3\t0\t0\t0\t0\t10\t8\t80\t1\t20\t3\t0\t0\t{params}\tText\t0',
+                'Cloth.txt': f'0\tCloth\t0\tcloth\t11\t0\t0\t0\t0\t{params}\tText\t0',
+                'Hat.txt': f'0\tHat\t0\that\t9\t0\t0\t0\t0\t{params}\tText\t2',
+                'MagicShop.txt': '\n'.join(f'{i}\tUpgrade\t0\t1\t2\tText\t0' for i in range(8)),
+                'Enemy.txt': f'4\tEnemy\t0\t2\t10\t100\t0\t0\t0\tenemy-book\t7\t0\t0\t0\t{params}\t0',
+                'Bullet.txt': '3\t0\t0\tbullet\t5\t6\teffect\t7\t0',
+            }
+            (root / 'tables.bin').write_bytes(jar([('English.lproj/' + name, text.encode()) for name, text in tables.items()]))
+            for name, image, clip, color in [('hero', 200, 36, [255, 0, 0, 255]), ('enemy', 7, 0, [0, 255, 255, 255])]:
+                (root / f'{name}.bin').write_bytes(jar([
+                    ('img.inf', f'{image}\ta.png,bin'.encode()), ('seb.inf', f'{clip}\ta.seb'.encode()),
+                    ('a.seb', seb([(0, image, 0, 0, 2, 2, 0, 0, 0, 0), (3, image, 0, 0, 2, 2, 0, 0, 0, 0)])), ('a.png', png(8, 8, color * 64))]))
+            text = ('world 1 0 0 0 1 0 0 0 1\n'
+                    'projection 0.0625 0 0 0 0 0.125 0 0 0 0 0.00000133324445 0 -1 -1 -1 1\ngpu_depth 24 1\n'
+                    'resource 1 "hero.bin" "English.lproj" 0\nresource 3 "enemy.bin" "English.lproj" 0\n'
+                    'global_alias 1 1\nglobal_alias 3 3\ntables "tables.bin" "English.lproj" 0\n'
+                    'slots 35\nview 32 16 100 -4 -4 0 0 100\nanimate 0 0 1\n'
+                    'resource_name "enemy-book" 3\nprogress 2 5 13\n'
+                    + ''.join(f'purchase {i} 0\n' for i in range(8))
+                    + 'human 0 2 5 0 0 13 0 0 0\nenemy 0 4 7 0 10 0 0\n'
+                    'material 0 65808 2000 10 0\nmaterial 1 65808 2000 11 0\n')
+            result, output = self.run_capture(root, text, 'entities.bmp', native=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            report = json.loads(result.stdout)
+            self.assertEqual((report['entities'], report['commands'], report['quads']), (2, 2, 2))
+            pixels = bmp_pixels(output.read_bytes())[2]
+            self.assertEqual(pixels[5 * 32 + 5], (255, 0, 0, 255))
+            self.assertEqual(pixels[10 * 32 + 15], (0, 255, 255, 255))
+            inspected = subprocess.run([str(EXE), str(root / 'scene.txt'), '32', '16', '--material-inputs'], capture_output=True, text=True, timeout=30)
+            self.assertEqual(inspected.returncode, 0, inspected.stderr)
+            self.assertEqual(json.loads(inspected.stdout)['material_inputs'], [
+                {'texture': 0, 'shader': 65808, 'queue': 2000}, {'texture': 1, 'shader': 65808, 'queue': 2000}])
+            (root / 'scene.txt').write_text(text + 'tick_ms 1\n', encoding='utf-8')
+            looped = subprocess.run([str(EXE), str(root / 'scene.txt'), '32', '16', '--run-frames', '2'], capture_output=True, text=True, timeout=30)
+            self.assertEqual(looped.returncode, 0, looped.stderr)
+            self.assertEqual((json.loads(looped.stdout)['render_frames'], json.loads(looped.stdout)['logic_steps']), (2, 2))
+            result, output = self.run_capture(root, text.replace('progress 2 5 13\n', ''), 'unknown-save.bmp', native=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('unbound saved character state', result.stderr)
+            self.assertFalse(output.exists())
+
     def test_different_sizes_alpha_opt_and_same_image_ids(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

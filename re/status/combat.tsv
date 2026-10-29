@@ -82,9 +82,9 @@ game:0x060010a4	traced	docs/subsystems/combat.md	Character PARAM_MAX_LEVELS init
 game:0x060010e7	reimplemented	src/core/gameplay/enemy_factory.cpp	Independent enemy IDs 0..12 and maxima [1000 x4,200 x9], same documented values with independent storage; full two-field initializer contract tested.
 kairo:0x06000b58	reimplemented	src/core/gameplay/combat_rules.cpp	General ordered binary32 easing with standard sine; 19264 static model cases; Android libm unverified
 game:0x0600119c	documented	docs/subsystems/data.md	Shop schema and combat projection tested against both languages; purchase count not loaded
-game:0x0600111e	documented	docs/subsystems/data.md	Equipment full token framing; retained attribute/status combat projection; mutable level separate
-game:0x060010c2	documented	docs/subsystems/data.md	Cloth token framing and parameter projection; shares reader shape with Hat
-game:0x06001171	documented	docs/subsystems/data.md	Hat token framing and parameter projection; shares reader shape with Cloth
+game:0x0600111e	documented	docs/subsystems/data.md	Equipment token framing now retains resource/image plus combat fields; table-backed Human factory uses actual weapon image; existing-receiver mutation still unported.
+game:0x060010c2	documented	docs/subsystems/data.md	Cloth token framing, parameters and resource/image projection; registered offsets checked; existing-receiver partial mutation remains outside fresh reader.
+game:0x06001171	documented	docs/subsystems/data.md	Hat token framing, parameters and resource/image projection now feeds actual main-hat selection; existing-receiver partial mutation remains outside fresh reader.
 game:0x06000d6a	reimplemented	src/core/gameplay/combat_records.cpp	Human character id indexes decoded table; null record preserved and invalid id faults
 game:0x06000d40	reimplemented	src/core/gameplay/combat_records.cpp	Enemy id indexes decoded table independently of enemy level; null record preserved
 game:0x06000d4e	reimplemented	src/core/gameplay/combat_records.cpp	Equipment ID index 0 resolves shared equipment table; tested bounds and null entries

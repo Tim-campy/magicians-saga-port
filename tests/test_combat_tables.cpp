@@ -62,9 +62,11 @@ int main(int argc,char** argv){
     const auto armed=load_equipment_combat_table(firing,EquipmentTableKind::weapon_or_shield,false,parse_event_decimal);
     check(armed[3]->distance==15&&armed[3]->burst_count==16&&armed[3]->range==17&&armed[3]->use_mp==18);
     check(weapons[3]->type==2&&weapons[3]->bullet_id==6&&weapons[3]->max_height==0&&weapons[3]->bullet_speed==0);
+    check(weapons[3]->image==5&&weapons[3]->resource=="Res");
     const std::string clothing="1\tHat\t7\tRes\t8\t9\t10\t11\t12\t"+endpoints()+"\tD\t6";
     auto hats=load_equipment_combat_table(clothing,EquipmentTableKind::cloth_or_hat,false,parse_event_decimal);
     check(hats[1]->flags==6&&hats[1]->parameters->at(12)->at(0)==100);
+    check(hats[1]->image==8&&hats[1]->resource=="Res");
     auto duplicate=load_magic_shop_combat_table("0\tA\t1\t2\t3\tD\t0\n0\tB\t4\t5\t6\tD\t1\textra",false,parse_event_decimal);
     check(duplicate[0]->value_per_purchase==6);
     auto nulls=load_equipment_combat_table("0\tHat\t0\tRes\t0\t0\t0\t0\t0\t-1\tD\t0",EquipmentTableKind::cloth_or_hat,false,parse_event_decimal);

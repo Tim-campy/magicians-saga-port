@@ -10,6 +10,8 @@ struct ResourceProfile {
     std::string language_folder;
     std::int32_t dpi = 0;
 };
+enum class ArchiveContents {images_and_animation,data_only};
+struct ArchiveData {std::string member;std::vector<std::uint8_t> bytes;};
 struct ArchiveCatalog {
     std::string member;
     std::vector<std::optional<std::string>> slots;
@@ -41,12 +43,13 @@ struct ArchiveImage {
 // image tokens are retained for the original conditional PRINT diagnostic.
 class ResourceArchive {
 public:
-    ResourceArchive(std::vector<std::uint8_t>, ResourceProfile);
+    ResourceArchive(std::vector<std::uint8_t>, ResourceProfile,ArchiveContents=ArchiveContents::images_and_animation);
     ~ResourceArchive();
     ResourceArchive(const ResourceArchive&) = delete;
     ResourceArchive& operator=(const ResourceArchive&) = delete;
     const ArchiveCatalog& images() const;
     const ArchiveCatalog& animations() const;
+    std::optional<ArchiveData> data(std::string_view name); // Same native candidate/first-match lookup; no image catalog required.
     // Successful selections are cached by catalog ID; references remain stable.
     const ArchiveAnimation& animation(std::int32_t clip);
     const ArchiveImage& image(std::int32_t texture);
