@@ -35,7 +35,7 @@ struct Mission:QuestRenderHost,QuestRenderWorld,QuestRenderSurface,QuestViewport
 int main()try{
     const Bytes png{137,80,78,71,13,10,26,10}; // Image decoding is a public backend service.
     const auto bytes=saga::test::jar_fixture({
-        {"img.inf",text("7\tchoice.png,bin,q+1,40x40\n9\tother.png,a1")},
+        {"img.inf",text("7\tchoice.png,bin,q+1,40x40\n9\tother.png,res")},
         {"seb.inf",text("3\tclip.seb,v,c2\n5\tclip.seb,u,c3\n6\tCLIP.SEB")},
         {"clip.seb",clip()},{"choice.png",png}});
     ResourceArchive archive(bytes,{"English.lproj",0});

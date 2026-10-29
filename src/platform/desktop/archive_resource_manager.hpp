@@ -16,6 +16,7 @@ public:
     core::AnimationResource& animations(){return animations_;}
     core::RenderDrawResource& drawing(){return drawing_;}
     const ArchiveImage& image_source(std::int32_t id){return archive_.image(id);}
+    const ArchiveCatalog& image_catalog()const{return archive_.images();}
     void bind_image(std::int32_t id,core::PixelImage* ready_image);
 private:
     ResourceArchive& archive_; // Must outlive this manager.

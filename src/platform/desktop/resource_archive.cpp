@@ -142,8 +142,11 @@ struct ResourceArchive::Impl final : JarResourceHost, ResourceNameHost, Resource
             if(option.rfind("q+",0)==0||option.rfind("q-",0)==0){
                 result.render_queue=parse_event_decimal(std::string_view(option).substr(option[1]=='+'?2:1));continue;
             }
+            if(option=="res"||option=="pt"||option=="bi"||option=="tri"||option=="24"||option=="565"||option=="32"||option=="4444"||
+               (option.size()>=4&&option.compare(option.size()-4,4,".pal")==0)||(!option.empty()&&option.front()=='@'))
+                throw std::invalid_argument("unbound image loading option: "+option);
             const auto x=option.find('x');
-            if (x==option.npos) throw std::invalid_argument("unbound image loading option: "+option);
+            if(x==option.npos){result.unrecognized_options.push_back(option);continue;}
             result.standard_width=parse_event_decimal(std::string_view(option).substr(0,x));
             result.standard_height=parse_event_decimal(std::string_view(option).substr(x+1));
         }
@@ -171,6 +174,7 @@ struct ResourceArchive::Impl final : JarResourceHost, ResourceNameHost, Resource
         result.animation=a.animation;result.reverse_u=a.reverse_u;result.reverse_v=a.reverse_v;result.cache_size=a.cache_size;
         result.png=i.png;result.opt=i.opt;result.standard_width=i.standard_width;result.standard_height=i.standard_height;
         result.image_render_queue=i.render_queue;result.animation_member=a.member;result.image_member=i.member;result.opt_member=i.opt_member;
+        result.unrecognized_image_options=i.unrecognized_options;
         result.animation_catalog=animation_catalog.member;result.image_catalog=image_catalog.member;
         return result;
     }

@@ -126,8 +126,8 @@ class NativeTests(unittest.TestCase):
                 expected[(4 + y) * 12 + 4 + x] = self.source[(5 + y) * 8 + 4 + x]
         self.assertEqual(bitmap[2], expected)
 
-    def test_archive_unknown_loading_options_fail_before_capture(self):
-        payload = jar([('img.inf', b'7\timage.png,bin,a1'), ('seb.inf', b'0\tclip.seb'),
+    def test_archive_unbound_atlas_options_fail_before_capture(self):
+        payload = jar([('img.inf', b'7\timage.png,bin,@1'), ('seb.inf', b'0\tclip.seb'),
                        ('clip.seb', seb([(0, 7, 0, 0, 1, 1, 0, 0, 0, 0)]))])
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -139,6 +139,33 @@ class NativeTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn('unbound image loading option', result.stderr)
             self.assertFalse(capture.exists())
+
+    def test_archive_prepares_full_image_set_and_ignores_unknown_a1(self):
+        colors = [(255, 0, 0, 255), (0, 255, 0, 255), (0, 0, 255, 255), (255, 255, 0, 255)]
+        for corrupt in (False, True):
+            with self.subTest(corrupt=corrupt), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                archive, capture = root / 'resources.bin', root / 'frame.bmp'
+                other = b'bad' if corrupt else png(1, 1, [0, 0, 0, 0])
+                archive.write_bytes(jar([('img.inf', b'7\timage.png,bin,a1\n9\tother.png,bin'),
+                    ('seb.inf', b'0\tclip.seb'), ('clip.seb', seb([(0, 7, 0, 0, 2, 2, 0, 0, 0, 0)])),
+                    ('image.png', png(2, 2, [c for p in colors for c in p])), ('other.png', other)]))
+                result = subprocess.run([str(EXE), str(archive), '--resource', '0', '0', '0', '--language', 'English.lproj',
+                    '--dpi', '0', '--canvas', '8', '8', '--origin', '2', '2', '--raw-rgba', '--headless', '--capture', str(capture)],
+                    text=True, capture_output=True, timeout=20)
+                if corrupt:
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertFalse(capture.exists())
+                    continue
+                self.assertEqual(result.returncode, 0, result.stderr)
+                report = json.loads(result.stdout)
+                self.assertEqual(report['resource_ready_images'], 2)
+                self.assertEqual(report['unrecognized_image_options'], ['a1'])
+                expected = [(0, 0, 0, 0)] * 64
+                for y in range(2):
+                    for x in range(2):
+                        expected[(2 + y) * 8 + 2 + x] = colors[y * 2 + x]
+                self.assertEqual(bmp_pixels(capture.read_bytes())[2], expected)
 
     def test_archive_load_reversal_and_relative_queue_reach_pixels(self):
         source = [(255, 0, 0, 255), (0, 255, 0, 255), (0, 0, 255, 255), (255, 255, 0, 255)]

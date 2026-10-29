@@ -21,6 +21,7 @@ struct ArchiveSprite {
     std::string animation_member, image_member, opt_member, image_catalog, animation_catalog;
     std::int32_t texture = -1, standard_width = 0, standard_height = 0;
     std::int32_t reverse_u=0,reverse_v=0,cache_size=0,image_render_queue=0;
+    std::vector<std::string> unrecognized_image_options;
 };
 struct ArchiveAnimation {
     assets::Seb animation;
@@ -32,10 +33,12 @@ struct ArchiveImage {
     std::vector<std::uint8_t> png;
     std::string member,opt_member;
     std::int32_t standard_width=0,standard_height=0,render_queue=0;
+    std::vector<std::string> unrecognized_options; // Native unknown-option PRINT diagnostic, not an atlas request.
 };
 // Synchronous preparation from one decoded archive. Explicit ASCII/invariant
 // resource profile, matching the shipped names/catalogs; not Android boot or
-// the asynchronous ResourceManager. Unknown selected loading options fail.
+// the asynchronous ResourceManager. Recognized unbound services fail; unknown
+// image tokens are retained for the original conditional PRINT diagnostic.
 class ResourceArchive {
 public:
     ResourceArchive(std::vector<std::uint8_t>, ResourceProfile);

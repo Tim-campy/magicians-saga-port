@@ -18,6 +18,8 @@
 
 **Image q options.** Image options are lowered before matching. q+ parses Substring(2); q- parses Substring(1), retaining the minus sign. Parsed int32 goes to Image.renderQueue_ at +0xd8; later q options overwrite earlier ones. It is a relative render-queue offset, not texture quality. No clamping or scaling is applied; q+-1 also supplies -1 if the numeric provider accepts it. The archive profile uses the existing ASCII decimal parser for these shipped inputs. Image atlas selection at +0xdc is a separate option and remains unbound.
 
+**Unknown image options and atlas correction.** `a1` is not an atlas option in this build. After the recognized image options and the `x` size branch fail, the closure sets an unknown-option flag and continues. Config.PRINT (static +0x17) bit0 gates a later Log.Info of the catalog specification; it does not reject the load or change image fields. The atlas branch uses the literal `@` (GOT 0x2732438, metadata literal1777): bare @ selects 0, otherwise parse Substring(1), with initial atlas id -1. Its result is stored separately at Image+0xdc. Earlier documentation conflated a1 with atlas selection; that interpretation is superseded by the exact branch/literal evidence. The synchronous profile retains unknown image tokens for diagnostics, including a1, and continues; recognized but unbound @/palette/resource/filter/format services still fail explicitly.
+
 Irregularities: 3 lines without ID (`03_lineup_layout/seb.inf` `bg.seb`; `34_resident/seb.inf` `talk.seb`, `bustup.seb`) — the audit retains null explicit IDs; the later runtime indexing step assigns them as described below. Duplicate ID 2 occurs in `30_chara/img.inf` (two identical `m_chara02.png,bin` lines); 21 lines miss the literal name but have a `.png` candidate (explained by `Config.ConvertExtension` `.gif`->`.png`); 3 lines in `07_room` have no local candidate (`bg_long.png`, `equip_frame01.seb`, `equip_frame02.seb`), names present in `09_shop`.
 
 ### Selected catalog and base supplementation
@@ -61,5 +63,5 @@ ResourceManager.GetFileName checks current-culture StartsWith against `..\\` the
 ## Open questions
 
 1. (blocking) Bind effective Language/density state and full ResourceManager loading to the mission. The synchronous one-archive ASCII/invariant profile now resolves catalogs and selected sprites; runtime locale, pack overrides, async cache/lifetime behavior and arbitrary Unicode remain external.
-2. Image a1 atlas registration/use and remaining loader options. SEB u/v/c and image q+N/q-N contracts are established above; native duplicate-file SEB reuse and object/cache identity still need production-loader composition.
+2. Image @ atlas registration/use, palettes and remaining recognized loader services when reached. a1 follows the established unknown-option PRINT diagnostic path; bind that diagnostic flag/sink with the application. Native SEB duplicate-record sharing is ported in the ready archive manager; full application/async loading remains open.
 3. Whether `.inf` is looked up as `.txt` (JarInflater `.inf`->`.txt` rule applies only with a path prefix).

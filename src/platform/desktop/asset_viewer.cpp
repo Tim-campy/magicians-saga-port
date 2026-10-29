@@ -3,6 +3,7 @@
 #include "assets/jar_archive.hpp"
 #include "resource_archive.hpp"
 #include "archive_resource_manager.hpp"
+#include "archive_image_set.hpp"
 #include "sprite_preview.hpp"
 #include "sdl_bitmap.hpp"
 #include <SDL3/SDL.h>
@@ -21,18 +22,6 @@
 #include <string>
 #include <vector>
 #include <utility>
-
-#define STB_IMAGE_IMPLEMENTATION
-#define STBI_ONLY_PNG
-#define STBI_NO_STDIO
-#define STBI_MAX_DIMENSIONS 8192
-#ifdef _MSC_VER
-#pragma warning(push, 0)
-#endif
-#include <stb_image.h>
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
 
 namespace {
 constexpr std::uint64_t max_encoded_bytes = 64U * 1024U * 1024U;
@@ -58,14 +47,14 @@ using Renderer = std::unique_ptr<SDL_Renderer, decltype(&SDL_DestroyRenderer)>;
 using Window = std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)>;
 using Texture = std::unique_ptr<SDL_Texture, decltype(&SDL_DestroyTexture)>;
 
-std::vector<stbi_uc> read_file(const std::string& filename, std::uint64_t limit, std::size_t minimum) {
+std::vector<std::uint8_t> read_file(const std::string& filename, std::uint64_t limit, std::size_t minimum) {
     const auto path = std::filesystem::u8path(filename); // SDL_main supplies UTF-8 on Windows.
     std::ifstream input(path, std::ios::binary | std::ios::ate);
     if (!input) throw std::runtime_error("Cannot open input file");
     const auto length = input.tellg();
     if (length < 0 || static_cast<std::uint64_t>(length) < minimum || static_cast<std::uint64_t>(length) > limit)
         throw std::runtime_error("Input file size outside supported bounds");
-    std::vector<stbi_uc> encoded(static_cast<std::size_t>(length));
+    std::vector<std::uint8_t> encoded(static_cast<std::size_t>(length));
     input.seekg(0);
     if (!input.read(reinterpret_cast<char*>(encoded.data()), static_cast<std::streamsize>(encoded.size())))
         throw std::runtime_error("Incomplete input read");
@@ -153,32 +142,22 @@ int view(const std::string& filename, bool headless, const std::string& capture,
     std::optional<saga::desktop::ArchiveSprite> archive_sprite;
     std::unique_ptr<saga::desktop::ResourceArchive> archive;
     std::unique_ptr<saga::desktop::ArchiveResourceManager> archive_manager;
-    std::unique_ptr<saga::core::PixelImage> archive_image;
-    std::vector<stbi_uc> encoded;
+    std::unique_ptr<saga::desktop::ArchiveImageSet> archive_images;
+    saga::desktop::DecodedImage manual_pixels;
+    const saga::desktop::DecodedImage* decoded=nullptr;
     if(archive_options){
         archive=std::make_unique<saga::desktop::ResourceArchive>(read_file(filename,saga::assets::JarLimits{}.max_bytes,8),archive_options->profile);
         archive_manager=std::make_unique<saga::desktop::ArchiveResourceManager>(*archive);
         archive_sprite=archive->sprite(archive_options->clip,sprite_options->frame,sprite_options->layer);
-        encoded=std::move(archive_sprite->png);
-        if(encoded.size()<8||encoded.size()>max_encoded_bytes)throw std::invalid_argument("archive PNG size outside preview limits");
+        archive_images=std::make_unique<saga::desktop::ArchiveImageSet>(*archive_manager,saga::desktop::decode_png);
+        decoded=&archive_images->at(archive_sprite->texture).pixels;
         sprite_options->texture=archive_sprite->texture;
         sprite_options->standard_width=archive_sprite->standard_width;sprite_options->standard_height=archive_sprite->standard_height;
         sprite_options->resource_reverse_u=archive_sprite->reverse_u;sprite_options->resource_reverse_v=archive_sprite->reverse_v;
         sprite_options->resource_cache_size=archive_sprite->cache_size;sprite_options->image_render_queue=archive_sprite->image_render_queue;
-    }else encoded=read_file(filename, max_encoded_bytes, 8);
-    constexpr std::array<stbi_uc, 8> signature{{137, 80, 78, 71, 13, 10, 26, 10}};
-    if (!std::equal(signature.begin(), signature.end(), encoded.begin())) throw std::runtime_error("Input is not PNG");
-    int width = 0, height = 0, channels = 0;
-    const auto byte_count = static_cast<int>(encoded.size());
-    if (stbi_is_16_bit_from_memory(encoded.data(), byte_count))
-        throw std::runtime_error("16-bit PNG is outside this RGBA8 viewer profile");
-    if (!stbi_info_from_memory(encoded.data(), byte_count, &width, &height, &channels) ||
-        width <= 0 || height <= 0 || width > 8192 || height > 8192 ||
-        static_cast<std::uint64_t>(width) * static_cast<std::uint64_t>(height) > max_pixels)
-        throw std::runtime_error("Invalid PNG dimensions or limit exceeded (8192/axis, 16 Mi pixels)");
-    std::unique_ptr<stbi_uc, decltype(&stbi_image_free)> pixels(
-        stbi_load_from_memory(encoded.data(), byte_count, &width, &height, &channels, 4), stbi_image_free);
-    if (!pixels) throw std::runtime_error(std::string("PNG decode failed: ") + stbi_failure_reason());
+    }else{manual_pixels=saga::desktop::decode_png(read_file(filename,max_encoded_bytes,8));decoded=&manual_pixels;}
+    const auto width=decoded->width,height=decoded->height;
+    const auto* pixels=decoded->rgba.data();
     const bool sprite_mode=sprite_options.has_value();
     const bool opt_mode = !opt_file.empty()&&!sprite_mode;
     const auto composition = opt_mode ? compose_geometry(opt_file, width, height) : Composition{};
@@ -187,26 +166,23 @@ int view(const std::string& filename, bool headless, const std::string& capture,
     saga::desktop::SpritePreview preview;
     std::int32_t image_alpha=0;
     if(sprite_mode){
-        const auto bytes=archive_sprite?std::vector<stbi_uc>{}:read_file(sprite_options->seb,saga::assets::SebLimits{}.max_bytes,1);
-        const auto file=archive_sprite?archive_sprite->animation:saga::assets::parse_seb(bytes.data(),bytes.size());
-        std::optional<saga::assets::OptGrid> opt;
-        if(archive_sprite)opt=archive_sprite->opt;
-        else if(!opt_file.empty()){
-            const auto opt_bytes=read_file(opt_file,saga::assets::OptLimits{}.max_bytes,1);
-            opt=saga::assets::parse_opt(opt_bytes.data(),opt_bytes.size());
-        }
-        saga::core::ImageAlphaClassifier classifier;
-        const auto count=static_cast<std::size_t>(width)*static_cast<std::size_t>(height);
-        for(std::size_t i=0;i<count;++i)classifier.add(static_cast<float>(pixels.get()[i*4+3])/255.0F);
-        image_alpha=classifier.finish(static_cast<std::int32_t>(count));
         if(archive_manager){
-            archive_image=opt?std::make_unique<saga::core::PreparedOptImage>(*opt):std::make_unique<saga::core::PixelImage>();
-            archive_image->width=width;archive_image->height=height;
-            archive_image->standard_width=archive_sprite->standard_width;archive_image->standard_height=archive_sprite->standard_height;
-            archive_image->render_queue=archive_sprite->image_render_queue;
-            archive_manager->bind_image(archive_sprite->texture,archive_image.get());
+            image_alpha=archive_images->at(archive_sprite->texture).alpha_type;
             preview=saga::desktop::prepare_sprite_preview(*sprite_options,archive_manager->drawing(),archive_options->clip,width,height,image_alpha);
-        }else preview=saga::desktop::prepare_sprite_preview(*sprite_options,file,opt?&*opt:nullptr,width,height,image_alpha);
+        }else{
+            const auto bytes=read_file(sprite_options->seb,saga::assets::SebLimits{}.max_bytes,1);
+            const auto file=saga::assets::parse_seb(bytes.data(),bytes.size());
+            std::optional<saga::assets::OptGrid> opt;
+            if(!opt_file.empty()){
+                const auto opt_bytes=read_file(opt_file,saga::assets::OptLimits{}.max_bytes,1);
+                opt=saga::assets::parse_opt(opt_bytes.data(),opt_bytes.size());
+            }
+            saga::core::ImageAlphaClassifier classifier;
+            const auto count=static_cast<std::size_t>(width)*static_cast<std::size_t>(height);
+            for(std::size_t i=0;i<count;++i)classifier.add(static_cast<float>(pixels[i*4+3])/255.0F);
+            image_alpha=classifier.finish(static_cast<std::int32_t>(count));
+            preview=saga::desktop::prepare_sprite_preview(*sprite_options,file,opt?&*opt:nullptr,width,height,image_alpha);
+        }
     }
 
     // SDL's software QueueGeometry truncates source UV texels before interpolation
@@ -215,7 +191,8 @@ int view(const std::string& filename, bool headless, const std::string& capture,
     const bool software_capture=headless&&!sprite_mode;
     require(SDL_Init(software_capture ? 0U : SDL_INIT_VIDEO), "SDL_Init");
     QuitSDL quit;
-    Surface source(SDL_CreateSurfaceFrom(width, height, SDL_PIXELFORMAT_RGBA32, pixels.get(), width * 4), SDL_DestroySurface);
+    // SDL only reads this borrowed buffer while creating the texture.
+    Surface source(SDL_CreateSurfaceFrom(width, height, SDL_PIXELFORMAT_RGBA32, const_cast<std::uint8_t*>(pixels), width * 4), SDL_DestroySurface);
     require(source != nullptr, "SDL_CreateSurfaceFrom");
     Surface target(software_capture ? SDL_CreateSurface(target_width, target_height, SDL_PIXELFORMAT_RGBA32) : nullptr, SDL_DestroySurface);
     if (software_capture) require(target != nullptr, "SDL_CreateSurface");
@@ -242,7 +219,7 @@ int view(const std::string& filename, bool headless, const std::string& capture,
             auto found=std::find_if(masks.begin(),masks.end(),[&](const auto& m){return m.test==test&&m.alpha==quad.color.a;});
             if(found==masks.end()){
                 const auto bytes=static_cast<std::size_t>(width)*static_cast<std::size_t>(height)*4;
-                std::vector<stbi_uc> masked(pixels.get(),pixels.get()+bytes);
+                std::vector<std::uint8_t> masked(pixels,pixels+bytes);
                 for(std::size_t i=3;i<bytes;i+=4){
                     const float alpha=(static_cast<float>(masked[i])/255.0F)*quad.color.a;
                     if(!saga::core::accepts_sprite_alpha(test,alpha))masked[i]=0;
@@ -312,6 +289,7 @@ int view(const std::string& filename, bool headless, const std::string& capture,
         for(std::size_t i=0;i<preview.quads.size();++i){if(i)std::cout<<',';std::cout<<preview.quads[i].render_queue;}
         std::cout<<']';
         if(archive_sprite){
+            std::cout<<",\"resource_ready_images\":"<<archive_images->ready_count();
             const auto& clips=*archive_manager->animations().clips;
             std::cout<<",\"resource_clip_slots\":"<<clips.size()<<",\"resource_ready_clips\":"
                      <<std::count_if(clips.begin(),clips.end(),[](const auto* clip){return clip!=nullptr;});
@@ -323,6 +301,9 @@ int view(const std::string& filename, bool headless, const std::string& capture,
             std::cout<<",\"resource_dpi\":"<<archive_options->profile.dpi<<",\"resource_language\":";json_string(archive_options->profile.language_folder);
             std::cout<<",\"resource_text_profile\":\"ASCII/invariant, Config selector 2, no language-pack overrides\"";
             std::cout<<",\"resource_reverse\":["<<archive_sprite->reverse_u<<','<<archive_sprite->reverse_v<<"],\"image_queue_offset\":"<<archive_sprite->image_render_queue;
+            std::cout<<",\"unrecognized_image_options\":[";
+            for(std::size_t i=0;i<archive_sprite->unrecognized_image_options.size();++i){if(i)std::cout<<',';json_string(archive_sprite->unrecognized_image_options[i]);}
+            std::cout<<']';
         }
         std::cout<<",\"profile\":\"identity world, native local transforms, no atlas, zero expansion, explicit canvas and mesh color state, no UI overlays\"}\n";
     } else if (opt_mode) {
