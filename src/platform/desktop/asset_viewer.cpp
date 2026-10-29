@@ -221,7 +221,8 @@ int view(const std::string& filename, bool headless, const std::string& capture,
                  <<",\"quad_count\":"<<preview.quads.size()<<",\"sprite\":";
         if(preview.sprite){std::cout<<'[';for(std::size_t i=0;i<12;++i){if(i)std::cout<<',';std::cout<<preview.sprite->at(i);}std::cout<<']';}
         else std::cout<<"null";
-        std::cout<<",\"profile\":\"identity matrix, no atlas, zero expansion, replace RGBA, no UI overlays\"}\n";
+        std::cout<<",\"angle\":"<<sprite_options->angle<<",\"skew\":"<<(sprite_options->skew?"true":"false")
+                 <<",\"profile\":\"identity world with native local transforms, no atlas, zero expansion, replace RGBA, no UI overlays\"}\n";
     } else if (opt_mode) {
         std::cout << "{\"canvas_kind\":\"occupied_bounds_not_original_dimensions\",\"occupied_bounds\":["
                   << composition.x0 << ',' << composition.y0 << ',' << composition.x1 << ',' << composition.y1
@@ -240,6 +241,7 @@ int main(int argc, char** argv) {
         std::string filename, capture, opt_file;
         std::optional<saga::desktop::SpritePreviewOptions> sprite;
         std::optional<std::array<std::int32_t,2>> canvas,origin,standard;
+        std::optional<std::int32_t> angle;bool skew=false;
         const auto number=[](const char* text){
             const std::string value(text);std::int32_t result=0;
             const auto parsed=std::from_chars(value.data(),value.data()+value.size(),result);
@@ -258,11 +260,13 @@ int main(int argc, char** argv) {
             else if(argument=="--canvas"&&!canvas&&i+2<argc){const auto w=number(argv[++i]),h=number(argv[++i]);canvas=std::array<std::int32_t,2>{w,h};}
             else if(argument=="--origin"&&!origin&&i+2<argc){const auto x=number(argv[++i]),y=number(argv[++i]);origin=std::array<std::int32_t,2>{x,y};}
             else if(argument=="--standard"&&!standard&&i+2<argc){const auto w=number(argv[++i]),h=number(argv[++i]);standard=std::array<std::int32_t,2>{w,h};}
+            else if(argument=="--angle"&&!angle&&i+1<argc)angle=number(argv[++i]);
+            else if(argument=="--skew"&&!skew)skew=true;
             else if (filename.empty() && argument.rfind("--", 0) != 0) filename = argument;
             else throw std::runtime_error("Invalid or duplicate argument");
         }
         if (filename.empty() || headless != !capture.empty()) {
-            std::cerr << "Usage: asset_viewer image.png [--opt file.opt] [--sprite file.seb frame layer texture-slot --canvas width height [--origin x y] [--standard width height]] [--headless --capture output.bmp]\n";
+            std::cerr << "Usage: asset_viewer image.png [--opt file.opt] [--sprite file.seb frame layer texture-slot --canvas width height [--origin x y] [--standard width height] [--angle degrees [--skew]]] [--headless --capture output.bmp]\n";
             return 2;
         }
         if(sprite){
@@ -272,7 +276,9 @@ int main(int argc, char** argv) {
             sprite->width=(*canvas)[0];sprite->height=(*canvas)[1];
             if(origin){sprite->x=(*origin)[0];sprite->y=(*origin)[1];}
             if(standard){sprite->standard_width=(*standard)[0];sprite->standard_height=(*standard)[1];}
-        }else if(canvas||origin||standard)throw std::invalid_argument("canvas/origin/standard require --sprite");
+            if(skew&&!angle)throw std::invalid_argument("--skew requires --angle");
+            sprite->angle=angle.value_or(0);sprite->skew=skew;
+        }else if(canvas||origin||standard||angle||skew)throw std::invalid_argument("preview arguments require --sprite");
         return view(filename, headless, capture, opt_file,sprite);
     } catch (const std::exception& error) {
         std::cerr << "asset_viewer: " << error.what() << '\n';

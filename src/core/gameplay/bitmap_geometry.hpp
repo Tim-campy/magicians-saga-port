@@ -60,7 +60,7 @@ public:
     virtual bool render_target_alive()=0;
     virtual std::int32_t render_target_height()=0;
     virtual std::int32_t screen_height()=0;
-    virtual void screen_transform(float& x,float& y)=0; // Graphics.screenMatrix_.TransPoints.
+    virtual void screen_transform(float& x,float& y)=0; // Graphics.screenMatrix_.MapPoints.
     virtual std::optional<std::array<float,2>> fill_point(float x,float y)=0;
     virtual void add_fill_point(float x,float y,float transformed_x,float transformed_y)=0;
 };

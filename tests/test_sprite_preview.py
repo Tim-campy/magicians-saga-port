@@ -108,15 +108,54 @@ class NativeTests(unittest.TestCase):
                 expected[(2 + y) * 12 + 3 + x] = self.source[source_y * 8 + source_x]
         self.assertEqual(bitmap[2], expected)
 
-    def test_empty_outside_crop_and_unknown_matrix_are_explicit(self):
+    def test_empty_outside_crop_is_not_drawn(self):
         result, bitmap = self.preview([(0, 0, 20, 20, 2, 2, 0, 0, 0, 0)])
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(result.stdout)['quad_count'], 0)
         self.assertEqual(bitmap[2], [(0, 0, 0, 0)] * 144)
-        result, bitmap = self.preview([(0, 0, 0, 0, 2, 2, 0, 0, 1, 0)])
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn('unbound graphics service', result.stderr)
-        self.assertIsNone(bitmap)
+
+    def test_all_seb_mirror_combinations_reach_correct_pixels(self):
+        for reverse_u, reverse_v in ((1, 0), (0, 1), (1, 1)):
+            with self.subTest(reverse_u=reverse_u, reverse_v=reverse_v):
+                result, bitmap = self.preview([(0, 0, 2, 3, 3, 2, 1, 2, reverse_u, reverse_v)])
+                self.assertEqual(result.returncode, 0, result.stderr)
+                sprite = json.loads(result.stdout)['sprite']
+                reverse_x, reverse_y = sprite[8] == 1, sprite[9] == 1
+                self.assertTrue(reverse_x or reverse_y)
+                expected = [(0, 0, 0, 0)] * 144
+                for y in range(2):
+                    for x in range(3):
+                        sx, sy = (2 - x if reverse_x else x), (1 - y if reverse_y else y)
+                        expected[(4 + y) * 12 + 4 + x] = self.source[(3 + sy) * 8 + 2 + sx]
+                self.assertEqual(bitmap[2], expected)
+
+    def test_opt_piece_translation_is_inside_the_mirror_scope(self):
+        opt = struct.pack('>5B7h', 8, 8, 1, 1, 1, -1, 1, 2, 4, 5, 2, 2)
+        result, bitmap = self.preview([(0, 0, 0, 0, 8, 8, 0, 0, 1, 1)], opt)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)['sprite'][8:10], [1, 1])
+        expected = [(0, 0, 0, 0)] * 144
+        for y in range(2):
+            for x in range(2):
+                expected[(6 + y) * 12 + 8 + x] = self.source[(6 - y) * 8 + 5 - x]
+        self.assertEqual(bitmap[2], expected)
+
+    def test_command_rotation_keeps_the_entity_origin_as_pivot(self):
+        result, bitmap = self.preview([(0, 0, 2, 3, 3, 2, 0, 0, 0, 0)], extra=('--angle', '90'))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)['angle'], 90)
+        expected = [(0, 0, 0, 0)] * 144
+        for y in range(3):
+            for x in range(2):
+                expected[(2 + y) * 12 + 1 + x] = self.source[(4 - x) * 8 + 2 + y]
+        self.assertEqual(bitmap[2], expected)
+
+    def test_command_skew_uses_native_tangent_adapter(self):
+        result, bitmap = self.preview([(0, 0, 0, 0, 2, 2, 0, 0, 0, 0)], extra=('--angle', '45', '--skew'))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(json.loads(result.stdout)['skew'])
+        self.assertEqual(json.loads(result.stdout)['quad_count'], 1)
+        self.assertTrue(any(pixel != (0, 0, 0, 0) for pixel in bitmap[2]))
 
     def test_mismatched_texture_and_cli_limits_fail_without_capture(self):
         result, bitmap = self.preview([(0, 1, 0, 0, 2, 2, 0, 0, 0, 0)])

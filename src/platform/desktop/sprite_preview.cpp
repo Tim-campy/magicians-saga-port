@@ -1,14 +1,23 @@
 #include "sprite_preview.hpp"
 #include "core/gameplay/animation_resources.hpp"
+#include "core/gameplay/render_transform.hpp"
 #include <algorithm>
 #include <limits>
 
 namespace saga::desktop {
 namespace {
 using namespace core;
-[[noreturn]] void unbound(){throw std::runtime_error("selected sprite requires an unbound graphics service (matrix, blend or external image)");}
+[[noreturn]] void unbound(){throw std::runtime_error("selected sprite requires an unbound graphics service (blend, local coordinates or external image)");}
+struct PreviewMatrix final:RenderMatrix {
+    SpriteMatrix value;
+    MatrixValues supplied=std::make_shared<std::vector<float>>(9);
+    void set_values(std::array<float,9> v)override{std::copy(v.begin(),v.end(),supplied->begin());set_matrix_values(value,supplied);}
+    void pre_translate(float x,float y)override{pre_translate_matrix(value,x,y);}
+    void set_rotation(float angle,float x,float y)override{set_rotate_matrix(value,angle,x,y);}
+    void reset()override{reset_matrix(value);}
+};
 struct PreviewHost final:RenderDrawHost,RenderGraphics,RenderDepth,ImageDrawHost,
-                         BitmapTexture,BitmapAlphaHost,BitmapGeometryHost {
+                         BitmapTexture,BitmapAlphaHost,BitmapGeometryHost,RenderTransformHost {
     RenderDrawResource resource_value;
     SebStaticWork seb_work;
     ImageDrawState image_state;
@@ -19,6 +28,9 @@ struct PreviewHost final:RenderDrawHost,RenderGraphics,RenderDepth,ImageDrawHost
     BitmapGeometryState geometry;
     BitmapPoints points=std::make_shared<std::vector<BitmapPoint>>(4);
     ImageBounds source_work;
+    RenderTransformState transform;
+    PreviewMatrix application_matrix;
+    SpriteMatrix temporary_matrix;
     std::int32_t png_width,png_height;
     SpritePreview result;
     PreviewHost(const SpritePreviewOptions& options,std::int32_t w,std::int32_t h):surface{options.height},png_width(w),png_height(h){
@@ -36,15 +48,19 @@ struct PreviewHost final:RenderDrawHost,RenderGraphics,RenderDepth,ImageDrawHost
     }
     void invalid_image_override(std::int32_t,std::int32_t,std::int32_t,std::int32_t)override{unbound();}
     void missing_image(std::int32_t,std::int32_t)override{unbound();}
-    float transform_tangent(float)override{unbound();}
+    float transform_tangent(float angle)override{return degree_tangent(angle);}
     RenderDepth* mesh_manager()override{return this;}
     void set_depth(std::int32_t,std::int32_t)override{} // One caller-selected layer; no inter-object depth policy.
     void push_render_mode(std::int32_t,std::int32_t,std::int32_t)override{unbound();}
     void pop_render_mode()override{unbound();}
     void push_blend_mode(std::int32_t,std::int32_t)override{unbound();}
     void pop_blend_mode()override{unbound();}
-    void push_matrix(RenderMatrix&)override{unbound();}
-    void pop_matrix()override{unbound();} // Also ImageDrawHost cleanup, only reached after a supported push.
+    void sync_matrix(){image_state.local_matrix_index=transform.local_index;image_state.local_coordinate_count=transform.local_coordinate_count;}
+    void push_matrix(RenderMatrix& matrix)override{
+        auto* selected=dynamic_cast<PreviewMatrix*>(&matrix);if(!selected)unbound();
+        push_graphics_matrix(transform,&selected->value);sync_matrix();
+    }
+    void pop_matrix()override{pop_graphics_matrix(transform,*this);sync_matrix();}
     void draw_image(const RenderImageDraw& d)override{
         auto* image=dynamic_cast<PixelImage*>(d.image);if(d.image&&!image)unbound();image_state.flip=reverse;
         if(d.scaled)draw_scaled_image_rect(image_state,image,d.x,d.y,d.width,d.height,d.u,d.v,d.source_width,d.source_height,*this);
@@ -56,18 +72,22 @@ struct PreviewHost final:RenderDrawHost,RenderGraphics,RenderDepth,ImageDrawHost
     void end_sample(bool)override{}
     void check_use(PixelImage&)override{} // Inputs were read completely before this synchronous preview.
     void clipping_unavailable()override{unbound();}
-    void push_rotation(float,float,float)override{unbound();}
-    void push_scale(float,float,float,float)override{unbound();}
-    void push_translation(float,float)override{unbound();}
+    void push_rotation(float angle,float x,float y)override{set_rotate_matrix(temporary_matrix,angle,x,y);push_graphics_matrix(transform,&temporary_matrix);sync_matrix();}
+    void push_scale(float x,float y,float cx,float cy)override{set_scale_matrix(temporary_matrix,x,y,cx,cy);push_graphics_matrix(transform,&temporary_matrix);sync_matrix();}
+    void push_translation(float x,float y)override{set_translate_matrix(temporary_matrix,x,y);push_graphics_matrix(transform,&temporary_matrix);sync_matrix();}
     void bitmap(PixelImage& image,const BitmapDraw& request)override{
         auto source=prepare_bitmap_source(image,request,nullptr,*this); // Explicit non-atlas preview profile.
-        update_bitmap_sampling(cache,*source.page,source.draw,source_work,*this,*this);
-        if(!cache.valid)return;
-        const auto destination=bitmap_destination(source.draw,0.0F); // Explicit zero-expansion profile.
-        points=transform_bitmap_rectangle(geometry,&destination,points,nullptr,*this);
-        PreviewQuad quad;std::copy_n(points->begin(),4,quad.points.begin());quad.uv=*cache.uv;
-        result.quads.push_back(quad);
-        cache.image=&image;cache.dirty=false;
+        begin_render_matrix(transform,source.draw.x,source.draw.y,*this);
+        try{
+            update_bitmap_sampling(cache,*source.page,source.draw,source_work,*this,*this);
+            if(cache.valid){
+                const auto destination=bitmap_destination(source.draw,0.0F); // Explicit zero-expansion profile.
+                points=transform_bitmap_rectangle(geometry,&destination,points,nullptr,*this);
+                PreviewQuad quad;std::copy_n(points->begin(),4,quad.points.begin());quad.uv=*cache.uv;
+                result.quads.push_back(quad);cache.image=&image;cache.dirty=false;
+            }
+        }catch(...){end_render_matrix(transform,*this);throw;}
+        end_render_matrix(transform,*this);
     }
     SpriteArray piece(PixelImage& image,std::int32_t column,std::int32_t row,std::int32_t pass)override{
         auto* prepared=dynamic_cast<PreparedOptImage*>(&image);if(!prepared)unbound();return prepared->piece(column,row,pass,opt_work);
@@ -81,9 +101,12 @@ struct PreviewHost final:RenderDrawHost,RenderGraphics,RenderDepth,ImageDrawHost
     bool render_target_alive()override{unbound();}
     std::int32_t render_target_height()override{unbound();}
     std::int32_t screen_height()override{unbound();}
-    void screen_transform(float&,float&)override{} // Explicit identity screen-matrix input.
+    void screen_transform(float& x,float& y)override{map_matrix_point(*transform.screen,x,y);}
     std::optional<std::array<float,2>> fill_point(float,float)override{unbound();}
     void add_fill_point(float,float,float,float)override{unbound();}
+    void matrix_underflow()override{unbound();}
+    void begin_local_coordinates(float,float)override{unbound();}
+    void end_local_coordinates()override{unbound();}
 };
 }
 SpritePreview prepare_sprite_preview(const SpritePreviewOptions& o,const assets::Seb& file,const assets::OptGrid* opt,
@@ -100,8 +123,8 @@ SpritePreview prepare_sprite_preview(const SpritePreviewOptions& o,const assets:
     auto value=host.sprite(*loaded.resource().clips->at(0),o.frame,o.layer);
     if(value&&value->at(1)!=-1&&value->at(1)!=o.texture)throw std::invalid_argument("SEB TexId does not match explicit PNG slot");
     RenderQueue queue=make_render_queue();RenderCommand command;
-    command.values={-1,1,0,0,o.frame,o.x,o.y,-1,-1,-1,-1,-1,-1,o.layer,255,-1,0,-1,0};
-    insert_render_command(queue,command);RenderDrawState draw{&queue,0,nullptr};draw_render_queue(draw,&host,0,host);
+    command.values={-1,1,0,0,o.frame,o.x,o.y,-1,-1,-1,-1,-1,-1,o.layer,255,-1,o.angle,-1,o.skew?1:0};
+    insert_render_command(queue,command);RenderDrawState draw{&queue,0,&host.application_matrix};draw_render_queue(draw,&host,0,host);
     return std::move(host.result);
 }
 } // namespace saga::desktop
