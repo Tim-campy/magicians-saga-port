@@ -63,7 +63,6 @@ int main(int argc,char** argv)try{
     auto& depth_step=profile.depth_step;
     auto& materials=profile.materials;
     auto& material_bindings=profile.material_bindings;
-    auto& simulate=profile.simulate;
     auto& created=profile.created;
     auto& mission=profile.mission;
     auto& tick_ms=profile.tick_ms;
@@ -111,11 +110,11 @@ int main(int argc,char** argv)try{
                     }
                 }
                 if(!running)break;
-                if(!paused||single_step){profile.step();++logic_steps;}
+                if(!paused||single_step){if(profile.step())++logic_steps;else{paused=true;if(bounded)break;}}
                 submit();renderer.present();++rendered;const auto now=SDL_GetTicks();if(now<deadline)SDL_Delay(static_cast<Uint32>(deadline-now));
             }
             std::cout<<"{\"entities\":"<<profile.selected_count<<",\"render_frames\":"<<rendered<<",\"logic_steps\":"<<logic_steps
-                     <<",\"movement_steps\":"<<(simulate?logic_steps+static_cast<std::uint64_t>(*simulate):0)<<",\"rng_draws\":"<<(profile.humans?profile.humans->random_draws():0)<<",\"positions\":[";
+                     <<",\"rng_draws\":"<<(profile.humans?profile.humans->random_draws():0)<<",\"positions\":[";
             std::cout<<std::setprecision(std::numeric_limits<float>::max_digits10);
             for(std::size_t i=0;i<created.size();++i){if(i)std::cout<<',';const auto* p=dynamic_cast<ContactPosition*>(created[i]->get(0));
                 const bool dead=entity_world->destroyed(*created[i]);

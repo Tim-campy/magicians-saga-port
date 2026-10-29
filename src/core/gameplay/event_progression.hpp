@@ -2,6 +2,8 @@
 #include "event_flow.hpp"
 
 namespace saga::core {
+// AppData.AddMoney/AddCrystal decoded-value contract: sign-extend int32, wrap64, no clamp.
+std::int64_t add_decoded_currency(std::int64_t value,std::int32_t amount);
 struct DiscoveryState {
     std::int32_t state;
     bool is_new;

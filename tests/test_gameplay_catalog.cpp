@@ -36,6 +36,10 @@ int main(int argc,char** argv)try{
     ResourceArchive reward_archive(saga::test::jar_fixture(reward_members),{"English.lproj",1},ArchiveContents::data_only);
     const auto rewards=load_gameplay_catalog(reward_archive,false,parse_event_decimal,true);
     check(rewards.treasures&&rewards.treasures->at(0)->image==77&&rewards.members.size()==8);
+    check(!rewards.levels);fails([&]{load_gameplay_catalog(reward_archive,false,parse_event_decimal,true,true);});
+    const std::string level="0\t0\t10\t0\t0\t0\t0\t0\t0\t0";reward_members.push_back({"English.lproj/Table.txt",{level.begin(),level.end()}});
+    ResourceArchive result_archive(saga::test::jar_fixture(reward_members),{"English.lproj",1},ArchiveContents::data_only);
+    const auto result=load_gameplay_catalog(result_archive,false,parse_event_decimal,true,true);check(result.levels&&result.levels->at(0)->experience==10&&result.members.size()==9);
     members.pop_back();ResourceArchive missing(saga::test::jar_fixture(members),{"English.lproj",1},ArchiveContents::data_only);
     fails([&]{load_gameplay_catalog(missing,false,parse_event_decimal);});
     ResourceArchive fallback(saga::test::jar_fixture({{"Chara.txt",{42}}}),{"English.lproj",1},ArchiveContents::data_only);

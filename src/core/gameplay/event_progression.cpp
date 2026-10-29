@@ -40,6 +40,7 @@ EventIntegers resolve_event_arguments(const EventIntegers& row,
     return resolved;
 }
 
+std::int64_t add_decoded_currency(std::int64_t value,std::int32_t amount){return add(value,amount);}
 bool apply_event_progression(const EventIntegers& row, EventProgression& state) {
     switch (row.at(0)) {
     case 1: {

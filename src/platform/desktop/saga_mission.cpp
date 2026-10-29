@@ -17,8 +17,8 @@ std::int32_t integer(std::string_view value){
 int main(int argc,char** argv)try{
     if(argc==2&&std::string_view(argv[1])=="--help"){
         std::cout<<"Usage: saga_mission --scene profile.txt --frames N --headless --fps N --debug 0|1 --rng system --seed int32\n"
-                   "Runs selected Move/Animation/Render/Garbage passes without SDL or PNG decoding.\n"
-                   "Human profiles use provisional FPS/RNG inputs; DEBUG and full combat remain unbound.\n"
+                   "Runs selected table-backed combat/stage passes without SDL or PNG decoding.\n"
+                   "FPS/DEBUG/RNG and scenario state are explicit; deferred town transitions hold the old mission.\n"
                    "Quest/map bootstrap, interactive input and gameplay replay are not available.\n";return 0;
     }
     const std::set<std::string> allowed{"--scene","--frames","--fps","--debug","--rng","--seed"};
@@ -34,8 +34,9 @@ int main(int argc,char** argv)try{
     if(options.at("--rng")!="system")throw std::invalid_argument("only the explicit-seed system backend is available; no backend substitution");
     saga::desktop::MissionProfile profile(std::filesystem::u8path(options.at("--scene")),true,{},saga::desktop::MissionRuntimeConfig{fps,debug!=0,seed,options.at("--rng")});
     if(!profile.mission||!profile.simulate)throw std::invalid_argument("mission host requires selected entities and an explicit simulate row");
-    for(std::int32_t frame=0;frame<frames;++frame)profile.step(); // Deterministic fixed passes, no wall-clock sleeping.
-    std::cout<<"{\"frames\":"<<frames<<",\"initial_passes\":"<<*profile.simulate<<",\"fps\":"<<fps<<",\"debug\":"<<debug
+    const auto initial=profile.logic_steps;std::int32_t executed=0;
+    for(;executed<frames;++executed)if(!profile.step())break; // Deterministic fixed passes, no wall-clock sleeping.
+    std::cout<<"{\"frames\":"<<executed<<",\"frames_requested\":"<<frames<<",\"initial_passes\":"<<initial<<",\"fps\":"<<fps<<",\"debug\":"<<debug
              <<",\"rng_backend\":\"system\",\"seed\":"<<seed<<",\"rng_draws\":"<<(profile.humans?profile.humans->random_draws():0)<<",\"positions\":[";
     std::cout<<std::setprecision(std::numeric_limits<float>::max_digits10);
     for(std::size_t i=0;i<profile.created.size();++i){if(i)std::cout<<',';const auto& entity=*profile.created[i];

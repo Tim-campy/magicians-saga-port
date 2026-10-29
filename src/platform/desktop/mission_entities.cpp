@@ -22,6 +22,7 @@ ComponentSlots& MissionEntities::human(const HumanCreation& args){
     if(progress_.characters.find(args.character)==progress_.characters.end())throw std::invalid_argument("unbound saved character state: "+std::to_string(args.character));
     return create_human(args,ids_,*this);
 }
+ComponentSlots& MissionEntities::by_handle(QuestMemberId key){return handles_.at(static_cast<std::size_t>(key))->components;}
 ComponentSlots* MissionEntities::enemy(const EnemyCreation& args){return create_enemy(args,ids_,*this);}
 ComponentSlots& MissionEntities::bullet(const BulletCreation& args){return create_bullet(args,*this);}
 ComponentSlots& MissionEntities::effect(ProjectilePoint p,std::int32_t clip,std::int32_t image,bool loop){return create_visual_effect(p,clip,image,loop,ids_,*this);}

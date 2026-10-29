@@ -18,7 +18,8 @@ public:
     MissionProfile(const std::filesystem::path&,bool native,ArchiveImageSet::Decoder = {},std::optional<MissionRuntimeConfig> = std::nullopt);
     MissionProfile(const MissionProfile&)=delete;
     MissionProfile& operator=(const MissionProfile&)=delete;
-    void step(); // Selected actor/flight/motion/contact/effect passes, in native relative order.
+    bool step(); // False at an explicitly held deferred transition; no further old-mission logic.
+    std::uint64_t logic_steps=0,movement_steps=0;
     void write_combat_report(std::ostream&); // Diagnostic JSON fragment; not a complete-state snapshot.
     void write_actor_parameters(core::ComponentSlots&,std::ostream&);
     std::size_t selected_count=0;

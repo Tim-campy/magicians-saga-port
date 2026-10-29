@@ -313,6 +313,79 @@ class MissionProfileTests(unittest.TestCase):
             self.assertEqual(report['collecting_drops'], 0)
             self.assertEqual(report['pending_drops'], [])
 
+    def test_native_stage_clear_grants_and_deferred_return_writeback(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory);scene = root / 'scene.txt'
+            text = make_shoot_scene(root, rewards=True, treasure_flags=1)
+            text = text.replace('enemy 0 4 7 2', 'enemy 0 4 7 1').replace('progress 2 1 0', 'progress 2 1 9').replace('human 0 2 1 0 0 0 ', 'human 0 2 1 0 0 9 ')
+            text += ('collisions\nenemy_system 10000 3 10 25 7\nenemy_population 0 0 1 0 0 100 0\nenemy_pool 0\n'
+                     'stage_notifications 1 0 0 0 0 0 -1\ncollection fresh\ndrop 3 0 25 0 0 150\n'
+                     'drop 1 7 25 100 0 100\ndrop 2 999 25 -100 0 100\n'
+                     'result_wallet 10 20 4\nresult_record 0 0 0 0 0 0 0\n'
+                     'result_inventory equipment 0 0 0\nresult_inventory cloth 0 0 0\nresult_inventory hat 0 0 0\n'
+                     'result_recruits 0 0 0\nstage_loop 5000 1 20 hold\nstage_events fresh 0\nstage_pulse 200 1048576\n')
+            scene.write_text(text, encoding='utf-8')
+            result = self.run_host(scene, frames=240)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            report = json.loads(result.stdout)
+            self.assertEqual(report['frames_requested'], 240)
+            self.assertEqual(report['frames'], 201)
+            self.assertEqual(report['movement_steps'], 200)
+            self.assertGreater(report['collection_steps'], 0)
+            self.assertTrue(report['transition_pending'])
+            self.assertTrue(report['quest_completed'])
+            self.assertEqual(report['stage_state'], 4)
+            self.assertTrue(report['result_granted'])
+            self.assertEqual(report['wallet'], {'money': 19, 'crystals': 23})
+            self.assertEqual(report['rescued_prisoners'], 5)
+            self.assertEqual(report['result_gear_levels'], {'weapon': 2, 'hat': 2, 'cloth': 2})
+            self.assertEqual(report['quest_record']['challenges'], 1)
+            self.assertEqual(report['quest_record']['clears'], 1)
+            gained = report['quest_result']['experience']
+            self.assertGreater(gained, 0)
+            self.assertEqual(report['saved_characters'], [{'id': 2, 'level': 1 + (9 + gained) // 10, 'experience': (9 + gained) % 10}])
+            self.assertEqual({(v['kind'], v['id'], v['stock']) for v in report['inventory_changes']}, {(0, 1, 1), (1, 0, 1), (2, 0, 1)})
+            self.assertEqual(report['recruit_changes'], [{'id': 2, 'found': 1, 'is_new': True, 'recruited': 1}])
+            self.assertEqual(report['notification_events'][-3:], ['make_result', 'push:result', 'transition:1'])
+            self.assertEqual(self.run_host(scene, frames=240).stdout, result.stdout)
+            # The same cleared state must wait for an explicit confirmation, without repeating grants.
+            scene.write_text(text.replace('stage_pulse 200 1048576\n', ''), encoding='utf-8')
+            waiting = self.run_host(scene, frames=240)
+            self.assertEqual(waiting.returncode, 0, waiting.stderr)
+            pending = json.loads(waiting.stdout)
+            self.assertEqual(pending['stage_state'], 3)
+            self.assertFalse(pending['result_granted'])
+            self.assertEqual(pending['wallet'], {'money': 10, 'crystals': 20})
+            self.assertEqual(pending['saved_characters'], [{'id': 2, 'level': 1, 'experience': 9}])
+            scene.write_text(text.replace('stage_pulse 200', 'stage_pulse 1'), encoding='utf-8')
+            early = self.run_host(scene, frames=240)
+            self.assertEqual(early.returncode, 0, early.stderr)
+            self.assertFalse(json.loads(early.stdout)['result_granted'])
+            scene.write_text(text.replace('stage_pulse 200', 'stage_pulse -1'), encoding='utf-8')
+            self.assertIn('positive logic step', self.run_host(scene).stderr)
+            scene.write_text(text, encoding='utf-8')
+            held = self.run_host(scene, frames=1000)
+            self.assertEqual(held.returncode, 0, held.stderr)
+            terminal = json.loads(held.stdout)
+            self.assertEqual(terminal['frames'], 201)
+            self.assertEqual(terminal['wallet'], report['wallet'])
+            self.assertEqual(terminal['notification_events'].count('transition:1'), 1)
+            scene.write_text(text.replace('stage_events fresh 0', 'stage_events fresh 1 99 0'), encoding='utf-8')
+            self.assertIn('stage event catalog dispatch', self.run_host(scene).stderr)
+            scene.write_text(text.replace('result_inventory hat 0 0 0\n', ''), encoding='utf-8')
+            self.assertNotEqual(self.run_host(scene).returncode, 0)
+            # Native nonclear return records the attempt, but never runs result grants/completion.
+            scene.write_text(text.replace('stage_notifications 1 0', 'stage_notifications 5 0'), encoding='utf-8')
+            lost = self.run_host(scene, frames=240)
+            self.assertEqual(lost.returncode, 0, lost.stderr)
+            losing = json.loads(lost.stdout)
+            self.assertEqual(losing['frames'], 1)
+            self.assertFalse(losing['result_granted'])
+            self.assertFalse(losing['quest_completed'])
+            self.assertEqual(losing['quest_record']['challenges'], 1)
+            self.assertEqual(losing['quest_record']['clears'], 0)
+            self.assertEqual(losing['wallet'], {'money': 10, 'crystals': 20})
+
 
 if __name__ == '__main__':
     unittest.main()

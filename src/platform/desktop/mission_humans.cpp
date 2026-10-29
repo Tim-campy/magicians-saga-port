@@ -13,7 +13,7 @@ EventIntegers levels(const EquipmentCombatTable& table,const std::map<std::int32
 [[noreturn]]void unbound(const char* service){throw std::logic_error(std::string("mission service unbound: ")+service);}
 }
 MissionHumans::MissionHumans(MissionEntities& world,const GameplayCatalog& data,MissionProgress& saved,StageGeometry& geometry,MissionRuntimeConfig runtime,MissionHumanScenario scenario)
-    :world_(world),saved_(saved),geometry_(geometry),runtime_(std::move(runtime)),random_(runtime_.seed),
+    :catalog_(data),world_(world),saved_(saved),geometry_(geometry),runtime_(std::move(runtime)),random_(runtime_.seed),
      records_{data.characters,required(data.enemies.get()),data.equipment,data.hats,data.cloth},characters_(data.characters.size(),0),
      equipment_(levels(data.equipment,saved.equipment_levels)),hats_(levels(data.hats,saved.hat_levels)),cloth_(levels(data.cloth,saved.cloth_levels)){
     if(runtime_.backend!="system"||runtime_.fps<1)throw std::invalid_argument("mission human runtime requires positive FPS and system RNG backend");
@@ -32,7 +32,12 @@ MissionHumans::MissionHumans(MissionEntities& world,const GameplayCatalog& data,
     initialize_enemies(enemies_,this,enemy_services_);
     initialize_projectiles(projectiles_,this,*this);
 }
-void MissionHumans::update(std::int32_t pass,bool enabled){if(gameplay_needs_update(4,enabled,pass))update_humans(system_,*this);}
+void MissionHumans::update(std::int32_t pass,bool enabled){if(gameplay_needs_update(4,enabled,pass)){
+    // Refresh preallocated projections after native result gear upgrades; saved maps remain canonical.
+    const auto sync=[](auto& output,const auto& records,const auto& saved){for(std::size_t i=0;i<records.size();++i)if(records[i])output.at(i)=saved.at(static_cast<std::int32_t>(i));};
+    sync(equipment_,catalog_.equipment,saved_.equipment_levels);sync(hats_,catalog_.hats,saved_.hat_levels);sync(cloth_,catalog_.cloth,saved_.cloth_levels);
+    update_humans(system_,*this);
+}}
 void MissionHumans::set_state(ComponentSlots& e,std::int32_t state,float speed_z){
     change_human_state(e,state,static_cast<HumanFrameHost&>(*this));field<ProjectileSpeed>(e,1).z=speed_z;
 }

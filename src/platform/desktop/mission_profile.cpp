@@ -32,6 +32,8 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     std::optional<MissionRewardScenario> rewards;
     std::optional<MissionNotificationScenario> notifications;
     bool collection=false,drop_catalog=false;
+    MissionResultScenario result_state{};bool wallet=false,record=false,recruits=false;std::array<bool,3> stocks{};
+    MissionStageScenario stage_scenario{};bool stage_loop=false,stage_events=false;
     MissionEnemyScenario enemy{};bool enemy_config=false,enemy_population=false,enemy_pool=false;
     std::map<std::string,std::int32_t> gear_defaults;
     std::vector<std::size_t> players;
@@ -54,6 +56,28 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         }else if(operation=="enemy_pool"){
             std::int32_t count=0;if(!native||enemy_pool||!(row>>count)||count<0||count>1000)throw std::invalid_argument("enemy_pool requires count0..1000 followed by enemy ID/weight pairs");
             for(std::int32_t i=0;i<count;++i){std::int32_t id=0,weight=0;if(!(row>>id>>weight))throw std::invalid_argument("enemy_pool requires every ID/weight pair");enemy.pool.emplace_back(id,weight);}enemy_pool=true;
+        }else if(operation=="result_wallet"){
+            if(!native||wallet||!(row>>result_state.money>>result_state.crystals>>result_state.rescued))throw std::invalid_argument("result_wallet requires money/crystals int64 and rescued int32");wallet=true;
+        }else if(operation=="result_record"){
+            auto& q=result_state.record;
+            if(!native||record||!(row>>q.best_experience>>q.best_money>>q.challenges>>q.clears>>q.defeated>>q.rescued>>q.best_damage))throw std::invalid_argument("result_record requires seven initial quest counters");record=true;
+        }else if(operation=="result_inventory"){
+            std::string kind;std::int32_t found=0,is_new=0,stock=0;
+            if(!native||!(row>>kind>>found>>is_new>>stock)||(is_new!=0&&is_new!=1)||(kind!="equipment"&&kind!="cloth"&&kind!="hat"))throw std::invalid_argument("result_inventory requires equipment/cloth/hat found is-new0/1 stock");
+            const auto k=kind=="equipment"?0U:kind=="cloth"?1U:2U;if(stocks[k])throw std::invalid_argument("duplicate result inventory kind");stocks[k]=true;result_state.inventory[k]={found,is_new!=0,stock};
+        }else if(operation=="result_recruits"){
+            std::int32_t fresh=0;auto& r=result_state.recruits;
+            if(!native||recruits||!(row>>r.discovery_state>>fresh>>r.recruited)||(fresh!=0&&fresh!=1))throw std::invalid_argument("result_recruits requires found is-new0/1 recruited");r.is_new=fresh!=0;recruits=true;
+        }else if(operation=="stage_loop"){
+            std::int32_t boss=0;std::string policy;
+            if(!native||stage_loop||!(row>>stage_scenario.remaining_time>>boss>>stage_scenario.fade_frame>>policy)||(boss!=0&&boss!=1)||policy!="hold")throw std::invalid_argument("stage_loop requires remaining-time boss-started0/1 fade-frame hold");stage_scenario.boss_started=boss!=0;stage_loop=true;
+        }else if(operation=="stage_events"){
+            std::string policy;std::int32_t count=0;
+            if(!native||stage_events||!(row>>policy>>count)||policy!="fresh"||count<0||count>1000)throw std::invalid_argument("stage_events requires fresh count0..1000 and event-ID/progress pairs");
+            for(std::int32_t i=0;i<count;++i){std::int32_t id=0,rate=0;if(!(row>>id>>rate))throw std::invalid_argument("missing stage event pair");stage_scenario.events.emplace_back(id,rate);}stage_events=true;
+        }else if(operation=="stage_pulse"){
+            row>>std::ws;if(row.peek()=='-')throw std::invalid_argument("stage_pulse requires a positive logic step");
+            std::uint64_t step=0,mask=0;if(!native||!(row>>step>>mask)||!step||mask>0xffffffffULL||!stage_scenario.pulses.emplace(step,static_cast<std::uint32_t>(mask)).second)throw std::invalid_argument("stage_pulse requires unique positive logic step and uint32 mask");
         }else if(operation=="collection"){
             std::string kind;if(!native||collection||!(row>>kind)||kind!="fresh")throw std::invalid_argument("collection requires one explicit fresh selection");collection=true;
         }else if(operation=="stage_notifications"){
@@ -152,10 +176,13 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     if(collisions&&!human_scenario)throw std::invalid_argument("collisions requires human_system event receivers");
     if(notifications&&!human_scenario)throw std::invalid_argument("stage_notifications requires human_system");
     if(collection&&(!notifications||!human_scenario))throw std::invalid_argument("collection fresh requires stage_notifications and human_system");
+    const bool result_requested=wallet||record||recruits||stocks[0]||stocks[1]||stocks[2];
+    if(result_requested&&!(wallet&&record&&recruits&&stocks[0]&&stocks[1]&&stocks[2]&&stage_loop&&collection))throw std::invalid_argument("results require wallet/record/all inventory kinds/recruits, stage_loop and collection fresh");
+    if((stage_loop||stage_events||!stage_scenario.pulses.empty())&&!(stage_loop&&stage_events&&collection))throw std::invalid_argument("stage_loop requires explicit stage_events and collection fresh");
     if(enemy_requested&&!(enemy_config&&enemy_population&&enemy_pool&&human_scenario))throw std::invalid_argument("enemy system requires enemy_system/enemy_population/enemy_pool and human_system");
     if(!selected.empty()){
         if(!tables||!has_view||!has_slots||!has_animation||commands)throw std::invalid_argument("entity capture needs tables/view/slots/animate and no manual draw rows");
-        catalog=std::make_unique<GameplayCatalog>(load_gameplay_catalog(*tables,false,parse_event_decimal,rewards.has_value()||collection||drop_catalog));
+        catalog=std::make_unique<GameplayCatalog>(load_gameplay_catalog(*tables,false,parse_event_decimal,rewards.has_value()||collection||drop_catalog,result_requested));
         for(const auto& entry:gear_defaults){
             const auto& data=entry.first=="equipment"?catalog->equipment:entry.first=="hat"?catalog->hats:catalog->cloth;
             auto& levels=entry.first=="equipment"?progress.equipment_levels:entry.first=="hat"?progress.hat_levels:progress.cloth_levels;
@@ -182,10 +209,12 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             if(enemy_requested)humans->enable_enemies(std::move(enemy));
             if(notifications)humans->enable_notifications(*notifications);
             if(collection)humans->enable_collection();
+            if(result_requested)humans->enable_results(std::move(result_state));
+            if(stage_loop)humans->enable_stage_loop(std::move(stage_scenario));
             for(const auto& request:states)humans->set_state(*created.at(std::get<0>(request)),std::get<1>(request),std::get<2>(request));
         }else if(!states.empty())throw std::invalid_argument("actor_state requires human_system");
         for(std::int32_t i=0;i<frames;++i)mission->advance_animations({automatic!=0,application_update!=0});
-        if(simulate&&*simulate>0)for(std::int32_t i=0;i<*simulate;++i)step();else{queue=mission->render();if(!mission->faults().empty())throw std::invalid_argument("entity render fault: "+mission->faults().front().message);}
+        if(simulate&&*simulate>0){for(std::int32_t i=0;i<*simulate;++i)if(!step())break;}else{queue=mission->render();if(!mission->faults().empty())throw std::invalid_argument("entity render fault: "+mission->faults().front().message);}
         commands=static_cast<std::size_t>(queue.counts->at(0))+static_cast<std::size_t>(queue.counts->at(1));
     }
     if(simulate&&!mission)throw std::invalid_argument("simulate requires a table-backed entity scene");
@@ -193,25 +222,31 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     if((human_scenario||!states.empty()||!players.empty()||!gear_defaults.empty())&&!mission)throw std::invalid_argument("human scenario rows require a table-backed entity scene");
     selected_count=selected.size();
 }
-void MissionProfile::step(){
+bool MissionProfile::step(){
     if(!mission)throw std::invalid_argument("selected logic requires a table-backed entity scene");
-    if(humans){humans->advance_collection();humans->update();humans->advance_enemies();humans->advance_projectiles();}
-    if(simulate)mission->advance_movement(0);
-    if(collisions)mission->advance_collisions(0);
-    if(simulate)mission->advance_emitters(0);
-    if(simulate)mission->advance_modifications(0);
-    mission->advance_animations({automatic!=0,application_update!=0});queue=mission->render();
+    if(humans&&!humans->advance_stage())return false;
+    const bool held=humans&&humans->transition_pending();
+    if(!held){
+        if(humans){humans->update();humans->advance_enemies();humans->advance_projectiles();}
+        if(simulate){mission->advance_movement(0);++movement_steps;}
+        if(collisions)mission->advance_collisions(0);
+        if(simulate)mission->advance_emitters(0);
+        if(simulate)mission->advance_modifications(0);
+        mission->advance_animations({automatic!=0,application_update!=0});
+    }queue=mission->render();
     if(!mission->faults().empty())throw std::invalid_argument("entity render fault: "+mission->faults().front().message);
-    if(simulate)mission->advance_garbage(0);
+    if(simulate&&!held)mission->advance_garbage(0);
+    ++logic_steps;return true;
 }
 void MissionProfile::write_actor_parameters(ComponentSlots& actor,std::ostream& out){
     if(actor.contains(23)){
         out<<",\"hp\":"<<resolve_combat_parameter(actor,0)->value;
-        if(actor.contains(14))out<<",\"mp\":"<<resolve_combat_parameter(actor,1)->value<<",\"human_experience\":"<<dynamic_cast<HumanRecordLink*>(actor.get(14))->experience;
+        if(actor.contains(14)){const auto& h=*dynamic_cast<HumanRecordLink*>(actor.get(14));out<<",\"mp\":"<<resolve_combat_parameter(actor,1)->value<<",\"human_experience\":"<<h.experience<<",\"human_level\":"<<h.level;}
     }
     if(const auto* enemy=dynamic_cast<EnemyRecordLink*>(actor.get(24)))out<<",\"enemy_state\":"<<enemy->state<<",\"enemy_frame\":"<<enemy->frame<<",\"enemy_flags\":"<<enemy->flags;
 }
 void MissionProfile::write_combat_report(std::ostream& out){
+    out<<",\"movement_steps\":"<<movement_steps;
     out<<",\"shots\":"<<(humans?humans->shots():0)<<",\"total_damage\":"<<(humans?humans->total_damage():0)<<",\"projectiles\":[";
     bool first=true;
     if(entity_world){auto cursor=entity_world->subset({27,0,1})->cursor();while(const auto e=cursor.next()){
@@ -221,7 +256,7 @@ void MissionProfile::write_combat_report(std::ostream& out){
         out<<"{\"id\":"<<entity_world->id(**e)<<",\"x\":"<<p->x<<",\"y\":"<<p->y<<",\"z\":"<<p->z<<",\"frame\":"<<flight->frame<<",\"max_frame\":"<<flight->max_frame<<'}';
     }}
     out<<']';
-    if(humans){humans->write_reward_report(out);humans->write_enemy_report(out);humans->write_notification_report(out);humans->write_collection_report(out);}
+    if(humans){humans->write_reward_report(out);humans->write_enemy_report(out);humans->write_notification_report(out);humans->write_collection_report(out);humans->write_result_report(out);}
     out<<",\"collisions_enabled\":"<<(collisions?"true":"false")<<",\"collision_events\":"<<(mission?mission->collision_events():0)<<",\"area_collision_events\":"<<(mission?mission->area_collision_events():0);
     out<<",\"pending_drops\":[";first=true;
     if(entity_world){auto cursor=entity_world->subset({34})->cursor();while(const auto e=cursor.next()){

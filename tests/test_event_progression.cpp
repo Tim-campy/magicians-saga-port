@@ -33,6 +33,9 @@ struct Host : EventFlowHost {
     }
 };
 int main() {
+    check(add_decoded_currency(std::numeric_limits<std::int64_t>::max(),1)==std::numeric_limits<std::int64_t>::min(),"decoded money wrap64");
+    check(add_decoded_currency(0,-1)==-1,"decoded add has no lower clamp");
+    check(add_decoded_currency(0,std::numeric_limits<std::int32_t>::min())==-2147483648LL,"decoded delta sign extension");
     constexpr auto imin = std::numeric_limits<std::int32_t>::min();
     auto args = std::make_shared<EventIntegers>(100, 3);
     args->at(0) = imin; args->at(99) = 8;

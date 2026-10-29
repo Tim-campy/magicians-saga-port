@@ -9,7 +9,7 @@ The plan in one page. Work happens in **vertical slices**: each ends in somethin
 | M0 | APK inventory, architecture, subsystem map | Done: [overview](subsystems/overview.md). |
 | M1 | Asset extraction and technical rendering | Partial: archives, OPT, SEB, Unity media verified; sprites of real entities render through GL; fonts and audio not ported. |
 | M2 | Boot, forms/menus and input | Static research; SelectForm passes ported in isolation (slice S2/S3). |
-| M3 | First playable gameplay loop | **Current = slice S1.** Scene host runs table-backed shots, terminal damage, enemy defeat, pending drops, enemy population, contact/area collisions, pickup and stage accumulation; permanent results and full stage schedule remain open. |
+| M3 | First playable gameplay loop | **Current = slice S1.** Scene host runs table-backed shots, terminal damage, enemy defeat, pending drops, enemy population, contact/area collisions, pickup and stage accumulation; clear/result grants, cleanup and decoded character writeback reach the scene host; native quest entry, interactive end flow and full stage schedule remain open. |
 | M4 | Save/load, progression, economy, content | Slice S3; save envelope not decoded. |
 | M5 | Windows/Linux release candidate | Windows builds and CTest; Linux builds in CI. |
 | M6 | 3DS feasibility benchmark | Not started; nothing is claimed. |
@@ -29,17 +29,14 @@ Host: `saga_mission` (headless selected scenes; window integration pending). Acc
 
 Blockers:
 - [ ] (blocking) Bind the complete 26-system update schedule and init dispatch to the live world in the host (A3).
-- [ ] (blocking) Resolve or stub `MyConfig.FPS`/`DEBUG` and the frame timing policy; take FPS as an explicit input until then (A2, A3).
-- [ ] (blocking) Resolve the live `JRandom.Logic` and seeding, or take seed/backend as explicit replay inputs (A5).
 
 Tasks:
 - [ ] Extend `saga_mission` with real quest/map selection via `--data`/`--quest`, its SDL window and supported gameplay input replays via `--replay` (A1, A5).
 - [ ] Replace the synthetic catalogs/services of the 240-frame combat regression with the table-backed owner used by `saga_mission` (A3).
 - [ ] Bind retry/defeat/victory form answers and pause/resume to Stage Update without automatic crystal or ad choices (A4).
-- [ ] Bind permanent ShowQuestResult grants to the live stage accumulator and decoded progression/storage providers (A4).
 - [ ] Wire Map/MapChip factories and `MapSystem.Init/LoadMap` from InitWorld geometry into the host (A1).
 - [ ] Bind QuestForm's cursor UI to SDL input events (A2).
-- [ ] Wire Stage start → seven-state update → result grants → completion into the host and print the result (A4).
+- [ ] Bind Stage.Start, recovery/boss startup and quest event dispatch to the live mission host before result/return (A4).
 - [ ] Bind QuestForm camera/viewport/culling to replace the fixed `scene-view` input (A1).
 - [ ] Decide the owner that destroys previous map-chip entities on mission transition (LoadMap replaces the grid only).
 - [ ] Group `src/core/gameplay/` (138 files) into subdirectories by subsystem (`combat/`, `mission/`, `town/`, `render/`, `events/`, `text/`, `runtime/`) without behaviour changes; CMake targets and tests keep their names.

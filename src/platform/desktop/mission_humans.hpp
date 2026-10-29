@@ -7,6 +7,8 @@
 #include "core/gameplay/enemy_frame.hpp"
 #include "core/gameplay/enemy_initialization.hpp"
 #include "core/gameplay/stage_update.hpp"
+#include "mission_results.hpp"
+#include "mission_stage.hpp"
 #include "core/gameplay/pass_initialization.hpp"
 #include <ostream>
 
@@ -53,7 +55,13 @@ public:
     void enable_collection(); // Explicit fresh accumulator/list selection, not save restoration or full Stage.Start.
     void advance_collection(std::int32_t pass=0,bool enabled=true);
     void write_collection_report(std::ostream&);
+    void enable_results(MissionResultScenario);
+    void enable_stage_loop(MissionStageScenario);
+    bool advance_stage(std::int32_t pass=0,bool enabled=true);
+    bool transition_pending()const;
+    void write_result_report(std::ostream&);
 private:
+    friend class MissionResults;friend class MissionStage;
     struct CollectionHost final:core::DropCollectionHost {
         MissionHumans& owner;
         explicit CollectionHost(MissionHumans& value):owner(value){}
@@ -182,7 +190,7 @@ private:
     void diagnostics(const core::DamageNumbers&)override;
     void damage_labels(core::ComponentSlots&,const core::DamageNumbers&)override;
     void positional_damage_effect(core::ProjectilePoint at)override{world_.effect(at,0,1,false);}
-    MissionEntities& world_;MissionProgress& saved_;core::StageGeometry& geometry_;MissionRuntimeConfig runtime_;Random random_;
+    const GameplayCatalog& catalog_;MissionEntities& world_;MissionProgress& saved_;core::StageGeometry& geometry_;MissionRuntimeConfig runtime_;Random random_;
     core::CombatRecordTables records_;core::EventIntegers characters_,equipment_,hats_,cloth_;
     core::CombatSavedLevels levels_{characters_,equipment_,hats_,cloth_};
     core::StageStartState stage_;core::AttackButtonState button_;core::MemberRoster members_;
@@ -201,5 +209,6 @@ private:
     std::map<const core::StageForm*,std::string> form_names_;
     std::vector<std::string> notification_events_; // One ordered presentation stream for both stack projections.
     bool collection_enabled_=false;std::uint64_t collection_steps_=0,collection_sounds_=0,collection_jingles_=0;
+    std::unique_ptr<MissionResults> results_;std::unique_ptr<MissionStage> stage_loop_;
 };
 } // namespace saga::desktop

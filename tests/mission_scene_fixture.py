@@ -25,12 +25,13 @@ def make_table_scene(root, valid_png=True, human_frame=False, shoot=False, rewar
     if rewards:
         enemy_params = '13' + ''.join('\t2\t1\t1' if i == 0 else '\t2\t0\t0' for i in range(13))
         tables['Enemy.txt'] = f'4\tEnemy\t0\t2\t10\t10\t1\t1\t2\t0\t1000\t0\t0\tenemy-book\t7\t0\t0\t0\t{enemy_params}\t0'
-        tables['Treasure.txt'] = f'0\tGem\tquest\t77\t1\t2\t3\t-1\t-1\t-1\t-1\t{treasure_flags}'
+        tables['Treasure.txt'] = f'0\tGem\tquest\t77\t1\t2\t3\t1\t2\t0\t0\t{treasure_flags}'
+        tables['Table.txt'] = '\n'.join(f'{i}\t{i}\t10\t0\t0\t0\t0\t0\t0\t0' for i in range(16))
     if human_frame:
         tables['Equipment.txt'] += '\n' + tables['Equipment.txt'].replace('1\tWeapon', '0\tShield', 1)
     (root / 'tables.bin').write_bytes(jar([('English.lproj/' + name, text.encode()) for name, text in tables.items()]))
     for name, image, clip, color in [('hero', 200, 36, [255, 0, 0, 255]), ('enemy', 7, 0, [0, 255, 255, 255])]:
-        clips = ([0, 4, 8, 12, 16, 24, 28, 36, 40] if name == 'hero' else [0, 2, 24]) if human_frame else [clip]
+        clips = ([0, 1, 2, 3, 4, 8, 12, 16, 24, 28, 36, 40] if name == 'hero' else [0, 2, 24]) if human_frame else [clip]
         (root / f'{name}.bin').write_bytes(jar([
             ('img.inf', f'{image}\ta.png,bin'.encode()), ('seb.inf', '\n'.join(f'{i}\ta.seb' for i in clips).encode()),
             ('a.seb', seb([(0, image, 0, 0, 2, 2, 0, 0, 0, 0), (3, image, 0, 0, 2, 2, 0, 0, 0, 0)])), ('a.png', png(8, 8, color * 64) if valid_png else b'not-png')]))

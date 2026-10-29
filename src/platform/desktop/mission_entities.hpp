@@ -60,6 +60,7 @@ public:
     void mark_player(core::ComponentSlots& e){e.add(30,&player_marker_);}
     void destroy(core::ComponentSlots&,bool remove_registration=true);
     core::QuestEntityLifetime& entity_lifetime(core::QuestMemberId)override;
+    core::ComponentSlots& by_handle(core::QuestMemberId);
     void delete_from_manager(core::QuestMemberId,bool)override;
     const core::EntityRegistry& registry()const{return registry_;}
     core::EntitySubset* subset(const std::vector<std::int32_t>&)override;

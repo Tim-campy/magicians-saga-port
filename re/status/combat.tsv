@@ -38,9 +38,9 @@ game:0x06000fa4	reimplemented	src/core/gameplay/drop_collection.cpp	Native front
 game:0x06000fa5	reimplemented	src/core/gameplay/drop_collection.cpp	Native hero snapshot/live list/31-update credit bound in Stage3 collection prefix beforeHuman4; dialog/state gates preserve pending work.
 game:0x06000fb9	reimplemented	src/core/gameplay/drop_collection.cpp	Stage credit then real numeric/common effect factories, Garbage0 and audio adapters; numeric glyph output explicitly stubbed, no permanent grants.
 game:0x06000d36	reimplemented	src/core/gameplay/drop_collection.cpp	Signed frame >=0 predicate used by tested live collection pass.
-game:0x06000f9d	reimplemented	src/core/gameplay/stage_update.cpp	Dialog prelude and all seven states; real entry/collection/grants/equipment/completion/return scenario; required boss/retry/UI/storage services remain explicit.
-game:0x06000fa0	documented	docs/subsystems/rewards.md	Reward pipeline composed and tested across inventory/currency/records/member EXP; ECS storage and presentation binding pending
-game:0x06000fb1	reimplemented	src/core/gameplay/quest_return.cpp	Non-clear records, cleanup interface, member finalization and transition scheduling tested
+game:0x06000f9d	reimplemented	src/core/gameplay/stage_update.cpp	All seven states ported/tested; desktop stage_loop reaches native collection/clear/confirmation/grants/gear/completion/return scheduling; script/recovery/dialog/pause branches fail explicitly when unbound.
+game:0x06000fa0	documented	docs/subsystems/rewards.md	Gameplay reward pipeline bound to desktop live members, Table/Treasure catalogs and decoded inventory/currency/record state; full result UI suffix remains a service stub, so status stays documented.
+game:0x06000fb1	reimplemented	src/core/gameplay/quest_return.cpp	Desktop host binds native cleanup/member writeback and retains deferred transition callback; explicit hold stops old mission; town callback remains unexecuted.
 game:0x06000fda	reimplemented	src/core/gameplay/quest_return.cpp	Deferred live area/stage snapshot, form switch then event 31 tested
 game:0x06000fb7	reimplemented	src/core/gameplay/stage_update.cpp	Native retry/state5/6 policy and ordered form/BGM suffix reachable from mission host through narrow StageGameOverHost; explicit initial state and answer.
 game:0x06000fb6	reimplemented	src/core/gameplay/human_impact.cpp	Main flag2 invokes game-over; mission event30 dispatch runs Stage before Enemy retarget; sub-character death does not require game-over inputs.
@@ -57,7 +57,7 @@ game:0x06001021	documented	docs/subsystems/rewards.md	state_ == 0
 game:0x060010ee	reimplemented	src/core/gameplay/stage_rewards.cpp	add_item_stock; tests/test_stage_rewards.cpp
 game:0x060010aa	reimplemented	src/core/gameplay/stage_rewards.cpp	add_item_stock; tests/test_stage_rewards.cpp
 game:0x06001177	reimplemented	src/core/gameplay/stage_rewards.cpp	add_item_stock; tests/test_stage_rewards.cpp
-game:0x06000f34	reimplemented	src/core/gameplay/quest_return.cpp	Ordered writeback, three human reads, sub-member destruction and list clears tested
+game:0x06000f34	reimplemented	src/core/gameplay/quest_return.cpp	Desktop live member aliases write decoded saved level/EXP after cleanup; native sub-member destruction/list clears; synthetic level-up, repeated lookup and failure tests.
 game:0x06000feb	traced	docs/subsystems/rewards.md	subscribes OnReturnFromQuest to event 31; rest of Init not read
 game:0x06000fec	documented	docs/subsystems/rewards.md	ExecEvent(1133) on code 1, high score update, return flag
 game:0x0600020d	documented	docs/subsystems/rewards.md	SecureLong element 8 of AppData+0x190->+0x28
@@ -66,7 +66,7 @@ game:0x0600082d	documented	docs/subsystems/rewards.md	static byte SelectForm+0x3
 game:0x06001079	reimplemented	src/core/gameplay/experience_progression.cpp	GetExp reads witchExp_[0], not saved exp_; bounds tested
 game:0x0600120b	reimplemented	src/core/gameplay/experience_progression.cpp	GetExp wraps int32 product then divides by 100 toward zero; tested
 game:0x060007de	reimplemented	src/core/gameplay/quest_experience.cpp	Result fields and wrapping display arithmetic; second human lookup preserved by tested member composition
-game:0x06000fb3	reimplemented	src/core/gameplay/stage_cleanup.cpp	Five ordered live group snapshots, true registry removal, optional entity cleanup and collecting-drop clear tested
+game:0x06000fb3	reimplemented	src/core/gameplay/stage_cleanup.cpp	Desktop host binds ordered group snapshots34/29/26/9/31, real destruction, optional boss fence and collecting-drop clear before member writeback.
 game:0x06000f41	reimplemented	src/core/gameplay/combat_parameters.cpp	Unsigned attribute guard maps 0..2 to total parameter 10..12; no provider reads otherwise
 game:0x060000f3	reimplemented	src/core/gameplay/combat_parameters.cpp	Base maximum guard; wrapped total percentage with SDIV and clamp; integrated damage test
 game:0x060010f0	reimplemented	src/core/gameplay/combat_parameters.cpp	Equipment row endpoints; level minus one; duration 99; shared tested kernel
