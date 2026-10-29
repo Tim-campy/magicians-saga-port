@@ -147,3 +147,17 @@ kairo:0x060013d9	reimplemented	src/core/gameplay/material_queue.cpp	Save graphic
 kairo:0x060013da	reimplemented	src/core/gameplay/material_queue.cpp	Wrapping count-minus-one gate, saved value read before queue assignment and count decrement; bounds/null/underflow tests.
 kairo:0x06001087	reimplemented	src/core/gameplay/material_queue.cpp	Offset store before shader queue query, live offset reread and wrapping absolute sum; query mutation/failure tests and selected SDL material binding.
 kairo:0x0600175f	documented	docs/subsystems/assets.md	Seb copy constructor shares name/max/record and bounding references/resource, copies pixel bounds, leaves fresh frame/reversal/cache/flip/offset/work; tested sprite projection and ready catalog integration, remaining fields not ported.
+kairo:0x060010d1	reimplemented	src/core/gameplay/mesh_depth.cpp	Relative low bit and fresh low-depth scaling; previous-current front update, int32 wrapping and binary32 result; live bitmap vertex integration tested.
+kairo:0x060010d4	reimplemented	src/core/gameplay/mesh_depth.cpp	Fresh null/scaling predicate and -750000 binary32 division; native saturation, infinity, NaN and replacement failures tested.
+kairo:0x060010d2	reimplemented	src/core/gameplay/mesh_depth.cpp	Store full signed CurrentDepthLayer field; retained with scalar updates and bitmap depth binding.
+kairo:0x060010d3	reimplemented	src/core/gameplay/mesh_depth.cpp	Return complete CurrentDepthLayer without clamping; negative layers and frame reset tested.
+kairo:0x060010d5	reimplemented	src/core/gameplay/mesh_depth.cpp	Return -749999; distinguished from GetDepthBack -750000 in tests.
+kairo:0x060010d6	reimplemented	src/core/gameplay/mesh_depth.cpp	Return 750000; shared subtraction contract and boundary tests.
+kairo:0x060010d7	reimplemented	src/core/gameplay/mesh_depth.cpp	Replace current only when front<current; unordered and signed-zero comparison behavior tested.
+kairo:0x060010cb	traced	docs/subsystems/assets.md	BeginMesh final depth reset sets both floats to bits49b6fb00, layer0 after earlier clearing; only this slice ported.
+kairo:0x060010a1	traced	docs/subsystems/assets.md	MeshBuilder constructor depth-bit/surface arithmetic sets scale and step; bounded projection ported, full layer/material construction not ported.
+kairo:0x060010ad	traced	docs/subsystems/assets.md	Bitmap AddQuad decrements manager current once per pass, maps source Z with separate multiply/add and accumulates DepthTotal per vertex; buffer/layer bodies remain.
+kairo:0x060010c1	traced	docs/subsystems/assets.md	Static initializer sets shared DepthStepEnable true; explicit live host flag retained.
+kairo:0x060010c0	traced	docs/subsystems/assets.md	MeshBuilder GetLayer indexes its own manager CurrentDepthLayer; scalar Z and layer grouping are distinct.
+kairo:0x060013d4	traced	docs/subsystems/assets.md	Graphics.GetDepthBits selects Offscreen static DepthBits for a nonnull surface, otherwise Graphics static DepthBits; effective values remain host inputs.
+kairo:0x0600110f	traced	docs/subsystems/assets.md	Offscreen static initializer sets lowDepthScaling=1 and DepthBits=-1; live configuration writers remain outside this depth slice.

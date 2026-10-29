@@ -40,6 +40,7 @@ struct BitmapBackend::Impl final:RenderDrawHost,RenderGraphics,RenderDepth,Image
     BitmapDepthKey depth;
     BitmapTextureBinding current{0,0,0};
     BitmapApplication& application;GlobalApplication global;BitmapTextures& textures;
+    BitmapDepthHost* depth_host=nullptr;
     Impl(BitmapApplication& app,GlobalApplication global_app,BitmapTextures& images,std::int32_t height,const SpriteMatrix& world,bool raw)
         :surface{height},raw_rgba(raw),application(app),global(std::move(global_app)),textures(images){
         geometry.surface=&surface;geometry.mesh_modes=std::make_shared<std::vector<BitmapMeshCoordinates*>>(1,&mode);
@@ -63,7 +64,19 @@ struct BitmapBackend::Impl final:RenderDrawHost,RenderGraphics,RenderDepth,Image
     void missing_image(std::int32_t,std::int32_t)override{unbound();}
     float transform_tangent(float angle)override{return degree_tangent(angle);}
     RenderDepth* mesh_manager()override{return this;}
-    void set_depth(std::int32_t index,std::int32_t layer)override{depth={group,index,layer};}
+    void set_depth(std::int32_t index,std::int32_t relative)override{
+        depth={group,index,relative};
+        if(depth_host){auto& state=depth_host->mesh_depth_state();state.layer=group;set_mesh_depth(state,index,relative,*depth_host);}
+    }
+    void emit(BitmapQuad quad){
+        if(depth_host){
+            auto& builder=depth_host->depth_builder(quad.texture,quad.shader_key,quad.render_queue);
+            begin_mesh_quad_depth(builder,depth_host->depth_step_enabled());
+            for(auto& point:quad.points)point.z=append_mesh_vertex_depth(builder,point.z);
+            quad.native_depth=true;
+        }
+        output.push_back(quad);
+    }
     void push_render_mode(std::int32_t m,std::int32_t a,std::int32_t b)override{if(raw_rgba)unbound();core::push_render_mode(colors,m,a,b);}
     void pop_render_mode()override{if(raw_rgba)unbound();core::pop_render_mode(colors);}
     void push_blend_mode(std::int32_t m,std::int32_t c)override{if(raw_rgba)unbound();core::push_blend_mode(colors,m,c);}
@@ -100,7 +113,7 @@ struct BitmapBackend::Impl final:RenderDrawHost,RenderGraphics,RenderDepth,Image
                 points=transform_bitmap_rectangle(geometry,&destination,points,nullptr,*this);
                 BitmapQuad quad;quad.texture=texture;quad.depth=depth;std::copy_n(points->begin(),4,quad.points.begin());quad.uv=*cache.uv;
                 quad.queue_offset=queues.value;quad.render_queue=add_queue_offset(2000,queues.value);
-                if(raw_rgba)output.push_back(quad);
+                if(raw_rgba)emit(quad);
                 else{
                     auto passes=get_render_passes(colors,true,color_work.white,color_work,*this);
                     for(const auto& pass:*passes){
@@ -115,7 +128,7 @@ struct BitmapBackend::Impl final:RenderDrawHost,RenderGraphics,RenderDepth,Image
                             } queue_host(quad.shader_key);
                             MaterialQueueState material_queue;set_material_queue_offset(material_queue,queues.value,queue_host);
                             quad.render_queue=material_queue.absolute;
-                            quad.color=quad.pipeline.modulate?value->at(0):RenderColor{1,1,1,1};output.push_back(quad);
+                            quad.color=quad.pipeline.modulate?value->at(0):RenderColor{1,1,1,1};emit(quad);
                         }catch(...){end_render_pass(*pass,*this);throw;}
                         end_render_pass(*pass,*this);
                     }
@@ -184,4 +197,5 @@ const std::vector<BitmapQuad>& BitmapBackend::quads()const{return impl_->output;
 std::optional<std::array<std::int32_t,12>> BitmapBackend::last_sprite()const{return impl_->last;}
 void BitmapBackend::clear_quads(){impl_->output.clear();impl_->last.reset();}
 void BitmapBackend::set_matrix(const SpriteMatrix* matrix){set_graphics_matrix(impl_->transform,matrix);}
+void BitmapBackend::set_depth_host(BitmapDepthHost* host){impl_->depth_host=host;}
 } // namespace saga::desktop

@@ -12,7 +12,7 @@ class RenderDepth {
 public:
     virtual ~RenderDepth()=default;
     std::int32_t group=0; // MeshManager +0x44, set before SetDepth.
-    virtual void set_depth(std::int32_t index,std::int32_t layer)=0;
+    virtual void set_depth(std::int32_t index,std::int32_t relative)=0; // Native back bool's low bit, not CurrentDepthLayer.
 };
 class RenderMatrix {
 public:

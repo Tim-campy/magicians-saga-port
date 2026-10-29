@@ -45,7 +45,7 @@ struct RenderDrawServices:saga::core::RenderDrawHost,saga::core::RenderGraphics,
     void missing_image(std::int32_t r,std::int32_t t)override{missing.emplace_back(r,t);step("missing");}
     float transform_tangent(float angle)override{tangent_angles.push_back(angle);step("tangent");return tangent;}
     saga::core::RenderDepth* mesh_manager()override{step("mesh");return missing_mesh?nullptr:this;}
-    void set_depth(std::int32_t index,std::int32_t layer)override{depths.emplace_back(group,index);if(layer!=0)throw std::invalid_argument("unexpected mesh layer");step("depth");}
+    void set_depth(std::int32_t index,std::int32_t relative)override{depths.emplace_back(group,index);if(relative!=0)throw std::invalid_argument("unexpected relative mesh depth");step("depth");}
     void push_render_mode(std::int32_t m,std::int32_t a,std::int32_t i)override{render_modes.emplace_back(m,a,i);step("render+");}
     void pop_render_mode()override{++render_pops;step("render-");}
     void push_blend_mode(std::int32_t m,std::int32_t c)override{blends.emplace_back(m,c);step("blend+");}

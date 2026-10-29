@@ -19,7 +19,7 @@ target_link_libraries(archive_resource_manager PUBLIC resource_archive image_dra
 saga_library(archive_image_set archive_image_set.cpp)
 target_link_libraries(archive_image_set PUBLIC archive_resource_manager render_colors)
 saga_library(bitmap_backend bitmap_backend.cpp)
-target_link_libraries(bitmap_backend PUBLIC archive_image_set bitmap_geometry render_transform render_colors material_queue)
+target_link_libraries(bitmap_backend PUBLIC archive_image_set bitmap_geometry render_transform render_colors material_queue mesh_depth)
 
 option(SAGA_BUILD_VIEWER "Build the optional desktop PNG research viewer" OFF)
 if(SAGA_BUILD_VIEWER)

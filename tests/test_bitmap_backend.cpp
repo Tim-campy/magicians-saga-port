@@ -16,6 +16,15 @@ saga::assets::Seb file(std::int16_t texture){
 void insert(RenderQueue& queue,int resource,int clip,int depth,int x){
     RenderCommand c;c.values={-1,resource,depth,clip,0,x,4,-1,-1,-1,-1,-1,-1,0,255,-1,0,-1,0};insert_render_command(queue,c);
 }
+struct DepthHost:BitmapDepthHost {
+    MeshDepthState state;MeshBuilderDepth builder{&state};bool enabled=true;
+    DepthHost(){begin_mesh_depth_frame(state);configure_mesh_builder_depth(builder,24,false);}
+    bool surface_is_null(MeshDepthSurface*)override{check(false);return true;}
+    float low_depth_scaling()override{check(false);return 0;}
+    MeshDepthState& mesh_depth_state()override{return state;}
+    MeshBuilderDepth& depth_builder(std::size_t,std::uint32_t,std::int32_t)override{return builder;}
+    bool depth_step_enabled()override{return enabled;}
+};
 }
 int main()try{
     auto a=file(2),b=file(7);std::vector<const saga::assets::Seb*> aa(4,nullptr),bb(6,nullptr);aa[3]=&a;bb[5]=&b;
@@ -41,6 +50,12 @@ int main()try{
     check(initial[0].depth.group==1&&initial[0].depth.index==7&&initial[1].depth.group==2&&initial[1].depth.index==9);
     check(initial[0].uv.right>initial[1].uv.right&&initial[0].uv.right==initial[3].uv.right);
     backend.clear_quads();draw();check(backend.quads().size()==4&&backend.quads()[3].uv.right==initial[0].uv.right);
+    DepthHost native;backend.set_depth_host(&native);backend.clear_quads();draw();
+    const auto& depth_quads=backend.quads();check(depth_quads.size()==4&&depth_quads[0].native_depth);
+    const float first_z=749993.0F-native.builder.step;
+    check(depth_quads[0].points[0].z==first_z&&depth_quads[0].points[3].z==first_z);
+    check(depth_quads[2].points[0].z<depth_quads[1].points[0].z); // One decrement per material pass, not per vertex.
+    check(native.state.layer==0);backend.set_depth_host(nullptr);
     // Existing global AppData override is distinct from the primary manager and its texture dimensions.
     clear_render_queue(queue);insert(queue,1,3,0,3);auto row=queue.buffers->at(0)->at(0);row->at(render_texture)=2;row->at(render_image_resource)=1;
     backend.clear_quads();draw();check(backend.quads().size()==1&&backend.quads()[0].texture==key_g);

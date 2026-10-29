@@ -40,6 +40,7 @@ SDL_Texture* SdlBitmapTextures::select(const BitmapQuad& quad){
     s.entries.push_back({quad.texture,test,factor,std::move(texture)});return s.entries.back().texture.get();
 }
 bool render_preview_quad(SDL_Renderer* renderer,SDL_Texture* texture,const PreviewQuad& quad,float canvas_height){
+    if(quad.native_depth)return SDL_SetError("native depth vertices require a depth-capable GPU backend");
     const auto& r=quad.uv;
     using saga::core::SpriteBlend;
     SDL_BlendMode mode=SDL_BLENDMODE_NONE;
