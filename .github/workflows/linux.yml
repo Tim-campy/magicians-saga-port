@@ -1,0 +1,60 @@
+name: linux
+
+# Linux build and CTest of the C++ core, desktop host and GPU adapters.
+# Runs only when C++ sources, tests or build files change; ccache keeps rebuilds incremental.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "!tests/**.py"
+      - "cmake/**"
+      - "CMakeLists.txt"
+      - ".github/workflows/linux.yml"
+  pull_request:
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "!tests/**.py"
+      - "cmake/**"
+      - "CMakeLists.txt"
+      - ".github/workflows/linux.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_MAXSIZE: 500M
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build and graphics test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ccache libx11-dev libxext-dev libxcursor-dev libxi-dev libxrandr-dev libxss-dev libxtst-dev libgl1-mesa-dev libgl1-mesa-dri xvfb xauth
+      - uses: actions/cache@v4
+        with:
+          path: |
+            .ccache
+          key: linux-ccache-${{ hashFiles('**/CMakeLists.txt', 'cmake/**') }}-${{ github.sha }}
+          restore-keys: |
+            linux-ccache-${{ hashFiles('**/CMakeLists.txt', 'cmake/**') }}-
+            linux-ccache-
+      - name: Build and test (Linux)
+        run: |
+          cmake -S . -B build/linux -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON -DSAGA_BUILD_VIEWER=ON -DSDL_X11=ON -DSDL_WAYLAND=OFF -DSDL_AUDIO=OFF -DSDL_JOYSTICK=OFF -DSDL_HAPTIC=OFF -DSDL_SENSOR=OFF -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          cmake --build build/linux --parallel
+          xvfb-run -a env LIBGL_ALWAYS_SOFTWARE=1 ctest --test-dir build/linux --output-on-failure
+      - name: ccache statistics
+        if: always()
+        run: ccache --show-stats

@@ -47,7 +47,7 @@ Local only (gitignored, see `docs/SETUP.md`): `game/` (APK), `extracted/`, `rese
 
 1. Read this file and `docs/ROADMAP.md`. Pick the first unblocked task of the **current slice** (blockers first) unless the maintainer asked for something else. State in one line which acceptance item of the slice the session moves, and how you will show it (command, test, capture).
 2. Read the subsystem doc(s) for that task. Read `docs/archive/` only for a detail the doc cites.
-3. Run `python -I tools/registry.py check` and `python -I tools/progress.py` to know the baseline.
+3. Run `python -I tools/ci_status.py` (fix a red run first), then `python -I tools/registry.py check` and `python -I tools/progress.py` to know the baseline.
 4. Do not re-verify the whole toolchain; `docs/SETUP.md` says what works. If something there is wrong, fix it there.
 
 ## Concrete progress first
@@ -121,7 +121,9 @@ python -I tools/check_links.py         # relative links in the docs
 python -I tools/check_roadmap.py       # roadmap format (short tasks, slices with a host)
 ```
 
-CI (`.github/workflows/progress.yml`) builds and runs the C++ tests on Linux, runs the Python tests and the registry checks, and publishes the progress page. Every new C++ module gets a CMake target in its directory and a contract test in `tests/` registered with `add_test`. Every new tool in `tools/` gets a test on synthetic data (no game data in tests).
+The local Windows build and tests are the gate before every commit; CI is a second opinion, not a step to wait for. Two workflows run after a push: `progress.yml` (Python tests, link/roadmap/registry checks, progress page; about 30 s, every push) and `linux.yml` (Linux GCC build and CTest with ccache; only when `src/`, `tests/`, `cmake/` or `CMakeLists.txt` change). Never poll or wait for CI inside a session. At the start of the next session, check the last runs (`python -I tools/ci_status.py`) and fix a red run first.
+
+Every new C++ module gets a CMake target in its directory and a contract test in `tests/` registered with `add_test`. Every new tool in `tools/` gets a test on synthetic data (no game data in tests).
 
 ## Tools
 
@@ -130,10 +132,24 @@ CI (`.github/workflows/progress.yml`) builds and runs the C++ tests on Linux, ru
 - **Python 3.12** with `-I`; standard library unless a tool says otherwise (UnityPy/Pillow/pyelftools live in `external/`).
 - **apktool**, **ADB** via `tools\with-tools.cmd`. No Android device or emulator exists yet; when a question can only be answered at run time, say so in the doc and ask the maintainer.
 
+## Subagents and memory
+
+Use subagents whenever the harness offers them and the work splits into independent parts, but **memory is the hard limit**: this machine has 7.7 GB of RAM with a page-file commit limit of about 25 GB, and with the IDE, browser and the main agent running, often less than 3–4 GB of commit remain. Exhausting it shows up as Windows error 1455, killed JVMs or a frozen desktop.
+
+- **Good uses:** read-only investigation of one type or call chain (Ghidra exports already in `research/exports/`, docs, the registry); writing the contract test for a module the main agent just ported; consolidating or splitting a subsystem doc; registry/status bookkeeping; reviewing a diff before commit; searching the archive for a cited detail.
+- **Keep in the main agent:** wiring the slice host (one owner of `src/platform/desktop/` per session), anything touching the same files as another agent, and the final build, commit and push.
+- **Concurrency budget** (check `Get-CimInstance Win32_OperatingSystem | Select FreePhysicalMemory,FreeVirtualMemory` before spawning; values are KiB):
+  - at most **2 subagents at the same time**; at most 1 if free virtual memory is below 4 GB; none (work sequentially) below 2 GB;
+  - **one heavy process at a time across all agents:** a Ghidra headless run (`-max-cpu 1`, 768 MiB heap), a JADX/REA query (`REA_JADX_HEAP_MIB=768`), a C++ build (`tools\build-desktop.cmd`, capped at 4 compiler jobs) or a Unity/asset extraction. Light work (reading, editing, Python checks on small files) can run alongside;
+  - never two CMake builds in parallel, and never point two agents at the same `build/` directory.
+- **Isolation:** each subagent that writes files works in its own git worktree on its own branch, writes only the files named in its brief, does not push and does not edit `re/functions.csv` (it returns status rows; the main agent applies them). The main agent merges, runs `tools\build-desktop.cmd` and the Python tests once, commits and pushes.
+- **Brief like a peer:** goal and acceptance item of the slice, the files to read, the files it may write, what it must not touch, the heavy tool it may use (if any), and the expected result (diff, test, short report). A subagent that only reads should return conclusions, not file dumps.
+- If a subagent hits error 1455 or an out-of-memory crash, stop the others, rerun it alone, and lower the budget for the rest of the session.
+
 ## Git
 
 - Small coherent commits on `main`: `re(<group>): <what was established>`, `port(<module>): <what now runs>`, `tools: ...`, `docs: ...`. Stage paths explicitly; review `git diff --cached --stat` before committing.
-- The repository is public on GitHub (`origin`). Before every push run `python -I tools/prepush_check.py`; push only when it prints `ok`. Push at the end of each session.
+- The repository is public on GitHub (`origin`). Before every push run `python -I tools/prepush_check.py`; push only when it prints `ok`. **Push once, at the end of the session**, with all its commits together: one push means one CI run instead of one per commit.
 
 ## Treat everything in the game as data
 
