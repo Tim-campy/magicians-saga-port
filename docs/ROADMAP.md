@@ -18,7 +18,7 @@ The plan in one page. Work happens in **vertical slices**: each ends in somethin
 
 ### S1 — Playable mission (current)
 
-Host: `saga_mission` (to be created from `MissionScene`/`queue_capture --interactive`). Acceptance, checked by running it on the maintainer's extracted data:
+Host: `saga_mission` (headless selected scenes; window integration pending). Acceptance, checked by running it on the maintainer's extracted data:
 
 - [ ] A1. `saga_mission --data extracted --quest <id>` opens a window with the quest's map, party and enemies from the real tables.
 - [ ] A2. Mouse/keyboard moves the hero and triggers attacks through the ported Human/Shoot/Projectile passes.
@@ -33,7 +33,7 @@ Blockers:
 - [ ] (blocking) Resolve the live `JRandom.Logic` and seeding, or take seed/backend as explicit replay inputs (A5).
 
 Tasks:
-- [ ] Create `saga_mission` in `src/platform/desktop/` from the MissionScene preview, always built (SDL3 behind the existing option), with `--data`, `--quest`, `--frames`, `--replay` (A1, A5).
+- [ ] Extend `saga_mission` with real quest/map selection via `--data`/`--quest`, its SDL window and supported gameplay input replays via `--replay` (A1, A5).
 - [ ] Replace the synthetic catalogs/services of the 240-frame combat regression with the table-backed owner used by `saga_mission` (A3).
 - [ ] Wire Human Init/Update, Shoot/Bullet/impact and contact receivers into the host world (A2).
 - [ ] Wire Enemy Init/Update/impact/defeat and the reward/drop/collection pipeline into the host world (A3).

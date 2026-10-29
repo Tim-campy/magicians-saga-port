@@ -6,6 +6,7 @@ How far the ported modules run together on the PC, per slice of `docs/ROADMAP.md
 
 | Slice | Host | Run | State |
 | --- | --- | --- | --- |
+| S1 headless mission | `saga_mission` (always built) | see [setup](../SETUP.md#headless-mission-host) | Shares the strict scenario loader and Move/Animation/Render/Garbage steps with the GPU preview. No PNG decoding or SDL; selected entities, not a quest/map bootstrap. |
 | S1 playable mission | `MissionEntities`/`MissionScene` (`src/platform/desktop/mission_*.cpp`), driven by `queue_capture --interactive` (viewer build) | see [assets](assets.md#table-backed-scene-window) | Loads real tables/archives, creates human/enemy, optionally integrates native velocity and effect expiry around animation/GL drawing. No input, AI, collision or stage end. |
 | S2 town ↔ mission | none | — | `select_*` modules ported and tested in isolation; no host. |
 | S3 boot, title, save | none | — | First form unknown; save envelope not decoded. |
@@ -16,6 +17,7 @@ How far the ported modules run together on the PC, per slice of `docs/ROADMAP.md
 Keep this list current: a ported module that no host calls is integration debt. Group by host; one line per module or chain.
 
 - `MissionScene`: gameplay catalog, human/enemy/effect factories, dynamic subsets, MoveSystem and GarbageSystem Init/NeedsUpdate/Update (simulate profile), entity destruction/manager deletion, render frame/draw, SEB sprite evaluation, animation pass, BitmapMeshFrame/GL.
+- `saga_mission` and `queue_capture`: MissionProfile owns the same archive managers, saved inputs, factories and scene step. The capture frontend supplies the PNG decoder; an empty decoder keeps the host independent of SDL and pixel preparation.
 - Not reachable from any host yet (tested only): human frame/shoot/contact, enemy frame/impact/defeat, projectile launch/motion/hit, collision, emitters, modifiers, drops and stage rewards, stage start/update/recovery/return, quest camera, cell system, event catalog/conditions/execution/dispatch, SelectForm passes, text modules, culture/collation/execution-context modules (deferred dependency work).
 
 ### Selected movement pass (S1 A3)
@@ -42,6 +44,13 @@ Local demonstration: `build/viewer/queue_capture.exe research/exports/mission-da
 | scene-tick | `queue_capture --interactive` `tick_ms` | `MyConfig.FPS` / IApplication timing | provisional input | FPS and timing policy are resolved |
 | scene-progress | profile rows | saved level/EXP/shop purchases | provisional input (level 1, EXP 0, no purchases) | save envelope is decoded |
 | scene-materials | profile rows | material/shader identities | provisional input | production constructor/material canonicalization is ported |
+| mission-config | `saga_mission` CLI | live FPS/DEBUG/RNG/seed selection | provisional inputs (required, no implicit defaults); not consumed by the selected game passes | combat timing/damage/random consumers are bound |
+
+### Headless execution limits
+
+The host requires an explicit scene, frame count, FPS, DEBUG, backend name and seed. Only the existing explicit-seed System.Random adaptation is available; unsupported backends and unknown flags fail. The current passes do not draw random values, use DEBUG or derive attack intervals from FPS. These flags are configuration plumbing, not resolution of the live-value blockers. Headless execution runs fixed logic passes without sleeping or multiplying movement by delta time. No complete-state hash, gameplay input replay, quest-table selection or save snapshot is claimed.
+
+The original-data effects profile produces the same actor positions and destroyed flags after 120 passes in the headless host and the GPU frontend: enemy2 ends at z115.068047, effect101 is destroyed, and the hero remains still. host-loop.json and effects-loop.json are local evidence. Synthetic host tests additionally use invalid PNG payloads to prove that headless execution performs no PNG decoding and check strict rows, required simulate configuration, duplicate options and deterministic repeated output. GPU tests continue through the same loader/step.
 
 ## Integration notes moved from the roadmap (2026-10-29)
 
