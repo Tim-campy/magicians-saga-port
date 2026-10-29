@@ -16,13 +16,44 @@ struct MissionStageScenario {
     std::optional<MissionBossScenario> boss;
     bool reset_timer=false; // Explicit fresh timer from selected QuestData; not saved-state restoration.
 };
-class MissionStage final:private core::StageUpdateHost,private core::StageBossHost,private core::StageTimerHost {
+class MissionStage final:private core::StageUpdateHost,private core::StageBossHost,private core::StageStartHost,
+    private core::PartyStartHost,private core::MemberInitializationHost {
 public:
     MissionStage(MissionHumans&,MissionStageScenario);
     bool advance(std::int32_t pass,bool enabled);
     void pulse(std::uint32_t mask){pending_pulse_|=mask;}
     void report(std::ostream&);
+    void start(std::int32_t,const core::EventIntegers&,core::StageMapLoader&,
+               std::function<bool()>,std::function<void()>);
 private:
+    core::StageCleanupHost& cleanup_host()override;
+    core::StageMapLoader* current_map_system()override{return map_loader_;}
+    core::PartyStartHost& party_host()override{return *this;}
+    core::StageQuestForm* quest_form()override;
+    bool systems_paused()override{return paused_();}
+    void resume_systems()override{resume_();}
+    void play_stage_bgm()override;void play_stage_sound()override;
+    core::PartyCharacters character_table()override;
+    core::PartyHumanFactory* human_factory_world()override;
+    core::PlayerWorldState* current_world()override;
+    core::QuestEntityHost* destruction_host(core::PlayerWorldState&)override;
+    core::QuestMemberId entity_id(core::ComponentSlots&)override;
+    core::PartyCharacter* character(core::HumanRecordLink&)override;
+    bool debug_enabled()override;
+    bool editor_enabled()override;
+    bool quest_has_auto_party()override;
+    core::PartyCharacter* random_character(const std::vector<core::PartyCharacter*>&)override;
+    core::PartyDistanceSystem* distance_system(core::PlayerWorldState&)override;
+    std::shared_ptr<std::vector<std::int32_t>> auto_formation(std::int32_t)override;
+    core::MemberInitializationHost& member_initialization()override{return *this;}
+    core::ProjectileCollision& acquire_collision()override;
+    void release_collision(core::Component*)override;
+    std::int32_t formation_left()override;
+    std::int32_t formation_top()override;
+    std::int32_t total_parameter(core::ComponentSlots&,std::int32_t)override;
+    void change_animation(core::ComponentSlots&,std::int32_t,bool)override;
+    core::HumanStateHost* human_system()override;
+    std::int32_t* sortie_count(core::HumanRecordLink&)override;
     std::int32_t frames_per_second()override;
     core::StageGeometry* stage_map()override;
     core::DropPlacementWorld* drop_world()override;
@@ -57,5 +88,8 @@ private:
     core::StageObjectWorld objects_;
     std::uint64_t boss_creation_calls_=0;
     std::uint64_t steps_=0;std::uint32_t pulse_=0,pending_pulse_=0;
+    core::StageMapLoader* map_loader_=nullptr;
+    std::function<bool()> paused_;std::function<void()> resume_;
+    bool started_=false;
 };
 }

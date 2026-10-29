@@ -22,6 +22,7 @@ public:
     void grant();
     void report(std::ostream&);
     bool transition_pending()const{return static_cast<bool>(transition_);}
+    core::StageCleanupHost& cleanup_service(){return *this;}
 private:
     struct Cursor {std::shared_ptr<core::PartyMembers> list;std::uint32_t version=0;std::size_t index=0;};
     std::optional<core::QuestMemberId> next(Cursor&);

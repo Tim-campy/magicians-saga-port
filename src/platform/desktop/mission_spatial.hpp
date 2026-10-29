@@ -10,12 +10,13 @@ class MissionSpatial final:private core::MissionMapHost,private core::MissionMap
     private core::QuestCameraInitializationWorld,private core::QuestCameraHost,
     private core::QuestViewportView,private core::QuestCameraMapWorld,private core::MemberFormationHost,
     private core::CellInitializationWorld,private core::CellVisibilityHost,private core::CellChangeEvents,
-    private core::CursorInitializationWorld,private core::CursorHost {
+    private core::CursorInitializationWorld,private core::CursorHost,public core::StageMapLoader {
 public:
     MissionSpatial(MissionEntities&,core::MapComponent&,MissionView&,core::StageQuestForm&,
                    std::shared_ptr<core::StageQuest>,core::EventInstruction chip_images,bool defer_init=false);
     void initialize_system(std::int32_t factory);
     void load_selected_map();
+    void load_map(std::shared_ptr<core::StageQuest>)override;
     void advance_camera(std::int32_t pass=0,bool enabled=true);
     void advance_cells(std::int32_t pass=0,bool enabled=true);
     void advance_visibility(std::int32_t pass=0,bool enabled=true);

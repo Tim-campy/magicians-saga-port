@@ -25,6 +25,7 @@ void MissionSpatial::initialize_system(std::int32_t id){
     }
 }
 void MissionSpatial::load_selected_map(){load_mission_map(map_system_,selected_quest_,*this);}
+void MissionSpatial::load_map(std::shared_ptr<StageQuest> quest){selected_quest_=std::move(quest);load_selected_map();}
 void MissionSpatial::advance_camera(std::int32_t pass,bool enabled){if(gameplay_needs_update(8,enabled,pass)){update_quest_camera(camera_,*this);++camera_steps_;}}
 void MissionSpatial::advance_cells(std::int32_t pass,bool enabled){if(gameplay_needs_update(17,enabled,pass)){update_cells(cells_,*this);++cell_steps_;}}
 void MissionSpatial::advance_visibility(std::int32_t pass,bool enabled){if(gameplay_needs_update(20,enabled,pass)){update_cell_visibility(index_,*this);++visibility_steps_;}}

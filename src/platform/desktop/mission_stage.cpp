@@ -34,6 +34,41 @@ bool MissionStage::advance(std::int32_t pass,bool enabled){
     if(owner_.stage_.state==1)++owner_.collection_steps_;
     update_stage(owner_.stage_,*this);return true;
 }
+void MissionStage::start(std::int32_t stage,const EventIntegers& formation,StageMapLoader& map,
+    std::function<bool()> paused,std::function<void()> resume){
+    if(started_||formation.size()!=16||!owner_.results_||!owner_.stage_.enemies)
+        throw std::invalid_argument("stage_start requires fresh entry, sixteen formation slots, results and native Init");
+    owner_.members_.formation=std::make_shared<EventIntegers>(formation);
+    map_loader_=&map;paused_=std::move(paused);resume_=std::move(resume);
+    // The scenario explicitly supplies null area; original area/quest selection belongs to S2.
+    start_stage(owner_.stage_,nullptr,owner_.stage_.quest,stage,owner_.random_,*this);started_=true;
+}
+StageCleanupHost& MissionStage::cleanup_host(){return owner_.results_->cleanup_service();}
+StageQuestForm* MissionStage::quest_form(){return &owner_.quest_form_;}
+void MissionStage::play_stage_bgm(){owner_.notification_events_.push_back("play_stage_bgm");} // SAGA_STUB(mission-stage-audio).
+void MissionStage::play_stage_sound(){owner_.notification_events_.push_back("play_stage_sound");} // SAGA_STUB(mission-stage-audio).
+PartyCharacters MissionStage::character_table(){return owner_.character_table();}
+PartyHumanFactory* MissionStage::human_factory_world(){return owner_.human_factory_world();}
+PlayerWorldState* MissionStage::current_world(){return owner_.current_world();}
+QuestEntityHost* MissionStage::destruction_host(PlayerWorldState&){return &owner_.world_;}
+QuestMemberId MissionStage::entity_id(ComponentSlots& e){return owner_.world_.handle(e);}
+PartyCharacter* MissionStage::character(HumanRecordLink& h){return owner_.character(h);}
+bool MissionStage::debug_enabled(){return owner_.runtime_.debug;}
+bool MissionStage::editor_enabled(){unavailable("DEBUG editor auto-party inputs");}
+bool MissionStage::quest_has_auto_party(){return (static_cast<std::uint32_t>(owner_.stage_.quest->flags)&2U)!=0;}
+PartyCharacter* MissionStage::random_character(const std::vector<PartyCharacter*>&){unavailable("DEBUG auto-party saved-state writeback");}
+PartyDistanceSystem* MissionStage::distance_system(PlayerWorldState&){unavailable("DEBUG auto-party distance service");}
+std::shared_ptr<std::vector<std::int32_t>> MissionStage::auto_formation(std::int32_t){unavailable("DEBUG auto-party formation");}
+ProjectileCollision& MissionStage::acquire_collision(){return owner_.world_.acquire_collision();}
+void MissionStage::release_collision(Component* value){owner_.world_.return_component(32,value);}
+std::int32_t MissionStage::formation_left(){return stage_formation_left(static_cast<StageStartHost&>(*this));}
+std::int32_t MissionStage::formation_top(){return stage_formation_top(owner_.stage_,static_cast<StageStartHost&>(*this));}
+std::int32_t MissionStage::total_parameter(ComponentSlots& e,std::int32_t key){return owner_.human_parameter(e,key);}
+void MissionStage::change_animation(ComponentSlots& e,std::int32_t clip,bool reset){owner_.change_animation(e,clip,reset);}
+HumanStateHost* MissionStage::human_system(){return static_cast<HumanFrameHost*>(&owner_);}
+std::int32_t* MissionStage::sortie_count(HumanRecordLink& h){
+    auto at=owner_.saved_.sortie_counts.find(h.character_id);return at==owner_.saved_.sortie_counts.end()?nullptr:&at->second;
+}
 StageGeometry* MissionStage::stage_map(){return &owner_.geometry_;}
 std::int32_t MissionStage::frames_per_second(){return owner_.runtime_.fps;}
 StageQuestForm* MissionStage::update_quest_form(){return &owner_.quest_form_;}
@@ -72,6 +107,12 @@ std::int32_t* MissionStage::equipment_level(EquipmentSlot kind,std::int32_t id){
 }
 QuestReturnHost& MissionStage::return_host(){if(!owner_.results_)unavailable("return state providers");return *owner_.results_;}
 void MissionStage::report(std::ostream& out){
+    out<<",\"native_stage_started\":"<<(started_?"true":"false");
+    if(started_){
+        out<<",\"quest_form_scale\":"<<owner_.quest_form_.scale<<",\"entry_members\":[";bool first=true;
+        for(auto* e:owner_.members_.members->entities()){if(!first)out<<',';first=false;out<<owner_.world_.id(*e);}out<<"],\"sortie_counts\":[";first=true;
+        for(const auto& e:owner_.saved_.sortie_counts){if(!first)out<<',';first=false;out<<"{\"id\":"<<e.first<<",\"count\":"<<e.second<<'}';}out<<']';
+    }
     out<<",\"stage_steps\":"<<steps_<<",\"remaining_time\":"<<owner_.stage_.remaining_time
        <<",\"boss_entry_enabled\":"<<(enemy_entry_?"true":"false")<<",\"boss_started\":"<<(owner_.stage_.boss_started?"true":"false")
        <<",\"boss_creation_calls\":"<<boss_creation_calls_<<",\"min_z_rate\":"<<owner_.stage_.min_z_rate<<",\"boss_fence\":";
@@ -80,6 +121,11 @@ void MissionStage::report(std::ostream& out){
 void MissionHumans::enable_stage_loop(MissionStageScenario scenario){
     if(stage_loop_)throw std::invalid_argument("stage_loop requires one explicit scenario");
     stage_loop_=std::make_unique<MissionStage>(*this,std::move(scenario));
+}
+void MissionHumans::start_mission(std::int32_t stage,const EventIntegers& formation,StageMapLoader& map,
+    std::function<bool()> paused,std::function<void()> resume){
+    if(!stage_loop_)throw std::invalid_argument("stage_start requires stage_loop");
+    stage_loop_->start(stage,formation,map,std::move(paused),std::move(resume));
 }
 bool MissionHumans::advance_stage(std::int32_t pass,bool enabled){
     if(stage_loop_)return stage_loop_->advance(pass,enabled);

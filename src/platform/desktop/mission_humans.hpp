@@ -20,6 +20,7 @@ struct MissionRuntimeConfig {std::int32_t fps;bool debug;std::int32_t seed;std::
 struct MissionHumanScenario {
     std::int32_t distance,min_z_rate,max_z_rate,attribute,button;
     std::shared_ptr<core::StageQuest> quest; // Selected static table plus explicit saved state.
+    bool stage_entry=false; // Fresh roster for native Start; selected mid-mission actors otherwise.
 };
 struct MissionRewardScenario {std::int32_t defeated,remaining,saved_defeat_count;};
 struct MissionNotificationScenario {
@@ -66,6 +67,8 @@ public:
     void write_collection_report(std::ostream&);
     void enable_results(MissionResultScenario);
     void enable_stage_loop(MissionStageScenario);
+    void start_mission(std::int32_t,const core::EventIntegers&,core::StageMapLoader&,
+                       std::function<bool()>,std::function<void()>);
     bool advance_stage(std::int32_t pass=0,bool enabled=true);
     bool transition_pending()const;
     void write_result_report(std::ostream&);
@@ -254,6 +257,7 @@ private:
     std::vector<std::string> notification_events_; // One ordered presentation stream for both stack projections.
     bool collection_enabled_=false;std::uint64_t collection_steps_=0,collection_sounds_=0,collection_jingles_=0;
     std::unique_ptr<MissionResults> results_;std::unique_ptr<MissionStage> stage_loop_;
+    std::optional<core::DropPlacementWorld> placement_world_;
     std::unique_ptr<MissionInput> input_;
 };
 } // namespace saga::desktop

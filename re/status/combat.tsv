@@ -44,7 +44,7 @@ game:0x06000fda	reimplemented	src/core/gameplay/quest_return.cpp	Deferred live a
 game:0x06000fb7	reimplemented	src/core/gameplay/stage_update.cpp	Native retry/state5/6 policy and ordered form/BGM suffix reachable from mission host through narrow StageGameOverHost; explicit initial state and answer.
 game:0x06000fb6	reimplemented	src/core/gameplay/human_impact.cpp	Main flag2 invokes game-over; mission event30 dispatch runs Stage before Enemy retarget; sub-character death does not require game-over inputs.
 game:0x06000f9b	reimplemented	src/core/gameplay/stage_start.cpp	Native ordered system references, three distinct state0/frame4 buttons, fresh collecting list and subscriptions30/9/15; failure/identity tests.
-game:0x06000f9e	reimplemented	src/core/gameplay/stage_start.cpp	Complete stage-entry ordering and partial failures; real party/drop/31-pass credit composed; map/enemy/pause/audio services explicit.
+game:0x06000f9e	reimplemented	src/core/gameplay/stage_start.cpp	Complete startup ordering and partial failures; stage_start host binds native cleanup/map/party/enemy/drop chain with explicit saved inputs and audio stubs.
 game:0x06000fbb	reimplemented	src/core/gameplay/combat_host.cpp	Enemy presence adds offered damage with wrap; null receiver faults; overkill and DEBUG integration tests
 game:0x06000fb2	reimplemented	src/core/gameplay/quest_rewards.cpp	Counters and signed bests ported with ordered live host reads and partial-failure tests
 game:0x06000fc9	documented	docs/subsystems/rewards.md	signed max of bestTotalGaveDamage over questData
@@ -128,7 +128,7 @@ game:0x06000f44	reimplemented	src/core/gameplay/member_roster.cpp	Empty-slot ass
 game:0x06000f45	reimplemented	src/core/gameplay/member_roster.cpp	Reject empty sentinel and try formation slots in order until first accepted assignment; duplicate IDs allowed.
 game:0x06000f46	reimplemented	src/core/gameplay/member_roster.cpp	First matching formation index, with unconditional minus-one sentinel rejection.
 game:0x060000fb	reimplemented	src/core/gameplay/member_roster.cpp	Nonzero base maximum copies into base value; zero and extra fields preserved; composed member initialization tested.
-game:0x06000f33	reimplemented	src/core/gameplay/party_start.cpp	Stored/debug party entry composed with real groups, sub snapshot destruction, hero collision/roster, placement and InitMembers; human creation/RNG/ranking/data services explicit.
+game:0x06000f33	reimplemented	src/core/gameplay/party_start.cpp	Stored/debug paths ported; stage_start host wires ordinary formation, hero collision, sub creation and InitMembers; DEBUG auto-party writeback remains unbound.
 game:0x06000bee	reimplemented	src/core/gameplay/party_start.cpp	Live character saved level/EXP to World.instance human factory, zero direction/absolute position and supplied formation offsets; capture/failure tested.
 game:0x06000b37	reimplemented	src/core/gameplay/party_start.cpp	Acquire/write Collision payload before slot 32 insertion; occupied-slot and party-entry replacement tested.
 game:0x06000b38	reimplemented	src/core/gameplay/party_start.cpp	Capture Collision, detach slot 32, then pool return including null; failure leaves removal committed.
@@ -150,7 +150,7 @@ game:0x06000fa1	reimplemented	src/core/gameplay/stage_start.cpp	Capture timeLimi
 game:0x06000fd5	reimplemented	src/core/gameplay/stage_start.cpp	Store int32 state and frame zero; Start then writes frame four, partial button pass tested.
 game:0x06000fcf	reimplemented	src/core/gameplay/stage_start.cpp	Fresh zero reward accumulator and independent treasure list published before cleanup; collection alias and retained old owner tested.
 game:0x06000fa3	reimplemented	src/core/gameplay/stage_placement.cpp	Captured height/two map reads; signed magic 0xae147ae1 divides wrapped product by -100 (corrected direction); negative/wrap/progress-inverse tests.
-game:0x06000faa	reimplemented	src/core/gameplay/stage_placement.cpp	Money then treasure then prisoner placement through actual drop factory; ordering and partial failure tested.
+game:0x06000faa	reimplemented	src/core/gameplay/stage_placement.cpp	Money then treasure then prisoner placement through actual drop factory; stage_start host consumes selected QuestData with the shared RNG.
 game:0x06000fab	reimplemented	src/core/gameplay/stage_placement.cpp	Rates 10..90, live chance, captured stepX, inclusive offset/GetZ/coin roll, actual money drop and depth -10; RNG/order tests.
 game:0x06000fac	reimplemented	src/core/gameplay/stage_placement.cpp	Captured first fixed-treasure group/chance, row-before-roll, actual boxes and mandatory current completion reward; mutation/draw tests.
 game:0x06000fad	reimplemented	src/core/gameplay/stage_placement.cpp	At most three attempts and a bounded fallback only when all positive-count trials fail; real prisoner entities and draw counts tested.

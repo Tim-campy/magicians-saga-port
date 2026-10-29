@@ -27,7 +27,7 @@ MissionHumans::MissionHumans(MissionEntities& world,const GameplayCatalog& data,
     if(!defer)enemies_.subset=world_.subset({24});stage_.members=&members_;stage_.humans=&system_;system_.transitions=static_cast<HumanFrameHost*>(this);
     auto cursor=required(world_.subset({14})).cursor();while(const auto actor=cursor.next()){
         static_cast<void>(saved.characters.at(field<HumanRecordLink>(**actor,14).character_id)); // Require saved state for every live actor.
-        add_member(members_,*actor);
+        if(!scenario.stage_entry)add_member(members_,*actor);
     }
     if(!defer){
         world_.events().subscribe(30,[this](ComponentSlots* e){stage_human_dead(required(e),records_,*this);});
@@ -83,5 +83,9 @@ void MissionHumans::impact_effect(std::int32_t clip,std::int32_t image,std::int3
 void MissionHumans::send_human_dead(ComponentSlots& e){
     world_.events().send(30,&e);
 }
-DropPlacementWorld* MissionHumans::drop_world(){unbound("stage drops");}
+DropPlacementWorld* MissionHumans::drop_world(){
+    if(!catalog_.treasures)unbound("stage drop catalog");
+    if(!placement_world_)placement_world_.emplace(DropPlacementWorld{world_.effect_world().ids,world_,*catalog_.treasures});
+    return &*placement_world_;
+}
 } // namespace saga::desktop

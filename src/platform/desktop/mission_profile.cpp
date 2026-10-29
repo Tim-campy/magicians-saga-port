@@ -57,7 +57,8 @@ void MissionProfile::initialize_loaded_world(){
     }
     append_gameplay_initializers(initializers_,factory);initialize_systems(initialization_,&initialization_world_);
     initialization_complete_=true;
-    spatial->load_selected_map();humans->apply_initialized_scenario(); // Explicit mid-mission map/input/population snapshot after native Init.
+    if(!native_stage_entry_)spatial->load_selected_map();
+    humans->apply_initialized_scenario(); // Explicit input/population snapshot; Start replaces its native entry fields.
 }
 void MissionProfile::bind_schedule(){
     const auto bind=[&](std::int32_t id,bool enabled,std::function<void(std::int32_t)> body){
@@ -175,6 +176,8 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     std::vector<SelectedGauge> gauges;
     std::set<std::string> quest_fields;
     std::int32_t rescued_prisoners=0;
+    std::optional<std::int32_t> stage_entry;
+    EventIntegers formation;bool has_formation=false;
     for(std::string line;std::getline(input,line);){
         std::istringstream row(line);row.imbue(std::locale::classic());std::string operation;
         if(!(row>>operation)||operation.front()=='#')continue;
@@ -182,6 +185,21 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             std::int32_t loaded=0;
             if(initialized_loaded_||!(row>>loaded)||loaded<1||loaded>255)throw std::invalid_argument("system_init requires one explicit loaded-world byte1..255; fresh-game bootstrap is unbound");
             initialized_loaded_=static_cast<std::uint8_t>(loaded);end(row);continue;
+        }
+        if(operation=="stage_start"){
+            std::int32_t stage=0;std::string area;
+            if(stage_entry||!(row>>stage>>area)||area!="null")throw std::invalid_argument("stage_start requires one stage int32 and explicit null area");
+            stage_entry=stage;native_stage_entry_=true;end(row);continue;
+        }
+        if(operation=="party_formation"){
+            if(has_formation)throw std::invalid_argument("duplicate party_formation");
+            formation.resize(16);for(auto& id:formation)if(!(row>>id)||id< -1)throw std::invalid_argument("party_formation requires sixteen character IDs or -1");
+            has_formation=true;end(row);continue;
+        }
+        if(operation=="sorties"){
+            std::int32_t id=0,count=0;
+            if(!(row>>id>>count)||id<0||!progress.sortie_counts.emplace(id,count).second)throw std::invalid_argument("sorties requires unique character ID and saved int32 count");
+            end(row);continue;
         }
         if(operation=="quest"){
             std::int32_t id=0;
@@ -390,6 +408,11 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     if(selection.quest&&!selected_quest)throw std::invalid_argument("--quest requires a scenario quest row with explicit saved rescued count");
     if(!has_world)throw std::invalid_argument("an explicit world matrix is required");
     const bool result_requested=wallet||record||recruits||stocks[0]||stocks[1]||stocks[2];
+    if(stage_entry){
+        if(!selected_quest||!initialized_loaded_||!human_scenario||!stage_loop||!result_requested||!has_formation||!states.empty())
+            throw std::invalid_argument("stage_start requires quest, system_init, human_system, stage_loop, results, party_formation and no actor_state override");
+        human_scenario->stage_entry=true;
+    }else if(has_formation||!progress.sortie_counts.empty())throw std::invalid_argument("party_formation/sorties require stage_start");
     if(!quest_fields.empty()&&!selected_quest)throw std::invalid_argument("quest source requires a quest selection row");
     if(selected_quest){
         if(!tables||selected.empty()||!human_scenario||!notifications)throw std::invalid_argument("quest requires tables, selected actors, human_system and stage_notifications");
@@ -473,6 +496,8 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             if(map_images){spatial=std::make_unique<MissionSpatial>(*entity_world,*live_map,view,humans->quest_form(),humans->quest(),map_images,initialized_loaded_.has_value());mission->bind_spatial(*spatial,!initialized_loaded_);
                 if(!initialized_loaded_)spatial->observe_cursor_click([this](CursorPointRef point){mission->deliver_info_click(std::move(point));});}
             if(initialized_loaded_)initialize_loaded_world();
+            if(stage_entry)humans->start_mission(*stage_entry,formation,*spatial,
+                [this]{return initialization_.paused;},[this]{initialization_.paused=false;});
             for(const auto& request:states)humans->set_state(*created.at(std::get<0>(request)),std::get<1>(request),std::get<2>(request));
         }else if(!states.empty())throw std::invalid_argument("actor_state requires human_system");
         for(auto& selected_button:buttons){

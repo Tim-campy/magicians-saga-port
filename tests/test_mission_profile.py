@@ -342,6 +342,59 @@ class MissionProfileTests(unittest.TestCase):
             incomplete = subprocess.run([str(EXE), '--headless'], capture_output=True, text=True, timeout=30)
             self.assertNotEqual(incomplete.returncode, 0)
 
+    def test_native_stage_start_positions_party_and_places_table_drops(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory);scene = root / 'entry.txt'
+            original = make_boss_scene(root, stage_entry=True)
+            substitutions = {
+                'geometry 312 312 12': 'geometry quest',
+                'human_system 10 0 95 0 0': 'human_system quest 0 95 0 0',
+                'enemy_system 10000 0 10 25 7': 'enemy_system quest 10000',
+                'enemy_pool 0\n': '',
+                'stage_notifications 1 0 0 2 0 0 -1': 'stage_notifications 1 0 0 quest 1 0 -1',
+                'stage_events fresh 0': 'stage_events quest',
+                'stage_loop 5000 0 20 hold': 'stage_loop quest 0 20 hold',
+                'stage_boss 4 7': 'stage_boss quest',
+                'mission_map fresh 0 1 2 3': 'mission_map quest',
+            }
+            text = original
+            for before, after in substitutions.items():
+                self.assertIn(before, text);text = text.replace(before, after)
+            text += ('quest 2 0\nsystem_init 1\nstage_start 0 null\n'
+                     'party_formation 2 3 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1\n'
+                     'progress 3 1 0\nsorties 2 7\nsorties 3 9\n'
+                     'result_wallet 10 20 0\nresult_record 0 0 0 0 0 0 0\n'
+                     'result_inventory equipment 0 0 0\nresult_inventory cloth 0 0 0\n'
+                     'result_inventory hat 0 0 0\nresult_recruits 0 0 0\n')
+            scene.write_text(text, encoding='utf-8')
+            result = self.run_host(scene, frames=1)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            d = json.loads(result.stdout)
+            self.assertTrue(d['native_stage_started']);self.assertTrue(d['init_schedule_complete'])
+            self.assertEqual(len(d['entry_members']), 2)  # Empty entry roster, one hero and one native sub-character.
+            self.assertEqual(d['quest_form_scale'], 100)
+            self.assertEqual(d['sortie_counts'], [{'id':2,'count':8},{'id':3,'count':10}])
+            self.assertEqual((d['positions'][0]['x'], d['positions'][0]['z']), (240,2964))
+            self.assertEqual(d['positions'][0]['human_state'], 2)  # Human4 consumes the startup waiting state.
+            self.assertEqual(d['remaining_time'], 5000)  # First frame only changes Stage0 -> Stage1.
+            self.assertGreater(d['rng_draws'], 80)
+            self.assertEqual(self.run_host(scene, frames=1).stdout, result.stdout)
+            scene.write_text(text.replace('sorties 2 7', 'sorties 2 2147483647'), encoding='utf-8')
+            wrapped = self.run_host(scene, frames=1);self.assertEqual(wrapped.returncode, 0, wrapped.stderr)
+            self.assertEqual(json.loads(wrapped.stdout)['sortie_counts'][0]['count'], -2147483648)
+            # Repeated character slots create distinct native sub-characters; do not deduplicate the saved formation.
+            larger = text.replace('party_formation 2 3 -1 -1', 'party_formation 2 3 3 3')
+            scene.write_text(larger, encoding='utf-8');four = self.run_host(scene, frames=1)
+            self.assertEqual(four.returncode, 0, four.stderr)
+            self.assertEqual(len(json.loads(four.stdout)['entry_members']), 4)
+            self.assertEqual(json.loads(four.stdout)['quest_form_scale'], 75)
+            self.assertEqual(json.loads(four.stdout)['sortie_counts'][1]['count'], 12)
+            for bad in [text.replace('sorties 3 9\n',''), text.replace('party_formation 2 3', 'party_formation 2'),
+                        text+'stage_start 1 null\n', text.replace('stage_start 0 null','stage_start 0 inferred'),
+                        text.replace('system_init 1\n',''), text+'actor_state 0 1 -1\n']:
+                scene.write_text(bad, encoding='utf-8')
+                self.assertNotEqual(self.run_host(scene, frames=1).returncode, 0)
+
     def test_quest_table_drives_map_boss_and_preserves_saved_fields(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory);scene = root / 'scene.txt'

@@ -53,6 +53,7 @@ public:
     bool accepts_live_input()const{return humans&&humans->input_enabled()&&!humans->transition_pending()&&!replay_bound_;}
 private:
     void initialize_loaded_world();
+    bool native_stage_entry_=false;
     void initialize_factory(std::int32_t,core::InitializationWorld*);
     void subscribe_auxiliary_button(std::int32_t,core::AuxiliaryInitializationWorld::Button)override;
     void subscribe_menu_orientation(std::function<void()> f)override{menu_orientation_=std::move(f);}

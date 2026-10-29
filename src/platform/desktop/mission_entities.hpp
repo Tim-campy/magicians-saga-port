@@ -22,6 +22,7 @@ struct MissionProgress {
     std::map<std::int32_t,std::int32_t> shop_purchases;
     std::map<std::int32_t,std::int32_t> equipment_levels,hat_levels,cloth_levels;
     std::map<std::int32_t,std::int32_t> enemy_defeat_counts;
+    std::map<std::int32_t,std::int32_t> sortie_counts;
 };
 // Fresh desktop entity/component ownership around the existing game factories.
 // Native world teardown, pooling reuse, input updates and the complete system schedule remain separate.
