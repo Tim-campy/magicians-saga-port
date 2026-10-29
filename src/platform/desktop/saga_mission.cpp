@@ -1,4 +1,4 @@
-// Selected mission host. Quest selection and the complete combat schedule remain unbound.
+// Selected mission host. Full quest bootstrap and complete native Init dispatch remain unbound.
 #include "mission_profile.hpp"
 #include "core/gameplay/game_random.hpp"
 #include <charconv>
@@ -18,7 +18,7 @@ std::int32_t integer(std::string_view value){
 int main(int argc,char** argv)try{
     if(argc==2&&std::string_view(argv[1])=="--help"){
         std::cout<<"Usage: saga_mission --scene profile.txt --frames N --headless --fps N --debug 0|1 --rng system --seed int32 [--replay inputs.txt]\n"
-                   "Runs selected table-backed combat/stage passes without SDL or PNG decoding.\n"
+                   "Runs selected table-backed combat/stage passes without SDL; Gauge22 decodes its required PNGs.\n"
                    "FPS/DEBUG/RNG and scenario state are explicit; deferred town transitions hold the old mission.\n"
                    "Input-enabled scenes replay native movement/attack controls; quest bootstrap and full-state hashes remain open.\n";return 0;
     }
@@ -51,5 +51,5 @@ int main(int argc,char** argv)try{
     }
     std::cout<<']';profile.write_combat_report(std::cout);
     std::cout<<",\"render_commands\":"<<profile.queue.counts->at(0)+profile.queue.counts->at(1)
-             <<",\"scope\":\"selected scene; full schedule, quest bootstrap and complete-state hashes unbound\"}\n";return 0;
+             <<",\"scope\":\"selected scene; complete init, quest bootstrap and complete-state hashes unbound\"}\n";return 0;
 }catch(const std::exception& error){std::cerr<<"saga_mission: "<<error.what()<<'\n';return 1;}

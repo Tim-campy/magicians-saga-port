@@ -9,6 +9,9 @@ struct ReadyArchiveImage {
     std::unique_ptr<core::PixelImage> image;
     std::int32_t alpha_type=0;
 };
+// Image.GetPixels alpha projection in top-down order. Reuse the buffer and retain its suffix.
+std::shared_ptr<std::vector<float>> decoded_image_alpha(const DecodedImage&,std::int32_t x,std::int32_t y,
+    std::int32_t width,std::int32_t height,std::shared_ptr<std::vector<float>>);
 // Desktop-owned synchronous preparation, not native async loading. Decoder and
 // total RGBA budget are host inputs. Publish only after the whole set succeeds;
 // failures leave old bindings intact. Image objects are distinct per catalog ID.

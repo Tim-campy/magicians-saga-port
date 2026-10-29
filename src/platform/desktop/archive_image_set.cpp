@@ -3,6 +3,18 @@
 #include <stdexcept>
 
 namespace saga::desktop {
+std::shared_ptr<std::vector<float>> decoded_image_alpha(const DecodedImage& pixels,std::int32_t x,std::int32_t y,
+        std::int32_t w,std::int32_t h,std::shared_ptr<std::vector<float>> alpha){
+    if(x<0||y<0||w<0||h<0||static_cast<std::int64_t>(x)+w>pixels.width||static_cast<std::int64_t>(y)+h>pixels.height)
+        throw std::out_of_range("gauge alpha crop outside texture");
+    if(!alpha)alpha=std::make_shared<std::vector<float>>(static_cast<std::size_t>(w)*h,0.0F);
+    std::size_t out=0;
+    for(std::int32_t row=0;row<h;++row)for(std::int32_t col=0;col<w;++col){
+        const auto at=(static_cast<std::size_t>(y+row)*pixels.width+static_cast<std::size_t>(x+col))*4+3;
+        alpha->at(out++)=static_cast<float>(pixels.rgba.at(at))/255.0F;
+    }
+    return alpha;
+}
 ArchiveImageSet::ArchiveImageSet(ArchiveResourceManager& manager,Decoder decode,std::uint64_t budget){
     const auto& slots=manager.image_catalog().slots;ready_.resize(slots.size());
     std::uint64_t used=0;

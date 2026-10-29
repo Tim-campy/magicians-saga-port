@@ -18,6 +18,14 @@ Bytes clip(){Bytes out;for(const int v:{2,4,1,0,0,2,0,0,2,1,0,0,0,0,1,0,0,7,0,0,
 DecodedImage decode(const Bytes& bytes){check(bytes==Bytes{42});return {2,1,{255,0,0,0,0,255,0,255}};}
 }
 int main()try{
+    // Shared desktop alpha projection preserves top-down ordering, suffix and partial writes.
+    auto alpha=std::make_shared<std::vector<float>>(4,0.5F);
+    const DecodedImage sample{2,2,{0,0,0,0,0,0,0,255,0,0,0,128,0,0,0,64}};
+    auto same=decoded_image_alpha(sample,0,0,2,1,alpha);
+    check(same==alpha&&alpha->at(0)==0&&alpha->at(1)==1&&alpha->at(2)==0.5F);
+    alpha=std::make_shared<std::vector<float>>(1,-1.0F);
+    fails([&]{decoded_image_alpha(sample,0,1,2,1,alpha);});check(alpha->at(0)==128.0F/255.0F);
+    fails([&]{decoded_image_alpha(sample,1,1,2,1,alpha);});check(alpha->at(0)==128.0F/255.0F);
     const auto fixture=saga::test::jar_fixture({{"img.inf",text("2\tshared.png,bin,20x30,q+1\n7\tshared.png,bin,a1,q-2")},
         {"seb.inf",text("clip.seb")},{"clip.seb",clip()},{"shared.png",{42}}});
     ResourceArchive archive(fixture,{"English.lproj",0});ArchiveResourceManager manager(archive);

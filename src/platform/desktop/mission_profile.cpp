@@ -23,6 +23,7 @@ struct SelectedBullet {std::int32_t id,damage,attribute,parent;ProjectilePoint p
 struct SelectedEffect {std::int32_t clip,image;bool loop;ProjectilePoint position;};
 struct SelectedDrop {std::int32_t type,value,scale;ProjectilePoint position;};
 struct SelectedBubble {std::int32_t parent,data_id,type,maximum,resource,clip;ProjectilePoint initial;};
+struct SelectedGauge {std::uint64_t step=0;std::int32_t parent=0;GaugeCreation args;};
 }
 SceneResource::SceneResource(const std::filesystem::path& path,ResourceProfile profile,ArchiveImageSet::Decoder decoder)
     :archive(read(path),std::move(profile)),manager(archive){
@@ -55,6 +56,11 @@ void MissionProfile::bind_schedule(){
     bind(19,true,[this](auto){mission->advance_animations({automatic!=0,application_update!=0});});
     bind(20,static_cast<bool>(spatial),[this](auto pass){spatial->advance_visibility(pass);});
     bind(21,true,[this](auto){queue=mission->render();if(!mission->faults().empty())throw std::invalid_argument("entity render fault: "+mission->faults().front().message);});
+    bind(22,true,[this](auto pass){
+        const auto at=gauge_creations_.find(logic_steps+1);
+        if(at!=gauge_creations_.end())for(const auto args:at->second)entity_world->gauge(args,gauge_scratch_,*this);
+        mission->advance_gauges(gauge_scratch_,*this,pass);
+    });
     bind(23,true,[this](auto pass){mission->advance_effects(pass);});
     bind(24,static_cast<bool>(spatial),[this](auto pass){spatial->advance_cursor(pass);});
     bind(25,true,[this](auto pass){mission->advance_info(pass);});
@@ -62,7 +68,9 @@ void MissionProfile::bind_schedule(){
     // Render-only profiles without runtime declare DEBUG=false; this native diagnostic body has no state effects for either value.
     bind(30,true,[this](auto pass){mission->advance_debug(runtime?runtime->debug:false,pass);});
     bind(31,simulate.has_value(),[this](auto pass){mission->advance_garbage(pass);});
-    for(const auto id:gameplay_update_order)if(updates_[static_cast<std::size_t>(id)])update_list_.push_back(updates_[static_cast<std::size_t>(id)].get());
+    std::array<UpdateSystem*,32> factory{};
+    for(std::size_t i=0;i<factory.size();++i)factory[i]=updates_[i].get();
+    update_list_=make_gameplay_update_list(factory);
     last_updates_.reserve(update_list_.size());
 }
 void MissionProfile::load_replay(const std::filesystem::path& path){
@@ -120,6 +128,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     std::vector<std::pair<std::int32_t,ButtonCreation>> buttons;
     std::vector<MissionPopupScenario> info_popups;std::vector<MissionSlideScenario> info_slides;
     std::vector<SelectedBubble> bubbles;
+    std::vector<SelectedGauge> gauges;
     std::set<std::string> quest_fields;
     std::int32_t rescued_prisoners=0;
     for(std::string line;std::getline(input,line);){
@@ -283,6 +292,11 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             if(!native||bubbles.size()>=100000||!(row>>b.parent>>b.data_id>>b.type>>b.maximum>>b.resource>>b.clip>>b.initial.x>>b.initial.y>>b.initial.z)||b.parent< -1)
                 throw std::invalid_argument("bubble requires parent dataId type frameMax resource clip and initial XYZ");
             bubbles.push_back(b);
+        }else if(operation=="gauge"){
+            SelectedGauge selected_gauge;auto& g=selected_gauge.args;
+            if(!native||gauges.size()>=100000||!(row>>selected_gauge.step>>selected_gauge.parent>>g.type>>g.from>>g.to>>g.maximum>>g.image>>g.frame_max>>g.flags>>g.option>>g.option2)||selected_gauge.step>100000||selected_gauge.parent<0)
+                throw std::invalid_argument("gauge requires step0..100000 parentOrdinal type from to max image frameMax flags option option2");
+            gauges.push_back(selected_gauge);
         }else if(operation=="info_popup"){
             MissionPopupScenario s{};std::int32_t single=0;
             if(!native||info_popups.size()>=100000||!(row>>s.id>>s.category>>s.type>>s.priority>>single>>s.height>>s.duration)||(single!=0&&single!=1))
@@ -345,6 +359,15 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         if(geometry){const auto initial=initial_mission_map_creation();*geometry={initial.step_x,initial.step_z,stage_quest_height(*q)};}
     }
     const bool enemy_requested=enemy_config||enemy_population||enemy_pool;
+    if(!gauges.empty()){
+        if(!geometry)throw std::invalid_argument("gauge scenario requires geometry");
+        auto* resource=get_application_resource(global,23);bool found=false;
+        for(auto& owner:owners)if(&owner->manager.drawing()==resource){
+            if(!owner->images){owner->images=std::make_unique<ArchiveImageSet>(owner->manager,decode_png);textures.bind(*owner->images);}
+            found=true;break;
+        }
+        if(!found)throw std::invalid_argument("gauge scenario requires global resource23");
+    }
     if(enemy_gauges&&(!rewards||!get_application_resource(application,23)))throw std::invalid_argument("enemy_gauges requires explicit rewards saved counts and resource23");
     if(collisions&&!human_scenario)throw std::invalid_argument("collisions requires human_system event receivers");
     if(notifications&&!human_scenario)throw std::invalid_argument("stage_notifications requires human_system");
@@ -412,6 +435,11 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             auto* parent=b.parent<0?nullptr:created.at(static_cast<std::size_t>(b.parent));
             entity_world->bubble(parent,b.data_id,b.type,b.maximum,b.resource,b.clip,b.initial);
         } // SAGA_STUB(mission-bubble-text): real component/geometry/lifetime; dedicated text drawing is unbound.
+        for(const auto& selected_gauge:gauges){
+            auto g=selected_gauge.args;g.parent=created.at(static_cast<std::size_t>(selected_gauge.parent));
+            if(selected_gauge.step==0)entity_world->gauge(g,gauge_scratch_,*this);
+            else gauge_creations_[selected_gauge.step].push_back(g);
+        } // Explicit native factory arguments; original quest producers/restored state remain unbound.
         bind_schedule();
         for(const auto& frame:replay_)for(const auto& action:frame.second)
             if((action.kind==InputKind::cursor||action.kind==InputKind::click)&&!spatial)throw std::invalid_argument("cursor/click replay requires mission_map fresh");
@@ -425,6 +453,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     if(!buttons.empty()&&!mission)throw std::invalid_argument("button requires a table-backed entity scene");
     if((!info_popups.empty()||!info_slides.empty())&&!mission)throw std::invalid_argument("info bars require a table-backed entity scene");
     if(!bubbles.empty()&&!mission)throw std::invalid_argument("bubble requires a table-backed entity scene");
+    if(!gauges.empty()&&!mission)throw std::invalid_argument("gauge requires a table-backed entity scene");
     if((human_scenario||!states.empty()||!players.empty()||!gear_defaults.empty())&&!mission)throw std::invalid_argument("human scenario rows require a table-backed entity scene");
     selected_count=selected.size();
 }
@@ -491,6 +520,18 @@ void MissionProfile::write_combat_report(std::ostream& out){
     }}out<<']';
 }
 void MissionProfile::draw_enemy_gauges(BitmapBackend& backend){
-    if(enemy_gauges)mission->draw_enemy_gauges([&](const ParameterGaugeRequest& r){backend.draw_parameter_gauge(r,mission->gauge_camera_host());});
+    if(enemy_gauges)mission->draw_enemy_gauges([&](const ParameterGaugeRequest& r){backend.draw_parameter_gauge(r,mission->gauge_camera_host(),&gauge_scratch_);});
+}
+PixelImage* MissionProfile::gauge_image(std::int32_t id){
+    auto* resource=get_application_resource(global,23);
+    if(!resource||!resource->images)throw std::invalid_argument("gauge logic requires global resource23 images");
+    auto* image=dynamic_cast<PixelImage*>(resource->images->at(static_cast<std::size_t>(id)));
+    if(!image)throw std::invalid_argument("gauge logic requires decoded resource23 image");return image;
+}
+std::shared_ptr<std::vector<float>> MissionProfile::gauge_alpha(PixelImage& image,std::int32_t x,std::int32_t y,
+        std::int32_t w,std::int32_t h,std::shared_ptr<std::vector<float>> alpha){
+    const auto* ready=textures.at(textures.key(image)).ready;
+    if(!ready)throw std::invalid_argument("gauge logic requires decoded alpha");
+    return decoded_image_alpha(ready->pixels,x,y,w,h,std::move(alpha));
 }
 } // namespace saga::desktop

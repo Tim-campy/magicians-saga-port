@@ -28,7 +28,7 @@ Host: `saga_mission` (headless selected scenes; window integration pending). Acc
 - [ ] A6. Every service the host fakes is listed in the stub table of integration.md.
 
 Blockers:
-- [ ] (blocking) Bind the complete 26-system update schedule and init dispatch to the live world in the host (A3).
+- [ ] (blocking) Bind complete system init dispatch to the live world in the host (A3).
 
 Tasks:
 - [ ] Extend `saga_mission` with real quest/map selection via `--data`/`--quest`, its SDL window and existing native input/replay adapters (A1, A5).

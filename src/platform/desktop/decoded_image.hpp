@@ -7,7 +7,7 @@ struct DecodedImage {
     std::int32_t width=0,height=0;
     std::vector<std::uint8_t> rgba;
 };
-// Public stb_image PNG decoder, compiled by the optional viewer target.
+// Public stb_image PNG decoder, shared by Gauge22 CPU geometry and the optional viewer.
 // Explicit desktop profile: RGBA8, <=8192/axis, <=16 Mi pixels, <=64 MiB encoded.
 DecodedImage decode_png(const std::vector<std::uint8_t>&);
 } // namespace saga::desktop

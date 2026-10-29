@@ -114,3 +114,10 @@ game:0x0600079a	reimplemented	src/core/gameplay/quest_render.cpp	Capture/pause/a
 game:0x0600079b	reimplemented	src/core/gameplay/quest_render.cpp	Short-circuit background/empty/activity predicate only; all gate combinations and null-surface bypass tested.
 game:0x06000796	reimplemented	src/core/gameplay/quest_render.cpp	Capture stored surface image and VIEW rectangle before live viewport queries; logical source and scaled destination tested.
 game:0x06000797	reimplemented	src/core/gameplay/quest_render.cpp	Set shared QuestForm static-render marker; composed callback clears before RenderStatics, including failure.
+game:0x06000eaa	reimplemented	src/core/gameplay/gauge_frame.cpp	Native ordered filter and fresh Init queue, including nullable/failure behavior
+game:0x06000eac	reimplemented	src/core/gameplay/gauge_frame.cpp	Native parent gates, conditional clock, expiry grace and live destruction queue
+game:0x06000eae	reimplemented	src/core/gameplay/gauge_frame.cpp	Ordered coordinate/cell/UVWH updates, unclamped parameter/timed ratios and shared alpha
+game:0x06000bf2	reimplemented	src/core/gameplay/gauge_frame.cpp	Native shared-ID gauge factory, parent/map reads and immediate display
+game:0x06000bf3	reimplemented	src/core/gameplay/gauge_frame.cpp	Generic resource/clip/placement factory, ordered components and unused steps
+game:0x06000b65	reimplemented	src/core/gameplay/gauge_frame.cpp	Pooled native payload and offset partial writes before attachment
+game:0x06000d67	reimplemented	src/core/gameplay/gauge_frame.cpp	Eight distinct shared native default XYZ rows

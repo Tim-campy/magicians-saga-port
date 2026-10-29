@@ -2770,7 +2770,7 @@ game:0x06000b61,kairo.unity.ecs.Entity.AddGarbage,ecs,reimplemented,272,0x112ecc
 game:0x06000b62,game:0x06000b62,ecs,,168,0x112eddc
 game:0x06000b63,game:0x06000b63,ecs,,136,0x112ee84
 game:0x06000b64,game:0x06000b64,ecs,,16,0x112ef0c
-game:0x06000b65,game:0x06000b65,ecs,,472,0x112ef1c
+game:0x06000b65,kairo.unity.ecs.Entity.AddGauge,ecs,reimplemented,472,0x112ef1c
 game:0x06000b66,game:0x06000b66,ecs,,168,0x112f0f4
 game:0x06000b67,game:0x06000b67,ecs,,136,0x112f19c
 game:0x06000b68,kairo.unity.ecs.Entity.get_hasHuman,ecs,traced,16,0x112f224
@@ -2896,8 +2896,8 @@ game:0x06000bee,kairo.unity.ecs.World.CreateSubChara,ecs,reimplemented,228,0x113
 game:0x06000bef,kairo.unity.ecs.World.CreateHuman,ecs,reimplemented,1224,0x1133a14
 game:0x06000bf0,kairo.unity.ecs.World.CreateEnemy,ecs,reimplemented,1040,0x1133fc0
 game:0x06000bf1,kairo.unity.ecs.World.CreateButton,ecs,reimplemented,572,0x11343d0
-game:0x06000bf2,game:0x06000bf2,ecs,,512,0x113460c
-game:0x06000bf3,game:0x06000bf3,ecs,,540,0x113480c
+game:0x06000bf2,kairo.unity.ecs.World.CreateGauge,ecs,reimplemented,512,0x113460c
+game:0x06000bf3,kairo.unity.ecs.World._CreateGauge,ecs,reimplemented,540,0x113480c
 game:0x06000bf4,kairo.unity.ecs.World.CreateEffect,ecs,reimplemented,72,0x1134a28
 game:0x06000bf5,kairo.unity.ecs.World.CreateEffect,ecs,reimplemented,588,0x1134a70
 game:0x06000bf6,kairo.unity.ecs.World.CreateBullet,ecs,reimplemented,648,0x1134cbc
@@ -3218,7 +3218,7 @@ game:0x06000d63,game:0x06000d63,ecs,,8,0x113fabc
 game:0x06000d64,game:0x06000d64,ecs,,296,0x113fac4
 game:0x06000d65,game:0x06000d65,ecs,,320,0x113fbec
 game:0x06000d66,game:0x06000d66,ecs,,8,0x113fd2c
-game:0x06000d67,game:0x06000d67,ecs,,640,0x113fd34
+game:0x06000d67,ecs.GaugeComponent..cctor,ecs,reimplemented,640,0x113fd34
 game:0x06000d68,game:0x06000d68,ecs,,8,0x113ffb4
 game:0x06000d69,game:0x06000d69,ecs,,8,0x113ffbc
 game:0x06000d6a,ecs.HumanComponent.get_data,ecs,reimplemented,124,0x113ffc4
@@ -3541,11 +3541,11 @@ game:0x06000ea6,game:0x06000ea6,ecs,,8,0x11534dc
 game:0x06000ea7,game:0x06000ea7,ecs,,8,0x11534e4
 game:0x06000ea8,game:0x06000ea8,ecs,,88,0x11534ec
 game:0x06000ea9,game:0x06000ea9,ecs,,104,0x1153544
-game:0x06000eaa,game:0x06000eaa,ecs,,228,0x11535ac
+game:0x06000eaa,ecs.GaugeSystem.Init,ecs,reimplemented,228,0x11535ac
 game:0x06000eab,ecs.GaugeSystem.NeedsUpdate,ecs,reimplemented,8,0x1153690
-game:0x06000eac,game:0x06000eac,ecs,,972,0x1153698
+game:0x06000eac,ecs.GaugeSystem.Update,ecs,reimplemented,972,0x1153698
 game:0x06000ead,game:0x06000ead,ecs,,220,0x115412c
-game:0x06000eae,game:0x06000eae,ecs,,1736,0x1153a64
+game:0x06000eae,ecs.GaugeSystem.updateDispInfo,ecs,reimplemented,1736,0x1153a64
 game:0x06000eaf,ecs.GaugeSystem.DrawGauge,ecs,reimplemented,564,0x1154350
 game:0x06000eb0,ecs.GaugeSystem.GetImageOffsetX,ecs,reimplemented,320,0x1154210
 game:0x06000eb1,game:0x06000eb1,ecs,,636,0x1154584

@@ -14,9 +14,9 @@ struct SceneResource {
     ResourceArchive archive;ArchiveResourceManager manager;std::unique_ptr<ArchiveImageSet> images;
     SceneResource(const std::filesystem::path&,ResourceProfile,ArchiveImageSet::Decoder);
 };
-// Shared strict scenario loader. An empty decoder prepares SEBs but performs no PNG/GPU work.
+// Shared strict scenario loader. An empty decoder decodes only images needed by Gauge22 logic.
 // This is a selected scene, not the original quest/map/bootstrap or full system schedule.
-class MissionProfile {
+class MissionProfile:private core::GaugeDrawingHost {
 public:
     MissionProfile(const std::filesystem::path&,bool native,ArchiveImageSet::Decoder = {},std::optional<MissionRuntimeConfig> = std::nullopt,std::optional<std::filesystem::path> replay =std::nullopt);
     MissionProfile(const MissionProfile&)=delete;
@@ -48,6 +48,13 @@ public:
     std::unique_ptr<MissionSpatial> spatial;
     bool accepts_live_input()const{return humans&&humans->input_enabled()&&!humans->transition_pending()&&!replay_bound_;}
 private:
+    core::PixelImage* gauge_image(std::int32_t)override;
+    std::int32_t gauge_view_width()override{return view.width;}
+    std::int32_t gauge_view_height()override{return view.height;}
+    std::shared_ptr<std::vector<float>> gauge_alpha(core::PixelImage&,std::int32_t,std::int32_t,std::int32_t,std::int32_t,
+        std::shared_ptr<std::vector<float>>)override;
+    core::GaugeDrawState gauge_scratch_;
+    std::map<std::uint64_t,std::vector<core::GaugeCreation>> gauge_creations_; // Explicit diagnostic call timing before Update22.
     struct Timer final:core::UpdateStopwatch {
         using Clock=std::chrono::steady_clock;
         Clock::time_point started;Clock::duration elapsed{};

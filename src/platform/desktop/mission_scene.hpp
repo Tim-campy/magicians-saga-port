@@ -8,6 +8,7 @@
 #include "core/gameplay/parameter_experience.hpp"
 #include "core/gameplay/effect_frame.hpp"
 #include "core/gameplay/gauge_drawing.hpp"
+#include "core/gameplay/gauge_frame.hpp"
 #include "core/gameplay/info_frame.hpp"
 #include <ostream>
 
@@ -28,7 +29,8 @@ class MissionScene final:private core::RenderInitializationWorld,private core::R
     private core::EffectInitializationWorld,private core::EffectFrameHost,
     private core::ButtonInitializationWorld,private core::ButtonFrameHost,
     private core::InfoInitializationWorld,private core::InfoHost,
-    private core::BubbleInitializationWorld,private core::BubbleFrameHost,private core::DebugInitializationWorld {
+    private core::BubbleInitializationWorld,private core::BubbleFrameHost,private core::DebugInitializationWorld,
+    private core::GaugeInitializationWorld,private core::GaugeFrameHost {
 public:
     MissionScene(MissionEntities&,MissionApplication&,core::EntitySubset& visible,MissionView&,core::MapComponent*);
     MissionScene(const MissionScene&)=delete;
@@ -45,6 +47,7 @@ public:
     void advance_parameter_experience(std::int32_t pass=0,bool enabled=true);
     void advance_battle(std::int32_t pass=0,bool enabled=true);
     void advance_bubbles(std::int32_t pass=0,bool enabled=true);
+    void advance_gauges(core::GaugeDrawState&,core::GaugeDrawingHost&,std::int32_t pass=0,bool enabled=true);
     void advance_debug(bool application_debug,std::int32_t pass=0,bool enabled=true);
     void advance_buttons(std::int32_t pass=0,bool enabled=true);
     void deliver_button_touch(const core::InputTouch*);
@@ -65,6 +68,9 @@ public:
     core::RenderQueue& render();
     const std::vector<MissionRenderFault>& faults()const{return faults_;}
 private:
+    core::EntitySubset* gauge_subset(const core::EventIntegers& slots)override{return world_.subset(slots);}
+    bool gauge_parent_destroyed(core::ComponentSlots& e)override{return world_.destroyed(e);}
+    void destroy_gauge(core::ComponentSlots& e,bool remove)override{world_.destroy(e,remove);++gauge_destroy_calls_;}
     core::EntitySubset* bubble_subset(const core::EventIntegers& slots)override{return world_.subset(slots);}
     bool bubble_parent_destroyed(core::ComponentSlots& e)override{return world_.destroyed(e);}
     void destroy_bubble(core::ComponentSlots& e,bool remove)override{world_.destroy(e,remove);++bubble_destroy_calls_;}
@@ -132,6 +138,7 @@ private:
     core::ParameterExperienceSystem experience_;
     core::BattleSystemState battle_;
     core::BubbleFrameState bubbles_;core::DebugVisualizationState debug_visualization_;
+    core::GaugeFrameState gauges_;std::uint64_t gauge_steps_=0,gauge_destroy_calls_=0;
     std::uint64_t bubble_steps_=0,bubble_destroy_calls_=0,debug_steps_=0;
     core::ButtonFrameState buttons_;core::ButtonInitializationWorld::Receiver button_touch_receiver_;
     core::InfoState info_;core::InfoInitializationWorld::Click info_click_;

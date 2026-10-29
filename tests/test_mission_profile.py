@@ -13,6 +13,41 @@ from mission_scene_fixture import make_table_scene, make_shoot_scene, with_missi
 
 @unittest.skipUnless(EXE, 'saga_mission supplied by CTest')
 class MissionProfileTests(unittest.TestCase):
+    def test_gauge_factory_updates_native_images_and_expiry_in_complete_schedule(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory);scene = root / 'scene.txt'
+            text = make_gauge_scene(root) + ('gauge 0 0 0 0 100 100 1 -1 1 0 0\n'
+                                            'gauge 0 0 6 0 100 100 1 11 0 0 0\n'
+                                            'gauge 0 0 1 0 100 100 1 2 0 0 0\n')
+            scene.write_text(text, encoding='utf-8')
+            result = self.run_host(scene, frames=12)
+            self.assertEqual(result.returncode, 0, result.stderr);d = json.loads(result.stdout)
+            self.assertTrue(d['update_schedule_complete']);self.assertEqual(d['unbound_update_systems'], [])
+            self.assertEqual(d['gauge_steps'], 12);self.assertEqual(d['gauge_destroy_calls'], 0)
+            self.assertEqual(len(d['gauges']), 3);a,b,_ = d['gauges']
+            self.assertEqual((a['frame'],a['frame_max'],a['parent']), (0,-1,d['positions'][0]['id']))
+            self.assertEqual(a['x'], int(d['positions'][0]['x'])-50)
+            self.assertEqual(a['z'], int(d['positions'][0]['z'])-20)
+            self.assertEqual((a['u'],a['v'],a['width'],a['height']), ([0,2],[0,4],[12,8],[4,4]))
+            self.assertEqual((b['frame'],b['width']), (12,[12,8]))
+            self.assertLess(d['last_update_order'].index(21), d['last_update_order'].index(22))
+            self.assertLess(d['last_update_order'].index(22), d['last_update_order'].index(23))
+            self.assertEqual(self.run_host(scene, frames=12).stdout, result.stdout)
+            later = self.run_host(scene, frames=18);self.assertEqual(later.returncode, 0, later.stderr)
+            self.assertEqual(len(json.loads(later.stdout)['gauges']), 2)
+            final = self.run_host(scene, frames=28);self.assertEqual(final.returncode, 0, final.stderr)
+            self.assertEqual(len(json.loads(final.stdout)['gauges']), 1)
+            self.assertEqual(json.loads(final.stdout)['gauge_destroy_calls'], 2)
+            scene.write_text(text.replace('gauge 0 0 ', 'gauge 3 0 '), encoding='utf-8')
+            delayed = self.run_host(scene, frames=2);self.assertEqual(delayed.returncode, 0, delayed.stderr)
+            self.assertEqual(json.loads(delayed.stdout)['gauges'], [])
+            delayed = self.run_host(scene, frames=3);self.assertEqual(delayed.returncode, 0, delayed.stderr)
+            self.assertEqual([g['frame'] for g in json.loads(delayed.stdout)['gauges']], [0,1,1])
+            for bad in ['gauge 0 -1 0 0 100 100 1 -1 1 0 0\n', 'gauge 0 90 0 0 100 100 1 -1 1 0 0\n',
+                        'gauge 0 0 8 0 100 100 1 -1 1 0 0\n', 'gauge 0 0 0 0 100 100 1 -1 1 0\n']:
+                scene.write_text(make_gauge_scene(root)+bad, encoding='utf-8')
+                self.assertNotEqual(self.run_host(scene).returncode, 0)
+
     def test_bubble_controller_deduplicates_expires_and_runs_debug_pass(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory);scene = root / 'scene.txt';replay = root / 'walk.txt'
@@ -184,10 +219,10 @@ class MissionProfileTests(unittest.TestCase):
             self.assertEqual(report['parameter_experience_pending'], 0)
             self.assertEqual(report['effect_steps'], 12)
             self.assertEqual(report['effect_updates'], [])
-            self.assertFalse(report['update_schedule_complete'])
-            self.assertEqual(report['bound_update_systems'], [0,2,3,4,5,8,9,10,11,12,13,14,15,16,17,18,19,20,21,23,24,25,26,30,31])
-            self.assertEqual(report['unbound_update_systems'], [22])
-            self.assertEqual(report['last_update_order'], [2,9,11,13,14,15,16,18,19,21,23,25,26,30,31])
+            self.assertTrue(report['update_schedule_complete'])
+            self.assertEqual(report['bound_update_systems'], [0,2,3,4,5,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,30,31])
+            self.assertEqual(report['unbound_update_systems'], [])
+            self.assertEqual(report['last_update_order'], [2,9,11,13,14,15,16,18,19,21,22,23,25,26,30,31])
             self.assertEqual(report['rotation_steps'], 12)
             self.assertEqual(report['battle_steps'], 12)
 

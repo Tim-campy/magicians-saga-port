@@ -66,6 +66,7 @@ MissionScene::MissionScene(MissionEntities& world,MissionApplication& app,Entity
     MovementWorld movement(world_);initialize_movement(movers_,&movement);initialize_collisions(collisions_,&movement);initialize_garbage(garbage_entities_,&movement);
     initialize_battle(battle_,&movement);
     initialize_bubbles(bubbles_,this);initialize_debug_visualization(debug_visualization_,this);
+    initialize_gauges(gauges_,this);
     initialize_info(info_,this,*this);
     initialize_buttons(buttons_,this,*this);
     initialize_rotation(rotating_,&movement);
@@ -87,6 +88,9 @@ void MissionScene::subscribe_parameter_experience(ParameterExperienceInitializat
 void MissionScene::send_parameter_experience(ComponentSlots* e,std::int32_t key){experience_receiver_(e,key);}
 void MissionScene::advance_battle(std::int32_t pass,bool enabled){if(gameplay_needs_update(2,enabled,pass)){update_battle(battle_);++battle_steps_;}}
 void MissionScene::advance_bubbles(std::int32_t pass,bool enabled){if(gameplay_needs_update(16,enabled,pass)){update_bubbles(bubbles_,*this);++bubble_steps_;}}
+void MissionScene::advance_gauges(GaugeDrawState& scratch,GaugeDrawingHost& images,std::int32_t pass,bool enabled){
+    if(gameplay_needs_update(22,enabled,pass)){update_gauges(gauges_,scratch,*this,images);++gauge_steps_;}
+}
 void MissionScene::advance_debug(bool application_debug,std::int32_t pass,bool enabled){
     if(gameplay_needs_update(30,enabled,pass)){update_debug_visualization(debug_visualization_,application_debug);++debug_steps_;}
 } // SAGA_STUB(mission-debug-draw): native Update is inert; diagnostic overlays/path drawing remain unbound.
@@ -100,6 +104,18 @@ void MissionScene::advance_parameter_experience(std::int32_t pass,bool enabled){
 void MissionScene::advance_parameters(std::int32_t pass,bool enabled){if(gameplay_needs_update(14,enabled,pass)){update_parameters();++parameter_steps_;}}
 void MissionScene::advance_effects(std::int32_t pass,bool enabled){if(gameplay_needs_update(23,enabled,pass)){update_effects(effects_,*this);++effect_steps_;}}
 void MissionScene::write_pass_report(std::ostream& out){
+    out<<",\"gauge_steps\":"<<gauge_steps_<<",\"gauge_destroy_calls\":"<<gauge_destroy_calls_<<",\"gauge_pending\":"<<gauges_.pending->size();
+    out<<",\"gauges\":[";bool first_gauge=true;auto gauge_cursor=world_.subset({19})->cursor();
+    while(const auto item=gauge_cursor.next()){
+        auto& e=required(*item);auto& b=required(dynamic_cast<EntityGauge*>(e.get(19)));auto& p=required(dynamic_cast<ContactPosition*>(e.get(0)));
+        auto& c=required(dynamic_cast<CellComponent*>(e.get(5)));auto& a=required(dynamic_cast<EntityImage*>(e.get(7))).arrays;
+        if(!first_gauge)out<<',';first_gauge=false;
+        out<<"{\"entity\":"<<world_.id(e)<<",\"type\":"<<b.type<<",\"frame\":"<<b.frame<<",\"frame_max\":"<<b.frame_max
+           <<",\"parent\":"<<(b.parent?world_.id(*b.parent):-1)<<",\"x\":"<<p.x<<",\"y\":"<<p.y<<",\"z\":"<<p.z<<",\"cell_xi\":"<<c.xi<<",\"cell_yi\":"<<c.yi;
+        for(const auto& field:std::vector<std::pair<const char*,ImageArray>>{{"u",a.u},{"v",a.v},{"width",a.width},{"height",a.height}}){
+            out<<",\""<<field.first<<"\":[";for(std::size_t i=0;i<field.second->size();++i){if(i)out<<',';out<<field.second->at(i);}out<<']';
+        }out<<'}';
+    }out<<']';
     out<<",\"bubble_steps\":"<<bubble_steps_<<",\"bubble_destroy_calls\":"<<bubble_destroy_calls_
        <<",\"bubble_pending\":"<<bubbles_.pending->size()<<",\"bubble_seen\":"<<bubbles_.seen->size()
        <<",\"debug_visualization_steps\":"<<debug_steps_<<",\"debug_visualization_flags\":"<<debug_visualization_.flags;

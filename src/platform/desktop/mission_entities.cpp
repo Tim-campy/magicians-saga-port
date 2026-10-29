@@ -40,6 +40,10 @@ ComponentSlots& MissionEntities::raw_entity(std::int32_t type){return create_ent
 ComponentSlots& MissionEntities::button(const ButtonCreation& args){return create_button(args,ids_,*this);}
 EntityButton& MissionEntities::acquire_button(){return acquire(buttons_);}
 EntityBubble& MissionEntities::acquire_bubble(){return acquire(bubbles_);}
+EntityGauge& MissionEntities::acquire_gauge(){return acquire(gauges_);}
+ComponentSlots& MissionEntities::gauge(GaugeCreation args,GaugeDrawState& scratch,GaugeDrawingHost& images){
+    return create_gauge(args,ids_,*this,scratch,images);
+}
 ComponentSlots& MissionEntities::bubble(ComponentSlots* parent,std::int32_t data_id,std::int32_t type,
                                       std::int32_t maximum,std::int32_t resource_id,std::int32_t clip,ProjectilePoint initial){
     // Explicit diagnostic composition, not a recovered native bubble producer.
