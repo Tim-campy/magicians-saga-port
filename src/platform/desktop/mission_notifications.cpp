@@ -44,9 +44,10 @@ VictoryForm* MissionHumans::make_victory(std::int32_t enemy,bool completed){
 } // SAGA_STUB(mission-stage-forms).
 void MissionHumans::push(VictoryForm*){notification_events_.push_back("push:victory");} // SAGA_STUB(mission-stage-forms).
 MovementControl* MissionHumans::movement_control(std::int32_t group,std::int32_t id){
-    notification_events_.push_back("control_lookup:"+std::to_string(group)+":"+std::to_string(id));return nullptr;
-} // SAGA_STUB(mission-movement-controls): selected scenes have no QuestForm controls.
-void MissionHumans::send_touch_release(MovementControl&,std::int32_t,std::int32_t){
+    notification_events_.push_back("control_lookup:"+std::to_string(group)+":"+std::to_string(id));return input_?input_->movement_control(group,id):nullptr;
+} // SAGA_STUB(mission-movement-controls): without input fresh no QuestForm controls are bound.
+void MissionHumans::send_touch_release(MovementControl& control,std::int32_t type,std::int32_t event_id){
+    if(input_){input_->release(control,type,event_id);return;}
     throw std::logic_error("mission service unbound: QuestForm touch release");
 }
 void MissionHumans::write_notification_report(std::ostream& out){

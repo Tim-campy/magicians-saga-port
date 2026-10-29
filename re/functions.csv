@@ -3609,8 +3609,8 @@ game:0x06000eea,ecs.HumanSystem.GetAttackSpeed,ecs,reimplemented,52,0x1158d94
 game:0x06000eeb,ecs.HumanSystem.GetBurstCount,ecs,reimplemented,228,0x1156d64
 game:0x06000eec,ecs.HumanSystem.GetDistance,ecs,reimplemented,232,0x1156f98
 game:0x06000eed,game:0x06000eed,ecs,,268,0x1158dc8
-game:0x06000eee,game:0x06000eee,ecs,,464,0x1158eec
-game:0x06000eef,game:0x06000eef,ecs,,356,0x11590bc
+game:0x06000eee,ecs.HumanSystem.AccelerateSpeed,ecs,reimplemented,464,0x1158eec
+game:0x06000eef,ecs.HumanSystem.ResetSpeed,ecs,reimplemented,356,0x11590bc
 game:0x06000ef0,game:0x06000ef0,ecs,,8,0x1159220
 game:0x06000ef1,game:0x06000ef1,ecs,,8,0x1159228
 game:0x06000ef2,game:0x06000ef2,ecs,,88,0x1159230
@@ -3658,10 +3658,10 @@ game:0x06000f1b,game:0x06000f1b,unassigned,,92,0x115b338
 game:0x06000f1c,game:0x06000f1c,unassigned,,8,0x115b394
 game:0x06000f1d,game:0x06000f1d,unassigned,,24,0x115b39c
 game:0x06000f1e,game:0x06000f1e,unassigned,,24,0x115b3b4
-game:0x06000f1f,game:0x06000f1f,ecs,,276,0x115b3cc
+game:0x06000f1f,ecs.InputSystem.Init,ecs,reimplemented,276,0x115b3cc
 game:0x06000f20,ecs.InputSystem.NeedsUpdate,ecs,reimplemented,28,0x115b4e0
-game:0x06000f21,game:0x06000f21,ecs,,976,0x115b4fc
-game:0x06000f22,game:0x06000f22,ecs,,804,0x115b8cc
+game:0x06000f21,ecs.InputSystem.Update,ecs,reimplemented,976,0x115b4fc
+game:0x06000f22,ecs.InputSystem.OnTouchEvent,ecs,reimplemented,804,0x115b8cc
 game:0x06000f23,game:0x06000f23,ecs,,8,0x115bc60
 game:0x06000f24,game:0x06000f24,ecs,,8,0x115bc68
 game:0x06000f25,game:0x06000f25,ecs,,88,0x115bc70
@@ -3789,7 +3789,7 @@ game:0x06000f9e,ecs.StageSystem.Start,ecs,reimplemented,800,0x1165198
 game:0x06000f9f,ecs.StageSystem.Retry,ecs,reimplemented,1884,0x1162eb8
 game:0x06000fa0,ecs.StageSystem.ShowQuestResult,ecs,documented,3152,0x1164548
 game:0x06000fa1,ecs.StageSystem.ResetTimer,ecs,reimplemented,116,0x1165694
-game:0x06000fa2,game:0x06000fa2,ecs,,112,0x115bbf0
+game:0x06000fa2,ecs.StageSystem.InactiveAttackButton,ecs,reimplemented,112,0x115bbf0
 game:0x06000fa3,ecs.StageSystem.GetZ,ecs,reimplemented,232,0x1157428
 game:0x06000fa4,ecs.StageSystem.CollectDrop,ecs,reimplemented,1248,0x1163738
 game:0x06000fa5,ecs.StageSystem.UpdateCollectingDrops,ecs,reimplemented,528,0x1163c18
@@ -3813,7 +3813,7 @@ game:0x06000fb6,ecs.StageSystem.OnHumanDead,ecs,reimplemented,80,0x1166514
 game:0x06000fb7,ecs.StageSystem.OnGameOver,ecs,reimplemented,284,0x116442c
 game:0x06000fb8,ecs.StageSystem.MakeRetryDialog,ecs,reimplemented,280,0x1163614
 game:0x06000fb9,ecs.StageSystem.OnCollectedDrop,ecs,reimplemented,740,0x1165988
-game:0x06000fba,game:0x06000fba,ecs,,404,0x1166564
+game:0x06000fba,ecs.StageSystem.OnTouchEvent,ecs,reimplemented,404,0x1166564
 game:0x06000fbb,ecs.StageSystem.OnDamage,ecs,reimplemented,64,0x11666f8
 game:0x06000fbc,game:0x06000fbc,ecs,,8,0x1166738
 game:0x06000fbd,game:0x06000fbd,ecs,,1336,0x1166740

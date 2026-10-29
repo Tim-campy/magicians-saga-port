@@ -38,7 +38,9 @@ struct GpuQueries:MeshDepthHost {
 
 }
 int main(int argc,char** argv)try{
-    if(argc!=5&&argc!=6){std::cerr<<"Usage: queue_capture scene.txt width height new-output.bmp [--native-depth]\n       queue_capture scene.txt width height --material-inputs|--interactive\n       queue_capture scene.txt width height --run-frames count\n";return 2;}
+    std::optional<std::filesystem::path> replay;
+    if(argc>=3&&std::string_view(argv[argc-2])=="--replay"){replay=std::filesystem::u8path(argv[argc-1]);argc-=2;}
+    if(argc!=5&&argc!=6){std::cerr<<"Usage: queue_capture scene.txt width height new-output.bmp [--native-depth] [--replay inputs.txt]\n       queue_capture scene.txt width height --material-inputs|--interactive [--replay inputs.txt]\n       queue_capture scene.txt width height --run-frames count [--replay inputs.txt]\n";return 2;}
     const bool inspect=argc==5&&std::string_view(argv[4])=="--material-inputs";
     const bool interactive=argc==5&&std::string_view(argv[4])=="--interactive";
     const bool bounded=argc==6&&std::string_view(argv[4])=="--run-frames";const bool loop=interactive||bounded;
@@ -48,7 +50,7 @@ int main(int argc,char** argv)try{
     if(width<1||height<1||width>8192||height>8192||static_cast<std::uint64_t>(width)*height>16U*1024U*1024U)throw std::invalid_argument("invalid capture dimensions");
     const auto scene=std::filesystem::u8path(argv[1]),output=inspect||loop?std::filesystem::path{}:std::filesystem::u8path(argv[4]);
     if(!inspect&&!loop&&std::filesystem::exists(output))throw std::invalid_argument("capture destination already exists");
-    MissionProfile profile(scene,native,decode_png);
+    MissionProfile profile(scene,native,decode_png,std::nullopt,replay);
     auto& application=profile.application;
     auto& global=profile.global;
     auto& textures=profile.textures;
@@ -79,7 +81,9 @@ int main(int argc,char** argv)try{
         if(!has_projection||!has_gpu_depth)throw std::invalid_argument("native capture needs projection and gpu_depth rows");
         if(loop&&(!mission||!tick_ms))throw std::invalid_argument("scene loop requires selected entities and explicit tick_ms");
         require(SDL_Init(SDL_INIT_VIDEO),"SDL_Init");Quit quit;configure_gl_bitmap_context();
-        Window window(SDL_CreateWindow(loop?"Mission scene preview - Space pause, N step, Esc close":"Native AppData capture",width,height,
+        const char* input_title=profile.humans&&profile.humans->stage_input_enabled()?"Mission - W/S move, 1/2/3/F/click attack, Enter result, Space pause, N step, Esc close":"Mission - W/S move, 1/2/3/F/click attack, Space pause, N step, Esc close";
+        const char* title=loop?(profile.accepts_live_input()?input_title:"Mission preview - Space pause, N step, Esc close"):"Native AppData capture";
+        Window window(SDL_CreateWindow(title,width,height,
             SDL_WINDOW_OPENGL|(interactive?0:SDL_WINDOW_HIDDEN)),SDL_DestroyWindow);require(window!=nullptr,"SDL_CreateWindow");
         GlBitmapRenderer renderer(*window,width,height,[&](std::size_t key){const auto* ready=textures.at(key).ready;
             if(!ready)throw std::invalid_argument("texture has no decoded archive image");return GlBitmapTexture{&ready->pixels,GlBitmapWrap::clamp,GlBitmapWrap::clamp};});
@@ -107,9 +111,20 @@ int main(int argc,char** argv)try{
                         if(event.key.key==SDLK_ESCAPE)running=false;
                         else if(event.key.key==SDLK_SPACE)paused=!paused;
                         else if(event.key.key==SDLK_N)single_step=true;
+                        else if(interactive&&profile.accepts_live_input()){
+                            if(event.key.key>=SDLK_1&&event.key.key<=SDLK_3)profile.humans->select_input_attack(static_cast<std::int32_t>(event.key.key-SDLK_1));
+                            else if(event.key.key==SDLK_F)profile.humans->select_input_attack(profile.humans->selected_attack());
+                            else if(event.key.key==SDLK_RETURN&&profile.humans->stage_input_enabled())profile.humans->pulse_stage_keys(0x100000U);
+                        }
                     }
+                    else if(interactive&&profile.accepts_live_input()&&event.type==SDL_EVENT_MOUSE_BUTTON_DOWN&&event.button.button==SDL_BUTTON_LEFT)
+                        profile.humans->select_input_attack(profile.humans->selected_attack());
                 }
                 if(!running)break;
+                if(interactive&&profile.accepts_live_input()){
+                    const auto* keys=SDL_GetKeyboardState(nullptr);const bool focused=SDL_GetKeyboardFocus()==window.get();
+                    profile.humans->set_input_movement(focused&&(keys[SDL_SCANCODE_W]||keys[SDL_SCANCODE_UP]),focused&&(keys[SDL_SCANCODE_S]||keys[SDL_SCANCODE_DOWN]));
+                }
                 if(!paused||single_step){if(profile.step())++logic_steps;else{paused=true;if(bounded)break;}}
                 submit();renderer.present();++rendered;const auto now=SDL_GetTicks();if(now<deadline)SDL_Delay(static_cast<Uint32>(deadline-now));
             }
@@ -125,7 +140,7 @@ int main(int argc,char** argv)try{
                 profile.write_actor_parameters(*created[i],std::cout);
                 std::cout<<'}';}
             std::cout<<']';profile.write_combat_report(std::cout);
-            std::cout<<",\"profile\":\"selected human/projectile/movement/animation/render/garbage passes; gameplay input and full schedule unbound\"}\n";return 0;
+            std::cout<<",\"profile\":\"selected mission systems; full schedule, quest bootstrap and complete-state hashes unbound\"}\n";return 0;
         }
         submit();auto pixels=renderer.read_pixels();
         Surface captured(SDL_CreateSurfaceFrom(width,height,SDL_PIXELFORMAT_RGBA32,pixels.rgba.data(),width*4),SDL_DestroySurface);require(captured!=nullptr,"SDL_CreateSurfaceFrom");

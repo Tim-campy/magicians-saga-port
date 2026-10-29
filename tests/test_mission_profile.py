@@ -313,6 +313,50 @@ class MissionProfileTests(unittest.TestCase):
             self.assertEqual(report['collecting_drops'], 0)
             self.assertEqual(report['pending_drops'], [])
 
+    def test_native_input_replays_movement_attack_and_dash(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory);scene = root / 'scene.txt';replay = root / 'inputs.txt'
+            text = make_shoot_scene(root, spell_attribute=0).replace('human_system 10 0 100 3 1', 'human_system 10 0 100 0 0')
+            text += 'input fresh 0 0 0 0 0 0 0 0 0\n'
+            scene.write_text(text, encoding='utf-8')
+            replay.write_text('2 keys 131072\n10 keys 0\n', encoding='utf-8')
+            moving = self.run_host(scene, '--replay', str(replay), frames=9)
+            self.assertEqual(moving.returncode, 0, moving.stderr)
+            a = json.loads(moving.stdout)
+            self.assertEqual(a['input_steps'], 9)
+            self.assertEqual(a['replay_actions'], 1)
+            self.assertEqual(a['positions'][0]['human_state'], 1)
+            self.assertLess(a['positions'][0]['z'], 100)
+            self.assertEqual(a['shots'], 0)
+            stopped = self.run_host(scene, '--replay', str(replay), frames=10)
+            self.assertEqual(stopped.returncode, 0, stopped.stderr)
+            b = json.loads(stopped.stdout)
+            self.assertEqual(a['positions'][0]['z'], b['positions'][0]['z'])
+            self.assertEqual(b['attack_buttons'][0]['state'], 1)
+            self.assertTrue(b['move_front_pushed'])
+            replay.write_text('1 attack 0\n', encoding='utf-8')
+            attack = self.run_host(scene, '--replay', str(replay), frames=80)
+            self.assertEqual(attack.returncode, 0, attack.stderr)
+            self.assertGreater(json.loads(attack.stdout)['shots'], 0)
+            self.assertEqual(self.run_host(scene, '--replay', str(replay), frames=80).stdout, attack.stdout)
+            replay.write_text('2 keys 131072\n71 keys 0\n', encoding='utf-8')
+            charged = self.run_host(scene, '--replay', str(replay), frames=70)
+            self.assertEqual(charged.returncode, 0, charged.stderr)
+            self.assertEqual(json.loads(charged.stdout)['positions'][0]['human_dash_speed'], 2)
+            reset = self.run_host(scene, '--replay', str(replay), frames=71)
+            self.assertEqual(reset.returncode, 0, reset.stderr)
+            self.assertEqual(json.loads(reset.stdout)['positions'][0]['human_dash_speed'], 0)
+            replay.write_text('1 keys 131072\n', encoding='utf-8')
+            first = self.run_host(scene, '--replay', str(replay), frames=70)
+            self.assertEqual(first.returncode, 0, first.stderr)
+            self.assertEqual(json.loads(first.stdout)['positions'][0]['human_dash_speed'], 0)
+            for bad in ['0 keys 0\n', '-1 keys 0\n', '2 keys 0\n1 keys 0\n', '1 attack 3\n', '1 keys 4294967296\n', '1 teleport 0\n', '1 pulse 1048576\n']:
+                replay.write_text(bad, encoding='utf-8')
+                self.assertNotEqual(self.run_host(scene, '--replay', str(replay)).returncode, 0)
+            replay.write_text('1 keys 0\n', encoding='utf-8')
+            scene.write_text(text.replace('input fresh 0 0 0 0 0 0 0 0 0\n', ''), encoding='utf-8')
+            self.assertIn('input fresh', self.run_host(scene, '--replay', str(replay)).stderr)
+
     def test_map_camera_cells_and_live_visibility(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory);scene = root / 'scene.txt'
@@ -433,6 +477,22 @@ class MissionProfileTests(unittest.TestCase):
             self.assertEqual(losing['quest_record']['challenges'], 1)
             self.assertEqual(losing['quest_record']['clears'], 0)
             self.assertEqual(losing['wallet'], {'money': 10, 'crystals': 20})
+            # A native result confirmation can arrive from replay instead of a scene-timed pulse.
+            make_shoot_scene(root, rewards=True, treasure_flags=1, spell_attribute=0)
+            pulse_text = (text.replace('human_system 10 0 100 3 1', 'human_system 10 0 100 0 1')
+                          .replace('stage_pulse 200 1048576\n', '') + 'input fresh 0 0 0 1 0 0 0 0 0\n')
+            scene.write_text(pulse_text, encoding='utf-8')
+            replay = root / 'result-input.txt';replay.write_text('200 pulse 1048576\n', encoding='utf-8')
+            confirmed = self.run_host(scene, '--replay', str(replay), frames=240)
+            self.assertEqual(confirmed.returncode, 0, confirmed.stderr)
+            cleared = json.loads(confirmed.stdout)
+            self.assertEqual(cleared['frames'], 201)
+            self.assertTrue(cleared['result_granted'] and cleared['transition_pending'])
+            self.assertEqual(cleared['replay_actions'], 1)
+            no_confirmation = self.run_host(scene, frames=240)
+            self.assertEqual(no_confirmation.returncode, 0, no_confirmation.stderr)
+            self.assertEqual(json.loads(no_confirmation.stdout)['stage_state'], 3)
+            self.assertFalse(json.loads(no_confirmation.stdout)['result_granted'])
 
 
 if __name__ == '__main__':

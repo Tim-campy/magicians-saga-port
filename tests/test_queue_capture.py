@@ -21,6 +21,34 @@ def command(resource, clip, x, y, depth=0, texture=-1, image_resource=-1):
 
 @unittest.skipUnless(EXE and VIEWER, 'viewer executables supplied by CTest')
 class QueuePixels(unittest.TestCase):
+    def test_native_input_replay_runs_the_gpu_scene(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory);scene = root / 'scene.txt';replay = root / 'inputs.txt'
+            text = with_mission_map(root, make_shoot_scene(root, spell_attribute=0))
+            text = (text.replace('human_system 10 0 100 3 1', 'human_system 10 0 100 0 0')
+                    .replace('human 0 2 1 0 0 0 0 0 100', 'human 0 2 1 0 0 0 0 0 1000')
+                    .replace('enemy 0 4 7 2 0 0 70', 'enemy 0 4 7 2 0 0 970'))
+            text += 'input fresh 0 0 0 0 0 0 0 0 0\ntick_ms 1\n'
+            replay.write_text('1 attack 0\n20 keys 131072\n30 keys 0\n40 keys 524288\n50 keys 0\n', encoding='utf-8')
+            bound = {tuple(map(int, row.split()[1:4])) for row in text.splitlines() if row.startswith('material ')}
+            needed = set()
+            for step in range(61):
+                scene.write_text(text.replace('simulate 0', f'simulate {step}'), encoding='utf-8')
+                probe = subprocess.run([str(EXE), str(scene), '128', '96', '--material-inputs', '--replay', str(replay)], capture_output=True, text=True, timeout=30)
+                self.assertEqual(probe.returncode, 0, probe.stderr)
+                needed.update((v['texture'], v['shader'], v['queue']) for v in json.loads(probe.stdout)['material_inputs'])
+            for i, (texture, shader, queue) in enumerate(sorted(needed - bound)):
+                text += f'material {texture} {shader} {queue} {300 + i} 0\n'
+            scene.write_text(text, encoding='utf-8')
+            result = subprocess.run([str(EXE), str(scene), '128', '96', '--run-frames', '60', '--replay', str(replay)], capture_output=True, text=True, timeout=30)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            report = json.loads(result.stdout)
+            self.assertTrue(report['input_enabled'] and report['replay_bound'])
+            self.assertEqual(report['input_steps'], 60)
+            self.assertEqual(report['replay_actions'], 5)
+            self.assertEqual(report['input_held_keys'], 0)
+            self.assertGreater(report['shots'], 0)
+
     def test_map_camera_and_cell_visibility_reach_gpu(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory);scene = root / 'scene.txt'

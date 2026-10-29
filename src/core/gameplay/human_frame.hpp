@@ -25,6 +25,8 @@ public:
     virtual bool shoot_human(ComponentSlots& actor,ComponentSlots& target)=0;
 };
 bool stage_attack_active(const StageStartState&); // StageSystem.get_isAttackActive 0x115651c.
+void accelerate_humans(HumanFrameSystem&); // HumanSystem.AccelerateSpeed 0x1158eec.
+void reset_human_speeds(HumanFrameSystem&); // HumanSystem.ResetSpeed 0x11590bc; dash only.
 ComponentSlots* nearest_attack_enemy(EnemyCreationSystem&,ContactPosition*,std::int32_t distance); // SearchNearestEnemy 0x1151384.
 std::int32_t human_attack_attribute(HumanFrameSystem&,const CharacterProgressionRecord*,HumanFrameHost&); // GetAttackAttribute 0x1156e48.
 std::int32_t human_mp_cost(HumanFrameSystem&,ComponentSlots*,std::int32_t attribute,HumanFrameHost&); // GetUseMp 0x1158d24.

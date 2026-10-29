@@ -30,6 +30,15 @@ float squared_distance(ContactPosition& a,ContactPosition& b){
     const float dx=a.x-b.x,dy=a.y-b.y,dz=a.z-b.z,xx=dx*dx,yy=dy*dy,zz=dz*dz,xy=xx+yy;return xy+zz;
 }
 }
+void accelerate_humans(HumanFrameSystem& s){
+    auto cursor=required(s.subset).cursor();while(const auto entry=cursor.next()){
+        auto& h=human(required(*entry));if((static_cast<std::uint32_t>(h.state)&0xfffffffeU)==4U)continue;
+        const float candidate=h.dash_speed+0.1F;h.dash_speed=candidate>2.0F?2.0F:candidate;
+    }
+}
+void reset_human_speeds(HumanFrameSystem& s){
+    auto cursor=required(s.subset).cursor();while(const auto entry=cursor.next())human(required(*entry)).dash_speed=0;
+}
 bool stage_attack_active(const StageStartState& s){
     const auto buttons=s.attack_buttons;for(auto* b:required(buttons.get()))if(required(b).state==1)return true;return false;
 }

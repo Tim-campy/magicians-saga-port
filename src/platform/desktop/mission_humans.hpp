@@ -9,6 +9,7 @@
 #include "core/gameplay/stage_update.hpp"
 #include "mission_results.hpp"
 #include "mission_stage.hpp"
+#include "mission_input.hpp"
 #include "core/gameplay/pass_initialization.hpp"
 #include <ostream>
 
@@ -62,8 +63,19 @@ public:
     void write_result_report(std::ostream&);
     std::shared_ptr<core::StageQuest> quest(){return stage_.quest;}
     core::StageQuestForm& quest_form(){return quest_form_;}
+    void enable_input(MissionInputScenario);
+    bool input_enabled()const{return static_cast<bool>(input_);}
+    void advance_input(std::int32_t pass=0,bool enabled=true);
+    void set_input_keys(std::uint32_t);
+    void set_input_movement(bool up,bool down){set_input_keys((held_keys_&~0xa0000U)|(up?0x20000U:0U)|(down?0x80000U:0U));}
+    void select_input_attack(std::int32_t);
+    std::int32_t selected_attack()const{return stage_.attack_attribute;}
+    void write_input_report(std::ostream&);
+    bool stage_input_enabled()const{return static_cast<bool>(stage_loop_);}
+    void pulse_stage_keys(std::uint32_t);
 private:
     friend class MissionResults;friend class MissionStage;
+    friend class MissionInput;
     struct CollectionHost final:core::DropCollectionHost {
         MissionHumans& owner;
         explicit CollectionHost(MissionHumans& value):owner(value){}
@@ -213,5 +225,6 @@ private:
     std::vector<std::string> notification_events_; // One ordered presentation stream for both stack projections.
     bool collection_enabled_=false;std::uint64_t collection_steps_=0,collection_sounds_=0,collection_jingles_=0;
     std::unique_ptr<MissionResults> results_;std::unique_ptr<MissionStage> stage_loop_;
+    std::unique_ptr<MissionInput> input_;
 };
 } // namespace saga::desktop

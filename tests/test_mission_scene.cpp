@@ -55,6 +55,10 @@ int main()try{
     scene.render();check(scene.faults().empty()&&queue.counts->at(0)==2); // Explicit numeric-label presentation stub; no invented Depth.
     for(int i=0;i<30;++i)scene.advance_garbage(0);
     check(world.destroyed(number)&&!world.registry().contains(world.id(number)));
+    auto& notice=create_effect({{0,50,0},7,3,0,0,false,false,30,0,nullptr,-1,true},effects.ids,effects.factory);
+    check(notice.contains(26)&&!notice.contains(4)&&!notice.contains(5));
+    scene.render();check(scene.faults().empty());
+    for(int i=0;i<30;++i)scene.advance_garbage(0);check(world.destroyed(notice));
     {
         MissionEntities mapped(data,saved,35,nullptr,[&](std::int32_t){return &animations.resource();},[](std::string_view){return 3;});
         auto& map=mapped.create_initial_map();check(map.width==3&&map.height==8&&map.step_z==312);

@@ -6,6 +6,7 @@
 #include <sstream>
 #include <variant>
 #include <cmath>
+#include <charconv>
 
 namespace saga::desktop {
 using namespace core;
@@ -25,7 +26,22 @@ SceneResource::SceneResource(const std::filesystem::path& path,ResourceProfile p
     :archive(read(path),std::move(profile)),manager(archive){
     if(decoder)images=std::make_unique<ArchiveImageSet>(manager,std::move(decoder));
 }
-MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,ArchiveImageSet::Decoder decoder,std::optional<MissionRuntimeConfig> config):runtime(std::move(config)){
+void MissionProfile::load_replay(const std::filesystem::path& path){
+    if(std::filesystem::file_size(path)>8U*1024U*1024U)throw std::length_error("input replay exceeds8MiB");
+    std::ifstream file(path);if(!file)throw std::invalid_argument("cannot read input replay");
+    std::string line;std::uint64_t previous=0,count=0;
+    while(std::getline(file,line)){
+        std::istringstream row(line);row.imbue(std::locale::classic());row>>std::ws;if(row.eof()||row.peek()=='#')continue;
+        std::string frame,kind,value;if(!(row>>frame>>kind>>value))throw std::invalid_argument("replay requires step keys|attack|pulse value");end(row);
+        std::uint64_t step=0;std::uint32_t argument=0;
+        const auto a=std::from_chars(frame.data(),frame.data()+frame.size(),step),b=std::from_chars(value.data(),value.data()+value.size(),argument);
+        if(a.ec!=std::errc{}||a.ptr!=frame.data()+frame.size()||!step||step<previous||b.ec!=std::errc{}||b.ptr!=value.data()+value.size()||
+           (kind!="keys"&&kind!="attack"&&kind!="pulse")||(kind=="attack"&&argument>2)||++count>100000)throw std::invalid_argument("invalid or unordered input replay action");
+        replay_[step].push_back({kind=="keys"?InputKind::keys:kind=="attack"?InputKind::attack:InputKind::pulse,argument});previous=step;
+    }replay_bound_=true;
+}
+MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,ArchiveImageSet::Decoder decoder,std::optional<MissionRuntimeConfig> config,std::optional<std::filesystem::path> replay):runtime(std::move(config)){
+    if(replay)load_replay(*replay);
     std::ifstream input(scene);if(!input)throw std::runtime_error("cannot open scene description");
     std::vector<std::variant<HumanCreation,EnemyCreation,SelectedBullet,SelectedEffect,SelectedDrop>> selected;
     std::optional<MissionHumanScenario> human_scenario;bool runtime_row=false;
@@ -33,6 +49,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     std::optional<MissionNotificationScenario> notifications;
     bool collection=false,drop_catalog=false;
     EventInstruction map_images;
+    std::optional<MissionInputScenario> input_scenario;
     MissionResultScenario result_state{};bool wallet=false,record=false,recruits=false;std::array<bool,3> stocks{};
     MissionStageScenario stage_scenario{};bool stage_loop=false,stage_events=false;
     MissionEnemyScenario enemy{};bool enemy_config=false,enemy_population=false,enemy_pool=false;
@@ -87,6 +104,11 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             value.retried=retried!=0;value.quest_completed=completed!=0;value.held_keys=static_cast<std::uint32_t>(keys);notifications=value;
         }else if(operation=="collisions"){
             if(!native||collisions)throw std::invalid_argument("collisions requires native mode and one row with no fields");collisions=true;
+        }else if(operation=="input"){
+            std::string mode;std::uint64_t held=0;std::int32_t front=0;MissionInputScenario value;
+            if(!native||input_scenario||!(row>>mode>>held>>value.last_active>>front)||mode!="fresh"||held>0xffffffffULL||(front!=0&&front!=1))throw std::invalid_argument("input requires fresh held-uint32 last-active front0/1 and three state/frame pairs");
+            for(auto& b:value.buttons)if(!(row>>b.state>>b.frame))throw std::invalid_argument("input requires all three attack state/frame pairs");
+            value.held_keys=static_cast<std::uint32_t>(held);value.front_pushed=front!=0;input_scenario=value;
         }else if(operation=="mission_map"){
             std::string mode;EventIntegers values(4,0);
             if(!native||map_images||!(row>>mode)||mode!="fresh")throw std::invalid_argument("mission_map requires fresh and four explicit chip IDs");
@@ -186,6 +208,8 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     if(result_requested&&!(wallet&&record&&recruits&&stocks[0]&&stocks[1]&&stocks[2]&&stage_loop&&collection))throw std::invalid_argument("results require wallet/record/all inventory kinds/recruits, stage_loop and collection fresh");
     if((stage_loop||stage_events||!stage_scenario.pulses.empty())&&!(stage_loop&&stage_events&&collection))throw std::invalid_argument("stage_loop requires explicit stage_events and collection fresh");
     if(enemy_requested&&!(enemy_config&&enemy_population&&enemy_pool&&human_scenario))throw std::invalid_argument("enemy system requires enemy_system/enemy_population/enemy_pool and human_system");
+    if(input_scenario&&(!human_scenario||players.size()!=1))throw std::invalid_argument("input requires human_system and one selected player");
+    if(replay_bound_&&!input_scenario)throw std::invalid_argument("input replay requires input fresh");
     if(map_images){
         if(!human_scenario||!geometry||players.size()!=1||!get_application_resource(application,18))throw std::invalid_argument("mission_map requires human_system, geometry, one player and AppData18 chips");
         const auto initial=initial_mission_map_creation();const auto distance=human_scenario->distance;
@@ -224,6 +248,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             if(collection)humans->enable_collection();
             if(result_requested)humans->enable_results(std::move(result_state));
             if(stage_loop)humans->enable_stage_loop(std::move(stage_scenario));
+            if(input_scenario)humans->enable_input(*input_scenario);
             if(map_images){spatial=std::make_unique<MissionSpatial>(*entity_world,*live_map,view,humans->quest_form(),humans->quest(),map_images);mission->bind_spatial(*spatial);}
             for(const auto& request:states)humans->set_state(*created.at(std::get<0>(request)),std::get<1>(request),std::get<2>(request));
         }else if(!states.empty())throw std::invalid_argument("actor_state requires human_system");
@@ -239,6 +264,15 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
 }
 bool MissionProfile::step(){
     if(!mission)throw std::invalid_argument("selected logic requires a table-backed entity scene");
+    if(humans&&humans->transition_pending())return false;
+    const auto input=replay_.find(logic_steps+1);
+    if(input!=replay_.end())for(const auto& action:input->second){
+        if(action.kind==InputKind::keys)humans->set_input_keys(action.value);
+        else if(action.kind==InputKind::attack)humans->select_input_attack(static_cast<std::int32_t>(action.value));
+        else humans->pulse_stage_keys(action.value);
+        ++replay_applied_;
+    }
+    if(humans)humans->advance_input();
     if(humans&&!humans->advance_stage())return false;
     const bool held=humans&&humans->transition_pending();
     if(!held){
@@ -261,12 +295,14 @@ void MissionProfile::write_actor_parameters(ComponentSlots& actor,std::ostream& 
     if(const auto* cell=dynamic_cast<CellComponent*>(actor.get(5)))out<<",\"cell_xi\":"<<cell->xi<<",\"cell_yi\":"<<cell->yi;
     if(actor.contains(23)){
         out<<",\"hp\":"<<resolve_combat_parameter(actor,0)->value;
-        if(actor.contains(14)){const auto& h=*dynamic_cast<HumanRecordLink*>(actor.get(14));out<<",\"mp\":"<<resolve_combat_parameter(actor,1)->value<<",\"human_experience\":"<<h.experience<<",\"human_level\":"<<h.level;}
+        if(actor.contains(14)){const auto& h=*dynamic_cast<HumanRecordLink*>(actor.get(14));out<<",\"mp\":"<<resolve_combat_parameter(actor,1)->value<<",\"human_experience\":"<<h.experience<<",\"human_level\":"<<h.level<<",\"human_dash_speed\":"<<h.dash_speed;}
     }
     if(const auto* enemy=dynamic_cast<EnemyRecordLink*>(actor.get(24)))out<<",\"enemy_state\":"<<enemy->state<<",\"enemy_frame\":"<<enemy->frame<<",\"enemy_flags\":"<<enemy->flags;
 }
 void MissionProfile::write_combat_report(std::ostream& out){
     out<<",\"movement_steps\":"<<movement_steps;
+    out<<",\"replay_bound\":"<<(replay_bound_?"true":"false")<<",\"replay_actions\":"<<replay_applied_;
+    if(humans)humans->write_input_report(out);else out<<",\"input_enabled\":false";
     out<<",\"spatial_enabled\":"<<(spatial?"true":"false");if(spatial)spatial->report(out);
     out<<",\"shots\":"<<(humans?humans->shots():0)<<",\"total_damage\":"<<(humans?humans->total_damage():0)<<",\"projectiles\":[";
     bool first=true;

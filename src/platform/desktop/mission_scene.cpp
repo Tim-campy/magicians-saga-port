@@ -16,6 +16,7 @@ struct Cursor final:RenderCursor {
         while(const auto entry=cursor.next()){
             const auto* effect=dynamic_cast<EffectComponent*>((*entry)->get(26));
             if(effect&&effect->type==3)continue; // SAGA_STUB(mission-collection-labels): retain native effect/lifetime; numeric glyph rendering is unbound.
+            if(effect&&effect->type==7)continue; // SAGA_STUB(mission-mp-notices): retain native no-Depth notice and lifetime; dedicated output is unbound.
             return entry;
         }return std::nullopt;
     }

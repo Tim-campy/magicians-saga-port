@@ -139,6 +139,10 @@ project_warnings(test_event_execution)
 add_test(NAME event_execution_contract COMMAND test_event_execution)
 
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
+add_executable(test_input_frame test_input_frame.cpp)
+target_link_libraries(test_input_frame PRIVATE input_frame human_initialization enemy_initialization pass_initialization motion_pass update_scheduler hero_bootstrap human_factory animation_pass)
+project_warnings(test_input_frame)
+add_test(NAME input_frame_contract COMMAND test_input_frame)
 add_test(NAME mission_profile_contract COMMAND "${Python3_EXECUTABLE}" -I "${CMAKE_CURRENT_SOURCE_DIR}/test_mission_profile.py" "$<TARGET_FILE:saga_mission>")
 add_test(NAME event_scenario_integration COMMAND "${Python3_EXECUTABLE}" -I "${CMAKE_CURRENT_SOURCE_DIR}/test_event_scenario.py" "$<TARGET_FILE:event_trace>")
 

@@ -38,13 +38,13 @@ game:0x06000fa4	reimplemented	src/core/gameplay/drop_collection.cpp	Native front
 game:0x06000fa5	reimplemented	src/core/gameplay/drop_collection.cpp	Native hero snapshot/live list/31-update credit bound in Stage3 collection prefix beforeHuman4; dialog/state gates preserve pending work.
 game:0x06000fb9	reimplemented	src/core/gameplay/drop_collection.cpp	Stage credit then real numeric/common effect factories, Garbage0 and audio adapters; numeric glyph output explicitly stubbed, no permanent grants.
 game:0x06000d36	reimplemented	src/core/gameplay/drop_collection.cpp	Signed frame >=0 predicate used by tested live collection pass.
-game:0x06000f9d	reimplemented	src/core/gameplay/stage_update.cpp	All seven states ported/tested; desktop stage_loop reaches native collection/clear/confirmation/grants/gear/completion/return scheduling; script/recovery/dialog/pause branches fail explicitly when unbound.
+game:0x06000f9d	reimplemented	src/core/gameplay/stage_update.cpp	All seven states ported/tested; desktop stage_loop reaches collection/clear, native SDL/replay confirmation, grants/gear/completion/return scheduling; script/recovery/dialog/pause branches fail explicitly when unbound.
 game:0x06000fa0	documented	docs/subsystems/rewards.md	Gameplay reward pipeline bound to desktop live members, Table/Treasure catalogs and decoded inventory/currency/record state; full result UI suffix remains a service stub, so status stays documented.
 game:0x06000fb1	reimplemented	src/core/gameplay/quest_return.cpp	Desktop host binds native cleanup/member writeback and retains deferred transition callback; explicit hold stops old mission; town callback remains unexecuted.
 game:0x06000fda	reimplemented	src/core/gameplay/quest_return.cpp	Deferred live area/stage snapshot, form switch then event 31 tested
 game:0x06000fb7	reimplemented	src/core/gameplay/stage_update.cpp	Native retry/state5/6 policy and ordered form/BGM suffix reachable from mission host through narrow StageGameOverHost; explicit initial state and answer.
 game:0x06000fb6	reimplemented	src/core/gameplay/human_impact.cpp	Main flag2 invokes game-over; mission event30 dispatch runs Stage before Enemy retarget; sub-character death does not require game-over inputs.
-game:0x06000f9b	traced	docs/subsystems/rewards.md	subscribes OnDamage to event 15; rest of Init not read
+game:0x06000f9b	traced	docs/subsystems/ui.md	Init stores system references, creates three distinct attack buttons and subscribes30/9/15; control-array contract established; complete Init binding remains separate.
 game:0x06000f9e	reimplemented	src/core/gameplay/stage_start.cpp	Complete stage-entry ordering and partial failures; real party/drop/31-pass credit composed; map/enemy/pause/audio services explicit.
 game:0x06000fbb	reimplemented	src/core/gameplay/combat_host.cpp	Enemy presence adds offered damage with wrap; null receiver faults; overkill and DEBUG integration tests
 game:0x06000fb2	reimplemented	src/core/gameplay/quest_rewards.cpp	Counters and signed bests ported with ordered live host reads and partial-failure tests

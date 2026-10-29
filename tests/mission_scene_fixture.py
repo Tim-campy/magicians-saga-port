@@ -1,7 +1,7 @@
 """Synthetic table/archive profile shared by mission and GPU contracts."""
 from test_sprite_preview import jar, png, seb
 
-def make_table_scene(root, valid_png=True, human_frame=False, shoot=False, rewards=False, area=False, lethal_contact=False, treasure_flags=0):
+def make_table_scene(root, valid_png=True, human_frame=False, shoot=False, rewards=False, area=False, lethal_contact=False, treasure_flags=0, spell_attribute=3):
     params = '13' + '\t2\t100\t1000' * 13
     tables = {
         'Chara.txt': f'2\tHero\t0\tchara\t8\tchara\t1\t0\t0\t99\t0\t100\t{params}\t0\t0\t0\t-1\t0\t2',
@@ -19,7 +19,7 @@ def make_table_scene(root, valid_png=True, human_frame=False, shoot=False, rewar
         if area:
             weapon[17] = '2'
         tables['Equipment.txt'] = '\t'.join(weapon)
-        tables['Bullet.txt'] = '0\t0\t3\tbullet\t5\t6\teffect\t7\t0'
+        tables['Bullet.txt'] = f'0\t0\t{spell_attribute}\tbullet\t5\t6\teffect\t7\t0'
         enemy_params = '13' + ''.join('\t2\t100000\t100000' if i == 0 or (lethal_contact and i in (3, 7)) else '\t2\t0\t0' for i in range(13))
         tables['Enemy.txt'] = f'4\tEnemy\t0\t2\t10\t100\t0\t0\t0\tenemy-book\t7\t0\t0\t0\t{enemy_params}\t0'
     if rewards:
@@ -47,8 +47,8 @@ def make_table_scene(root, valid_png=True, human_frame=False, shoot=False, rewar
     return text
 
 
-def make_shoot_scene(root, rewards=False, area=False, lethal_contact=False, treasure_flags=0):
-    text = make_table_scene(root, human_frame=True, shoot=True, rewards=rewards, area=area, lethal_contact=lethal_contact, treasure_flags=treasure_flags)
+def make_shoot_scene(root, rewards=False, area=False, lethal_contact=False, treasure_flags=0, spell_attribute=3):
+    text = make_table_scene(root, human_frame=True, shoot=True, rewards=rewards, area=area, lethal_contact=lethal_contact, treasure_flags=treasure_flags, spell_attribute=spell_attribute)
     for name, image, clips in [('bullet', 5, [0, 1]), ('effect', 7, [0, 100, 101])]:
         (root / f'{name}.bin').write_bytes(jar([
             ('img.inf', '\n'.join(f'{i}\ta.png,bin' for i in [image, 1, 2, 6, 24, 27]).encode()),

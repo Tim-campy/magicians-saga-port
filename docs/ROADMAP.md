@@ -31,10 +31,11 @@ Blockers:
 - [ ] (blocking) Bind the complete 26-system update schedule and init dispatch to the live world in the host (A3).
 
 Tasks:
-- [ ] Extend `saga_mission` with real quest/map selection via `--data`/`--quest`, its SDL window and supported gameplay input replays via `--replay` (A1, A5).
+- [ ] Extend `saga_mission` with real quest/map selection via `--data`/`--quest`, its SDL window and existing native input/replay adapters (A1, A5).
 - [ ] Replace the synthetic catalogs/services of the 240-frame combat regression with the table-backed owner used by `saga_mission` (A3).
+- [ ] Add complete reached-world state hashing and record local per-quest golden replays (A5).
 - [ ] Bind retry/defeat/victory form answers and pause/resume to Stage Update without automatic crystal or ad choices (A4).
-- [ ] Bind QuestForm's cursor UI to SDL input events (A2).
+- [ ] Bind remaining QuestForm touch/cursor widgets and gesture routing to SDL input events (A2).
 - [ ] Bind Stage.Start, recovery/boss startup and quest event dispatch to the live mission host before result/return (A4).
 - [ ] Bind SDL dimensions/resize and quest-catalog chip selection to the mission_map host adapter (A1).
 - [ ] Group `src/core/gameplay/` (138 files) into subdirectories by subsystem (`combat/`, `mission/`, `town/`, `render/`, `events/`, `text/`, `runtime/`) without behaviour changes; CMake targets and tests keep their names.

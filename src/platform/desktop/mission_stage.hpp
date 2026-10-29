@@ -14,6 +14,7 @@ class MissionStage final:private core::StageUpdateHost {
 public:
     MissionStage(MissionHumans&,MissionStageScenario);
     bool advance(std::int32_t pass,bool enabled);
+    void pulse(std::uint32_t mask){pending_pulse_|=mask;}
     void report(std::ostream&);
 private:
     core::StageGeometry* stage_map()override;
@@ -38,6 +39,6 @@ private:
     std::int32_t* equipment_level(core::EquipmentSlot,std::int32_t)override;
     core::QuestReturnHost& return_host()override;
     MissionHumans& owner_;MissionStageScenario scenario_;
-    std::uint64_t steps_=0;std::uint32_t pulse_=0;
+    std::uint64_t steps_=0;std::uint32_t pulse_=0,pending_pulse_=0;
 };
 }

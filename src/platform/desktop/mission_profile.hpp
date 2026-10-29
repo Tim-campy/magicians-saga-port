@@ -16,7 +16,7 @@ struct SceneResource {
 // This is a selected scene, not the original quest/map/bootstrap or full system schedule.
 class MissionProfile {
 public:
-    MissionProfile(const std::filesystem::path&,bool native,ArchiveImageSet::Decoder = {},std::optional<MissionRuntimeConfig> = std::nullopt);
+    MissionProfile(const std::filesystem::path&,bool native,ArchiveImageSet::Decoder = {},std::optional<MissionRuntimeConfig> = std::nullopt,std::optional<std::filesystem::path> replay =std::nullopt);
     MissionProfile(const MissionProfile&)=delete;
     MissionProfile& operator=(const MissionProfile&)=delete;
     bool step(); // False at an explicitly held deferred transition; no further old-mission logic.
@@ -41,5 +41,12 @@ public:
     std::optional<MissionRuntimeConfig> runtime;
     std::unique_ptr<MissionHumans> humans;
     std::unique_ptr<MissionSpatial> spatial;
+    bool accepts_live_input()const{return humans&&humans->input_enabled()&&!humans->transition_pending()&&!replay_bound_;}
+private:
+    enum class InputKind {keys,attack,pulse};
+    struct InputAction {InputKind kind;std::uint32_t value;};
+    std::map<std::uint64_t,std::vector<InputAction>> replay_;
+    bool replay_bound_=false;std::uint64_t replay_applied_=0;
+    void load_replay(const std::filesystem::path&);
 };
 } // namespace saga::desktop

@@ -18,7 +18,8 @@ bool MissionStage::advance(std::int32_t pass,bool enabled){
     if(owner_.transition_pending())return false;
     if(!gameplay_needs_update(3,enabled,pass))return true;
     if(owner_.stage_.dialog)unavailable("stage dialog pause/input flow");
-    ++steps_;auto pulse=scenario_.pulses.find(steps_);pulse_=pulse==scenario_.pulses.end()?0:pulse->second;
+    ++steps_;auto pulse=scenario_.pulses.find(steps_);pulse_=pending_pulse_;pending_pulse_=0;
+    if(pulse!=scenario_.pulses.end())pulse_|=pulse->second;
     if(owner_.stage_.state==1)++owner_.collection_steps_;
     update_stage(owner_.stage_,*this);return true;
 }
@@ -57,5 +58,8 @@ void MissionHumans::enable_stage_loop(MissionStageScenario scenario){
 bool MissionHumans::advance_stage(std::int32_t pass,bool enabled){
     if(stage_loop_)return stage_loop_->advance(pass,enabled);
     advance_collection(pass,enabled);return true;
+}
+void MissionHumans::pulse_stage_keys(std::uint32_t mask){
+    if(!stage_loop_)throw std::invalid_argument("stage_loop is required for pulse input");stage_loop_->pulse(mask);
 }
 }

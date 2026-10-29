@@ -400,6 +400,8 @@ else()
 endif()
 
 saga_library(human_initialization human_initialization.cpp)
+saga_library(input_frame input_frame.cpp)
+target_link_libraries(input_frame PUBLIC human_frame)
 target_link_libraries(human_initialization PUBLIC human_frame human_contact human_impact entity_events)
 
 saga_library(bullet_factory bullet_factory.cpp)
