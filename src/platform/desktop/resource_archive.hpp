@@ -20,6 +20,7 @@ struct ArchiveSprite {
     std::vector<std::uint8_t> png;
     std::string animation_member, image_member, opt_member, image_catalog, animation_catalog;
     std::int32_t texture = -1, standard_width = 0, standard_height = 0;
+    std::int32_t reverse_u=0,reverse_v=0,cache_size=0,image_render_queue=0;
 };
 // Synchronous preparation from one decoded archive. Explicit ASCII/invariant
 // resource profile, matching the shipped names/catalogs; not Android boot or

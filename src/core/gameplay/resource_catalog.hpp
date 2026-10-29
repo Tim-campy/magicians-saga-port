@@ -45,5 +45,9 @@ public:
 CatalogText resource_file_name(CatalogText, ResourceNameHost&);
 // Image.GetOptionFile, 0x1b91e48; comma split is untrimmed; absent dot faults.
 CatalogText image_option_file(CatalogText);
+struct SebLoadOptions {CatalogText filename;std::int32_t reverse_u=0,reverse_v=0,cache_size=0;};
+// LoadStart SEB slice 0x1baaa10..0x1baaaa4: case-sensitive first characters;
+// u/v set flags, c parses the remaining text, unknown first characters ignored.
+SebLoadOptions seb_load_options(CatalogText,CatalogTextHost&);
 
 } // namespace saga::core

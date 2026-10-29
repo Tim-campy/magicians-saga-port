@@ -118,14 +118,16 @@ struct ResourceArchive::Impl final : JarResourceHost, ResourceNameHost, Resource
     }
     ArchiveSprite sprite(std::int32_t clip,std::int32_t frame,std::int32_t layer) {
         const auto spec=wide(specification(animation_catalog,clip));
-        const auto parts=split_trimmed_text_fields(spec.get(),u',');
-        if (parts.size()!=1) throw std::invalid_argument("unbound SEB loading option");
-        const auto seb_id=lookup(narrow(parts.at(0)));
+        const auto options=seb_load_options(spec,*this);
+        const auto seb_id=lookup(narrow(*options.filename));
         if (!seb_id) throw std::invalid_argument("SEB member unavailable in selected archive");
         const auto seb_bytes=payload(*seb_id);
         ArchiveSprite result;
+        result.reverse_u=options.reverse_u;result.reverse_v=options.reverse_v;result.cache_size=options.cache_size;
         result.animation=assets::parse_seb(seb_bytes.data(),seb_bytes.size());
         auto prepared=prepare_seb_sprites(result.animation); SebStaticWork work;
+        reverse_seb(prepared,result.reverse_u,result.reverse_v);
+        if(result.cache_size>=1)set_seb_cache_size(prepared,result.cache_size);
         const auto value=seb_sprite(prepared,work,frame,layer);
         if (!value || value->at(1)==-1) throw std::invalid_argument("selected sprite has no image");
         result.texture=value->at(1);
@@ -134,6 +136,9 @@ struct ResourceArchive::Impl final : JarResourceHost, ResourceNameHost, Resource
         for (std::size_t i=1;i<image_parts.size();++i) {
             const auto option=lower(narrow(image_parts[i]));
             if (option=="bin") continue;
+            if(option.rfind("q+",0)==0||option.rfind("q-",0)==0){
+                result.image_render_queue=parse_event_decimal(std::string_view(option).substr(option[1]=='+'?2:1));continue;
+            }
             const auto x=option.find('x');
             if (x==option.npos) throw std::invalid_argument("unbound image loading option: "+option);
             result.standard_width=parse_event_decimal(std::string_view(option).substr(0,x));

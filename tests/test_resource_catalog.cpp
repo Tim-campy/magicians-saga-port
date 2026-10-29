@@ -49,6 +49,12 @@ struct Host final : ResourceNameHost {
 }
 
 int main() {
+    {Host host;
+     auto options=seb_load_options(text(u" clip.seb ,u-any,v,c3,c0,c2,Z,U"),host);
+     check(*options.filename==u"clip.seb"&&options.reverse_u==1&&options.reverse_v==1&&options.cache_size==2);
+     options=seb_load_options(text(u"clip.seb,U,V,c-2"),host);
+     check(options.reverse_u==0&&options.reverse_v==0&&options.cache_size==-2);
+     fails<std::out_of_range>([&]{seb_load_options(text(u"clip.seb,"),host);});}
     {Host host; auto chosen = rows({text(u" 2\t file.png,bin \tignored"),text(u"plain.seb"),text(u"")});
      check(parse_resource_catalog_rows(chosen,host) == std::vector<std::int32_t>({2,-1,-1}));
      check(*chosen->at(0) == u"file.png,bin" && *chosen->at(1) == u"plain.seb");

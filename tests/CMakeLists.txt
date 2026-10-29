@@ -550,6 +550,11 @@ add_executable(test_resource_archive test_resource_archive.cpp)
 target_link_libraries(test_resource_archive PRIVATE resource_archive)
 project_warnings(test_resource_archive)
 add_test(NAME resource_archive_contract COMMAND test_resource_archive)
+
+add_executable(test_material_queue test_material_queue.cpp)
+target_link_libraries(test_material_queue PRIVATE material_queue)
+project_warnings(test_material_queue)
+add_test(NAME material_queue_contract COMMAND test_material_queue)
 add_test(NAME animation_scenario_integration COMMAND "${Python3_EXECUTABLE}" -I "${CMAKE_CURRENT_SOURCE_DIR}/test_animation_scenario.py" "$<TARGET_FILE:animation_trace>")
 
 add_executable(test_drop_collection test_drop_collection.cpp)

@@ -244,6 +244,8 @@ saga_library(resource_catalog resource_catalog.cpp)
 target_link_libraries(resource_catalog PUBLIC presentation_text)
 saga_library(resource_lookup resource_lookup.cpp)
 target_link_libraries(resource_lookup PUBLIC presentation_text)
+saga_library(material_queue material_queue.cpp)
+target_link_libraries(material_queue PUBLIC render_colors)
 target_link_libraries(animation_resources PUBLIC seb_sprite)
 target_link_libraries(animation_resources PUBLIC animation_pass seb)
 

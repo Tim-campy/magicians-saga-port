@@ -8437,7 +8437,7 @@ kairo:0x06001083,kairo:0x06001083,graphics,,276,0x1c9fb90
 kairo:0x06001084,kairo:0x06001084,graphics,,252,0x1c9fca4
 kairo:0x06001085,kairo:0x06001085,graphics,,348,0x1c9fda0
 kairo:0x06001086,kairo:0x06001086,graphics,,24,0x1c9fefc
-kairo:0x06001087,kairo:0x06001087,graphics,,52,0x1c9ff14
+kairo:0x06001087,kairo.unity.graphics.Material.set_RenderQueueOffset,graphics,reimplemented,52,0x1c9ff14
 kairo:0x06001088,kairo:0x06001088,graphics,,8,0x1c9ff48
 kairo:0x06001089,kairo:0x06001089,graphics,,8,0x1c9ff50
 kairo:0x0600108a,kairo:0x0600108a,graphics,,8,0x1c9ff58
@@ -9281,9 +9281,9 @@ kairo:0x060013d4,kairo:0x060013d4,ui,,200,0x1b74160
 kairo:0x060013d5,kairo:0x060013d5,ui,,88,0x1b74228
 kairo:0x060013d6,kairo:0x060013d6,ui,,8,0x1b74280
 kairo:0x060013d7,kairo:0x060013d7,ui,,8,0x1b74288
-kairo:0x060013d8,kairo:0x060013d8,ui,,236,0x1b74290
-kairo:0x060013d9,kairo:0x060013d9,ui,,36,0x1b62ccc
-kairo:0x060013da,kairo:0x060013da,ui,,112,0x1b632b8
+kairo:0x060013d8,kairo.unity.ui.Graphics.PushRenderQueue,ui,reimplemented,236,0x1b74290
+kairo:0x060013d9,kairo.unity.ui.Graphics.PushRenderQueue,ui,reimplemented,36,0x1b62ccc
+kairo:0x060013da,kairo.unity.ui.Graphics.PopRenderQueue,ui,reimplemented,112,0x1b632b8
 kairo:0x060013db,kairo:0x060013db,ui,,8,0x1b7437c
 kairo:0x060013dc,kairo:0x060013dc,ui,,364,0x1b74384
 kairo:0x060013dd,kairo:0x060013dd,ui,,216,0x1b744f0

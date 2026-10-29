@@ -125,7 +125,7 @@ class NativeTests(unittest.TestCase):
         self.assertEqual(bitmap[2], expected)
 
     def test_archive_unknown_loading_options_fail_before_capture(self):
-        payload = jar([('img.inf', b'7\timage.png,bin,q+1'), ('seb.inf', b'0\tclip.seb'),
+        payload = jar([('img.inf', b'7\timage.png,bin,a1'), ('seb.inf', b'0\tclip.seb'),
                        ('clip.seb', seb([(0, 7, 0, 0, 1, 1, 0, 0, 0, 0)]))])
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -137,6 +137,33 @@ class NativeTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn('unbound image loading option', result.stderr)
             self.assertFalse(capture.exists())
+
+    def test_archive_load_reversal_and_relative_queue_reach_pixels(self):
+        source = [(255, 0, 0, 255), (0, 255, 0, 255), (0, 0, 255, 255), (255, 255, 0, 255)]
+        for flags, queue, opt in [(b',u,c3', b'q+1', None), (b'', b'q-1', struct.pack('>5B14h', 2, 2, 1, 1, 2,
+                -1, 0, 0, 0, 0, 1, 2, -1, 1, 0, 1, 0, 1, 2))]:
+            with self.subTest(flags=flags, queue=queue), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                archive, capture = root / 'resources.bin', root / 'frame.bmp'
+                members = [('img.inf', b'7\timage.png,bin,' + queue), ('seb.inf', b'0\tclip.seb' + flags),
+                           ('clip.seb', seb([(0, 7, 0, 0, 2, 2, 0, 0, 0, 0)])),
+                           ('image.png', png(2, 2, [c for p in source for c in p]))]
+                if opt is not None:
+                    members.append(('image.opt', opt))
+                archive.write_bytes(jar(members))
+                result = subprocess.run([str(EXE), str(archive), '--resource', '0', '0', '0', '--language', 'English.lproj',
+                         '--dpi', '0', '--canvas', '12', '12', '--origin', '6', '6', '--headless', '--capture', str(capture)],
+                         text=True, capture_output=True, timeout=20)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                report = json.loads(result.stdout)
+                self.assertEqual(report['image_queue_offset'], 1 if flags else -1)
+                self.assertEqual(report['resource_reverse'], [1 if flags else 0, 0])
+                self.assertEqual(report['render_queues'], [2001] if flags else [1999, 1999])
+                expected = [(0, 0, 0, 0)] * 144
+                for y in range(2):
+                    for x in range(2):
+                        expected[(6 + y) * 12 + (4 if flags else 6) + x] = source[y * 2 + (1 - x if flags else x)]
+                self.assertEqual(bmp_pixels(capture.read_bytes())[2], expected)
 
     def test_opt_offsets_and_external_slot_guard(self):
         opt = struct.pack('>5B7h', 8, 8, 1, 1, 1, -1, 1, 2, 4, 5, 2, 2)

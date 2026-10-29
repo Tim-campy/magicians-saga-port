@@ -11,10 +11,12 @@ struct SpritePreviewOptions {
     std::int32_t angle=0;bool skew=false; // Explicit AppData command fields, not inferred entity modifiers.
     std::int32_t alpha=255,color=-1;bool raw_rgba=false;
     std::array<std::uint8_t,4> background{0,0,0,0}; // Explicit technical canvas clear, not mission state.
+    std::int32_t resource_reverse_u=0,resource_reverse_v=0,resource_cache_size=0,image_render_queue=0;
 };
 struct PreviewQuad {
     std::array<core::BitmapPoint,4> points;core::ImageBounds uv;
     core::RenderColor color{1,1,1,1};core::SpritePixelPipeline pipeline;std::uint32_t shader_key=0;
+    std::int32_t queue_offset=0,render_queue=2000;
 };
 struct SpritePreview {
     std::vector<PreviewQuad> quads;

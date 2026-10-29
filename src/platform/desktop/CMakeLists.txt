@@ -47,7 +47,7 @@ if(SAGA_BUILD_VIEWER)
   add_executable(asset_viewer asset_viewer.cpp sprite_preview.cpp sdl_bitmap.cpp)
   target_compile_features(asset_viewer PRIVATE cxx_std_17)
   target_include_directories(asset_viewer SYSTEM PRIVATE "${STB_DIR}")
-  target_link_libraries(asset_viewer PRIVATE SDL3::SDL3-static bitmap_geometry animation_resources render_transform render_colors resource_archive)
+  target_link_libraries(asset_viewer PRIVATE SDL3::SDL3-static bitmap_geometry animation_resources render_transform render_colors material_queue resource_archive)
   project_warnings(asset_viewer)
 endif()
 

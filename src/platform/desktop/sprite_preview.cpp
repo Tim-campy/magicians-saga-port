@@ -1,6 +1,7 @@
 #include "sprite_preview.hpp"
 #include "core/gameplay/animation_resources.hpp"
 #include "core/gameplay/render_transform.hpp"
+#include "core/gameplay/material_queue.hpp"
 #include <algorithm>
 #include <limits>
 
@@ -32,6 +33,7 @@ struct PreviewHost final:RenderDrawHost,RenderGraphics,RenderDepth,ImageDrawHost
     PreviewMatrix application_matrix;
     SpriteMatrix temporary_matrix;
     RenderColorState colors;RenderColorWork color_work;
+    GraphicsQueueState queues;
     std::int32_t alpha_class;bool raw_rgba;
     std::int32_t png_width,png_height;
     SpritePreview result;
@@ -80,6 +82,7 @@ struct PreviewHost final:RenderDrawHost,RenderGraphics,RenderDepth,ImageDrawHost
     void push_translation(float x,float y)override{set_translate_matrix(temporary_matrix,x,y);push_graphics_matrix(transform,&temporary_matrix);sync_matrix();}
     void bitmap(PixelImage& image,const BitmapDraw& request)override{
         auto source=prepare_bitmap_source(image,request,nullptr,*this); // Explicit non-atlas preview profile.
+        if(image.render_queue!=0)push_graphics_queue(queues,add_queue_offset(queues.value,image.render_queue));
         begin_render_matrix(transform,source.draw.x,source.draw.y,*this);
         try{
             update_bitmap_sampling(cache,*source.page,source.draw,source_work,*this,*this);
@@ -87,6 +90,7 @@ struct PreviewHost final:RenderDrawHost,RenderGraphics,RenderDepth,ImageDrawHost
                 const auto destination=bitmap_destination(source.draw,0.0F); // Explicit zero-expansion profile.
                 points=transform_bitmap_rectangle(geometry,&destination,points,nullptr,*this);
                 PreviewQuad quad;std::copy_n(points->begin(),4,quad.points.begin());quad.uv=*cache.uv;
+                quad.queue_offset=queues.value;quad.render_queue=add_queue_offset(2000,queues.value);
                 if(raw_rgba)result.quads.push_back(quad);
                 else{
                     auto passes=get_render_passes(colors,true,color_work.white,color_work,*this);
@@ -96,6 +100,12 @@ struct PreviewHost final:RenderDrawHost,RenderGraphics,RenderDepth,ImageDrawHost
                             if(pass->material||colors.blend_mode==3)unbound(); // Grayscale generation is a separate bitmap path.
                             const auto shader=sprite_shader_state(colors,true,alpha_class,value->at(0).a,value,pass->alpha_test,false);
                             quad.shader_key=sprite_shader_key(shader);quad.pipeline=sprite_pixel_pipeline(quad.shader_key);
+                            struct QueueHost final:MaterialQueueHost {
+                                std::uint32_t key;explicit QueueHost(std::uint32_t k):key(k){}
+                                std::int32_t shader_queue()override{return sprite_shader_queue(key);}
+                            } queue_host(quad.shader_key);
+                            MaterialQueueState material_queue;set_material_queue_offset(material_queue,queues.value,queue_host);
+                            quad.render_queue=material_queue.absolute;
                             quad.color=quad.pipeline.modulate?value->at(0):RenderColor{1,1,1,1};result.quads.push_back(quad);
                         }catch(...){end_render_pass(*pass,*this);throw;}
                         end_render_pass(*pass,*this);
@@ -103,8 +113,9 @@ struct PreviewHost final:RenderDrawHost,RenderGraphics,RenderDepth,ImageDrawHost
                 }
                 cache.image=&image;cache.dirty=false;
             }
-        }catch(...){end_render_matrix(transform,*this);throw;}
+        }catch(...){end_render_matrix(transform,*this);if(image.render_queue!=0)pop_graphics_queue(queues);throw;}
         end_render_matrix(transform,*this);
+        if(image.render_queue!=0)pop_graphics_queue(queues);
     }
     SpriteArray piece(PixelImage& image,std::int32_t column,std::int32_t row,std::int32_t pass)override{
         auto* prepared=dynamic_cast<PreparedOptImage*>(&image);if(!prepared)unbound();return prepared->piece(column,row,pass,opt_work);
@@ -137,9 +148,13 @@ SpritePreview prepare_sprite_preview(const SpritePreviewOptions& o,const assets:
                                      std::int32_t png_width,std::int32_t png_height,std::int32_t alpha_type){
     if(o.texture<0||o.texture>65535||o.width<=0||o.height<=0)throw std::invalid_argument("invalid selected preview binding/canvas");
     PreparedAnimationResource loaded(index_resource_catalog({0}),{&file});
+    auto& sprites=*loaded.resource().clips->at(0)->sprites;
+    reverse_seb(sprites,o.resource_reverse_u,o.resource_reverse_v);
+    if(o.resource_cache_size>=1)set_seb_cache_size(sprites,o.resource_cache_size);
     PreviewHost host(o,png_width,png_height,alpha_type);
     std::unique_ptr<PixelImage> image=opt?std::make_unique<PreparedOptImage>(*opt):std::make_unique<PixelImage>();
     image->width=png_width;image->height=png_height;image->standard_width=o.standard_width;image->standard_height=o.standard_height;
+    image->render_queue=o.image_render_queue;
     auto images=std::make_shared<std::vector<RenderImage*>>(static_cast<std::size_t>(o.texture)+1,nullptr);images->at(static_cast<std::size_t>(o.texture))=image.get();
     host.resource_value={&loaded.resource(),images};
     // Verify the explicit selected texture before entering the consumer; do not
@@ -149,6 +164,7 @@ SpritePreview prepare_sprite_preview(const SpritePreviewOptions& o,const assets:
     RenderQueue queue=make_render_queue();RenderCommand command;
     command.values={-1,1,0,0,o.frame,o.x,o.y,-1,-1,-1,-1,-1,-1,o.layer,o.alpha,o.color,o.angle,-1,o.skew?1:0};
     insert_render_command(queue,command);RenderDrawState draw{&queue,0,&host.application_matrix};draw_render_queue(draw,&host,0,host);
+    std::stable_sort(host.result.quads.begin(),host.result.quads.end(),[](const auto& a,const auto& b){return a.render_queue<b.render_queue;});
     return std::move(host.result);
 }
 } // namespace saga::desktop

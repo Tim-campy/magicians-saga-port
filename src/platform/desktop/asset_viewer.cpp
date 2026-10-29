@@ -158,6 +158,8 @@ int view(const std::string& filename, bool headless, const std::string& capture,
         if(encoded.size()<8||encoded.size()>max_encoded_bytes)throw std::invalid_argument("archive PNG size outside preview limits");
         sprite_options->texture=archive_sprite->texture;
         sprite_options->standard_width=archive_sprite->standard_width;sprite_options->standard_height=archive_sprite->standard_height;
+        sprite_options->resource_reverse_u=archive_sprite->reverse_u;sprite_options->resource_reverse_v=archive_sprite->reverse_v;
+        sprite_options->resource_cache_size=archive_sprite->cache_size;sprite_options->image_render_queue=archive_sprite->image_render_queue;
     }else encoded=read_file(filename, max_encoded_bytes, 8);
     constexpr std::array<stbi_uc, 8> signature{{137, 80, 78, 71, 13, 10, 26, 10}};
     if (!std::equal(signature.begin(), signature.end(), encoded.begin())) throw std::runtime_error("Input is not PNG");
@@ -294,6 +296,9 @@ int view(const std::string& filename, bool headless, const std::string& capture,
                  <<",\"encoded_alpha\":"<<sprite_options->alpha<<",\"color\":"<<sprite_options->color<<",\"shader_keys\":[";
         for(std::size_t i=0;i<preview.quads.size();++i){if(i)std::cout<<',';std::cout<<preview.quads[i].shader_key;}
         std::cout<<']';
+        std::cout<<",\"render_queues\":[";
+        for(std::size_t i=0;i<preview.quads.size();++i){if(i)std::cout<<',';std::cout<<preview.quads[i].render_queue;}
+        std::cout<<']';
         if(archive_sprite){
             std::cout<<",\"resource_clip\":"<<archive_options->clip<<",\"animation_member\":";json_string(archive_sprite->animation_member);
             std::cout<<",\"image_member\":";json_string(archive_sprite->image_member);
@@ -302,6 +307,7 @@ int view(const std::string& filename, bool headless, const std::string& capture,
             std::cout<<",\"animation_catalog\":";json_string(archive_sprite->animation_catalog);
             std::cout<<",\"resource_dpi\":"<<archive_options->profile.dpi<<",\"resource_language\":";json_string(archive_options->profile.language_folder);
             std::cout<<",\"resource_text_profile\":\"ASCII/invariant, Config selector 2, no language-pack overrides\"";
+            std::cout<<",\"resource_reverse\":["<<archive_sprite->reverse_u<<','<<archive_sprite->reverse_v<<"],\"image_queue_offset\":"<<archive_sprite->image_render_queue;
         }
         std::cout<<",\"profile\":\"identity world, native local transforms, no atlas, zero expansion, explicit canvas and mesh color state, no UI overlays\"}\n";
     } else if (opt_mode) {

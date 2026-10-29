@@ -38,8 +38,10 @@ int main(){
     {ResourceArchive plain(source("2\tfirst.png\n7\tchoice.png,bin\n2\tlast.png", "clip.seb\n"),{"English.lproj",0});
      check(plain.images().slots[2]=="last.png"&&plain.animations().slots[0]=="clip.seb");
      check(!plain.sprite(0,0,0).opt);}
-    {ResourceArchive unknown(source("7\tchoice.png,bin,q+1", "clip.seb"),{"English.lproj",0});fails([&]{unknown.sprite(0,0,0);});}
-    {ResourceArchive unknown(source("7\tchoice.png,bin", "clip.seb,u"),{"English.lproj",0});fails([&]{unknown.sprite(0,0,0);});}
+    {ResourceArchive flagged(source("7\tchoice.png,bin,q+1,q-2", "clip.seb,u,v,c3"),{"English.lproj",0});
+     const auto binding=flagged.sprite(0,0,0);check(binding.image_render_queue==-2&&binding.reverse_u==1&&binding.reverse_v==1&&binding.cache_size==3);}
+    {ResourceArchive unknown(source("7\tchoice.png,bin,a1", "clip.seb"),{"English.lproj",0});fails([&]{unknown.sprite(0,0,0);});}
+    {ResourceArchive invalid(source("7\tchoice.png,bin", "clip.seb,"),{"English.lproj",0});fails([&]{invalid.sprite(0,0,0);});}
     fails([&]{ResourceArchive missing(jar_fixture({{"img.inf",{}}}),{"English.lproj",0});});
     fails([&]{ResourceArchive bad(source("7\tchoice.png", "clip.seb"),{"non-ascii-\xc3\xa9",0});});
     std::cout<<"resource archive contract ok\n";

@@ -5,6 +5,7 @@
 namespace saga::core {
 struct ImageFrameBox {std::int32_t u,v,width,height;};
 struct PixelImage:RenderImage {
+    std::int32_t render_queue=0; // Image +0xd8; relative graphics/material queue offset.
     std::int32_t width=0,height=0,standard_width=0,standard_height=0;
     std::int32_t columns=0,rows=0,passes=0; // Image +0x98/+0x9c/+0xa0.
     std::int16_t step_x=0,step_y=0; // +0xc0/+0xc2.

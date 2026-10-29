@@ -19,8 +19,8 @@ kairo:0x060003ce	traced	docs/subsystems/assets.md	GetResourceAsStream: name then
 kairo:0x060003cf	traced	docs/subsystems/assets.md	CheckResourceAsStream: name then name+.bytes
 kairo:0x06000269	reimplemented	src/core/gameplay/resource_lookup.cpp	Selectors 2/3/4 apply ordinal all-occurrence gif-to-png then mld-to-ogg conversion; null/nonmatching modes and uppercase second-conversion integration tests.
 kairo:0x060016ea	traced	docs/subsystems/assets.md	LoadReady selected-row trimming and selected-over-base supplementation ported/tested in resource_catalog; ordinal IDs, retained base duplicates and array publication established; loading/language/exception shell remains partial.
-kairo:0x060016ec	traced	docs/formats/inf.md	TAB row-prefix parsing and missing-ID first-free/duplicate overwrite slices ported; selected real archive clip/TexId/PNG/OPT preparation demonstrated; full async/cache LoadStart remains open.
-kairo:0x0600171d	traced	docs/subsystems/assets.md	LoadStart closure: bin/WxH options, palette, Image ctor 0x06001502
+kairo:0x060016ec	traced	docs/formats/inf.md	TAB row-prefix parsing and missing-ID first-free/duplicate overwrite slices ported; selected real archive clip/TexId/PNG/OPT preparation demonstrated; SEB options and image queue offsets now applied in selected preparation; full async/cache LoadStart remains open.
+kairo:0x0600171d	traced	docs/subsystems/assets.md	LoadStart closure: SEB first-character u/v/c parsing and image bin/WxH/q offsets ported for selected archive preparation; queue write at Image+d8 and existing reverse/cache application proven; full loader remains partial.
 kairo:0x060016ee	reimplemented	src/core/gameplay/resource_catalog.cpp	Public current-culture prefix checks before last-backslash/last-slash stripping and Trim; native order, ordinary nested paths, leading spaces and archive binding tested.
 kairo:0x0600170c	documented	docs/subsystems/assets.md	GetImage: image array +0x10[id] unless +0x60 override; caller Seb.GetImage
 kairo:0x0600155c	reimplemented	src/core/gameplay/resource_catalog.cpp	Null return, untrimmed first comma field, last-dot substring and opt suffix; missing/leading/directory-dot boundaries and actual archive-sidecar resolution tested.
@@ -142,3 +142,7 @@ kairo:0x06001143	traced	docs/subsystems/assets.md	Reached shader selection maps 
 kairo:0x06001532	traced	docs/subsystems/assets.md	Sampled-alpha scalar classifier recovered/tested; native texture tile/readback/liveness and dispatch wrapper not ported.
 kairo:0x06000f32	traced	docs/subsystems/assets.md	AssetReader lazy initializer density buckets, preserved 180..189 gap and lowercased locale publication established; body stays an explicit platform/locale service.
 kairo:0x06000f3e	traced	docs/subsystems/assets.md	AssetReader static initializer publishes four drawable DPI folders; exact order is the tested ResourceLookupState default; static constructor itself not separately ported.
+kairo:0x060013d8	reimplemented	src/core/gameplay/material_queue.cpp	Retained queue list, one-placeholder growth, write then wrapping count increment; nested/reuse and inconsistent-count failure tests.
+kairo:0x060013d9	reimplemented	src/core/gameplay/material_queue.cpp	Save graphics queue before requested value store; bitmap relative image offsets and partial-failure tests.
+kairo:0x060013da	reimplemented	src/core/gameplay/material_queue.cpp	Wrapping count-minus-one gate, saved value read before queue assignment and count decrement; bounds/null/underflow tests.
+kairo:0x06001087	reimplemented	src/core/gameplay/material_queue.cpp	Offset store before shader queue query, live offset reread and wrapping absolute sum; query mutation/failure tests and selected SDL material binding.

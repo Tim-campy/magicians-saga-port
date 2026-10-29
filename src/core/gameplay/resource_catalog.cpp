@@ -60,6 +60,19 @@ CatalogText image_option_file(CatalogText name) {
     return std::make_shared<const std::u16string>(value.substr(0, dot) + u".opt");
 }
 
+SebLoadOptions seb_load_options(CatalogText spec,CatalogTextHost& host) {
+    const auto fields=split_trimmed_text_fields(spec.get(),u',');
+    SebLoadOptions result{std::make_shared<const std::u16string>(fields.at(0)),0,0,0};
+    for(std::size_t i=1;i<fields.size();++i){
+        const auto& option=fields[i];
+        const auto first=option.at(0);
+        if(first==u'u')result.reverse_u=1;
+        else if(first==u'v')result.reverse_v=1;
+        else if(first==u'c')result.cache_size=host.parse_id(std::u16string_view(option).substr(1));
+    }
+    return result;
+}
+
 void trim_resource_catalog(const CatalogRows& rows, CatalogTextHost& host) {
     auto captured = rows;
     auto& values = required(captured.get());
