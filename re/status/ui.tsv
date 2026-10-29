@@ -1,4 +1,9 @@
 id	status	evidence	note
+game:0x06000e7a	reimplemented	src/core/gameplay/gauge_drawing.cpp	Complete Enemy DrawDynamic request chain; saved defeat threshold and palette/projection ordering; selected desktop health rendering bound
+game:0x06000eb4	reimplemented	src/core/gameplay/gauge_drawing.cpp	Parameter gates, captured extras, native viewport/anchor/culling and rate/scale helpers; bitmap renderer consumes actual gauge images
+game:0x06000eaf	reimplemented	src/core/gameplay/gauge_drawing.cpp	Two scaled gauge draws with wrapped arithmetic, scaled source inset and minimum fill pixel; scratch/draw failure prefixes tested
+game:0x06000eb0	reimplemented	src/core/gameplay/gauge_drawing.cpp	Exact two-row alpha crop and first-nonzero scan across retained128-entry scratch with stale suffix; public pixel adapter reused
+game:0x06000eb5	reimplemented	src/core/gameplay/gauge_drawing.cpp	Anchor bit precedence, signed halves and wrapped coordinates; contract and live gauge path tested
 kairo:0x060019e6	reimplemented	src/core/gameplay/form_push.cpp	FormBase.Push: optional manager, false option, true return; tests/test_form_push.cpp
 game:0x06000837	reimplemented	src/core/gameplay/form_push.cpp	SelectForm.Push: autoSave_ and evenCheck_ set before base push; tests/test_form_push.cpp
 game:0x06000758	reimplemented	src/core/gameplay/form_push.cpp	text-only dialog wrapper leaves dialog_ untouched; tests/test_form_push.cpp

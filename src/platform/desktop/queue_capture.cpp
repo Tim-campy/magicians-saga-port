@@ -71,7 +71,7 @@ int main(int argc,char** argv)try{
     auto& entity_world=profile.entity_world;
     BitmapBackend backend(application,global,textures,height,world);sort_render_queue(queue);
     if(inspect){
-        RenderDrawState drawing{&queue,0,&backend.matrix()};draw_render_queue(drawing,&backend.graphics(),0,backend.resources());draw_render_queue(drawing,&backend.graphics(),1,backend.resources());
+        RenderDrawState drawing{&queue,0,&backend.matrix()};draw_render_queue(drawing,&backend.graphics(),0,backend.resources());profile.draw_enemy_gauges(backend);draw_render_queue(drawing,&backend.graphics(),1,backend.resources());
         std::set<std::tuple<std::size_t,std::uint32_t,std::int32_t>> inputs;for(const auto& q:backend.quads())inputs.emplace(q.texture,q.shader_key,q.render_queue);
         std::cout<<"{\"material_inputs\":[";bool first=true;
         for(const auto& key:inputs){if(!first)std::cout<<',';first=false;std::cout<<"{\"texture\":"<<std::get<0>(key)<<",\"shader\":"<<std::get<1>(key)<<",\"queue\":"<<std::get<2>(key)<<'}';}
@@ -99,7 +99,7 @@ int main(int argc,char** argv)try{
         s.matrices=std::make_shared<std::vector<OffscreenMatrix>>(1,unit);s.used_materials=std::make_shared<std::vector<SubmissionMaterial*>>();
         GlMeshSubmissionHost host(renderer,bindings,[](auto&,auto&){},[]()->std::int32_t{throw std::logic_error("capture has no image counter");});
         auto submit=[&]{
-            frame.begin_frame();frame.draw(queue,0);frame.draw(queue,1);frame.finish();bind_bitmap_mesh_frame(bindings,frame);
+            frame.begin_frame();frame.draw(queue,0);profile.draw_enemy_gauges(backend);frame.draw(queue,1);frame.finish();bind_bitmap_mesh_frame(bindings,frame);
             s.cursors->at(0)=0;s.lengths->at(0)=frame.records().active_count;
             renderer.begin_frame(GlBitmapClear::color_and_depth,{0,0,0,0},projection);submit_mesh_streams(s,1,host);
         };

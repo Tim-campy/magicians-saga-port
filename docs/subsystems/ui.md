@@ -32,6 +32,9 @@ The game's screens are forms (`kairo.unity.form.FormBase` → `LibraryFormBase` 
 | `form.FormManager.Updated` | `game:0x06000731` | Alternative 120-FPS key rule, writes `+0xb0` if changed | medium |
 | `form.FormManager.GetInstance` | `game:0x0600072d` | Singleton accessor used by Main.OnDraw/OnUpdate | medium |
 | `ecs.CameraSystem.Init / Update` | `game:0x06000de2` / `game:0x06000de4` | Camera creation/reset, then formation-derived cursor on pass zero | high |
+| `ecs.EnemySystem.DrawDynamic` | `game:0x06000e7a` | Saved defeat threshold, palette and projected HP request | high |
+| `ecs.GaugeSystem.DrawParamGauge / DrawGauge` | `game:0x06000eb4` / `game:0x06000eaf` | Parameter/viewport gates and two-half image drawing | high |
+| `ecs.GaugeSystem.GetImageOffsetX / AnchorPos` | `game:0x06000eb0` / `game:0x06000eb5` | Retained alpha scratch scan and wrapped anchor offsets | high |
 | `ecs.CameraSystem.SetCursor / SetCameraPosition` | `game:0x06000dea` / `game:0x06000deb` | Fresh QuestForm, native float-to-int conversion and distinct cursor/position paths | high |
 | `ecs.CameraSystem.SetScale / GetScaleMin / GetScaleMax / GetScaleRange` | `game:0x06000de6` / `game:0x06000de8` / `game:0x06000de9` / `game:0x06000de7` | Component scale clamp/recenter; viewport-dependent minimum and shared range scratch | high |
 | `ecs.CameraSystem.OnTouchCamera` | `game:0x06000de5` | Ordered validation, flags and bounded reusable delta history | high |
@@ -48,6 +51,20 @@ The game's screens are forms (`kairo.unity.form.FormBase` → `LibraryFormBase` 
 | `ecs.HumanSystem.AccelerateSpeed / ResetSpeed` | `game:0x06000eee` / `game:0x06000eef` | All-Human dash accumulation/reset, independent of Input subset | high |
 
 ## Behaviour
+
+### Enemy parameter gauges
+
+`EnemySystem.DrawDynamic` (`game:0x06000e7a`, ELF `0x114e1d4`,732 bytes) traverses its live And24 group. It captures EnemyData, skips `Check(1)` records, then requires the **saved defeat count** at EnemyData `+0x20` to be at least6; this is not the actor level. It projects the current nullable Position through AppData.ToScreenPos(position,true), then indexes the captured record's attribute `+0x4c` into the current enemy palette. The request is `(entity,screenX,wrap32(screenY+3),image,parameter0,anchor2,force=false)`. There is no caller-side state, HP or destroyed test. Palette bounds faults occur after projection; earlier drawings remain after later failures. The palette is `[1,5,6,1,1]`, a five-int32 initializer in EnemySystem..cctor (`0x11517e8`); saved counts remain separate from the static EnemyData table.
+
+`GaugeSystem.DrawParamGauge` (`game:0x06000eb4`, `0x1154a48`) returns for absent Parameter23 or a missing parameter id. It captures the parameter and, unless force is true, returns when wrapped value+extra is below1. Resolve the gauge image from AppData.resGauge (`+0x168`), capture its unscaled width/half-height, query the current QuestForm game width then height, and apply AnchorPos. A wrapped integer rectangle check includes touching edges. Only visible requests read the captured parameter's wrapped maximum+extraMaximum, use the existing `Graph.Easing(50,150,1000,maximum,0)` for horizontal scale and query its existing clamped percentage. DrawGauge resolves resource23/image afresh.
+
+`AnchorPos` (`game:0x06000eb5`, `0x1154d00`) subtracts width/2 for mask2, otherwise full width for mask4; independently it subtracts height/2 for mask32, otherwise full height for mask64. Halves truncate toward zero, mask2/32 take precedence, and coordinate subtraction wraps int32. The enemy caller centers horizontally and keeps Y.
+
+`GetImageOffsetX` (`game:0x06000eb0`, `0x1154210`) reads a crop at `(0,trunc(height/2)+trunc(height/4),min(width,30),2)` through Image.GetPixels. The reused scratch starts as128 zero Color entries (`GaugeSystem..cctor`, `0x1153544`); the port retains alpha only. The crop overwrites its prefix, preserving the suffix. Scan the **whole returned buffer**, stopping at the first alpha!=0, including NaN, or return its length. The wrapper flips Unity's crop rows back to top-down order; the desktop adapter reuses decoded PNG data and does not implement Unity texture internals. The [Unity2022.3 API](https://docs.unity3d.com/2022.3/Documentation/ScriptReference/Texture2D.GetPixels.html) supplies the public pixel-order contract.
+
+`DrawGauge` (`game:0x06000eaf`, `0x1154350`) uses wrapped products before signed division. Inset is `wrap32(offset*scale)/100`. Fill source width is the native int32 conversion of `binary32(clamp(rate,0,100)/100.0F) * binary32(width-2*inset)`; positive infinity converts to INT32_MIN. The background uses the image's upper half, destination width `wrap32(width*scale)/100` and unscaled half-height. Fill uses the lower half, **source U=inset**, destination X+inset and that computed source width. Its destination width is `wrap32(fillWidth*scale)/100`, except a positive clamped rate with product<=99 forces1 pixel; rate0 keeps zero. Graphics is required only after image/crop/math work, immediately before the first draw. Scratch and the background drawing survive a failing fill draw.
+
+Port: [gauge_drawing.cpp](../../src/core/gameplay/gauge_drawing.cpp) implements this complete selected enemy draw chain with explicit image/alpha/viewport/output interfaces. The bitmap backend supplies resource23, existing ImageDraw/mesh submission and decoded alpha; MissionScene streams requests as the native cursor traverses the live world. [Tests](../../tests/test_gauge_drawing.cpp) cover the5/6 threshold, palette faults, draw order, parameter extras, force/early exits, anchors, clipping, zero/minimum pixels, scaled source inset, reused scratch/suffix and partial failures. HumanSystem.DrawDynamic also calls DrawParamGauge but has a preceding attack-icon path; that entire method and Stage.DrawPlayerMpGauge remain unbound.
 
 ### Form push and dialog markers
 
@@ -201,6 +218,8 @@ Port: [quest_render.hpp](../../src/core/gameplay/quest_render.hpp) and its imple
 
 ## Evidence
 
+- Enemy gauges: complete bounded exports in ignored `research/exports/mission-hud/`, `mission-actor-hud/`, `mission-gauge-helpers/` and `mission-gauge-helpers2/`. Library SHA256 `17a6cf3a3cef9bd7b387c4b9627df113a8b214f0deb07e1778585dac1143526f`; printed addresses include Ghidra base `0x100000`. `palettes.json` resolves GOT `0x27315c0` → encoded FieldInfo `0x80000115` → FieldRef138 → native8809/metadata4550 → field24365 → default-data189432. Image.GetPixels crop rows/aliasing come from its bounded wrapper and `<GetPixels>b__0`, while the public Unity API is reused. Confidence high for static contracts; Android graphics order remains unverified.
+
 - Mission drawing: local `research/exports/quest-draw/` bounded Draw, DrawOffscreen, DynamicRender, StaticRender and UpdateStaticRender exports, all full syntactic coverage, for ELF SHA-256 `17a6cf3a3cef9bd7b387c4b9627df113a8b214f0deb07e1778585dac1143526f`. Dynamic gates at 0x11df724..0x11df748 and 0x11df93c..0x11df980; image-90 sizing at 0x11df798..0x11df824; static transform/dirty handling at 0x11df840..0x11df878; viewport capture/updates at 0x11df894..0x11df8d0; sprite/world calls at 0x11df8e8/0x11df8fc; normal cleanup at 0x11df904..0x11df92c. `dynamic-exceptions.json` records FDE size824 and LSDA 0x91144c: queries at 0x11df898..0x11df8b4 and 0x11df8c0..0x11df8c8 enter the same cleanup chain as the draw calls. Registered field-offset table 0x277ece8 identifies FormManagerBase pause/capturing, QuestForm VIEW fields and Offscreen image/isEmpty. Confidence high; no runtime comparison.
 - Camera: local research/exports/camera-system/ and camera-bindings/, all bounded by metadata method ranges and reporting full syntactic coverage. Native image base is 0x100000; addresses above subtract it. Field names/offsets come from registered field-offset table 0x277ece8 and v31 metadata: CameraComponent angle/scale at +0x10/+0x14; CameraSystem camera/dirty/history/drag/revision/pinch/range at +0x28/+0x30/+0x38/+0x40/+0x41/+0x44/+0x48; QuestForm camX/camY/world/scale/static-render marker at +0x110/+0x114/+0x120/+0x1dc/+0x1fc. Confidence high for these static paths; no Android comparison.
 - Native viewport: research/exports/cell-viewport/{GameWidth,GameHeight}.asm; static initial values in quest-viewport-init/QuestFormStaticInit.asm and the small int32 literal block at ELF 0x625de0. GOT 0x272fa18 resolves to QuestForm, confirming VIEW_X/Y are its statics. Cursor/position save slot stores at 0x11e1418/0x11e1468 and 0x11e0178/0x11e01e0; offsets at 0x11e14b8/0x11e1500 and 0x11e0118/0x11e011c. Calls 0x1c06880/0x1c068a8 map to SecureInt implicit conversions, retained behind decoded values.
@@ -212,6 +231,9 @@ Port: [quest_render.hpp](../../src/core/gameplay/quest_render.hpp) and its imple
 - Local: `build/research/frame-policy-followup/M19675__execute.asm`, `build/research/form-events/M19739_DoMethod.asm`, `build/research/frame-policy/direct-references.json`, `build/research/pause-hooks/` (+`coverage.tsv`)
 
 ## Open questions
+
+- Bind HumanSystem.DrawDynamic's attack-icon prefix and HP/MP suffix, Stage HUD, and complete World.DynamicDraw gates/order. Enemy HP drawing is an explicit selected route.
+- Establish the creator/restoration path for Gauge19 entities before binding the full GaugeSystem lifecycle. The observed actor HP route calls static drawing helpers; a scan found no direct external B/BL caller of World.CreateGauge, which does not exclude indirect/restored paths.
 
 - Bind actual QuestForm control construction/hit testing and Canvas lock/device selection to the normalized input adapter; native logical movement/attack controls are host-reachable.
 - Bind remaining stage dialog answers and pause/resume without selecting a retry payment/ad decision automatically.

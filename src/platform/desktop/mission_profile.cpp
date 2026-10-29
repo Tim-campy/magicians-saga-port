@@ -163,6 +163,8 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             value.retried=retried!=0;value.quest_completed=completed!=0;value.held_keys=static_cast<std::uint32_t>(keys);notifications=value;
         }else if(operation=="collisions"){
             if(!native||collisions)throw std::invalid_argument("collisions requires native mode and one row with no fields");collisions=true;
+        }else if(operation=="enemy_gauges"){
+            if(!native||enemy_gauges)throw std::invalid_argument("enemy_gauges requires one native selection");enemy_gauges=true;
         }else if(operation=="input"){
             std::string mode;std::uint64_t held=0;std::int32_t front=0;MissionInputScenario value;
             if(!native||input_scenario||!(row>>mode>>held>>value.last_active>>front)||mode!="fresh"||held>0xffffffffULL||(front!=0&&front!=1))throw std::invalid_argument("input requires fresh held-uint32 last-active front0/1 and three state/frame pairs");
@@ -288,6 +290,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         if(geometry){const auto initial=initial_mission_map_creation();*geometry={initial.step_x,initial.step_z,stage_quest_height(*q)};}
     }
     const bool enemy_requested=enemy_config||enemy_population||enemy_pool;
+    if(enemy_gauges&&(!rewards||!get_application_resource(application,23)))throw std::invalid_argument("enemy_gauges requires explicit rewards saved counts and resource23");
     if(collisions&&!human_scenario)throw std::invalid_argument("collisions requires human_system event receivers");
     if(notifications&&!human_scenario)throw std::invalid_argument("stage_notifications requires human_system");
     if(collection&&(!notifications||!human_scenario))throw std::invalid_argument("collection fresh requires stage_notifications and human_system");
@@ -376,6 +379,9 @@ void MissionProfile::write_actor_parameters(ComponentSlots& actor,std::ostream& 
     if(const auto* enemy=dynamic_cast<EnemyRecordLink*>(actor.get(24)))out<<",\"enemy_state\":"<<enemy->state<<",\"enemy_frame\":"<<enemy->frame<<",\"enemy_flags\":"<<enemy->flags;
 }
 void MissionProfile::write_combat_report(std::ostream& out){
+    out<<",\"enemy_gauges_enabled\":"<<(enemy_gauges?"true":"false")<<",\"enemy_gauge_requests\":[";
+    if(enemy_gauges){bool first=true;mission->draw_enemy_gauges([&](const ParameterGaugeRequest& r){if(!first)out<<',';first=false;
+        out<<"{\"entity\":"<<entity_world->id(*r.entity)<<",\"x\":"<<r.x<<",\"y\":"<<r.y<<",\"image\":"<<r.image<<",\"parameter\":"<<r.parameter<<",\"anchor\":"<<r.anchor<<",\"force\":"<<(r.force?"true":"false")<<'}';});}out<<']';
     out<<",\"selected_quest\":";if(selected_quest)out<<*selected_quest;else out<<"null";
     if(selected_quest&&humans){const auto q=humans->quest();out<<",\"quest_distance\":"<<q->distance<<",\"quest_flags\":"<<q->flags<<",\"quest_money_rate\":"<<q->money_rate<<",\"quest_completion_byte\":"<<static_cast<int>(q->completed)<<",\"quest_rescued\":"<<q->rescued_prisoners;}
     const auto write_indices=[&](const char* name,const auto& indices){out<<",\""<<name<<"\":[";bool first=true;for(const auto id:indices){if(!first)out<<',';first=false;out<<id;}out<<']';};
@@ -405,5 +411,8 @@ void MissionProfile::write_combat_report(std::ostream& out){
         if(!drop||!p)throw std::invalid_argument("missing diagnostic pending drop fields");
         if(!first)out<<',';first=false;out<<"{\"id\":"<<entity_world->id(**e)<<",\"type\":"<<drop->type<<",\"value\":"<<drop->value<<",\"x\":"<<p->x<<",\"z\":"<<p->z<<'}';
     }}out<<']';
+}
+void MissionProfile::draw_enemy_gauges(BitmapBackend& backend){
+    if(enemy_gauges)mission->draw_enemy_gauges([&](const ParameterGaugeRequest& r){backend.draw_parameter_gauge(r,mission->gauge_camera_host());});
 }
 } // namespace saga::desktop

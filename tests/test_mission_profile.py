@@ -8,11 +8,24 @@ import unittest
 
 EXE = Path(sys.argv.pop(1)).resolve() if len(sys.argv) > 1 else None
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from mission_scene_fixture import make_table_scene, make_shoot_scene, with_mission_map, make_boss_scene
+from mission_scene_fixture import make_table_scene, make_shoot_scene, with_mission_map, make_boss_scene, make_gauge_scene
 
 
 @unittest.skipUnless(EXE, 'saga_mission supplied by CTest')
 class MissionProfileTests(unittest.TestCase):
+    def test_enemy_gauge_uses_saved_defeat_threshold(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory);scene = root / 'scene.txt'
+            scene.write_text(make_gauge_scene(root, 5), encoding='utf-8')
+            result = self.run_host(scene, frames=1);self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(json.loads(result.stdout)['enemy_gauge_requests'], [])
+            text = make_gauge_scene(root, 6);scene.write_text(text, encoding='utf-8')
+            result = self.run_host(scene, frames=1);self.assertEqual(result.returncode, 0, result.stderr)
+            report = json.loads(result.stdout);self.assertTrue(report['enemy_gauges_enabled'])
+            self.assertEqual(report['enemy_gauge_requests'], [{'entity': 1, 'x': 12, 'y': 11, 'image': 1, 'parameter': 0, 'anchor': 2, 'force': False}])
+            for invalid in [text + 'enemy_gauges\n', text.replace('rewards 0 1 6\n', ''),
+                            text.replace('resource 23 "gauges.bin" "English.lproj" 0\n', '').replace('global_alias 23 23\n', '')]:
+                scene.write_text(invalid, encoding='utf-8');self.assertNotEqual(self.run_host(scene, frames=1).returncode, 0)
     def run_host(self, scene, *extra, fps=25, frames=12):
         return subprocess.run([str(EXE), '--scene', str(scene), '--frames', str(frames), '--headless',
                                '--fps', str(fps), '--debug', '0', '--rng', 'system', '--seed', '42', *extra],

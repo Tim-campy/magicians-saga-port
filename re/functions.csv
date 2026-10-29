@@ -3493,7 +3493,7 @@ game:0x06000e76,ecs.EnemySystem.CreateBoss,ecs,reimplemented,412,0x114e030
 game:0x06000e77,ecs.EnemySystem.CreateEnemy,ecs,reimplemented,396,0x114dd74
 game:0x06000e78,ecs.EnemySystem.DestroyAllEnemies,ecs,reimplemented,156,0x114c5f0
 game:0x06000e79,game:0x06000e79,ecs,,8,0x114e1cc
-game:0x06000e7a,game:0x06000e7a,ecs,,732,0x114e1d4
+game:0x06000e7a,ecs.EnemySystem.DrawDynamic,ecs,reimplemented,732,0x114e1d4
 game:0x06000e7b,ecs.EnemySystem.OnStart,ecs,reimplemented,772,0x114e4b0
 game:0x06000e7c,ecs.EnemySystem.OnProjectileImpact,ecs,reimplemented,1232,0x114e7b4
 game:0x06000e7d,ecs.EnemySystem.OnCollide,ecs,reimplemented,1600,0x114f604
@@ -3546,13 +3546,13 @@ game:0x06000eab,ecs.GaugeSystem.NeedsUpdate,ecs,reimplemented,8,0x1153690
 game:0x06000eac,game:0x06000eac,ecs,,972,0x1153698
 game:0x06000ead,game:0x06000ead,ecs,,220,0x115412c
 game:0x06000eae,game:0x06000eae,ecs,,1736,0x1153a64
-game:0x06000eaf,game:0x06000eaf,ecs,,564,0x1154350
-game:0x06000eb0,game:0x06000eb0,ecs,,320,0x1154210
+game:0x06000eaf,ecs.GaugeSystem.DrawGauge,ecs,reimplemented,564,0x1154350
+game:0x06000eb0,ecs.GaugeSystem.GetImageOffsetX,ecs,reimplemented,320,0x1154210
 game:0x06000eb1,game:0x06000eb1,ecs,,636,0x1154584
 game:0x06000eb2,game:0x06000eb2,ecs,,8,0x1154800
 game:0x06000eb3,game:0x06000eb3,ecs,,576,0x1154808
-game:0x06000eb4,game:0x06000eb4,ecs,,696,0x1154a48
-game:0x06000eb5,game:0x06000eb5,ecs,,316,0x1154d00
+game:0x06000eb4,ecs.GaugeSystem.DrawParamGauge,ecs,reimplemented,696,0x1154a48
+game:0x06000eb5,ecs.GaugeSystem.AnchorPos,ecs,reimplemented,316,0x1154d00
 game:0x06000eb6,game:0x06000eb6,ecs,,8,0x1154e3c
 game:0x06000eb7,game:0x06000eb7,ecs,,8,0x1154e44
 game:0x06000eb8,game:0x06000eb8,ecs,,88,0x1154e4c

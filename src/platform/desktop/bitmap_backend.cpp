@@ -19,7 +19,30 @@ struct BitmapMatrix final:RenderMatrix {
     void reset()override{reset_matrix(value);}
 };
 struct BitmapBackend::Impl final:RenderDrawHost,RenderGraphics,RenderDepth,ImageDrawHost,
-                         BitmapTexture,BitmapAlphaHost,BitmapGeometryHost,RenderTransformHost,RenderColorHost {
+                         BitmapTexture,BitmapAlphaHost,BitmapGeometryHost,RenderTransformHost,RenderColorHost,GaugeDrawingHost {
+    GaugeDrawState gauges;QuestCameraHost* gauge_camera=nullptr;
+    PixelImage* gauge_image(std::int32_t id)override{
+        auto* r=global_resource(23);if(!r||!r->images)throw std::invalid_argument("missing gauge resource23 images");
+        auto* image=dynamic_cast<PixelImage*>(r->images->at(static_cast<std::size_t>(id)));
+        if(!image)throw std::invalid_argument("missing decoded gauge image");return image;
+    }
+    std::int32_t gauge_view_width()override{return quest_game_width(gauge_camera->current_camera_form(),*gauge_camera);}
+    std::int32_t gauge_view_height()override{return quest_game_height(gauge_camera->current_camera_form(),*gauge_camera);}
+    std::shared_ptr<std::vector<float>> gauge_alpha(PixelImage& image,std::int32_t x,std::int32_t y,
+        std::int32_t w,std::int32_t h,std::shared_ptr<std::vector<float>> alpha)override{
+        const auto* ready=textures.at(textures.key(image)).ready;
+        if(!ready)throw std::invalid_argument("gauge alpha requires decoded pixels");
+        const auto& pixels=ready->pixels;
+        if(x<0||y<0||w<0||h<0||static_cast<std::int64_t>(x)+w>pixels.width||static_cast<std::int64_t>(y)+h>pixels.height)
+            throw std::out_of_range("gauge alpha crop outside texture");
+        if(!alpha)alpha=std::make_shared<std::vector<float>>(static_cast<std::size_t>(w)*h,0.0F);
+        std::size_t out=0;
+        for(std::int32_t row=0;row<h;++row)for(std::int32_t col=0;col<w;++col){
+            const auto at=(static_cast<std::size_t>(y+row)*pixels.width+static_cast<std::size_t>(x+col))*4+3;
+            alpha->at(out++)=static_cast<float>(pixels.rgba.at(at))/255.0F;
+        }
+        return alpha;
+    }
     SebStaticWork seb_work;
     ImageDrawState image_state;
     ImageDrawStatistics statistics;
@@ -186,6 +209,9 @@ BitmapBackend::BitmapBackend(BitmapApplication& app,BitmapApplication& global,Bi
     :BitmapBackend(app,[&global]{return &global;},images,height,world,raw){}
 BitmapBackend::~BitmapBackend()=default;
 RenderGraphics& BitmapBackend::graphics(){return *impl_;}
+void BitmapBackend::draw_parameter_gauge(const ParameterGaugeRequest& r,QuestCameraHost& camera){
+    impl_->gauge_camera=&camera;core::draw_parameter_gauge(impl_->gauges,impl_.get(),r,*impl_);
+}
 RenderDrawHost& BitmapBackend::resources(){return *impl_;}
 RenderMatrix& BitmapBackend::matrix(){return impl_->application_matrix;}
 const std::vector<BitmapQuad>& BitmapBackend::quads()const{return impl_->output;}

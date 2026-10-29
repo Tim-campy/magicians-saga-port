@@ -48,6 +48,7 @@ public:
     core::DropEffectWorld& effect_world(){return effect_world_;}
     core::EnemyFactoryWorld& enemy_factory_world(){return enemy_world_;}
     bool reward_catalog_ready()const{return catalog_.treasures.has_value();}
+    std::int32_t saved_enemy_defeats(std::int32_t id)const{return progress_.enemy_defeat_counts.at(id);}
     const core::TreasureRecord& treasure(std::int32_t)const;
     core::ComponentSlots* drop(std::int32_t type,std::int32_t value,core::ProjectilePoint,std::int32_t scale);
     core::ComponentSlots& emitter(core::EmitterCreation);

@@ -11,7 +11,7 @@ EXE = Path(sys.argv.pop(1)).resolve() if len(sys.argv) > 1 else None
 VIEWER = Path(sys.argv.pop(1)).resolve() if len(sys.argv) > 1 else None
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from test_sprite_preview import png, seb, jar, bmp_pixels
-from mission_scene_fixture import make_table_scene, make_shoot_scene, with_mission_map, make_boss_scene
+from mission_scene_fixture import make_table_scene, make_shoot_scene, with_mission_map, make_boss_scene, make_gauge_scene
 
 
 def command(resource, clip, x, y, depth=0, texture=-1, image_resource=-1):
@@ -21,6 +21,24 @@ def command(resource, clip, x, y, depth=0, texture=-1, image_resource=-1):
 
 @unittest.skipUnless(EXE and VIEWER, 'viewer executables supplied by CTest')
 class QueuePixels(unittest.TestCase):
+    def test_enemy_health_pixels_use_native_saved_threshold(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for defeats, visible in [(5, False), (6, True)]:
+                text = make_gauge_scene(root, defeats)
+                scene = root / 'probe.txt';scene.write_text(text, encoding='utf-8')
+                probe = subprocess.run([str(EXE), str(scene), '32', '16', '--material-inputs'], capture_output=True, text=True, timeout=30)
+                self.assertEqual(probe.returncode, 0, probe.stderr)
+                bound = {tuple(map(int, line.split()[1:4])) for line in text.splitlines() if line.startswith('material ')}
+                needed = {(v['texture'], v['shader'], v['queue']) for v in json.loads(probe.stdout)['material_inputs']}
+                for i, (texture, shader, queue) in enumerate(sorted(needed - bound)):
+                    text += f'material {texture} {shader} {queue} {300+i} 0\n'
+                result, output = self.run_capture(root, text, name=f'gauge-{defeats}.bmp', native=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                pixels = bmp_pixels(output.read_bytes())[2]
+                self.assertEqual((255, 0, 255, 255) in pixels, visible)
+                self.assertEqual((0, 0, 255, 255) in pixels, visible)
+
     def test_native_input_replay_runs_the_gpu_scene(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory);scene = root / 'scene.txt';replay = root / 'inputs.txt'

@@ -5,6 +5,8 @@
 #include "core/gameplay/render_colors.hpp"
 #include "core/gameplay/sprite_matrix.hpp"
 #include "core/gameplay/mesh_depth.hpp"
+#include "core/gameplay/gauge_drawing.hpp"
+#include "core/gameplay/quest_camera.hpp"
 #include <map>
 
 namespace saga::desktop {
@@ -65,6 +67,7 @@ public:
     const std::vector<BitmapQuad>& quads()const;
     std::optional<std::array<std::int32_t,12>> last_sprite()const;
     void clear_quads(); // Retains buffers and graphics/SEB caches between frames.
+    void draw_parameter_gauge(const core::ParameterGaugeRequest&,core::QuestCameraHost&);
     void set_matrix(const core::SpriteMatrix*);
     void set_depth_host(BitmapDepthHost*); // Borrowed; null selects the existing 2D diagnostic profile.
 private:

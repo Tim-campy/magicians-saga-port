@@ -38,6 +38,7 @@ Tasks:
 - [ ] Bind remaining QuestForm touch/cursor widgets and gesture routing to SDL input events (A2).
 - [ ] Bind Stage.Start, Retry recovery and quest event dispatch to the live mission host before result/return (A4).
 - [ ] Bind SDL dimensions/resize to the mission_map host adapter (A1).
+- [ ] Bind complete World.DynamicDraw order/gates and Human/Stage HUD to the existing bitmap backend (A3).
 - [ ] Group `src/core/gameplay/` (138 files) into subdirectories by subsystem (`combat/`, `mission/`, `town/`, `render/`, `events/`, `text/`, `runtime/`) without behaviour changes; CMake targets and tests keep their names.
 
 ### S2 — Town ↔ mission loop

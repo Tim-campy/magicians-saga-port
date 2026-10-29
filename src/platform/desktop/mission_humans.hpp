@@ -105,7 +105,7 @@ private:
     core::MovementControl* movement_control(std::int32_t,std::int32_t)override;
     void send_touch_release(core::MovementControl&,std::int32_t,std::int32_t)override;
     core::EntitySubset* enemy_subset(const core::EventIntegers& slots)override{return world_.subset(slots);}
-    core::EnemyGaugeService* enemy_gauge_system()override{return nullptr;} // SAGA_STUB(mission-enemy-gauge): no HUD gauge renderer.
+    core::EnemyGaugeService* enemy_gauge_system()override{return nullptr;} // SAGA_STUB(mission-enemy-gauge): concrete GaugeSystem instance is unbound.
     core::StageStartState* enemy_stage_system()override{return &stage_;}
     core::MemberRoster* enemy_member_system()override{return &members_;}
     void subscribe_enemy_impact(core::EntityEvents::Single,std::optional<core::EventHashes>)override;

@@ -7,6 +7,7 @@
 #include "core/gameplay/pass_initialization.hpp"
 #include "core/gameplay/parameter_experience.hpp"
 #include "core/gameplay/effect_frame.hpp"
+#include "core/gameplay/gauge_drawing.hpp"
 #include <ostream>
 
 namespace saga::desktop {
@@ -43,6 +44,8 @@ public:
     void send_parameter_experience(core::ComponentSlots*,std::int32_t key);
     void write_pass_report(std::ostream&);
     void bind_spatial(MissionSpatial&);
+    core::QuestCameraHost& gauge_camera_host();
+    void draw_enemy_gauges(const std::function<void(const core::ParameterGaugeRequest&)>&);
     std::uint64_t collision_events()const{return collision_events_;}
     std::uint64_t area_collision_events()const{return area_collision_events_;}
     core::RenderQueue& render();
@@ -88,6 +91,7 @@ private:
     core::StageQuestForm form_state_;core::QuestCameraForm form_;
     core::RenderSystemState renderer_;core::AnimationSystemState animations_;core::SebStaticWork sprite_work_;
     core::EntitySubset *movers_=nullptr,*rotating_=nullptr,*garbage_entities_=nullptr;core::GarbagePass garbage_pass_;
+    core::EntitySubset* gauge_enemies_=nullptr;
     core::ModificationSystemState modifications_;
     core::EmitterSystemState emitters_;
     core::CollisionSystemState collisions_;std::uint64_t collision_events_=0,area_collision_events_=0;

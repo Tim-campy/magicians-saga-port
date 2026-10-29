@@ -227,6 +227,8 @@ For table-selected quests, add `quest <id> <saved-rescued-count>` to the profile
 
 Rotate13 follows actor speed after Move/Collision and before animation/rendering. Reports include rotation_steps and each selected actor's direction, direction_locked and animation_clip; no extra scenario row is needed. The local rotate-down.replay/rotate-up.replay demonstrations use the real quest profile above; see [facing integration](subsystems/integration.md#velocity-facing-rotation-s1-a2a3).
 
+The optional `enemy_gauges` row enables native enemy HP drawing. Bind resource23/global_alias23 to decoded `22_gauge.bin` and supply existing rewards saved counters explicitly; the original visibility threshold is saved defeats>=6. Headless mode reports ordered requests, while queue_capture renders their actual resource images. Local quest-gauges.txt and its run command are described in [health drawing](subsystems/integration.md#enemy-health-drawing-s1-a3).
+
 `saga_mission` is always built, including with `SAGA_BUILD_VIEWER=OFF`. It shares MissionProfile's archive/scene loader and selected logic step with queue_capture; no SDL or PNG decoder is required. The selected profile must contain entities and an explicit simulate row. Archive paths remain relative to that profile's directory.
 
 ```powershell

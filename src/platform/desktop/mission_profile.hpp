@@ -24,6 +24,7 @@ public:
     bool step(); // False at an explicitly held deferred transition; no further old-mission logic.
     std::uint64_t logic_steps=0,movement_steps=0;
     void write_combat_report(std::ostream&); // Diagnostic JSON fragment; not a complete-state snapshot.
+    void draw_enemy_gauges(BitmapBackend&);
     void write_actor_parameters(core::ComponentSlots&,std::ostream&);
     std::size_t selected_count=0;
     BitmapApplication application,global;BitmapTextures textures;std::vector<std::unique_ptr<SceneResource>> owners;
@@ -38,6 +39,7 @@ public:
     std::optional<std::int32_t> tick_ms;
     std::optional<std::int32_t> simulate;
     bool collisions=false;
+    bool enemy_gauges=false; // Explicit selected dynamic-draw binding; full World.DynamicDraw is separate.
     std::vector<core::ComponentSlots*> created;
     std::map<std::string,std::int32_t> resource_names;
     std::unique_ptr<MissionEntities> entity_world;std::unique_ptr<MissionScene> mission;

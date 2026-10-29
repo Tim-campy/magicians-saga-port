@@ -101,3 +101,20 @@ def make_boss_scene(root):
              'stage_loop 5000 0 20 hold\nstage_events fresh 0\nstage_boss 4 7\n'
              'input fresh 0 0 0 0 0 0 0 0 0\n')
     return with_mission_map(root, text)
+
+
+def make_gauge_scene(root, defeats=6):
+    """Native enemy HP drawing threshold and a two-half synthetic gauge image."""
+    text = make_shoot_scene(root, rewards=True, spell_attribute=0)
+    text = (text.replace('human_system 10 0 100 3 1', 'human_system 10 0 100 0 0')
+            .replace('human 0 2 1 0 0 0 0 0 100', 'human 0 2 1 0 0 0 0 0 0')
+            .replace('enemy 0 4 7 2 0 0 70', 'enemy 0 4 7 2 8 0 0')
+            .replace('rewards 0 1 4', f'rewards 0 1 {defeats}'))
+    colors = []
+    for y in range(8):
+        for x in range(12):
+            colors.extend([0, 0, 255, 255] if y < 4 else [255, 0, 255, 255 if 2 <= x < 10 else 0])
+    (root / 'gauges.bin').write_bytes(jar([
+        ('img.inf', b'1\tbar.png,bin'), ('seb.inf', b'0\tbar.seb'),
+        ('bar.seb', seb([(0, 1, 0, 0, 12, 8, 0, 0, 0, 0)])), ('bar.png', png(12, 8, colors))]))
+    return text + 'resource 23 "gauges.bin" "English.lproj" 0\nglobal_alias 23 23\nruntime 25 0 system 42\nenemy_gauges\n'
