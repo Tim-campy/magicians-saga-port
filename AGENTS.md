@@ -2,7 +2,7 @@
 
 ## Mission
 
-Reverse engineer the maintainer's copy of the Android game *Magician's Saga* 1.4.0 (Kairosoft, package `net.kairosoft.android.wizardquest`, Unity 6 / IL2CPP, ARM64) and build a **native, behaviourally faithful port for Windows and Linux** in C++17, keeping the core portable enough for a later **Nintendo 3DS** port.
+Reverse engineer the maintainer's copy of the Android game *Magician's Saga* 1.4.0 (Kairosoft, package `net.kairosoft.android.wizardquest`, Unity 2022.3 / IL2CPP, ARM64; version evidence in `docs/subsystems/overview.md`) and build a **native, behaviourally faithful port for Windows and Linux** in C++17, keeping the core portable enough for a later **Nintendo 3DS** port.
 
 The game logic lives in two IL2CPP assemblies compiled into `libil2cpp.so`: `Assembly-CSharp.dll` (the game) and `KairoLibrary.dll` (Kairosoft's engine). Method names come from the IL2CPP metadata; their bodies are ARM64 code read in Ghidra. The work alternates two things: **document a subsystem precisely, then port it with tests.** Both count as progress; research that never reaches the port does not.
 
@@ -106,7 +106,7 @@ CI (`.github/workflows/progress.yml`) builds and runs the C++ tests on Linux, ru
 
 ## Tools
 
-- **Ghidra 12.1.4** (`C:\Ghidra`), headless, project `ghidra/wizard_il2cpp_fde` for `libil2cpp.so`. ELF virtual address = Ghidra address. One Ghidra process at a time. Scripts in `tools/ghidra/`.
+- **Ghidra 12.1.4** (`C:\Ghidra`), headless, project `ghidra/wizard_il2cpp_fde` for `libil2cpp.so`, currently rebased by `0x100000`. Docs/registry use ELF virtual addresses; subtract the project image base from printed Ghidra addresses. `ExportBoundedInstructions.java` accepts ELF addresses and adds the current image base. One Ghidra process at a time. Scripts in `tools/ghidra/`.
 - **REA** for DEX/Java (through JADX, `tools\rea-local.cmd`, one query at a time). The Windows REA bridge does not accept ARM ELF: use Ghidra for native code. At the start of work that needs REA, check which REA tools are actually available instead of guessing their names.
 - **Python 3.12** with `-I`; standard library unless a tool says otherwise (UnityPy/Pillow/pyelftools live in `external/`).
 - **apktool**, **ADB** via `tools\with-tools.cmd`. No Android device or emulator exists yet; when a question can only be answered at run time, say so in the doc and ask the maintainer.

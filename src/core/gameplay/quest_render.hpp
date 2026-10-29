@@ -14,7 +14,7 @@ class QuestRenderSurface {
 public:
     virtual ~QuestRenderSurface()=default;
     RenderImage* image=nullptr;bool empty=false; // Offscreen +0x38/+0x40.
-    virtual void set_statics_transform(float x,float y,float angle,float scale_x,float scale_y)=0;
+    virtual void set_statics_transform(float x,float y,float depth,float scale_x,float scale_y)=0;
     virtual void render_statics()=0;
 };
 struct QuestRenderApplication {

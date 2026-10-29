@@ -1,4 +1,5 @@
 #include "core/gameplay/quest_render.hpp"
+#include "core/gameplay/offscreen_transform.hpp"
 #include "render_draw_fixture.hpp"
 #include <algorithm>
 #include <cstdlib>
@@ -14,7 +15,8 @@ struct View:QuestViewportView {std::int32_t width=480,height=720;std::function<v
     std::int32_t game_width()override{if(hook)hook(true);return width;}
     std::int32_t game_height()override{if(hook)hook(false);return height;}
 };
-struct Scene:QuestRenderHost,QuestRenderSurface,QuestRenderWorld {
+struct Scene:QuestRenderHost,QuestRenderSurface,QuestRenderWorld,OffscreenTransformHost {
+    OffscreenTransforms transforms{1,std::make_shared<std::vector<OffscreenMatrix>>(2),{}, {}};
     RenderDrawServices drawing;StageQuestForm stage{150,0};View view;
     QuestCameraForm camera{stage,nullptr,&view};QuestRenderManager manager;
     QuestRenderApplication app{drawing.state,&drawing,nullptr};
@@ -38,8 +40,16 @@ struct Scene:QuestRenderHost,QuestRenderSurface,QuestRenderWorld {
     void set_clip_enable(RenderGraphics& g,bool enable)override{check(&g==&drawing&&!enable);step("clip-off");}
     void push_origin(RenderGraphics&,float x,float y,bool option)override{check(x==0&&y==0&&!option);step("origin+");}
     void pop_origin(RenderGraphics&)override{step("origin-");}
-    void set_statics_transform(float x,float y,float angle,float sx,float sy)override{
-        check(x==0&&y==0&&angle==0&&sx==1&&sy==1);step("static-transform");
+    void set_statics_transform(float x,float y,float depth,float sx,float sy)override{
+        check(x==0&&y==0&&depth==0&&sx==1&&sy==1);
+        set_static_offscreen_transform(transforms,x,y,depth,sx,sy,*this);step("static-transform");
+    }
+    OffscreenMatrix translation_scale(float x,float y,float z,float sx,float sy,float sz)override{
+        OffscreenMatrix m;m.values[0]=sx;m.values[5]=sy;m.values[10]=sz;m.values[15]=1;
+        m.values[12]=x;m.values[13]=y;m.values[14]=z;return m;
+    }
+    OffscreenMatrices allocate_statics(std::int32_t count)override{
+        check(count>=0);return std::make_shared<std::vector<OffscreenMatrix>>(static_cast<std::size_t>(count));
     }
     void render_statics()override{check(!camera.update_static_render);step("static-render");}
     void dynamic_draw(RenderGraphics& g)override{check(&g==&drawing);step("world");}
@@ -47,6 +57,12 @@ struct Scene:QuestRenderHost,QuestRenderSurface,QuestRenderWorld {
 };
 }
 int main()try{
+    // QuestForm's real static-transform reset propagates through the recovered surface kernel.
+    {Scene s;const auto entries=s.transforms.statics;entries->at(1).values.fill(17);
+        s.transforms.effective_density=3;check(s.render());check(s.transforms.statics==entries);
+        OffscreenMatrix identity;identity.values[0]=identity.values[5]=identity.values[10]=identity.values[15]=1;
+        check(s.transforms.static_base.values==identity.values);
+        for(const auto& m:*entries)check(m.values==identity.values);}
     // Capture bypasses pause and activity; background and empty bypass activity only.
     for(int flags=0;flags<32;++flags){Scene s;s.manager.capturing=(flags&1)!=0;s.manager.paused=(flags&2)!=0;
         s.form.draw_in_background=(flags&4)!=0;s.empty=(flags&8)!=0;s.is_active=(flags&16)!=0;
