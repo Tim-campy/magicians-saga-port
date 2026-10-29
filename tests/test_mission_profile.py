@@ -13,6 +13,35 @@ from mission_scene_fixture import make_table_scene, make_shoot_scene, with_missi
 
 @unittest.skipUnless(EXE, 'saga_mission supplied by CTest')
 class MissionProfileTests(unittest.TestCase):
+    def test_bubble_controller_deduplicates_expires_and_runs_debug_pass(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory);scene = root / 'scene.txt';replay = root / 'walk.txt'
+            text = make_boss_scene(root)
+            text += ('bubble 0 100 0 3 1 40 312 0 400\n'
+                     'bubble 0 101 0 -1 1 40 312 0 400\n'
+                     'bubble -1 102 1 -1 1 40 0 0 0\n')
+            scene.write_text(text, encoding='utf-8');replay.write_text('2 keys 131072\n', encoding='ascii')
+            result = self.run_host(scene, '--replay', str(replay), frames=12)
+            self.assertEqual(result.returncode, 0, result.stderr);d = json.loads(result.stdout)
+            self.assertEqual(d['bubble_steps'], 12);self.assertEqual(d['bubble_destroy_calls'], 2)
+            self.assertEqual(d['bubble_pending'], 0);self.assertEqual(d['bubble_seen'], 0)
+            self.assertEqual(d['debug_visualization_steps'], 12);self.assertEqual(d['debug_visualization_flags'], 0)
+            self.assertEqual(len(d['bubbles']), 1);bubble = d['bubbles'][0]
+            self.assertEqual((bubble['data_id'],bubble['frame'],bubble['frame_max']), (101,12,-1))
+            self.assertEqual(bubble['parent'], d['positions'][0]['id'])
+            self.assertEqual(bubble['x'], int(d['positions'][0]['x'])-36)
+            self.assertEqual(bubble['y'], int(d['positions'][0]['y']))
+            self.assertEqual(bubble['z'], int(d['positions'][0]['z'])-30)
+            self.assertLess(d['last_update_order'].index(15), d['last_update_order'].index(16))
+            self.assertLess(d['last_update_order'].index(16), d['last_update_order'].index(17))
+            self.assertLess(d['last_update_order'].index(26), d['last_update_order'].index(30))
+            self.assertEqual(self.run_host(scene, '--replay', str(replay), frames=12).stdout, result.stdout)
+            scene.write_text(make_boss_scene(root) + 'bubble 0 1 0 2 1 40 312 0 400\n', encoding='utf-8')
+            expired = self.run_host(scene, frames=3);self.assertEqual(expired.returncode, 0, expired.stderr)
+            self.assertEqual(json.loads(expired.stdout)['bubbles'], [])
+            for bad in ['bubble 90 1 0 -1 1 40 0 0 0\n', 'bubble 0 1 9 -1 1 40 0 0 0\n', 'bubble 0 1 0 -1 1 40 0 0\n']:
+                scene.write_text(make_boss_scene(root) + bad, encoding='utf-8');self.assertNotEqual(self.run_host(scene).returncode, 0)
+
     def test_info_controller_updates_bars_and_receives_native_events(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory);scene = root / 'scene.txt';replay = root / 'info.txt'
@@ -156,9 +185,9 @@ class MissionProfileTests(unittest.TestCase):
             self.assertEqual(report['effect_steps'], 12)
             self.assertEqual(report['effect_updates'], [])
             self.assertFalse(report['update_schedule_complete'])
-            self.assertEqual(report['bound_update_systems'], [0,2,3,4,5,8,9,10,11,12,13,14,15,17,18,19,20,21,23,24,25,26,31])
-            self.assertEqual(report['unbound_update_systems'], [16,22,30])
-            self.assertEqual(report['last_update_order'], [2,9,11,13,14,15,18,19,21,23,25,26,31])
+            self.assertEqual(report['bound_update_systems'], [0,2,3,4,5,8,9,10,11,12,13,14,15,16,17,18,19,20,21,23,24,25,26,30,31])
+            self.assertEqual(report['unbound_update_systems'], [22])
+            self.assertEqual(report['last_update_order'], [2,9,11,13,14,15,16,18,19,21,23,25,26,30,31])
             self.assertEqual(report['rotation_steps'], 12)
             self.assertEqual(report['battle_steps'], 12)
 

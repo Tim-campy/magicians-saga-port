@@ -20,6 +20,19 @@ struct BattleSystemState {EntitySubset* humans=nullptr;EntitySubset* monsters=nu
 void initialize_battle(BattleSystemState&,PassInitializationWorld*);
 // Update 0x114236c drains humans only; no attacks, Current reads or monster search.
 void update_battle(BattleSystemState&);
+struct DebugVisualizationState {EntitySubset* subset=nullptr;std::int32_t flags=0;};
+class DebugInitializationWorld {
+public:
+    virtual ~DebugInitializationWorld()=default;
+    virtual EntitySubset* debug_subset(const EventIntegers& all,const EventIntegers& none)=0;
+};
+void initialize_debug_visualization(DebugVisualizationState&,DebugInitializationWorld*); // 0x1147c7c.
+void enable_debug_flag(DebugVisualizationState&,std::int32_t);void disable_debug_flag(DebugVisualizationState&,std::int32_t);
+void switch_debug_flag(DebugVisualizationState&,std::int32_t);bool check_debug_flag(const DebugVisualizationState&,std::int32_t);
+void reset_debug_flags(DebugVisualizationState&);
+void update_debug_visualization(const DebugVisualizationState&,bool application_debug); // 0x1147f68.
+struct DebugPathVisualization {bool visualize=false;std::int64_t wait_milliseconds=0;}; // Astar static +0x20/+0x28.
+void debug_visualization_enabled(DebugPathVisualization&);void debug_visualization_disabled(DebugPathVisualization&);
 // Original Init methods: Projectile 0x115febc, Move 0x115fa0c,
 // Collision 0x1145e68 and Garbage 0x11530b8. No enabled/pause guard.
 void initialize_projectiles(ProjectileSystemState&,PassInitializationWorld*,CombatEventHost&,

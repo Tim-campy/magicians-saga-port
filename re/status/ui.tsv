@@ -1,4 +1,19 @@
 id	status	evidence	note
+game:0x06000e9a	reimplemented	src/core/gameplay/bubble_frame.hpp	Fresh distinct seen-parent/pending lists; retained across Init and failures; duplicate entries and live drain contracts tested
+game:0x06000e9b	reimplemented	src/core/gameplay/bubble_frame.cpp	Supplied-world And18 nullable store, no queue clear; real MissionScene Init and repeated/null-world contracts
+game:0x06000e9d	reimplemented	src/core/gameplay/bubble_frame.cpp	Clock/expiry/geometry then reversed parent-identity dedup; persistent duplicate queues and destroy/reload/remove ordering; live index16
+game:0x06000e9e	reimplemented	src/core/gameplay/bubble_frame.cpp	Fresh per-axis parent/offset reads, FCVTZS and wrapped int32 addition to binary32, then raw CellXY copy; failure prefixes and host geometry tested
+game:0x06000b5d	reimplemented	src/core/gameplay/bubble_frame.cpp	Pooled frame0/frameMax/data/type before shared type-offset lookup; ordered XYZ, parent and slot18; malformed-array partial writes tested
+game:0x06000d60	reimplemented	src/core/gameplay/bubble_frame.cpp	Two native mutable shared XYZ arrays [-36,0,-30] and [-36,0,-20]; actual component factory and host use the recovered values
+game:0x06000e25	reimplemented	src/core/gameplay/pass_initialization.cpp	Nullable And14/0/1 Nor9 subset then flags0, preserving failure ordering; live mission Init and contracts
+game:0x06000e26	reimplemented	src/core/gameplay/pass_initialization.cpp	Exact uint32 bitwise OR with signed32 result; mask0/sign-bit behavior tested
+game:0x06000e27	reimplemented	src/core/gameplay/pass_initialization.cpp	Exact uint32 AND-complement with signed32 result; composed mask removal tested
+game:0x06000e28	reimplemented	src/core/gameplay/pass_initialization.cpp	Any-intersection Check then disable whole mask or enable it; composite-mask and zero cases tested
+game:0x06000e29	reimplemented	src/core/gameplay/pass_initialization.cpp	BitUtil.Check is nonzero intersection, not all-mask inclusion; mask0 false; tested
+game:0x06000e2a	reimplemented	src/core/gameplay/pass_initialization.cpp	Clear flags only; native helper and debug contract test
+game:0x06000e2c	reimplemented	src/core/gameplay/pass_initialization.cpp	DEBUG/flags gates then nine discarded bit tests; no persistent effects or traversal; actual mission index30 uses existing runtime input
+game:0x06000e39	reimplemented	src/core/gameplay/pass_initialization.cpp	Astar visualize bool true then waitMillis int64 zero; exact field contract tested, full enabled-property dispatch remains separate
+game:0x06000e3a	reimplemented	src/core/gameplay/pass_initialization.cpp	Astar visualize bool false then waitMillis int64 zero; does not clear flags or reconstruct pathfinding
 game:0x06000ef5	reimplemented	src/core/gameplay/info_frame.hpp	Fresh controller owns distinct empty bar lists; default payload and repeated Init preservation exercised by contract and mission host
 game:0x06000ef6	reimplemented	src/core/gameplay/info_frame.cpp	Reset emphasis/offset, retain lists/dialog, ordered event4/11/28 subscriptions; live scene Init and partial-failure contracts
 game:0x06000ef7	reimplemented	src/core/gameplay/info_frame.cpp	Captured/versioned Equals search and single-category drops, emphasis reuse, live priority insertion; actual host uses explicit forced scenario insertion

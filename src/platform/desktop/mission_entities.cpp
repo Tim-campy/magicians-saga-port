@@ -39,6 +39,13 @@ DropComponent& MissionEntities::acquire_drop(){return acquire(drops_);}
 ComponentSlots& MissionEntities::raw_entity(std::int32_t type){return create_entity(ids_,type,false,static_cast<BulletFactoryHost&>(*this));}
 ComponentSlots& MissionEntities::button(const ButtonCreation& args){return create_button(args,ids_,*this);}
 EntityButton& MissionEntities::acquire_button(){return acquire(buttons_);}
+EntityBubble& MissionEntities::acquire_bubble(){return acquire(bubbles_);}
+ComponentSlots& MissionEntities::bubble(ComponentSlots* parent,std::int32_t data_id,std::int32_t type,
+                                      std::int32_t maximum,std::int32_t resource_id,std::int32_t clip,ProjectilePoint initial){
+    // Explicit diagnostic composition, not a recovered native bubble producer.
+    auto& e=create_z_object(initial,resource_id,clip,ids_,static_cast<EffectFactoryHost&>(*this));
+    return add_bubble(e,data_id,type,parent,maximum,*this);
+}
 MapComponent& MissionEntities::create_initial_map(){
     core::create_map(initial_mission_map_creation(),ids_,static_cast<MapFactoryHost&>(*this));
     map_=&map_component_;return map_component_;

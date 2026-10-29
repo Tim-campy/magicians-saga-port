@@ -65,6 +65,7 @@ MissionScene::MissionScene(MissionEntities& world,MissionApplication& app,Entity
     initialize_render(renderer_,this);initialize_animation(animations_,&world_);
     MovementWorld movement(world_);initialize_movement(movers_,&movement);initialize_collisions(collisions_,&movement);initialize_garbage(garbage_entities_,&movement);
     initialize_battle(battle_,&movement);
+    initialize_bubbles(bubbles_,this);initialize_debug_visualization(debug_visualization_,this);
     initialize_info(info_,this,*this);
     initialize_buttons(buttons_,this,*this);
     initialize_rotation(rotating_,&movement);
@@ -85,6 +86,10 @@ void MissionScene::subscribe_parameter_experience(ParameterExperienceInitializat
 }
 void MissionScene::send_parameter_experience(ComponentSlots* e,std::int32_t key){experience_receiver_(e,key);}
 void MissionScene::advance_battle(std::int32_t pass,bool enabled){if(gameplay_needs_update(2,enabled,pass)){update_battle(battle_);++battle_steps_;}}
+void MissionScene::advance_bubbles(std::int32_t pass,bool enabled){if(gameplay_needs_update(16,enabled,pass)){update_bubbles(bubbles_,*this);++bubble_steps_;}}
+void MissionScene::advance_debug(bool application_debug,std::int32_t pass,bool enabled){
+    if(gameplay_needs_update(30,enabled,pass)){update_debug_visualization(debug_visualization_,application_debug);++debug_steps_;}
+} // SAGA_STUB(mission-debug-draw): native Update is inert; diagnostic overlays/path drawing remain unbound.
 void MissionScene::advance_buttons(std::int32_t pass,bool enabled){if(gameplay_needs_update(26,enabled,pass)){update_buttons(buttons_,*this);++button_steps_;}}
 void MissionScene::deliver_button_touch(const InputTouch* touch){required(button_touch_receiver_?&button_touch_receiver_:nullptr)(touch);}
 void MissionScene::send_button_event(const InputTouch* touch,ComponentSlots* target){
@@ -95,6 +100,16 @@ void MissionScene::advance_parameter_experience(std::int32_t pass,bool enabled){
 void MissionScene::advance_parameters(std::int32_t pass,bool enabled){if(gameplay_needs_update(14,enabled,pass)){update_parameters();++parameter_steps_;}}
 void MissionScene::advance_effects(std::int32_t pass,bool enabled){if(gameplay_needs_update(23,enabled,pass)){update_effects(effects_,*this);++effect_steps_;}}
 void MissionScene::write_pass_report(std::ostream& out){
+    out<<",\"bubble_steps\":"<<bubble_steps_<<",\"bubble_destroy_calls\":"<<bubble_destroy_calls_
+       <<",\"bubble_pending\":"<<bubbles_.pending->size()<<",\"bubble_seen\":"<<bubbles_.seen->size()
+       <<",\"debug_visualization_steps\":"<<debug_steps_<<",\"debug_visualization_flags\":"<<debug_visualization_.flags;
+    out<<",\"bubbles\":[";bool first_bubble=true;auto bubble_cursor=world_.subset({18})->cursor();
+    while(const auto item=bubble_cursor.next()){
+        auto& e=required(*item);auto& b=required(dynamic_cast<EntityBubble*>(e.get(18)));auto& p=required(dynamic_cast<ContactPosition*>(e.get(0)));
+        auto& c=required(dynamic_cast<CellComponent*>(e.get(5)));if(!first_bubble)out<<',';first_bubble=false;
+        out<<"{\"entity\":"<<world_.id(e)<<",\"data_id\":"<<b.data_id<<",\"type\":"<<b.type<<",\"frame\":"<<b.frame<<",\"frame_max\":"<<b.frame_max
+           <<",\"parent\":"<<(b.parent?world_.id(*b.parent):-1)<<",\"x\":"<<p.x<<",\"y\":"<<p.y<<",\"z\":"<<p.z<<",\"cell_xi\":"<<c.xi<<",\"cell_yi\":"<<c.yi<<'}';
+    }out<<']';
     out<<",\"info_steps\":"<<info_steps_<<",\"info_clicks\":"<<info_clicks_<<",\"info_button_events\":"<<info_button_events_<<",\"info_popup_disposals\":"<<info_popup_disposals_
        <<",\"info_emphasize_frame\":"<<info_.emphasize_frame<<",\"info_emphasized_id\":"<<(info_.emphasized?info_.emphasized->id:-1)
        <<",\"info_offset_bottom\":"<<info_.offset_bottom<<",\"info_dialog_pending\":"<<(info_.dialog?"true":"false");

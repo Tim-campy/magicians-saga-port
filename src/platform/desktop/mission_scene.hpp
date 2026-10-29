@@ -27,7 +27,8 @@ class MissionScene final:private core::RenderInitializationWorld,private core::R
     private core::ParameterInitializationWorld,private core::ParameterExperienceInitializationWorld,
     private core::EffectInitializationWorld,private core::EffectFrameHost,
     private core::ButtonInitializationWorld,private core::ButtonFrameHost,
-    private core::InfoInitializationWorld,private core::InfoHost {
+    private core::InfoInitializationWorld,private core::InfoHost,
+    private core::BubbleInitializationWorld,private core::BubbleFrameHost,private core::DebugInitializationWorld {
 public:
     MissionScene(MissionEntities&,MissionApplication&,core::EntitySubset& visible,MissionView&,core::MapComponent*);
     MissionScene(const MissionScene&)=delete;
@@ -43,6 +44,8 @@ public:
     void advance_collisions(std::int32_t pass,bool enabled=true);
     void advance_parameter_experience(std::int32_t pass=0,bool enabled=true);
     void advance_battle(std::int32_t pass=0,bool enabled=true);
+    void advance_bubbles(std::int32_t pass=0,bool enabled=true);
+    void advance_debug(bool application_debug,std::int32_t pass=0,bool enabled=true);
     void advance_buttons(std::int32_t pass=0,bool enabled=true);
     void deliver_button_touch(const core::InputTouch*);
     void advance_info(std::int32_t pass=0,bool enabled=true);
@@ -62,6 +65,10 @@ public:
     core::RenderQueue& render();
     const std::vector<MissionRenderFault>& faults()const{return faults_;}
 private:
+    core::EntitySubset* bubble_subset(const core::EventIntegers& slots)override{return world_.subset(slots);}
+    bool bubble_parent_destroyed(core::ComponentSlots& e)override{return world_.destroyed(e);}
+    void destroy_bubble(core::ComponentSlots& e,bool remove)override{world_.destroy(e,remove);++bubble_destroy_calls_;}
+    core::EntitySubset* debug_subset(const core::EventIntegers& all,const core::EventIntegers& none)override{return world_.subset(all,none);}
     void subscribe_info_click(core::InfoInitializationWorld::Click f)override{info_click_=std::move(f);}
     void subscribe_info_button(core::InfoInitializationWorld::Button f)override{info_button_=std::move(f);}
     void subscribe_info_town(core::InfoInitializationWorld::Town f)override{info_town_=std::move(f);}
@@ -124,6 +131,8 @@ private:
     core::CollisionSystemState collisions_;std::uint64_t collision_events_=0,area_collision_events_=0;
     core::ParameterExperienceSystem experience_;
     core::BattleSystemState battle_;
+    core::BubbleFrameState bubbles_;core::DebugVisualizationState debug_visualization_;
+    std::uint64_t bubble_steps_=0,bubble_destroy_calls_=0,debug_steps_=0;
     core::ButtonFrameState buttons_;core::ButtonInitializationWorld::Receiver button_touch_receiver_;
     core::InfoState info_;core::InfoInitializationWorld::Click info_click_;
     core::InfoInitializationWorld::Button info_button_;core::InfoInitializationWorld::Town info_town_;

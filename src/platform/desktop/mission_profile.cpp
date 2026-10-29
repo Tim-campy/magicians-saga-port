@@ -22,6 +22,7 @@ void end(std::istringstream& row){row>>std::ws;if(!row.eof())throw std::invalid_
 struct SelectedBullet {std::int32_t id,damage,attribute,parent;ProjectilePoint position;};
 struct SelectedEffect {std::int32_t clip,image;bool loop;ProjectilePoint position;};
 struct SelectedDrop {std::int32_t type,value,scale;ProjectilePoint position;};
+struct SelectedBubble {std::int32_t parent,data_id,type,maximum,resource,clip;ProjectilePoint initial;};
 }
 SceneResource::SceneResource(const std::filesystem::path& path,ResourceProfile profile,ArchiveImageSet::Decoder decoder)
     :archive(read(path),std::move(profile)),manager(archive){
@@ -48,6 +49,7 @@ void MissionProfile::bind_schedule(){
     bind(13,true,[this](auto pass){mission->advance_rotation(pass);});
     bind(14,true,[this](auto pass){mission->advance_parameters(pass);});
     bind(15,simulate.has_value(),[this](auto pass){mission->advance_emitters(pass);});
+    bind(16,true,[this](auto pass){mission->advance_bubbles(pass);});
     bind(17,static_cast<bool>(spatial),[this](auto pass){spatial->advance_cells(pass);});
     bind(18,simulate.has_value(),[this](auto pass){mission->advance_modifications(pass);});
     bind(19,true,[this](auto){mission->advance_animations({automatic!=0,application_update!=0});});
@@ -57,6 +59,8 @@ void MissionProfile::bind_schedule(){
     bind(24,static_cast<bool>(spatial),[this](auto pass){spatial->advance_cursor(pass);});
     bind(25,true,[this](auto pass){mission->advance_info(pass);});
     bind(26,true,[this](auto pass){mission->advance_buttons(pass);});
+    // Render-only profiles without runtime declare DEBUG=false; this native diagnostic body has no state effects for either value.
+    bind(30,true,[this](auto pass){mission->advance_debug(runtime?runtime->debug:false,pass);});
     bind(31,simulate.has_value(),[this](auto pass){mission->advance_garbage(pass);});
     for(const auto id:gameplay_update_order)if(updates_[static_cast<std::size_t>(id)])update_list_.push_back(updates_[static_cast<std::size_t>(id)].get());
     last_updates_.reserve(update_list_.size());
@@ -115,6 +119,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     std::vector<std::tuple<std::size_t,std::int32_t,float>> states;
     std::vector<std::pair<std::int32_t,ButtonCreation>> buttons;
     std::vector<MissionPopupScenario> info_popups;std::vector<MissionSlideScenario> info_slides;
+    std::vector<SelectedBubble> bubbles;
     std::set<std::string> quest_fields;
     std::int32_t rescued_prisoners=0;
     for(std::string line;std::getline(input,line);){
@@ -273,6 +278,11 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             SelectedBullet b;if(!native||!(row>>b.id>>b.damage>>b.attribute>>b.parent>>b.position.x>>b.position.y>>b.position.z))throw std::invalid_argument("bullet requires ID damage attribute parent ordinal and XYZ");selected.emplace_back(b);
         }else if(operation=="drop"){
             SelectedDrop d;if(!native||!(row>>d.type>>d.value>>d.scale>>d.position.x>>d.position.y>>d.position.z))throw std::invalid_argument("drop requires type value scale and XYZ");selected.emplace_back(d);drop_catalog=true;
+        }else if(operation=="bubble"){
+            SelectedBubble b{};
+            if(!native||bubbles.size()>=100000||!(row>>b.parent>>b.data_id>>b.type>>b.maximum>>b.resource>>b.clip>>b.initial.x>>b.initial.y>>b.initial.z)||b.parent< -1)
+                throw std::invalid_argument("bubble requires parent dataId type frameMax resource clip and initial XYZ");
+            bubbles.push_back(b);
         }else if(operation=="info_popup"){
             MissionPopupScenario s{};std::int32_t single=0;
             if(!native||info_popups.size()>=100000||!(row>>s.id>>s.category>>s.type>>s.priority>>single>>s.height>>s.duration)||(single!=0&&single!=1))
@@ -398,6 +408,10 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         }
         for(const auto& s:info_popups)mission->add_info_popup(s);
         for(const auto& s:info_slides)mission->add_info_slide(s);
+        for(const auto& b:bubbles){
+            auto* parent=b.parent<0?nullptr:created.at(static_cast<std::size_t>(b.parent));
+            entity_world->bubble(parent,b.data_id,b.type,b.maximum,b.resource,b.clip,b.initial);
+        } // SAGA_STUB(mission-bubble-text): real component/geometry/lifetime; dedicated text drawing is unbound.
         bind_schedule();
         for(const auto& frame:replay_)for(const auto& action:frame.second)
             if((action.kind==InputKind::cursor||action.kind==InputKind::click)&&!spatial)throw std::invalid_argument("cursor/click replay requires mission_map fresh");
@@ -410,6 +424,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     if(rewards&&!humans)throw std::invalid_argument("rewards requires human_system");
     if(!buttons.empty()&&!mission)throw std::invalid_argument("button requires a table-backed entity scene");
     if((!info_popups.empty()||!info_slides.empty())&&!mission)throw std::invalid_argument("info bars require a table-backed entity scene");
+    if(!bubbles.empty()&&!mission)throw std::invalid_argument("bubble requires a table-backed entity scene");
     if((human_scenario||!states.empty()||!players.empty()||!gear_defaults.empty())&&!mission)throw std::invalid_argument("human scenario rows require a table-backed entity scene");
     selected_count=selected.size();
 }
