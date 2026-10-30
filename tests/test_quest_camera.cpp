@@ -3,7 +3,45 @@
 #include <algorithm>
 #include <limits>
 
+struct FormTouchServices final:QuestFormTouchHost {
+    CameraServices& camera;bool debug=false,fail_priority=false;int debug_queries=0,clears=0;
+    std::vector<std::string> calls;std::vector<std::int32_t> scales;std::function<void()> after_forward;
+    explicit FormTouchServices(CameraServices& c):camera(c){}
+    QuestFormCameraHost& form_camera_host()override{return camera;}
+    void forward_quest_touch(const InputTouch*)override{calls.push_back("event9");if(after_forward)after_forward();}
+    bool quest_touch_debug()override{++debug_queries;calls.push_back("debug");return debug;}
+    void debug_clear_quest()override{++clears;calls.push_back("clear");}
+    void read_quest_priority()override{calls.push_back("priority");if(fail_priority)throw std::runtime_error("priority");}
+    void notify_quest_scale(std::int32_t value)override{calls.push_back("event25");scales.push_back(value);}
+};
+
 int main()try{
+    {HumanFixture t;MapComponent map;CameraServices c(t,map);c.init();FormTouchServices h(c);QuestFrameState frame;
+     c.form.x=100;c.form.y=200;InputControl control{17,0};QuestFormTouch event{{8,&control},20,-10,0};
+     h.after_forward=[&]{control.group=2;event.input.type=0;};
+     check(!on_quest_form_touch(&c.form,frame,&event,h));check(c.form.x==80&&c.form.y==210);
+     check(h.calls==std::vector<std::string>{"event9"}&&h.debug_queries==0);
+     h.after_forward={};event.input.type=8;control.group=17;c.form.x=0;
+     event.dx=16777217;event.dy=0;on_quest_form_touch(&c.form,frame,&event,h);
+     check(c.form.x==-16777216); // The native int->binary32->FCVTZS round trip is observable.
+     event.input.type=5;control.group=2;h.debug=true;h.after_forward=[&]{control.group=37;};
+     check(on_quest_form_touch(&c.form,frame,&event,h)&&h.clears==1);}
+    {HumanFixture t;MapComponent map;CameraServices c(t,map);c.init();FormTouchServices h(c);QuestFrameState frame;
+     c.form.x=100;c.form.y=200;InputControl control{17,0};QuestFormTouch event{{12,&control},0,0,40};
+     check(!on_quest_form_touch(&c.form,frame,&event,h));
+     check(c.form.state.scale==120&&c.form.minimum_scale==95&&c.form.pinch_value==160);
+     check(c.form.x==140&&c.form.y==253&&c.save->at(17)==340&&c.save->at(18)==519);
+     check(frame.pinching&&frame.pinch_frame==0&&h.scales==std::vector<std::int32_t>{120});
+     check(field<QuestCameraComponent>(*c.state.camera,3).scale==100); // Distinct native fields, no inferred notification binding.
+     event.input.type=1;on_quest_form_touch(&c.form,frame,&event,h);check(!frame.pinching);
+     event.input.type=12;event.pinch_delta=-100;h.fail_priority=true;
+     fails([&]{on_quest_form_touch(&c.form,frame,&event,h);});
+     check(c.form.pinch_value==60&&c.form.minimum_scale==95&&c.form.state.scale==120&&!frame.pinching);
+     h.fail_priority=false;event.pinch_delta=0;on_quest_form_touch(&c.form,frame,&event,h);
+     check(c.form.state.scale==60&&c.form.minimum_scale==50&&frame.pinching);
+     c.form.form_scale_range=std::make_shared<EventIntegers>(1,0);
+     fails([&]{quest_form_scale_range(&c.form);});check(c.form.form_scale_range->at(0)==50);
+     fails([&]{on_quest_form_touch(&c.form,frame,nullptr,h);});}
     {HumanFixture t;MapComponent map;CameraServices c(t,map);c.init();auto& e=*c.state.camera;
      check(field<QuestCameraComponent>(e,3).angle==45&&field<QuestCameraComponent>(e,3).scale==100);
      check(field<ContactPosition>(e,0).x==0&&!e.contains(1)&&c.state.history->empty()&&c.state.pinch_scale==120);

@@ -175,6 +175,15 @@ void MissionProfile::resize_viewport(std::int32_t width,std::int32_t height){
     if(view.width!=width||view.height!=height)++viewport_changes_;
     view.width=width;view.height=height;projection=matrix;
 }
+OffscreenMatrix MissionProfile::surface_projection(std::int32_t width,std::int32_t height)const{
+    if(!offscreen_camera_)throw std::logic_error("surface projection requires mission_presentation");
+    return bitmap_projection(width,height,*offscreen_camera_);
+}
+void MissionProfile::camera_touch(std::int32_t type,std::int32_t dx,std::int32_t dy,std::int32_t delta){
+    if(!spatial||!humans||!humans->input_enabled())throw std::logic_error("camera touch requires mission map/input");
+    InputControl control{17,0};QuestFormTouch event{{type,&control},dx,dy,delta};
+    spatial->form_touch(quest_frame_state_,event);
+}
 void MissionProfile::bind_schedule(){
     const auto bind=[&](std::int32_t id,bool enabled,std::function<void(std::int32_t)> body){
         const auto index=static_cast<std::size_t>(id);configured_[index]=enabled;
@@ -231,6 +240,14 @@ void MissionProfile::load_replay(const std::filesystem::path& path){
     while(std::getline(file,line)){
         std::istringstream row(line);row.imbue(std::locale::classic());row>>std::ws;if(row.eof()||row.peek()=='#')continue;
         std::string frame,kind,value;if(!(row>>frame>>kind>>value))throw std::invalid_argument("replay requires step keys|attack|pulse value or step cursor x y");
+        if(kind=="camera"){
+            std::uint64_t step=0;std::int32_t type=0;InputAction action{InputKind::camera};
+            const auto a=std::from_chars(frame.data(),frame.data()+frame.size(),step),b=std::from_chars(value.data(),value.data()+value.size(),type);
+            if(a.ec!=std::errc{}||a.ptr!=frame.data()+frame.size()||!step||step<previous||b.ec!=std::errc{}||b.ptr!=value.data()+value.size()||
+               (type!=0&&type!=1&&type!=5&&type!=8&&type!=12)||!(row>>action.x>>action.y>>action.z)||++count>100000)
+                throw std::invalid_argument("camera replay requires ordered step, type0/1/5/8/12 and int32 dx dy pinch-delta");
+            end(row);action.value=static_cast<std::uint32_t>(type);replay_[step].push_back(action);previous=step;continue;
+        }
         if(kind=="answer"){
             end(row);std::uint64_t step=0;InputAction action{InputKind::answer};
             const auto a=std::from_chars(frame.data(),frame.data()+frame.size(),step),b=std::from_chars(value.data(),value.data()+value.size(),action.x);
@@ -935,6 +952,10 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             if(input_scenario)humans->enable_input(*input_scenario);
             if(input_scenario&&!initialized_loaded_)humans->observe_input_touch([this](const InputTouch* event){mission->deliver_button_touch(event);});
             if(map_images){spatial=std::make_unique<MissionSpatial>(*entity_world,*live_map,view,humans->quest_form(),humans->quest(),map_images,initialized_loaded_.has_value());mission->bind_spatial(*spatial,!initialized_loaded_);
+                spatial->bind_form_touch([this](const InputTouch* event){humans->dispatch_form_touch(event);},[this]{return runtime->debug;},[this]{
+                    if(!new_game_save_)throw std::logic_error("pinch priority lookup requires native normal-save context");
+                    // GetPriority's value is discarded; fresh normal-save storage is established by NewGame.
+                });
                 if(!initialized_loaded_)spatial->observe_cursor_click([this](CursorPointRef point){mission->deliver_info_click(std::move(point));});}
             if(initialized_loaded_)initialize_loaded_world();
             if(fresh_hero_){
@@ -966,6 +987,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         for(const auto& frame:replay_)for(const auto& action:frame.second)
             if(action.kind==InputKind::viewport&&!offscreen_camera_)throw std::invalid_argument("viewport replay requires mission_presentation");
             else if(action.kind==InputKind::answer&&(!stage_loop||!initialized_loaded_))throw std::invalid_argument("answer replay requires stage_loop and system_init");
+            else if(action.kind==InputKind::camera&&(!spatial||!input_scenario))throw std::invalid_argument("camera replay requires mission map/input");
             else if((action.kind==InputKind::cursor||action.kind==InputKind::click)&&!spatial)throw std::invalid_argument("cursor/click replay requires mission_map fresh");
         for(std::int32_t i=0;i<frames;++i)mission->advance_animations({automatic!=0,application_update!=0});
         if(spatial)spatial->advance_visibility();
@@ -999,6 +1021,7 @@ bool MissionProfile::step(){
         else if(action.kind==InputKind::pulse)humans->pulse_stage_keys(action.value);
         else if(action.kind==InputKind::answer)humans->answer_stage_dialog(action.x);
         else if(action.kind==InputKind::viewport)resize_viewport(action.x,action.y);
+        else if(action.kind==InputKind::camera)camera_touch(static_cast<std::int32_t>(action.value),action.x,action.y,action.z);
         else if(action.kind==InputKind::cursor)spatial->touch_cursor(action.x,action.y);
         else if(action.kind==InputKind::click)spatial->click_cursor(action.x,action.y);
         else humans->send_logical_touch(action.x,action.y,action.z);
@@ -1073,7 +1096,7 @@ void MissionProfile::write_combat_report(std::ostream& out){
         if(application_orientation_)out<<*application_orientation_;else out<<"null";
         out<<",\"quest_form_update\":"<<parent_update_counter_<<",\"quest_form_frame\":"<<quest_frame_state_.frame
            <<",\"quest_form_fade_frame\":"<<humans->quest_form().fade_frame<<",\"quest_form_fade_type\":"<<quest_frame_state_.fade_type
-           <<",\"quest_form_pinch_frame\":"<<quest_frame_state_.pinch_frame<<",\"quest_form_result\":"<<(quest_frame_result_?"true":"false")
+           <<",\"quest_form_pinch_frame\":"<<quest_frame_state_.pinch_frame<<",\"quest_form_pinching\":"<<(quest_frame_state_.pinching?"true":"false")<<",\"quest_form_result\":"<<(quest_frame_result_?"true":"false")
            <<",\"image_clock_resets\":"<<image_clock_resets_<<",\"image_clock_updates\":"<<image_clock_updates_;
     }
     out<<",\"system_construction_complete\":"<<(construction_complete_?"true":"false")<<",\"construction_pause_before_init\":";

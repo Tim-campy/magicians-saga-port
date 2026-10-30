@@ -31,7 +31,11 @@ EntitySubset* MissionInput::input_subset(const EventIntegers& slots){return owne
 void MissionInput::subscribe_input_touch(Receiver f){auto next=receivers_?std::make_shared<std::vector<Receiver>>(*receivers_):std::make_shared<std::vector<Receiver>>();next->push_back(std::move(f));receivers_=std::move(next);}
 bool MissionInput::input_key_state(std::int32_t mask){return (owner_.held_keys_&static_cast<std::uint32_t>(mask))!=0;}
 InputControl* MissionInput::input_control(std::int32_t group,std::int32_t value){for(auto& c:controls_)if(c.touch.group==group&&c.touch.value==value)return &c.touch;return nullptr;}
-void MissionInput::send_input_touch(std::int32_t type,InputControl* c){const auto receivers=receivers_;InputTouch e{type,c};if(receivers)for(const auto& f:*receivers)f(&e);++touches_;}
+void MissionInput::send_input_touch(std::int32_t type,InputControl* c){InputTouch event{type,c};dispatch(&event);}
+void MissionInput::dispatch(const InputTouch* event){
+    if(!event)throw std::invalid_argument("null mission touch event");
+    const auto receivers=receivers_;if(receivers)for(const auto& f:*receivers)f(event);++touches_;
+}
 ComponentSlots* MissionInput::input_hero(){return member_hero(&owner_.world_.player_world());}
 StageStartState* MissionInput::input_stage(){return &owner_.stage_;}
 std::int32_t MissionInput::input_frames_per_second(){return owner_.runtime_.fps;}

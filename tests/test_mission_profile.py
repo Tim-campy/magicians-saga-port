@@ -14,6 +14,28 @@ from mission_scene_fixture import make_table_scene, make_shoot_scene, with_missi
 
 @unittest.skipUnless(EXE, 'saga_mission supplied by CTest')
 class MissionProfileTests(unittest.TestCase):
+    @unittest.skipUnless(os.environ.get('SAGA_TEST_FONT'),'public font fixture supplied by CTest')
+    def test_native_form_camera_gestures_and_replay_validation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);make_data_entry_fixture(root,os.environ['SAGA_TEST_FONT']);replay=root/'camera.replay'
+            def run(script,frames=10):
+                replay.write_text(script,encoding='ascii')
+                return subprocess.run([str(EXE),'--data',str(root),'--quest','2','--frames',str(frames),'--headless','--replay',str(replay)],capture_output=True,text=True,timeout=30)
+            script='1 camera 0 0 0 0\n1 camera 8 15 -7 0\n1 camera 12 0 0 40\n'
+            result=run(script);self.assertEqual(result.returncode,0,result.stderr);state=json.loads(result.stdout)
+            self.assertEqual(state['camera']['scale'],120);self.assertEqual(state['camera_component_scale'],100)
+            self.assertEqual((state['quest_scale_minimum'],state['quest_pinch_value']),(95,160))
+            self.assertEqual((state['quest_touch_events'],state['quest_scale_events'],state['quest_scale_event']),(3,1,120))
+            self.assertTrue(state['quest_form_pinching']);self.assertEqual(state['quest_form_pinch_frame'],0)
+            self.assertEqual(run(script).stdout,result.stdout)
+            released=run(script+'2 camera 1 0 0 0\n');self.assertEqual(released.returncode,0,released.stderr)
+            released=json.loads(released.stdout);self.assertFalse(released['quest_form_pinching']);self.assertEqual(released['quest_form_pinch_frame'],9)
+            for delta,scale in ((0,100),(-60,60),(200,200),(2147483647,50)):
+                value=run(f'1 camera 12 0 0 {delta}\n');self.assertEqual(value.returncode,0,value.stderr)
+                value=json.loads(value.stdout);self.assertEqual(value['camera']['scale'],scale);self.assertEqual(value['camera_component_scale'],100)
+            for invalid in ('0 camera 8 1 2 0\n','1 camera 9 0 0 0\n','1 camera 12 0 0\n','1 camera 12 0 0 2147483648\n','2 camera 0 0 0 0\n1 camera 1 0 0 0\n'):
+                self.assertNotEqual(run(invalid).returncode,0)
+
     def test_legacy_retry_snapshot_keeps_unsupported_lifecycle_guard(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);scene=root/'legacy.txt'

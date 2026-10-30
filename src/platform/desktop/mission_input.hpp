@@ -20,6 +20,7 @@ public:
     void select_attack(std::int32_t);
     void observe_touch(std::function<void(const core::InputTouch*)> receiver){subscribe_input_touch(std::move(receiver));}
     void logical_touch(std::int32_t type,std::int32_t group,std::int32_t value);
+    void dispatch(const core::InputTouch*);
     core::MovementControl* movement_control(std::int32_t group,std::int32_t value);
     void release(core::MovementControl&,std::int32_t type,std::int32_t event_id);
     void report(std::ostream&);

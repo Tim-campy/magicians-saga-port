@@ -44,6 +44,19 @@ void MissionSpatial::click_cursor(std::int32_t x,std::int32_t y){
     auto point=std::make_shared<CursorPoint>(CursorPoint{x,y});const auto receivers=point_receivers_[1];
     if(receivers)for(const auto& receiver:*receivers)receiver(point);++cursor_clicks_;
 }
+void MissionSpatial::bind_form_touch(std::function<void(const InputTouch*)> forward,std::function<bool()> debug,std::function<void()> priority){
+    if(!forward||!debug||!priority)throw std::invalid_argument("missing quest touch provider");
+    touch_forward_=std::move(forward);touch_debug_=std::move(debug);touch_priority_=std::move(priority);
+}
+bool MissionSpatial::form_touch(QuestFrameState& frame,const QuestFormTouch& event){
+    if(!touch_forward_)throw std::logic_error("quest touch provider is unbound");
+    const auto result=on_quest_form_touch(&form_,frame,&event,*this);++form_touches_;return result;
+}
+void MissionSpatial::notify_quest_scale(std::int32_t scale){
+    // Typed world event25 boundary. No original consumer/CameraSystem subscription is established.
+    const auto receivers=scale_receivers_;for(const auto& receiver:receivers)receiver(scale);
+    last_scale_event_=scale;++scale_events_;
+}
 void MissionSpatial::cursor_cell_changed(CursorPointRef old_cell,CursorPointRef new_cell){
     // Typed event13 projection. There are no known subscribers in this selected profile;
     // retain the distinct payload identities for diagnostics, without inventing game consumers.
@@ -81,6 +94,11 @@ void MissionSpatial::send_cell_change(ComponentSlots* e,std::int32_t old_key){
     const auto receivers=cell_receivers_;if(receivers)for(const auto& f:*receivers)f(e,old_key);++changes_;
 }
 void MissionSpatial::report(std::ostream& out){
+    out<<",\"quest_touch_events\":"<<form_touches_<<",\"quest_scale_events\":"<<scale_events_<<",\"quest_scale_event\":";
+    if(last_scale_event_)out<<*last_scale_event_;else out<<"null";
+    out<<",\"quest_scale_minimum\":"<<form_.minimum_scale<<",\"quest_pinch_value\":"<<form_.pinch_value;
+    out<<",\"camera_component_scale\":";
+    if(camera_.camera){const auto* c=dynamic_cast<QuestCameraComponent*>(camera_.camera->get(3));if(c)out<<c->scale;else out<<"null";}else out<<"null";
     const auto entity_id=[this](ComponentSlots* e){return e?world_.id(*e):-1;};
     out<<",\"cursor_steps\":"<<cursor_steps_<<",\"cursor_touches\":"<<cursor_touches_<<",\"cursor_clicks\":"<<cursor_clicks_<<",\"cursor_cell_events\":"<<cursor_changes_;
     out<<",\"cursor\":{\"x\":"<<cursor_.last_position->x<<",\"y\":"<<cursor_.last_position->y

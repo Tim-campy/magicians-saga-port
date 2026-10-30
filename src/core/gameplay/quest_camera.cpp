@@ -1,5 +1,6 @@
 #include "quest_camera.hpp"
 #include <stdexcept>
+#include <algorithm>
 
 namespace saga::core {
 namespace {
@@ -56,6 +57,48 @@ void set_quest_camera_position(QuestCameraForm* input,std::int32_t x,std::int32_
 }
 void set_camera_cursor(float x,float y,QuestCameraHost& host){
     auto& form=required(host.current_camera_form());set_quest_cursor(&form,factory_cell_coordinate(x,1),factory_cell_coordinate(y,1),host);
+}
+EventInstruction quest_form_scale_range(QuestCameraForm* input){
+    auto& form=required(input);const auto values=form.form_scale_range;
+    required(values.get()).at(0)=form.minimum_scale;values->at(1)=200;return values;
+}
+void set_quest_form_scale(QuestCameraForm* input,std::int32_t requested,QuestFormCameraHost& host){
+    auto& form=required(input);const auto range=quest_form_scale_range(&form);
+    const auto scale=camera_clamp(requested,range->at(0),range->at(1));if(scale==form.state.scale)return;
+    const auto old_width=quest_game_width(&form,host),old_height=quest_game_height(&form,host),old_x=form.x;
+    form.state.scale=scale;
+    const auto width=quest_game_width(&form,host),old_y=form.y,height=quest_game_height(&form,host);
+    set_quest_camera_position(&form,subtract(old_x,subtract(width,old_width)/2),subtract(old_y,subtract(height,old_height)/2),host);
+    form.update_static_render=true;
+}
+void on_quest_form_camera_touch(QuestCameraForm* input,QuestFrameState& frame,std::int32_t type,const QuestFormTouch* touch,QuestFormTouchHost& host){
+    const auto& event=required(touch);
+    if(type==1){if(frame.pinching)frame.pinching=false;return;}
+    if(type==8){
+        auto& form=required(input);const auto scale=form.state.scale;
+        const auto dx=factory_cell_coordinate(static_cast<float>(scaled_select_dimension(event.dx,scale)),1);
+        const auto dy=factory_cell_coordinate(static_cast<float>(scaled_select_dimension(event.dy,scale)),1);
+        set_quest_camera_position(&form,subtract(form.x,dx),subtract(form.y,dy),host.form_camera_host());return;
+    }
+    if(type!=12)return;
+    auto& form=required(input);
+    auto scale=camera_clamp(add(form.pinch_value,event.pinch_delta),subtract(form.minimum_scale,40),240);
+    form.pinch_value=scale;
+    if(scale<=49)scale=std::min(add(scale,40),50);
+    else if(scale>100)scale=std::max(subtract(scale,40),100);
+    if(scale>100)form.minimum_scale=95;
+    else if(scale<100){host.read_quest_priority();form.minimum_scale=50;}
+    else scale=100;
+    set_quest_form_scale(&form,scale,host.form_camera_host());
+    frame.pinching=true;frame.pinch_frame=0;host.notify_quest_scale(scale);
+}
+bool on_quest_form_touch(QuestCameraForm* form,QuestFrameState& frame,const QuestFormTouch* input,QuestFormTouchHost& host){
+    const auto& event=required(input);auto* control=&required(event.input.component);
+    const auto type=event.input.type,group=control->group;
+    host.forward_quest_touch(&event.input);
+    if(group==17){on_quest_form_camera_touch(form,frame,type,input,host);return false;}
+    if(host.quest_touch_debug()&&type==5&&control->group==37)host.debug_clear_quest();
+    return true;
 }
 void set_camera_position(float x,float y,QuestCameraHost& host){
     auto& form=required(host.current_camera_form());set_quest_camera_position(&form,factory_cell_coordinate(x,1),factory_cell_coordinate(y,1),host);

@@ -1907,8 +1907,8 @@ game:0x0600079d,game:0x0600079d,ui,,456,0x11dfa54
 game:0x0600079e,game:0x0600079e,ui,,276,0x11dad34
 game:0x0600079f,game:0x0600079f,ui,,292,0x11dfc1c
 game:0x060007a0,game:0x060007a0,ui,,96,0x11dfd40
-game:0x060007a1,game:0x060007a1,ui,,244,0x11dfda0
-game:0x060007a2,game:0x060007a2,ui,,524,0x11dfe94
+game:0x060007a1,form.QuestForm.OnTouchEvent,ui,reimplemented,244,0x11dfda0
+game:0x060007a2,form.QuestForm.OnTouchCamera,ui,reimplemented,524,0x11dfe94
 game:0x060007a3,game:0x060007a3,ui,,80,0x11e0208
 game:0x060007a4,game:0x060007a4,ui,,176,0x11e0258
 game:0x060007a5,game:0x060007a5,ui,,28,0x11dca64
@@ -1933,8 +1933,8 @@ game:0x060007b7,game:0x060007b7,ui,,480,0x11df174
 game:0x060007b8,game:0x060007b8,ui,,376,0x11e11cc
 game:0x060007b9,form.QuestForm.SetCursor,ui,reimplemented,484,0x11e1344
 game:0x060007ba,form.QuestForm.SetCameraPosition,ui,reimplemented,360,0x11e00a0
-game:0x060007bb,game:0x060007bb,ui,,284,0x11deee8
-game:0x060007bc,game:0x060007bc,ui,,64,0x11e1528
+game:0x060007bb,form.QuestForm.SetScale,ui,reimplemented,284,0x11deee8
+game:0x060007bc,form.QuestForm.GetScaleRange,ui,reimplemented,64,0x11e1528
 game:0x060007bd,game:0x060007bd,ui,,8,0x11e1568
 game:0x060007be,game:0x060007be,ui,,8,0x11deee0
 game:0x060007bf,game:0x060007bf,ui,,8,0x11e1570

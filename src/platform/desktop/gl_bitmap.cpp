@@ -185,6 +185,25 @@ DecodedImage GlBitmapRenderer::read_pixels(){
 void GlBitmapRenderer::present(){auto& s=*impl_;s.ready();int width=0,height=0;require(SDL_GetWindowSizeInPixels(&s.window,&width,&height),"GL window size");auto& g=*s.gl;
     g.Disable(GL_SCISSOR_TEST);g.BindFramebuffer(GL_READ_FRAMEBUFFER,s.target);g.BindFramebuffer(GL_DRAW_FRAMEBUFFER,0);g.BlitFramebuffer(0,0,s.width,s.height,0,0,width,height,GL_COLOR_BUFFER_BIT,GL_NEAREST);
     require(SDL_GL_SwapWindow(&s.window),"GL swap window");g.BindFramebuffer(GL_FRAMEBUFFER,s.target);g.Enable(GL_SCISSOR_TEST);g.check("GL present");}
+DecodedImage GlBitmapRenderer::read_pixels(std::int32_t width,std::int32_t height){
+    auto& s=*impl_;if(width==s.width&&height==s.height)return read_pixels();
+    if(width<1||height<1||width>8192||height>8192||static_cast<std::int64_t>(width)*height>16*1024*1024)throw std::invalid_argument("invalid presented capture size");
+    s.ready();auto& g=*s.gl;GLuint target=0,color=0;
+    const auto restore=[&]{g.BindFramebuffer(GL_FRAMEBUFFER,s.target);g.Enable(GL_SCISSOR_TEST);if(color)g.DeleteTextures(1,&color);if(target)g.DeleteFramebuffers(1,&target);};
+    try{
+        g.GenFramebuffers(1,&target);g.BindFramebuffer(GL_FRAMEBUFFER,target);
+        g.GenTextures(1,&color);g.BindTexture(GL_TEXTURE_2D,color);g.TexImage2D(GL_TEXTURE_2D,0,GL_RGBA8,width,height,0,GL_RGBA,GL_UNSIGNED_BYTE,nullptr);
+        g.FramebufferTexture2D(GL_FRAMEBUFFER,GL_COLOR_ATTACHMENT0,GL_TEXTURE_2D,color,0);
+        if(g.CheckFramebufferStatus(GL_FRAMEBUFFER)!=GL_FRAMEBUFFER_COMPLETE)throw std::runtime_error("presented capture target incomplete");
+        g.Disable(GL_SCISSOR_TEST);g.BindFramebuffer(GL_READ_FRAMEBUFFER,s.target);g.BindFramebuffer(GL_DRAW_FRAMEBUFFER,target);
+        g.BlitFramebuffer(0,0,s.width,s.height,0,0,width,height,GL_COLOR_BUFFER_BIT,GL_NEAREST);
+        g.BindFramebuffer(GL_FRAMEBUFFER,target);DecodedImage out{width,height,{}};const auto stride=static_cast<std::size_t>(width)*4;
+        out.rgba.resize(stride*static_cast<std::size_t>(height));g.PixelStorei(GL_PACK_ALIGNMENT,1);
+        g.ReadPixels(0,0,width,height,GL_RGBA,GL_UNSIGNED_BYTE,out.rgba.data());g.check("presented capture readback");
+        for(std::int32_t y=0;y<height/2;++y){auto* a=out.rgba.data()+static_cast<std::size_t>(y)*stride;auto* b=out.rgba.data()+static_cast<std::size_t>(height-1-y)*stride;std::swap_ranges(a,a+stride,b);}
+        restore();return out;
+    }catch(...){restore();throw;}
+}
 std::string GlBitmapRenderer::driver()const{auto& s=*impl_;s.current();const auto* version=s.gl->GetString(GL_VERSION);const auto* renderer=s.gl->GetString(GL_RENDERER);if(!version||!renderer)throw std::runtime_error("GL driver information unavailable");return std::string(reinterpret_cast<const char*>(renderer))+" / "+reinterpret_cast<const char*>(version);}
 GlMeshSubmissionHost::GlMeshSubmissionHost(GlBitmapRenderer& renderer,const GlMeshBindings& bindings,Diagnostics diagnostics,std::function<std::int32_t()> counter):renderer_(renderer),bindings_(bindings),diagnostics_(std::move(diagnostics)),check_count_(std::move(counter)){if(!diagnostics_||!check_count_)throw std::invalid_argument("missing GL submission service");}
 void GlMeshSubmissionHost::clear_depth(){renderer_.clear_depth();}

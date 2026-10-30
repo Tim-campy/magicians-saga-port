@@ -2,6 +2,7 @@
 #include "mission_entities.hpp"
 #include "core/gameplay/cursor_frame.hpp"
 #include <ostream>
+#include <optional>
 
 namespace saga::desktop {
 struct MissionView;
@@ -10,7 +11,7 @@ class MissionSpatial final:private core::MissionMapHost,private core::MissionMap
     private core::QuestCameraInitializationWorld,private core::QuestCameraHost,
     private core::QuestViewportView,private core::QuestCameraMapWorld,private core::MemberFormationHost,
     private core::CellInitializationWorld,private core::CellVisibilityHost,private core::CellChangeEvents,
-    private core::CursorInitializationWorld,private core::CursorHost,public core::StageMapLoader {
+    private core::CursorInitializationWorld,private core::CursorHost,private core::QuestFormTouchHost,public core::StageMapLoader {
 public:
     MissionSpatial(MissionEntities&,core::MapComponent&,MissionView&,core::StageQuestForm&,
                    std::shared_ptr<core::StageQuest>,core::EventInstruction chip_images,bool defer_init=false);
@@ -24,12 +25,27 @@ public:
     void advance_cursor(std::int32_t pass=0,bool enabled=true);
     void touch_cursor(std::int32_t x,std::int32_t y); // Normalized world-isometric event2; screen transform remains unbound.
     void click_cursor(std::int32_t x,std::int32_t y); // Event4, Cursor's inert receiver followed by Info.
+    void bind_form_touch(std::function<void(const core::InputTouch*)>,std::function<bool()>,std::function<void()>);
+    bool form_touch(core::QuestFrameState&,const core::QuestFormTouch&);
+    void observe_scale(std::function<void(std::int32_t)> receiver){scale_receivers_.push_back(std::move(receiver));}
     void observe_cursor_click(core::CursorInitializationWorld::Receiver f){subscribe_cursor_point(4,std::move(f));}
     core::QuestCameraHost& camera_host(){return *this;}
     core::MapComponent& map(){return map_;}
     core::EntitySubset& visible(){return visible_;}
     void report(std::ostream&);
 private:
+    core::QuestFormCameraHost& form_camera_host()override{return *this;}
+    void forward_quest_touch(const core::InputTouch* event)override{touch_forward_(event);}
+    bool quest_touch_debug()override{return touch_debug_();}
+    void debug_clear_quest()override{throw std::logic_error("QuestForm.SetDebugClear is unbound");}
+    void read_quest_priority()override{touch_priority_();}
+    void notify_quest_scale(std::int32_t)override;
+    std::function<void(const core::InputTouch*)> touch_forward_;
+    std::function<bool()> touch_debug_;
+    std::function<void()> touch_priority_;
+    std::vector<std::function<void(std::int32_t)>> scale_receivers_;
+    std::uint64_t form_touches_=0,scale_events_=0;
+    std::optional<std::int32_t> last_scale_event_;
     struct Observer final:core::ComponentObserver {
         ComponentReceiver callback;bool adding;
         Observer(ComponentReceiver f,bool a):callback(std::move(f)),adding(a){}

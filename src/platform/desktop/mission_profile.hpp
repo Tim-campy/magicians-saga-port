@@ -47,6 +47,8 @@ public:
     bool resizable_viewport()const{return offscreen_camera_.has_value();}
     bool accepts_live_viewport()const{return resizable_viewport()&&!replay_bound_;}
     void resize_viewport(std::int32_t width,std::int32_t height);
+    void camera_touch(std::int32_t type,std::int32_t dx,std::int32_t dy,std::int32_t pinch_delta);
+    core::OffscreenMatrix surface_projection(std::int32_t width,std::int32_t height)const;
     std::uint64_t logic_steps=0,movement_steps=0;
     void write_combat_report(std::ostream&); // Diagnostic JSON fragment; not a complete-state snapshot.
     void draw_enemy_gauges(BitmapBackend&);
@@ -196,7 +198,7 @@ private:
     bool halted_=false;
     std::array<core::GameplaySystemState,32> system_states_;
     std::uint64_t pause_requests_=0;
-    enum class InputKind {keys,attack,pulse,cursor,click,touch,viewport,answer};
+    enum class InputKind {keys,attack,pulse,cursor,click,touch,viewport,answer,camera};
     struct InputAction {InputKind kind;std::uint32_t value=0;std::int32_t x=0,y=0,z=0;};
     std::map<std::uint64_t,std::vector<InputAction>> replay_;
     bool replay_bound_=false;std::uint64_t replay_applied_=0;

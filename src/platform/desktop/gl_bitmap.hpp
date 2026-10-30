@@ -29,6 +29,7 @@ public:
     void set_material(std::uint32_t shader_key);
     void draw(const BitmapQuad&,const core::OffscreenMatrix& model);
     DecodedImage read_pixels(); // Top-left RGBA8, explicit synchronous capture only.
+    DecodedImage read_pixels(std::int32_t width,std::int32_t height); // Nearest offscreen presentation, matching present().
     void present();
     std::string driver()const;
 private:

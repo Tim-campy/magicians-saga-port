@@ -2,6 +2,8 @@
 #include "cell_system.hpp"
 #include "select_camera.hpp"
 #include "stage_recovery.hpp"
+#include "quest_frame.hpp"
+#include "input_frame.hpp"
 
 namespace saga::core {
 struct QuestCameraComponent final:Component {std::int32_t angle=0,scale=0;}; // Slot 3, fields +0x10/+0x14.
@@ -40,6 +42,8 @@ public:
 struct QuestCameraForm {
     StageQuestForm& state;QuestCameraMapWorld* world=nullptr;QuestViewportView* view=nullptr;
     std::int32_t x=0,y=0;bool update_static_render=false; // QuestForm +0x110/+0x114/+0x1fc.
+    std::int32_t minimum_scale=50,pinch_value=120; // Init +0x1e0/+0x1e4; independent of CameraSystem.
+    EventInstruction form_scale_range=std::make_shared<EventIntegers>(2,0); // +0x220.
 };
 class QuestFormCameraHost {
 public:
@@ -52,6 +56,21 @@ std::int32_t quest_game_width(QuestCameraForm*,QuestFormCameraHost&); // QuestFo
 std::int32_t quest_game_height(QuestCameraForm*,QuestFormCameraHost&);
 void set_quest_cursor(QuestCameraForm*,std::int32_t x,std::int32_t y,QuestFormCameraHost&); // 0x11e1344.
 void set_quest_camera_position(QuestCameraForm*,std::int32_t x,std::int32_t y,QuestFormCameraHost&); // 0x11e00a0.
+EventInstruction quest_form_scale_range(QuestCameraForm*); // GetScaleRange 0x11e1528.
+void set_quest_form_scale(QuestCameraForm*,std::int32_t,QuestFormCameraHost&); // SetScale 0x11deee8.
+struct QuestFormTouch {InputTouch input;std::int32_t dx=0,dy=0,pinch_delta=0;};
+class QuestFormTouchHost {
+public:
+    virtual ~QuestFormTouchHost()=default;
+    virtual QuestFormCameraHost& form_camera_host()=0;
+    virtual void forward_quest_touch(const InputTouch*)=0; // World event9, before group dispatch.
+    virtual bool quest_touch_debug()=0;
+    virtual void debug_clear_quest()=0;
+    virtual void read_quest_priority()=0; // GetPriority return is discarded; preserve lookup/failure ordering.
+    virtual void notify_quest_scale(std::int32_t)=0; // World event25; not an inferred CameraSystem binding.
+};
+void on_quest_form_camera_touch(QuestCameraForm*,QuestFrameState&,std::int32_t type,const QuestFormTouch*,QuestFormTouchHost&); // 0x11dfe94.
+bool on_quest_form_touch(QuestCameraForm*,QuestFrameState&,const QuestFormTouch*,QuestFormTouchHost&); // 0x11dfda0.
 class CameraFormation {
 public:
     virtual ~CameraFormation()=default;

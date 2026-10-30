@@ -4,6 +4,7 @@
 #include "bitmap_mesh_frame.hpp"
 #include "gl_bitmap.hpp"
 #include "mission_profile.hpp"
+#include "core/gameplay/quest_render.hpp"
 #include <SDL3/SDL.h>
 #include <algorithm>
 #include <filesystem>
@@ -24,6 +25,26 @@ struct Quit {~Quit(){SDL_Quit();}};
 struct GpuQueries:MeshDepthHost {
     bool surface_is_null(MeshDepthSurface* p)override{return p==nullptr;}
     float low_depth_scaling()override{throw std::logic_error("capture has no low-depth scaling profile");}
+};
+// Consume the existing QuestForm.DrawOffscreen contract; the GL host owns its backing surface.
+struct OffscreenBlit final:QuestRenderHost,QuestRenderSurface,RenderGraphics {
+    QuestCameraHost& camera;QuestRenderViewport viewport;RenderImage source_image;RenderImageDraw result;
+    OffscreenBlit(QuestCameraHost& c,std::int32_t w,std::int32_t h):camera(c),viewport{0,0,w,h}{image=&source_image;}
+    RenderImageDraw prepare(){QuestRenderForm form{*camera.current_camera_form(),nullptr,nullptr,nullptr,this,false};draw_quest_offscreen(form,this,*this);return result;}
+    QuestRenderViewport& render_viewport()override{return viewport;}
+    std::int32_t quest_view_x()override{return camera.quest_view_x();}
+    std::int32_t quest_view_y()override{return camera.quest_view_y();}
+    EventInstruction camera_saved_integers()override{return camera.camera_saved_integers();}
+    [[noreturn]]static void unexpected(){throw std::logic_error("unexpected offscreen presentation operation");}
+    bool active(QuestRenderForm&)override{unexpected();}
+    void set_clip_enable(RenderGraphics&,bool)override{unexpected();}
+    void push_origin(RenderGraphics&,float,float,bool)override{unexpected();}void pop_origin(RenderGraphics&)override{unexpected();}
+    void set_statics_transform(float,float,float,float,float)override{unexpected();}void render_statics()override{unexpected();}
+    RenderDepth* mesh_manager()override{unexpected();}
+    void push_render_mode(std::int32_t,std::int32_t,std::int32_t)override{unexpected();}void pop_render_mode()override{unexpected();}
+    void push_blend_mode(std::int32_t,std::int32_t)override{unexpected();}void pop_blend_mode()override{unexpected();}
+    void push_matrix(RenderMatrix&)override{unexpected();}void pop_matrix()override{unexpected();}
+    void draw_image(const RenderImageDraw& draw)override{result=draw;}
 };
 
 }
@@ -87,15 +108,25 @@ int run_native_mission(MissionProfile& profile,std::int32_t width,std::int32_t h
     });
     const auto resize=[&](std::int32_t w,std::int32_t h){
         if(!profile.resizable_viewport()||w<1||h<2||(w==width&&h==height))return;
-        profile.resize_viewport(w,h);renderer.resize_target(w,h);backend.resize_surface(h);width=w;height=h;
+        profile.resize_viewport(w,h);width=w;height=h;
     };
     if(live_viewport){
         int w=0,h=0;require(SDL_GetWindowSizeInPixels(window.get(),&w,&h),"SDL window pixel size");resize(w,h);
     }
+    std::int32_t surface_width=width,surface_height=height;
     auto submit=[&]{
+        auto surface_projection=projection;surface_width=width;surface_height=height;
+        if(profile.resizable_viewport()&&profile.spatial){
+            OffscreenBlit blit(profile.spatial->camera_host(),width,height);const auto draw=blit.prepare();
+            if(!draw.scaled||draw.u!=0||draw.v!=0||draw.x!=0||draw.y!=0||draw.width!=width||draw.height!=height)
+                throw std::logic_error("unsupported offscreen presentation rectangle");
+            surface_width=draw.source_width;surface_height=draw.source_height;
+            surface_projection=profile.surface_projection(surface_width,surface_height);
+        }
+        renderer.resize_target(surface_width,surface_height);backend.resize_surface(surface_height);
         frame.begin_frame();frame.draw(queue,0);profile.draw_enemy_gauges(backend);frame.draw(queue,1);frame.finish();bind_bitmap_mesh_frame(bindings,frame);
         s.cursors->at(0)=0;s.lengths->at(0)=frame.records().active_count;
-        renderer.begin_frame(GlBitmapClear::color_and_depth,{0,0,0,0},projection);submit_mesh_streams(s,1,host);
+        renderer.begin_frame(GlBitmapClear::color_and_depth,{0,0,0,0},surface_projection);submit_mesh_streams(s,1,host);
     };
     std::uint64_t rendered=0,logic_steps=0;
     const auto write_state=[&]{
@@ -111,7 +142,8 @@ int run_native_mission(MissionProfile& profile,std::int32_t width,std::int32_t h
             std::cout<<'}';}
         std::cout<<']';profile.write_combat_report(std::cout);
     };
-    if(loop){bool running=true,paused=false;std::string current_title=title;
+    if(loop){bool running=true,paused=false;std::string current_title=title;float drag_x=0,drag_y=0,wheel_delta=0;
+        const auto take_delta=[](float& pending,float delta){pending+=delta;const auto value=factory_cell_coordinate(pending,1);pending-=static_cast<float>(value);return value;};
         while(running&&(!bounded||rendered<static_cast<std::uint64_t>(frame_limit))){const auto deadline=SDL_GetTicks()+static_cast<Uint64>(capture?0:*tick_ms);bool single_step=false;SDL_Event event;
             while(SDL_PollEvent(&event)){
                 if(event.type==SDL_EVENT_QUIT)running=false;
@@ -148,6 +180,20 @@ int run_native_mission(MissionProfile& profile,std::int32_t width,std::int32_t h
                 }
                 else if(interactive&&profile.accepts_live_gameplay_input()&&event.type==SDL_EVENT_MOUSE_BUTTON_DOWN&&event.button.button==SDL_BUTTON_LEFT)
                     profile.humans->select_input_attack(profile.humans->selected_attack());
+                else if(interactive&&profile.accepts_live_gameplay_input()&&profile.spatial){
+                    // Desktop policy: right drag is QuestForm group17; a wheel unit supplies20 raw pinch units.
+                    if(event.type==SDL_EVENT_MOUSE_BUTTON_DOWN&&event.button.button==SDL_BUTTON_RIGHT){drag_x=drag_y=0;profile.camera_touch(0,0,0,0);}
+                    else if(event.type==SDL_EVENT_MOUSE_BUTTON_UP&&event.button.button==SDL_BUTTON_RIGHT){drag_x=drag_y=0;profile.camera_touch(1,0,0,0);}
+                    else if(event.type==SDL_EVENT_MOUSE_MOTION&&(event.motion.state&SDL_BUTTON_RMASK)!=0){
+                        int w=0,h=0;require(SDL_GetWindowSize(window.get(),&w,&h),"SDL pointer window size");
+                        if(w>0&&h>0){const auto dx=take_delta(drag_x,event.motion.xrel*static_cast<float>(width)/static_cast<float>(w));
+                            const auto dy=take_delta(drag_y,event.motion.yrel*static_cast<float>(height)/static_cast<float>(h));
+                            profile.camera_touch(8,dx,dy,0);}
+                    }else if(event.type==SDL_EVENT_MOUSE_WHEEL){
+                        const auto delta=take_delta(wheel_delta,event.wheel.y*20.0F);
+                        if(delta){profile.camera_touch(12,0,0,delta);profile.camera_touch(1,0,0,0);}
+                    }
+                }
             }
             if(!running)break;
             if(interactive&&profile.accepts_live_input()){
@@ -173,11 +219,11 @@ int run_native_mission(MissionProfile& profile,std::int32_t width,std::int32_t h
                  <<',';write_state();
         std::cout<<",\"profile\":\"selected mission systems; full application entry, save restoration and complete-state hashes unbound\"}\n";return 0;}
     }
-    if(!loop||rendered==0)submit();auto pixels=renderer.read_pixels();
+    if(!loop||rendered==0)submit();auto pixels=renderer.read_pixels(width,height);
     Surface captured(SDL_CreateSurfaceFrom(width,height,SDL_PIXELFORMAT_RGBA32,pixels.rgba.data(),width*4),SDL_DestroySurface);require(captured!=nullptr,"SDL_CreateSurfaceFrom");
     require(SDL_SaveBMP(captured.get(),output.string().c_str()),"SDL_SaveBMP");std::set<std::size_t> used;for(const auto& q:backend.quads())used.insert(q.texture);
     std::cout<<"{\"resources\":"<<owners.size()<<",\"entities\":"<<profile.selected_count<<",\"commands\":"<<(queue.counts->at(0)+queue.counts->at(1))<<",\"quads\":"<<backend.quads().size()<<",\"textures\":"<<used.size()
-             <<",\"capture_render_frames\":"<<rendered<<",\"capture_logic_steps\":"<<logic_steps;
+             <<",\"capture_render_frames\":"<<rendered<<",\"capture_logic_steps\":"<<logic_steps<<",\"surface_width\":"<<surface_width<<",\"surface_height\":"<<surface_height;
     // Capture the same final observations as the non-capture frontend, after the last submitted frame.
     if(mission&&entity_world){std::cout<<",\"state\":{";write_state();std::cout<<'}';}
     std::cout<<",\"profile\":\""<<(profile.native_materials?"explicit projection, native material cache and depth":"explicit projection and material identities, native depth")<<"\"}\n";return 0;

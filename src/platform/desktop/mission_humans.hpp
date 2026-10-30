@@ -85,6 +85,7 @@ public:
     void select_input_attack(std::int32_t);
     void observe_input_touch(std::function<void(const core::InputTouch*)>);
     void send_logical_touch(std::int32_t type,std::int32_t group,std::int32_t value);
+    void dispatch_form_touch(const core::InputTouch* event){if(!input_)throw std::logic_error("input fresh is required");input_->dispatch(event);}
     std::int32_t selected_attack()const{return stage_.attack_attribute;}
     void write_input_report(std::ostream&);
     bool stage_input_enabled()const{return static_cast<bool>(stage_loop_);}
