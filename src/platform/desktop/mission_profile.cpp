@@ -44,7 +44,7 @@ std::filesystem::path mission_font_path(const std::filesystem::path& root){
 }
 }
 SceneResource::SceneResource(const std::filesystem::path& path,ResourceProfile profile,ArchiveImageSet::Decoder decoder)
-    :archive(read(path),std::move(profile)),manager(archive){
+    :archive(read(path),std::move(profile)),manager(archive),image_clocks(archive.image_animation_infos()){
     if(decoder)images=std::make_unique<ArchiveImageSet>(manager,std::move(decoder));
 }
 void MissionProfile::subscribe_auxiliary_button(std::int32_t factory,AuxiliaryInitializationWorld::Button receiver){
@@ -164,7 +164,7 @@ void MissionProfile::construct_systems(){
 }
 void MissionProfile::reset_image_clocks(){reset_image_animations(*image_clocks_);++image_clock_resets_;}
 void MissionProfile::advance_image_clocks(){advance_image_animations(*image_clocks_);++image_clock_updates_;}
-// SAGA_STUB(mission-image-clock-registration): clock kernels execute, resource animation rows are not registered yet.
+// SAGA_STUB(mission-image-animation-draw): DrawSebImg's PopOut/SwingUpDown transforms are not bound to desktop drawing.
 void MissionProfile::update_world(std::int32_t pass){
     refresh_enabled();last_world_passes_.push_back(pass);++world_update_calls_;
     UpdateSchedule schedule{&update_list_,&timer_};update_systems(schedule,pass);
@@ -309,7 +309,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         if(!slot||*slot||!alias||*alias)throw std::invalid_argument("mission resource index has duplicate or unsupported AppData ID");
         auto value=std::make_unique<SceneResource>(path,ResourceProfile{language,dpi},decoder);
         if(value->images)textures.bind(*value->images);
-        *slot=*alias=&value->manager.drawing();owners.push_back(std::move(value));
+        *slot=*alias=&value->manager.drawing();image_clocks_->push_back(value->image_clocks);owners.push_back(std::move(value));
     };
     const auto load_resources=[&](const std::string& language,std::int32_t dpi){
         if(!native||!selection.data_root||tables||!owners.empty()||!resource_names.empty())
@@ -717,7 +717,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             if(!slot||*slot)throw std::invalid_argument("unsupported or duplicate AppData resource ID");
             auto resolved=archive_path(path);
             auto value=std::make_unique<SceneResource>(resolved,ResourceProfile{language,dpi},decoder);if(value->images)textures.bind(*value->images);
-            *slot=&value->manager.drawing();owners.push_back(std::move(value));
+            *slot=&value->manager.drawing();image_clocks_->push_back(value->image_clocks);owners.push_back(std::move(value));
         }else if(operation=="draw"){
             if(commands>=100000)throw std::length_error("capture command budget exceeded");
             RenderCommand c;for(auto& v:c.values)if(!(row>>v))throw std::invalid_argument("draw requires nineteen int32 fields");
@@ -1099,6 +1099,10 @@ void MissionProfile::write_combat_report(std::ostream& out){
            <<",\"quest_form_pinch_frame\":"<<quest_frame_state_.pinch_frame<<",\"quest_form_pinching\":"<<(quest_frame_state_.pinching?"true":"false")<<",\"quest_form_result\":"<<(quest_frame_result_?"true":"false")
            <<",\"image_clock_resets\":"<<image_clock_resets_<<",\"image_clock_updates\":"<<image_clock_updates_;
     }
+    out<<",\"image_animation_infos\":[";
+    for(std::size_t i=0;i<owners.size();++i){if(i)out<<',';out<<'[';const auto& group=*owners[i]->image_clocks;
+        for(std::size_t row=0;row<group.size();++row){if(row)out<<',';out<<'['<<group[row]->at(0)<<','<<group[row]->at(1)<<']';}out<<']';}
+    out<<']';
     out<<",\"system_construction_complete\":"<<(construction_complete_?"true":"false")<<",\"construction_pause_before_init\":";
     if(construction_pause_)out<<(*construction_pause_?"true":"false");else out<<"null";
     out<<",\"construction_order\":[";for(std::size_t i=0;i<construction_order_.size();++i){if(i)out<<',';out<<construction_order_[i];}out<<']';

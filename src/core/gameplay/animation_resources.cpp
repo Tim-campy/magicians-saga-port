@@ -1,4 +1,5 @@
 #include "animation_resources.hpp"
+#include "presentation_text.hpp"
 #include <limits>
 #include <unordered_set>
 
@@ -33,6 +34,25 @@ ResourceCatalogIndex index_resource_catalog(std::vector<std::int32_t> ids,std::s
 }
 AnimationResource* get_animation_resource(const ApplicationAnimationResources& r,std::int32_t id) noexcept {
     return get_application_resource(r,id);
+}
+std::shared_ptr<ImageAnimationGroup> load_image_animation_infos(std::size_t count,CatalogRows rows,ImageAnimationTextHost& host){
+    if(count>static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max()))throw std::length_error("image animation count exceeds int32");
+    auto result=std::make_shared<ImageAnimationGroup>(count);
+    for(auto& row:*result)row=std::make_shared<EventIntegers>(2,0);
+    if(!rows)throw std::invalid_argument("null image animation catalog");
+    for(std::size_t index=0;index<rows->size();++index){
+        const auto fields=split_trimmed_text_fields(rows->at(index).get(),u',');
+        for(std::size_t field=1;field<fields.size();++field){
+            const auto option=host.lower_case(fields[field]);
+            if(!option)throw std::invalid_argument("null lowercase image option");
+            if(!host.starts_with(*option,u"a"))continue;
+            const auto suffix=option->substr(1);const auto pair=result->at(index);
+            const auto mode=host.parse_id(suffix);
+            if(!pair)throw std::invalid_argument("null image animation row");
+            pair->at(0)=mode;break;
+        }
+    }
+    return result;
 }
 std::int32_t animation_clip_max_frame(const ApplicationAnimationResources& app,std::int32_t resource,std::int32_t clip) {
     auto* r=get_animation_resource(app,resource);

@@ -41,7 +41,9 @@ int main(){
     {ResourceArchive flagged(source("7\tchoice.png,bin,q+1,q-2", "clip.seb,u,v,c3"),{"English.lproj",0});
      const auto binding=flagged.sprite(0,0,0);check(binding.image_render_queue==-2&&binding.reverse_u==1&&binding.reverse_v==1&&binding.cache_size==3);}
     {ResourceArchive unknown(source("7\tchoice.png,bin,a1,unknown.pal.tail", "clip.seb"),{"English.lproj",0});
-     check(unknown.sprite(0,0,0).unrecognized_image_options==std::vector<std::string>({"a1","unknown.pal.tail"}));}
+     check(unknown.sprite(0,0,0).unrecognized_image_options==std::vector<std::string>({"a1","unknown.pal.tail"}));
+     const auto group=unknown.image_animation_infos();check(group->size()==8&&group->at(0)->at(0)==1&&group->at(7)->at(0)==0);
+     const auto again=unknown.image_animation_infos();check(again!=group&&again->at(0)!=group->at(0));}
     {ResourceArchive palette(source("7\tchoice.png,bin,image.pal", "clip.seb"),{"English.lproj",0});fails([&]{palette.sprite(0,0,0);});}
     {ResourceArchive atlas(source("7\tchoice.png,bin,@1", "clip.seb"),{"English.lproj",0});fails([&]{atlas.sprite(0,0,0);});}
     {ResourceArchive invalid(source("7\tchoice.png,bin", "clip.seb,"),{"English.lproj",0});fails([&]{invalid.sprite(0,0,0);});}

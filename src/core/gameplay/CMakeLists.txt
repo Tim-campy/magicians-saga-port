@@ -275,7 +275,7 @@ target_link_libraries(resource_lookup PUBLIC presentation_text)
 saga_library(material_queue material_queue.cpp)
 target_link_libraries(material_queue PUBLIC render_colors)
 target_link_libraries(animation_resources PUBLIC seb_sprite)
-target_link_libraries(animation_resources PUBLIC animation_pass seb)
+target_link_libraries(animation_resources PUBLIC animation_pass seb presentation_text)
 
 saga_library(drop_collection drop_collection.cpp)
 target_link_libraries(drop_collection PUBLIC drop_factory effect_factory projectile_motion stage_rewards)

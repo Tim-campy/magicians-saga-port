@@ -10,10 +10,34 @@ import unittest
 EXE = Path(sys.argv.pop(1)).resolve() if len(sys.argv) > 1 else None
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from mission_scene_fixture import make_table_scene, make_shoot_scene, with_mission_map, make_boss_scene, make_gauge_scene, make_native_entry_scene, make_data_entry_fixture, make_combat_regression_scene
+from test_sprite_preview import jar,png,seb
 
 
 @unittest.skipUnless(EXE, 'saga_mission supplied by CTest')
 class MissionProfileTests(unittest.TestCase):
+    @unittest.skipUnless(os.environ.get('SAGA_TEST_FONT'),'public font fixture supplied by CTest')
+    def test_native_resource_image_clocks_use_raw_rows_and_form_frames(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);make_data_entry_fixture(root,os.environ['SAGA_TEST_FONT'])
+            (root/'textassets/hero.bin').write_bytes(jar([
+                ('img.inf',b'200\ta.png,bin,A1,a2'),
+                ('seb.inf','\n'.join(f'{i}\ta.seb' for i in range(48)).encode()),
+                ('a.seb',seb([(0,200,0,0,2,2,0,0,0,0),(3,200,0,0,2,2,0,0,0,0)])),
+                ('a.png',png(8,8,[255,0,0,255]*64))]))
+            def run(frames):
+                result=subprocess.run([str(EXE),'--data',str(root),'--quest','2','--headless','--frames',str(frames)],capture_output=True,text=True,timeout=30)
+                self.assertEqual(result.returncode,0,result.stderr);return result.stdout,json.loads(result.stdout)
+            text,state=run(21);groups=state['image_animation_infos'];self.assertEqual(len(groups),9)
+            self.assertEqual(state['image_clock_resets'],1);self.assertEqual(state['image_clock_updates'],21)
+            for index in (0,6,7):
+                self.assertEqual(groups[index][0],[1,21]);self.assertEqual(groups[index][200],[0,21])
+            for group in groups:
+                for _,tick in group:self.assertEqual(tick,21)
+            self.assertEqual(run(21)[0],text)
+            _,later=run(30)
+            for group in later['image_animation_infos']:
+                for _,tick in group:self.assertEqual(tick,later['image_clock_updates'])
+
     @unittest.skipUnless(os.environ.get('SAGA_TEST_FONT'),'public font fixture supplied by CTest')
     def test_native_form_camera_gestures_and_replay_validation(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -661,7 +685,16 @@ class MissionProfileTests(unittest.TestCase):
             automatic='mission_resources "English.lproj" 0\n'+'\n'.join(l for l in text.splitlines() if not l.startswith(('tables ','resource ','resource_name ','global_alias ')))+'\n'
             scene.write_text(automatic,encoding='utf-8')
             result=self.run_host(scene,'--data',str(data),frames=12)
-            self.assertEqual(result.returncode,0,result.stderr);self.assertEqual(result.stdout,control.stdout)
+            self.assertEqual(result.returncode,0,result.stderr)
+            automatic_state=json.loads(result.stdout);manual_state=json.loads(control.stdout)
+            # The index deliberately loads extra manager identities. Compare game observations,
+            # and separately check each retained image table instead of hiding their inventory.
+            automatic_clocks=automatic_state.pop('image_animation_infos');manual_clocks=manual_state.pop('image_animation_infos')
+            self.assertEqual(len(automatic_clocks),9)
+            self.assertEqual(len(manual_clocks),sum(line.startswith('resource ') for line in text.splitlines()))
+            for group in automatic_clocks+manual_clocks:
+                for row in group:self.assertEqual(row,[0,0])
+            self.assertEqual(automatic_state,manual_state)
             for bad in [content.replace('resource 23 ', 'resource 22 '),content.replace('textassets/hero.bin','../hero.bin'),
                         '\n'.join(content.splitlines()[:-1])+'\n',content.replace('mission_resources 1','mission_resources 2')]:
                 index.write_text(bad,encoding='utf-8');self.assertNotEqual(self.run_host(scene,'--data',str(data)).returncode,0)

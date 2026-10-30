@@ -132,6 +132,8 @@ game:0x060007a1	reimplemented	src/core/gameplay/quest_camera.cpp	Capture type/gr
 game:0x060007a2	reimplemented	src/core/gameplay/quest_camera.cpp	Form drag/pinch/release with wrapping float conversion, mutable minimum, priority-query prefix and event25; host replay/SDL and contract tests.
 game:0x060007bb	reimplemented	src/core/gameplay/quest_camera.cpp	Clamp distinct form scale and preserve dimension/read order, recentering and partial mutations; host offscreen zoom and contract tests.
 game:0x060007bc	reimplemented	src/core/gameplay/quest_camera.cpp	Shared minimum/200 range scratch with ordered stores and partial failure; tests and form scale path.
+game:0x06000092	traced	docs/subsystems/ui.md	GameView dispatcher captures component, invokes top-form callback and returns on false; jump-table group17 returns without cursor events.
+game:0x060000ac	documented	docs/subsystems/ui.md	OnTouchCamera override at 0x10fd77c is a single RET, with no argument reads or side effects; no group17 cursor production.
 game:0x0600084e	traced	docs/subsystems/data.md	SelectStageForm.Update writes selected QuestData.id into decoded normal-save integer slot9 at 0x1208078; UI/stamina flow remains unported.
 kairo:0x06001a71	traced	docs/subsystems/ui.md	Same-UI-thread Push callback inserts child state0 and manager link; current world pass ends before child Init.
 kairo:0x06001a73	traced	docs/subsystems/ui.md	Pop callback marks selected form4 and may change underlying3 to1; removal follows Finish, not this callback.

@@ -15,6 +15,7 @@
 namespace saga::desktop {
 struct SceneResource {
     ResourceArchive archive;ArchiveResourceManager manager;std::unique_ptr<ArchiveImageSet> images;
+    std::shared_ptr<core::ImageAnimationGroup> image_clocks;
     SceneResource(const std::filesystem::path&,ResourceProfile,ArchiveImageSet::Decoder);
 };
 struct MissionSelection {

@@ -2,6 +2,8 @@
 #include "animation_pass.hpp"
 #include "assets/seb.hpp"
 #include "../animation/seb_sprite.hpp"
+#include "resource_catalog.hpp"
+#include "select_prelude.hpp"
 #include <optional>
 
 namespace saga::core {
@@ -12,6 +14,16 @@ struct ResourceCatalogIndex {
 // LoadStart indexing slice 0x1ba72d8..0x1ba7430, after host-side line parsing.
 // Missing IDs use -1. max_slots is an input-memory policy, not an original game limit.
 ResourceCatalogIndex index_resource_catalog(std::vector<std::int32_t> ids,std::size_t max_slots=1048576);
+class ImageAnimationTextHost {
+public:
+    virtual ~ImageAnimationTextHost()=default;
+    virtual CatalogText lower_case(const std::u16string&)=0;
+    virtual bool starts_with(const std::u16string&,std::u16string_view)=0;
+    virtual std::int32_t parse_id(std::u16string_view)=0;
+};
+// ResourceManagerExtension.LoadImageAnimationInfos 0x10eeb74. The native loop
+// indexes raw post-ID catalog rows, independently of the indexed image IDs.
+std::shared_ptr<ImageAnimationGroup> load_image_animation_infos(std::size_t image_count,CatalogRows,ImageAnimationTextHost&);
 
 template<class Resource>struct ApplicationResourceFields {
     Resource *characters=nullptr,*common=nullptr,*enemies=nullptr,*equipment=nullptr;

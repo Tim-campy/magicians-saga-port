@@ -37,7 +37,7 @@ std::string lower(std::string s) {
 }
 } // namespace
 
-struct ResourceArchive::Impl final : JarResourceHost, ResourceNameHost, ResourceDictionary {
+struct ResourceArchive::Impl final : JarResourceHost, ResourceNameHost, ResourceDictionary,ImageAnimationTextHost {
     std::vector<std::uint8_t> bytes;
     assets::JarArchive archive;
     ResourceProfile profile;
@@ -109,7 +109,7 @@ struct ResourceArchive::Impl final : JarResourceHost, ResourceNameHost, Resource
         trim_resource_catalog(rows,*this);
         const auto ids=parse_resource_catalog_rows(rows,*this);
         const auto indexed=index_resource_catalog(ids);
-        ArchiveCatalog result{std::string(archive.members.at(*id).name),{}};
+        ArchiveCatalog result{std::string(archive.members.at(*id).name),{},rows};
         result.slots.resize(indexed.rows.size());
         for (std::size_t i=0;i<indexed.rows.size();++i)
             if (indexed.rows[i]) result.slots[i]=narrow(*rows->at(*indexed.rows[i]));
@@ -187,6 +187,9 @@ ResourceArchive::ResourceArchive(std::vector<std::uint8_t> bytes,ResourceProfile
 ResourceArchive::~ResourceArchive()=default;
 const ArchiveCatalog& ResourceArchive::images() const {if(!impl_->catalogs)throw std::logic_error("data archive has no image catalog");return impl_->image_catalog;}
 const ArchiveCatalog& ResourceArchive::animations() const {if(!impl_->catalogs)throw std::logic_error("data archive has no animation catalog");return impl_->animation_catalog;}
+std::shared_ptr<core::ImageAnimationGroup> ResourceArchive::image_animation_infos(){
+    const auto& catalog=images();return core::load_image_animation_infos(catalog.slots.size(),catalog.source_rows,*impl_);
+}
 std::optional<ArchiveData> ResourceArchive::data(std::string_view name){
     const auto index=impl_->lookup(name);if(!index)return std::nullopt;
     return ArchiveData{std::string(impl_->archive.members.at(*index).name),impl_->payload(*index)};

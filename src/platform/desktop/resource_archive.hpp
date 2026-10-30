@@ -1,6 +1,7 @@
 #pragma once
 #include "assets/seb.hpp"
 #include "assets/opt_grid.hpp"
+#include "core/gameplay/animation_resources.hpp"
 #include <memory>
 #include <optional>
 #include <string>
@@ -15,6 +16,7 @@ struct ArchiveData {std::string member;std::vector<std::uint8_t> bytes;};
 struct ArchiveCatalog {
     std::string member;
     std::vector<std::optional<std::string>> slots;
+    core::CatalogRows source_rows; // Native ResourceManager.resourceInfos[0], post explicit-ID stripping.
 };
 struct ArchiveSprite {
     assets::Seb animation;
@@ -49,6 +51,7 @@ public:
     ResourceArchive& operator=(const ResourceArchive&) = delete;
     const ArchiveCatalog& images() const;
     const ArchiveCatalog& animations() const;
+    std::shared_ptr<core::ImageAnimationGroup> image_animation_infos();
     std::optional<ArchiveData> data(std::string_view name); // Same native candidate/first-match lookup; no image catalog required.
     // Successful selections are cached by catalog ID; references remain stable.
     const ArchiveAnimation& animation(std::int32_t clip);
