@@ -4,7 +4,7 @@ game:0x06000197	traced	docs/subsystems/save.md	LoadGame order: LoadSystem, Recor
 game:0x06000192	traced	docs/subsystems/save.md	LoadSystem reads record 0 into AppData+0x190
 game:0x06000158	traced	docs/subsystems/save.md	InitSystemSaveData builds system SecureProperty
 game:0x0600015a	traced	docs/subsystems/save.md	NewGame: SaveSystem, new SecureProperty, InitSystemSaveData, NewData, check consumer
-game:0x06000159	traced	docs/subsystems/save.md	InitWorld called after LoadGame on Continue
+game:0x06000159	reimplemented	src/core/gameplay/mission_map.cpp	Whole-byte loaded gate, captured factory/add receiver, separately queried map/Init worlds, native map request and failure prefixes; mission_map_contract; fresh mission host bound, Continue restoration external.
 game:0x06000916	traced	docs/subsystems/save.md	ContinueGame: NewGame, LoadGame(0), InitWorld, SelectForm
 kairo:0x06001728	traced	docs/subsystems/save.md	SaveSystem delegates via ThreadStart/RunOnUiThread
 kairo:0x06000f96	traced	docs/subsystems/save.md	RecordStore ctor calls Storage.Open/Read

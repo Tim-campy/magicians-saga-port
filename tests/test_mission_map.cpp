@@ -2,6 +2,34 @@
 #include "core/gameplay/mission_map.hpp"
 
 template<class T>T& field(ComponentSlots& e,std::int32_t slot){auto* p=dynamic_cast<T*>(e.get(slot));check(p);return *p;}
+struct WorldEntryFixture final:MissionWorldEntryHost {
+    std::vector<std::string> calls;
+    std::string failure;
+    std::function<void()> on_factory,on_map;
+    MissionSystemBatch batch;
+    struct World final:MissionWorldEntryTarget {
+        WorldEntryFixture& owner;std::string name;std::uint8_t loaded=0;
+        int additions=0,maps=0,inits=0;
+        World(WorldEntryFixture& f,std::string label):owner(f),name(std::move(label)){}
+        void record(const char* operation){owner.calls.push_back(std::string(operation)+":"+name);if(owner.failure==operation)throw std::runtime_error("entry failure");}
+        std::uint8_t entry_loaded_byte()override{record("loaded");return loaded;}
+        void add_world_systems(MissionSystemBatch* value)override{++additions;record("add");check(value==&owner.batch);}
+        void create_world_map(MapCreation r)override{
+            ++maps;record("map");
+            check(r.width==3&&r.height==8&&r.size_width==624&&r.size_height==312&&r.step_x==312&&r.step_z==312);
+            check(r.area_width==16&&r.area_height==16&&!r.chips);
+            if(owner.on_map)owner.on_map();
+        }
+        void init_world_systems()override{++inits;record("init");}
+    } a{*this,"a"},b{*this,"b"};
+    World* current=&a;
+    int queries=0,null_at=0;
+    MissionWorldEntryTarget* entry_world()override{calls.push_back("world");return ++queries==null_at?nullptr:current;}
+    MissionSystemBatch* make_world_systems()override{
+        calls.push_back("factory");if(failure=="factory")throw std::runtime_error("factory failure");
+        if(on_factory)on_factory();return &batch;
+    }
+};
 struct MapPools final:MapFactoryHost {
     UpdateFixture& f;MapComponent map;bool missing=false;std::deque<MapChipComponent> chips;
     std::function<void()> on_chip;
@@ -37,6 +65,23 @@ struct MissionFixture:UpdateFixture,MissionMapHost,MissionMapCursor {
     void load(){load_mission_map(map_system,state.quest,*this);}
 };
 int main()try{
+    {WorldEntryFixture f;initialize_mission_world(f);
+     check(f.calls==std::vector<std::string>{"world","loaded:a","factory","add:a","world","map:a","world","init:a"});
+     check(f.a.loaded==0&&f.a.additions==1&&f.a.maps==1&&f.a.inits==1);
+     initialize_mission_world(f);check(f.a.additions==2&&f.a.maps==2&&f.a.loaded==0);}
+    for(const auto loaded:{1,2,255}){WorldEntryFixture f;f.a.loaded=static_cast<std::uint8_t>(loaded);initialize_mission_world(f);
+     check(f.calls==std::vector<std::string>{"world","loaded:a","world","map:a","world","init:a"});
+     check(f.a.additions==0&&f.a.maps==1&&f.a.inits==1&&f.a.loaded==loaded);}
+    {WorldEntryFixture f;f.on_factory=[&]{f.current=&f.b;};f.on_map=[&]{f.current=&f.a;};initialize_mission_world(f);
+     check(f.a.additions==1&&f.b.additions==0&&f.a.maps==0&&f.b.maps==1&&f.a.inits==1&&f.b.inits==0);
+     check(f.calls==std::vector<std::string>{"world","loaded:a","factory","add:a","world","map:b","world","init:a"});}
+    for(const auto failure:{"factory","add","map","init"}){WorldEntryFixture f;f.failure=failure;fails([&]{initialize_mission_world(f);});
+     const std::vector<std::string> full{"world","loaded:a","factory","add:a","world","map:a","world","init:a"};
+     const auto end=std::string(failure)=="factory"?3U:std::string(failure)=="add"?4U:std::string(failure)=="map"?6U:8U;
+     check(f.calls==std::vector<std::string>(full.begin(),full.begin()+end));
+     check(f.a.loaded==0&&f.a.inits==(std::string(failure)=="init"?1:0));}
+    for(int query=1;query<=3;++query){WorldEntryFixture f;f.null_at=query;fails([&]{initialize_mission_world(f);});
+     check(f.a.additions==(query>1?1:0)&&f.a.maps==(query>2?1:0)&&f.a.inits==0);}
     {MissionFixture f;check(quest_map_width()==3&&quest_map_start_image(*f.state.quest)==111&&quest_map_middle_image(*f.state.quest)==222);
      check(quest_map_end_image(*f.state.quest)==333&&quest_map_background_image(*f.state.quest)==444);
      f.state.quest->chip_images.reset();fails([&]{quest_map_start_image(*f.state.quest);});

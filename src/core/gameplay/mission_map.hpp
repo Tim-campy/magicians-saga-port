@@ -28,8 +28,28 @@ struct MapChipCreation {
     bool animate=false;
     std::int32_t data_id=0,extra_depth=0;
 };
-// AppData.InitWorld's actual CreateMap arguments, not a port of its system/Continue gates.
+// AppData.InitWorld's actual CreateMap arguments.
 MapCreation initial_mission_map_creation();
+// Provider-owned identity of CreateSystems' returned array, including a possible null.
+struct MissionSystemBatch {};
+class MissionWorldEntryTarget {
+public:
+    virtual ~MissionWorldEntryTarget()=default;
+    virtual std::uint8_t entry_loaded_byte()=0;
+    virtual void add_world_systems(MissionSystemBatch*)=0;
+    virtual void create_world_map(MapCreation)=0;
+    virtual void init_world_systems()=0;
+};
+class MissionWorldEntryHost {
+public:
+    virtual ~MissionWorldEntryHost()=default;
+    // AppData.world_, queried separately for the loaded gate, map and World.Init.
+    virtual MissionWorldEntryTarget* entry_world()=0;
+    virtual MissionSystemBatch* make_world_systems()=0;
+};
+// AppData.InitWorld 0x1101c48: managed class initialization is the caller's contract.
+// Does not reset the loaded byte, destroy a world or deserialize a save.
+void initialize_mission_world(MissionWorldEntryHost&);
 // ext.util.Lib.CreateDoubleArray<Entity>: standard jagged allocation, no runtime reconstruction.
 MapGrid make_map_grid(std::int32_t rows,std::int32_t columns);
 // Entity.AddMap / World.CreateMap 0x11300e8 / 0x1133588; areas are retained.

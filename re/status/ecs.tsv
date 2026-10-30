@@ -1,4 +1,5 @@
 id	status	evidence	note
+game:0x06000c01	documented	docs/subsystems/ecs-lifecycle.md	World.Init requires manager, queries Count, logs when zero, re-reads manager and forwards receiver world to SystemManager.Init; bounded 152-byte body, nonempty32 host projection.
 game:0x06000c48	reimplemented	src/core/ecs/component_slots.cpp	ComponentSlots; tests/test_component_slots.cpp
 game:0x06000c49	reimplemented	src/core/ecs/component_slots.cpp	ComponentSlots; tests/test_component_slots.cpp
 game:0x06000c4a	reimplemented	src/core/ecs/component_slots.cpp	ComponentSlots; tests/test_component_slots.cpp

@@ -19,6 +19,15 @@ MapGrid make_map_grid(std::int32_t rows,std::int32_t columns){
     return grid;
 }
 MapCreation initial_mission_map_creation(){return {3,8,624,312,312,312,16,16,nullptr};} // 0x1101d04..0x1101d2c.
+void initialize_mission_world(MissionWorldEntryHost& host){
+    auto& original=required(host.entry_world());
+    if(original.entry_loaded_byte()==0){
+        auto* systems=host.make_world_systems();
+        original.add_world_systems(systems); // The factory cannot replace this captured receiver.
+    }
+    required(host.entry_world()).create_world_map(initial_mission_map_creation());
+    required(host.entry_world()).init_world_systems();
+}
 ComponentSlots& add_map_component(ComponentSlots& e,MapCreation r,MapFactoryHost& host){
     auto& map=required(host.shared_map_component());
     map.width=r.width;map.height=r.height;map.size_width=r.size_width;map.size_height=r.size_height;

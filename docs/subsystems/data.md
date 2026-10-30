@@ -257,7 +257,7 @@ The native `mission_resources "English.lproj" 1` scenario row requires `--data`,
 
 ## Open questions
 
-- (blocking for scene-free mission entry) Bind the decoded normal-save provider, party/system restoration and configuration to the established slot8/9 selection and original InitWorld fresh/loaded path. Cache aliases and UI writers are established; mission_selection still receives explicit decoded values.
+- (blocking for scene-free mission entry) Bind native NewGame saved/configuration producers and Continue party/system restoration to slot8/9 selection. Fresh InitWorld is host-bound; mission_selection still receives explicit decoded values and no binary-save provider exists.
 
 1. (blocking) Body of `<LoadData>b__74_0`: does it call `EventData.Load`/`<T>.Load` per line, and what happens with invalid/null lines and trailing CR?
 2. (blocking) Full list of the 21 table names and their `Data` fields/types (only Event.txt position 5 is resolved).

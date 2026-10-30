@@ -323,7 +323,7 @@ game:0x06000155,game:0x06000155,boot,,12,0x110189c
 game:0x06000156,game:0x06000156,boot,,148,0x11018a8
 game:0x06000157,game:0x06000157,boot,,8,0x110193c
 game:0x06000158,main.AppData.InitSystemSaveData,boot,traced,568,0x1101a10
-game:0x06000159,main.AppData.InitWorld,boot,traced,272,0x1101c48
+game:0x06000159,main.AppData.InitWorld,boot,reimplemented,272,0x1101c48
 game:0x0600015a,main.AppData.NewGame,boot,traced,1420,0x1101d58
 game:0x0600015b,main.AppData.NewData,boot,documented,280,0x11022e4
 game:0x0600015c,main.AppData.InitCheckScriptData,boot,documented,1060,0x1102b4c
@@ -2911,7 +2911,7 @@ game:0x06000bfd,game:0x06000bfd,ecs,,8,0x1135634
 game:0x06000bfe,game:0x06000bfe,ecs,,8,0x113563c
 game:0x06000bff,kairo.unity.ecs.World.get_isNewGame,ecs,reimplemented,16,0x1135644
 game:0x06000c00,game:0x06000c00,ecs,,8,0x1135654
-game:0x06000c01,game:0x06000c01,ecs,,152,0x113565c
+game:0x06000c01,kairo.unity.ecs.World.Init,ecs,documented,152,0x113565c
 game:0x06000c02,kairo.unity.ecs.World.Destroy,ecs,reimplemented,128,0x11356f4
 game:0x06000c03,kairo.unity.ecs.World.CreateEntity,ecs,documented,32,0x1133568
 game:0x06000c04,game:0x06000c04,ecs,,32,0x1135774

@@ -1,6 +1,6 @@
 # ECS lifecycle
 
-The fixed32-system mission factory constructs every system before adding the array to SystemManager. Base construction captures the current static world's manager and enables the concrete type, including virtual enable hooks. The desktop host binds that lifecycle as an explicit empty-manager entry mode; save restoration and original fresh/loaded entry remain external. World, AppData and BaseSystem have distinct world slots whose initial aliasing is established below.
+The fixed32-system mission factory constructs every system before adding the array to SystemManager. Base construction captures the current static world's manager and enables the concrete type, including virtual enable hooks. The fresh desktop path runs AppData.InitWorld's construct/add/map/Init sequence; decoded configuration, NewGame resets and Continue restoration remain external. World, AppData and BaseSystem have distinct world slots whose initial aliasing is established below.
 
 ## Overview
 
@@ -20,6 +20,8 @@ System identities, factory indices, complete Init/Update dispatch and component 
 | MenuSystem.OnDisabled | game:0x06000f5e | 0x115eac0 | Base RET, fresh world query, remove event11 |
 | TownSystem.Init / SetBuildingList | game:0x06000feb / game:0x06000ff1 | 0x1169540 / 0x1169934 | Loaded gate or table-backed setup, preserved list-removal order and slot19 maximum |
 | MenuSystem.Pause | game:0x06000f62 | 0x115eec8 | Set enabled to !pause |
+| AppData.InitWorld | game:0x06000159 | 0x1101c48 | Loaded-byte gate on CreateSystems/AddSystems; unconditional map creation and World.Init |
+| World.Init | game:0x06000c01 | 0x113565c | Log when manager Count is zero, then initialize its systems with the receiver world |
 
 ## Behaviour
 
@@ -31,7 +33,7 @@ World..cctor (`0x11332b0`) constructs MyEntityManager, then a World with that ma
 
 AppData.Init (`0x1100298`,2268 bytes) ensures the World class is initialized and copies World.world_ to AppData.world_ at0x11004d8. Therefore the normal initial bindings share a world identity after application initialization. BaseSystem..cctor also captures AppData, Canvas, FormManager and GameView in four other static slots. It does not create another world.
 
-BaseSystem.SetWorld (`0x113b4c4`,92 bytes; one nullable World argument, void return) ensures BaseSystem class initialization, then stores the supplied reference only into BaseSystem.world_. It does not update World.world_, AppData.world_, existing captured system managers or loaded state. A failure before that store preserves the old reference. Later overrides must not be modeled as rebinding every world dependency at once. The desktop mission's single owner matches the established initial aliases; arbitrary later SetWorld overrides are not bound. The remaining entry problem is restoration/selection of state and the fresh/loaded InitWorld path, rather than an unknown initial world object.
+BaseSystem.SetWorld (`0x113b4c4`,92 bytes; one nullable World argument, void return) ensures BaseSystem class initialization, then stores the supplied reference only into BaseSystem.world_. It does not update World.world_, AppData.world_, existing captured system managers or loaded state. A failure before that store preserves the old reference. Later overrides must not be modeled as rebinding every world dependency at once. The desktop mission's single owner matches the established initial aliases; arbitrary later SetWorld overrides are not bound. The remaining entry problem is native NewGame/configuration state and Continue restoration, rather than an unknown initial world object; the fresh InitWorld sequence is bound below.
 
 ### Construction before registration
 
@@ -51,6 +53,16 @@ Twenty-six concrete constructors only forward to their base after class initiali
 | 25 Info | 0x1159348 | After base: fresh popup/slide lists at +0x20/+0x28 |
 
 Menu28's constructor (0x115eee8) forwards to BaseSystem with its concrete virtual table. OnEnabled registers event11 before Info25.Init registers its receiver. Menu.Init registers the same target/method again. The constructor's visible flag is CLR-zero/false; Init validates row shapes and subscribes without setting it. The resulting normal receiver order is Menu28 -> Info25 -> SubMenu27 -> Menu28. Debug30's enable hook calls the already-ported path visualization setter: visualize=true, wait milliseconds=0, independent of the application DEBUG update flag.
+
+### InitWorld entry
+
+AppData.InitWorld (`0x1101c48`,272 bytes) requires AppData.world_ and reads its whole loaded byte at+0x38. Zero calls Systems.CreateSystems and then World.AddSystems on that captured world; nonzero, including2/255, skips both. Factory callbacks cannot change the captured AddSystems receiver. It then queries AppData.world_ separately for CreateMap and again for World.Init. A world changed by those callbacks therefore affects later operations. The map request is always `(3,8,624,312,312,312,16,16,null)`, including the loaded branch. No loaded-byte write, world clear, save read or NewGame reset occurs in this body. A throwing step retains earlier effects and skips the suffix. Managed class-initialization semantics remain the runtime/provider's responsibility.
+
+World.AddSystems (`0x11357b4`,40 bytes) requires the receiver's manager, forwards the supplied system array to SystemManager.AddSystems and returns the receiver. World.Init (`0x113565c`,152 bytes) requires that manager, queries Count (`0x113bb78`), logs through Log.Println only for Count==0, re-reads the manager and calls SystemManager.Init with the receiver world. Count0 is a diagnostic condition, not an early return. The desktop's registered32-system projection reaches the nonempty branch; the generic empty-manager diagnostic and mutable-manager replacement are not separate host features.
+
+Port `mission_map::initialize_mission_world` uses provider-owned world/system-batch identities and the existing map request. Its contract tests cover whole-byte gating, all three world queries, rebindings during factory/map callbacks, repeated entry without implicit reset, missing worlds and ordered failure prefixes. The fresh MissionProfile path (`system_init 0`, `system_construct empty_manager`, `hero fresh`) calls it directly. Existing C++ owners retain the shared ComponentFactory.map_ storage before entry, while the actual registered map entity is created only after construct/add and before all32 Init callbacks. Camera/hero/town initialization and Stage.Start follow that map creation through their existing kernels.
+
+Nonzero system_init profiles remain explicitly initialized diagnostic snapshots. Their selected systems are not a restored Continue world: the host does not silently skip construction and pretend a loaded byte supplied its systems/party. Selecting the native loaded entry requires actual restoration first. Reports distinguish original_world_entry and world_entry_order; full scene-free startup still needs native saved/configuration producers.
 
 ### Enable, pause and removal
 
@@ -80,7 +92,7 @@ SystemManager.Serialize (0x113ce34) enumerates all systems in order and calls sl
 
 `update_scheduler.hpp/.cpp` supplies construct_base_system, captured-manager BasePause hooks, changed-value enable hooks and the fixed gameplay pause projection. Its generic Update dispatcher remains separate from pause. The general manager's mutable/versioned pause lists, removal delegates and positional serialization remain documented only.
 
-`system_construct empty_manager` requires system_init and stage_start, rejecting system_enabled/menu_visible snapshot overrides. MissionProfile supplies the current world and an explicitly empty manager, runs the32 constructor enable phases before Init, calls the existing Member/Camera/Exp/Fukidashi/Info state owners, and binds Menu/SubMenu/Debug hooks. C++ storage owners are allocated before that phase; managed allocation-failure identity/order and the full CLR allocation semantics are not claimed as reconstructed. Town7 owns its constructor list before base construction. No runtime, collection or pathfinding implementation is recreated. Scenario configuration and saved data remain explicit; system_init0 uses the table-backed fresh Town path described above. Native New Game/reset and binary restoration remain separate. Without construction, menu_visible0/1 exposes the provisional Init-only visibility snapshot, whose declared legacy default is true; the constructor mode derives false from the native zeroed field instead.
+`system_construct empty_manager` requires system_init and stage_start, rejecting system_enabled/menu_visible snapshot overrides. MissionProfile supplies the current world and an explicitly empty manager, runs the32 constructor enable phases, registers their initializers, creates the map and dispatches Init through the fresh entry above. It calls the existing Member/Camera/Exp/Fukidashi/Info state owners and binds Menu/SubMenu/Debug hooks. C++ storage owners are allocated before that phase; managed allocation-failure identity/order and full CLR allocation semantics are not reconstructed. Town7 owns its constructor list before base construction. No runtime, collection or pathfinding implementation is recreated. Scenario configuration and saved data remain explicit. Native NewGame/reset and binary restoration remain separate. Nonzero initialized snapshots keep their documented diagnostic order. Without construction, menu_visible0/1 exposes the provisional Init-only visibility snapshot, whose declared legacy default is true; the constructor mode derives false from the native zeroed field instead.
 
 Tests cover manager rebinding while enabled, missing world, null manager, virtual-hook failure prefixes, second-enable no-op, constructor pause before registration, all32 enable flags, native member/start state, Menu duplicate delivery/removal/restoration and continued gameplay after Init. Host commands and real-data observations belong to [integration](integration.md).
 
@@ -90,10 +102,13 @@ Fresh-town contracts use complete bounded ignored system-initializers/TownSystem
 
 The world roots use complete ignored bounded exports in research/exports/mission-world-entry/ and mission-area-entry/, together with entity-registration/M36958_World__cctor.asm, entity-factory/M36984_World__ctor.asm, mission-construction/BaseSystem_ctor.asm and mission-original-entry/kairo_unity_ecs_BaseSystem_SetWorld.asm. AppData.Init copy is ELF0x11004c0..0x11004d8; static/instance offsets come from registered table0x277ece8 and the v31 metadata. Only the world-binding part of AppData.Init is established here; its complete form/bootstrap contract is not claimed.
 
+InitWorld uses complete ecs-order/M34262_InitWorld.asm (272 bytes) and mission-initworld-entry/{World_Init,World_AddSystems}.asm (152/40 bytes), with zero missing words in coverage.tsv. Game registry identities resolve the direct Count and Log.Println calls; no runtime/container implementation is reconstructed. Addresses subtract Ghidra image base0x100000. Confidence high for this call/branch contract; the loaded desktop binding remains absent.
+
 Local research/exports/mission-construction.tsv and mission-construction/ contain all32 selected constructor bodies plus BaseSystem and SystemManager constructors, with full syntactic coverage. Factory order comes from ecs-order/M37991_CreateSystems.asm and factory-order.json; ecs-lifecycle/M37236_Deserialize.asm establishes construction before AddSystems. pause-hooks/ and mission-pause/ supply BasePause and Menu hook bodies. The analyzed ELF SHA256 is17a6cf3a3cef9bd7b387c4b9627df113a8b214f0deb07e1778585dac1143526f; Ghidra's image base0x100000 is subtracted from instruction addresses. Confidence high for these static call/field contracts; no Android comparison.
 
 ## Open questions
 
-- (blocking) Bind decoded system state and the original fresh/loaded InitWorld entry. Initial world aliases and SetWorld scope are established; the constructor mode still does not restore a save or establish Continue/new-game state.
+- (blocking) Bind native NewGame resets and saved/configuration providers for scene-free fresh mission entry; the fresh InitWorld sequence itself is host-bound.
+- (blocking) Restore world/party/systems before selecting InitWorld's loaded branch; explicit nonzero system_init snapshots are not a Continue implementation.
 - Bind non-deferred town entity rebuild and event31 consumers when S2 reaches them; the fresh Town list/permissions and slot19 Init branch are host-reachable.
 - Bind generic manager-list mutation, delegate-hash collision inputs and native FormManager timing only when the mission/town host requires them.

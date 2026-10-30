@@ -34,7 +34,7 @@ Storage layer (`kairo.unity.io`): `RecordStore..ctor` calls `Storage.Open` (`0x1
 | `main.AppData.LoadSystem` | `game:0x06000192` | Opens RecordStore 0, reads record 0 into system SecureProperty | medium |
 | `main.AppData.InitSystemSaveData` | `game:0x06000158` | Creates system SecureProperty at `AppData+0x190` | medium |
 | `main.AppData.NewGame` | `game:0x0600015a` | SaveSystem, new game SecureProperty, InitSystemSaveData, NewData, check-script consumer | medium |
-| `main.AppData.InitWorld` | `game:0x06000159` | Called after LoadGame on Continue | low |
+| `main.AppData.InitWorld` | `game:0x06000159` | Loaded-byte construction gate, map creation and World.Init; fresh mission binding | high |
 | `form.TitleForm.ContinueGame` | `game:0x06000916` | Continue: NewGame → LoadGame(0) → InitWorld → SelectForm | high |
 | `kairo.unity.ui.SaveRecorder.SaveSystem` | `kairo:0x06001728` | Writes system save via thread + `RunOnUiThread` | low |
 | `kairo.unity.io.RecordStore..ctor` | `kairo:0x06000f96` | Storage.Open / Storage.Read | low |
@@ -107,7 +107,7 @@ When `AppData.FlagCheck(4)` is true (otherwise a dialog is prepared): updates so
 3. `AppData.InitWorld` (`0x1218af4`),
 4. new `SelectForm` stored at `AppData+0xa0`, `FormManagerBase.ChangeCurrentForm`.
 
-`LoadGame` alone is not a complete load; the port must reproduce this sequence. Meaning of flag 4 not recovered.
+`LoadGame` alone is not a complete load; the port must reproduce this sequence. The [InitWorld entry kernel](ecs-lifecycle.md#initworld-entry) preserves the loaded-byte gate but the desktop selects its native path only for a fresh world; no restored Continue owner exists. Meaning of flag 4 is not recovered.
 
 ### NewGame (`0x1101d58`, 1420 bytes)
 
@@ -140,6 +140,7 @@ Record layout and codec in [../formats/save.md](../formats/save.md#delayed-event
 ## Port
 
 - `src/core/persistence/script_payload.{hpp,cpp}` + `tests/test_script_payload.cpp` (CTest `script_payload_contract`): the script-row codec only, see [../formats/script-payload.md](../formats/script-payload.md).
+- `src/core/gameplay/mission_map.{hpp,cpp}` + `tests/test_mission_map.cpp`: AppData.InitWorld orchestration through explicit world/system/map/Init providers. The mission host binds fresh entry; no save bytes are decoded by this function.
 - Missing: RecordStore/SecureProperty envelope, encryption, CRC64, BaseData sections, world block (see ecs.md), DelayEvent codec (blocked on string decode/localisation), save strings, LoadGame/NewGame/Continue orchestration.
 
 ## Evidence

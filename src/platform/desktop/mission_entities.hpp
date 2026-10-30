@@ -55,7 +55,7 @@ public:
                                 std::int32_t frame_max,std::int32_t resource,std::int32_t clip,core::ProjectilePoint initial);
     core::EntitySubset* factory_buttons()override{return subset({17});}
     void destroy_button(core::ComponentSlots& e,bool remove)override{destroy(e,remove);}
-    core::MapComponent& create_initial_map();
+    core::MapComponent& create_initial_map(core::MapCreation = core::initial_mission_map_creation());
     core::MapFactoryWorld& map_factory_world(){return map_world_;}
     core::ComponentSlots* create_camera();
     core::ContactPosition& acquire_camera_position()override{return acquire_position();}

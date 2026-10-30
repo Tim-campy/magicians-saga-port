@@ -67,7 +67,7 @@ void MissionProfile::initialize_factory(std::int32_t id,InitializationWorld* arg
 }
 void MissionProfile::initialize_loaded_world(){
     entity_world->player_world().loaded=*initialized_loaded_;
-    initialization_world_.state=&entity_world->player_world();std::array<InitSystem*,32> factory{};
+    initialization_world_.state=&entity_world->player_world();
     menu_button_receiver_=[this](const InputTouch* event,ComponentSlots*){
         menu_button_touch(menu_visible_,event,[]{throw std::logic_error("native menu layout/draw-off is unbound");});++menu_touches_;
     };
@@ -78,17 +78,41 @@ void MissionProfile::initialize_loaded_world(){
     system_states_[27].on_disabled=[this]{disable_pause_system(system_states_[27]);};
     system_states_[30].on_enabled=[this]{mission->set_debug_enabled(true);};
     system_states_[30].on_disabled=[this]{mission->set_debug_enabled(false);};
-    if(construct_systems_)construct_systems();
-    for(std::size_t id=0;id<factory.size();++id){
-        initializer_owners_[id]=std::make_unique<CallbackInitializer>([this,id](InitializationWorld* world){initialize_factory(static_cast<std::int32_t>(id),world);});
-        factory[id]=initializer_owners_[id].get();
+    if(construct_systems_&&*initialized_loaded_==0){
+        // Fresh entry runs the original owner: construct/add -> map -> World.Init.
+        initialize_mission_world(*this);original_world_entry_=true;
+    }else{
+        // Explicit initialized snapshots are diagnostic inputs, not a deserialized Continue world.
+        if(construct_systems_)construct_systems();
+        register_world_initializers();init_world_systems();
     }
-    append_gameplay_initializers(initializers_,factory);initialize_systems(initialization_,&initialization_world_);
-    initialization_complete_=true;
     mission->set_manager_paused(initialization_.paused); // Init clears the flag without dispatching Pause(false).
     if(humans->stage_input_enabled())humans->bind_stage_pause([this](bool value){pause_systems(value);});
     if(!native_stage_entry_)spatial->load_selected_map();
     humans->apply_initialized_scenario(); // Explicit input/population snapshot; Start replaces its native entry fields.
+}
+void MissionProfile::register_world_initializers(){
+    std::array<InitSystem*,32> factory{};
+    for(std::size_t id=0;id<factory.size();++id){
+        initializer_owners_[id]=std::make_unique<CallbackInitializer>([this,id](InitializationWorld* world){initialize_factory(static_cast<std::int32_t>(id),world);});
+        factory[id]=initializer_owners_[id].get();
+    }
+    append_gameplay_initializers(initializers_,factory);
+}
+MissionSystemBatch* MissionProfile::make_world_systems(){
+    construct_systems();world_entry_order_.push_back("create_systems");return &created_system_batch_;
+}
+void MissionProfile::add_world_systems(MissionSystemBatch* batch){
+    if(batch!=&created_system_batch_||!construction_complete_)throw std::invalid_argument("foreign or incomplete mission system batch");
+    register_world_initializers();world_entry_order_.push_back("add_systems");
+}
+void MissionProfile::create_world_map(MapCreation args){
+    // The existing shared ComponentFactory.map_ object is retained by every deferred owner.
+    entity_world->create_initial_map(std::move(args));world_entry_order_.push_back("create_map");
+}
+void MissionProfile::init_world_systems(){
+    initialize_systems(initialization_,&initialization_world_);initialization_complete_=true;
+    if(*initialized_loaded_==0)world_entry_order_.push_back("init_world");
 }
 void MissionProfile::initialize_fresh_town(){
     core::initialize_fresh_town(town_state_,*this);fresh_town_initialized_=true;
@@ -690,7 +714,8 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         }
         entity_world=std::make_unique<MissionEntities>(*catalog,progress,slots,geometry?&*geometry:nullptr,[&](std::int32_t id){auto* r=get_application_resource(application,id);return r?r->animations:nullptr;},
             [&](std::string_view name){auto it=resource_names.find(std::string(name));if(it==resource_names.end())throw std::invalid_argument("unbound enemy resource name: "+std::string(name));return it->second;});
-        MapComponent* live_map=map_images?&entity_world->create_initial_map():nullptr;
+        const bool original_fresh_entry=construct_systems_&&initialized_loaded_&&*initialized_loaded_==0;
+        MapComponent* live_map=map_images?(original_fresh_entry?entity_world->shared_map_component():&entity_world->create_initial_map()):nullptr;
         for(const auto& request:selected){ComponentSlots* entity=nullptr;
             if(std::holds_alternative<SelectedFreshHero>(request)){created.push_back(nullptr);continue;} // Member6.Init creates it after the earlier initializers.
             if(const auto* h=std::get_if<HumanCreation>(&request))entity=&entity_world->human(*h);
@@ -811,6 +836,8 @@ void MissionProfile::write_combat_report(std::ostream& out){
     out<<",\"replay_modal_ignored\":"<<replay_modal_ignored_;
     if(events_)events_->write_report(out);
     out<<",\"fresh_hero_bootstrap\":"<<(fresh_hero_?"true":"false")<<",\"fresh_town_initialized\":"<<(fresh_town_initialized_?"true":"false");
+    out<<",\"original_world_entry\":"<<(original_world_entry_?"true":"false")<<",\"world_entry_order\":[";
+    for(std::size_t i=0;i<world_entry_order_.size();++i){if(i)out<<',';out<<std::quoted(world_entry_order_[i]);}out<<']';
     if(fresh_town_initialized_){
         out<<",\"town_save19\":"<<*saved_town_count_<<",\"town_save19_writes\":"<<town_count_writes_<<",\"town_build_enable\":[";
         for(std::size_t i=0;i<town_state_.build_enable->size();++i){if(i)out<<',';out<<static_cast<int>(town_state_.build_enable->at(i));}out<<"],\"town_buildings\":[";

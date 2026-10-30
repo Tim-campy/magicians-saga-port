@@ -50,8 +50,8 @@ ComponentSlots& MissionEntities::bubble(ComponentSlots* parent,std::int32_t data
     auto& e=create_z_object(initial,resource_id,clip,ids_,static_cast<EffectFactoryHost&>(*this));
     return add_bubble(e,data_id,type,parent,maximum,*this);
 }
-MapComponent& MissionEntities::create_initial_map(){
-    core::create_map(initial_mission_map_creation(),ids_,static_cast<MapFactoryHost&>(*this));
+MapComponent& MissionEntities::create_initial_map(MapCreation args){
+    core::create_map(std::move(args),ids_,static_cast<MapFactoryHost&>(*this));
     map_=&map_component_;return map_component_;
 }
 ComponentSlots* MissionEntities::create_camera(){return &create_quest_camera(ids_,*this);}

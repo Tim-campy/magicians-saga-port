@@ -24,7 +24,8 @@ struct MissionSelection {
 // Shared strict scenario loader. An empty decoder decodes only images needed by Gauge22 logic.
 // Scenario state remains explicit; selecting a table row does not perform Stage.Start.
 class MissionProfile:private core::GaugeDrawingHost,private core::AuxiliaryInitializationWorld,private core::TownInitializationWorld,private core::SystemPauseManager,
-    private core::QuestFrameHost,private core::SelectPreludeHost,private core::FreshTownHost {
+    private core::QuestFrameHost,private core::SelectPreludeHost,private core::FreshTownHost,
+    private core::MissionWorldEntryHost,private core::MissionWorldEntryTarget {
 public:
     MissionProfile(const std::filesystem::path&,bool native,ArchiveImageSet::Decoder = {},std::optional<MissionRuntimeConfig> = std::nullopt,std::optional<std::filesystem::path> replay =std::nullopt,MissionSelection = {});
     MissionProfile(const MissionProfile&)=delete;
@@ -101,6 +102,16 @@ private:
     std::int32_t view_x()override{return view.margin_x;}
     std::shared_ptr<core::ImageAnimationValues> image_animation_values()override{return image_clocks_;}
     void initialize_loaded_world();
+    void register_world_initializers();
+    core::MissionWorldEntryTarget* entry_world()override{return entity_world?this:nullptr;}
+    core::MissionSystemBatch* make_world_systems()override;
+    std::uint8_t entry_loaded_byte()override{return entity_world->player_world().loaded;}
+    void add_world_systems(core::MissionSystemBatch*)override;
+    void create_world_map(core::MapCreation)override;
+    void init_world_systems()override;
+    core::MissionSystemBatch created_system_batch_;
+    bool original_world_entry_=false;
+    std::vector<std::string> world_entry_order_;
     void pause_systems(bool)override;
     void construct_systems();
     bool construct_systems_=false,constructing_systems_=false,construction_complete_=false;
