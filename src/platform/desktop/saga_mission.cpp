@@ -25,7 +25,7 @@ int main(int argc,char** argv)try{
                    "Viewer builds open a mission window; --frames N uses a bounded hidden window.\n"
                    "--headless requires --frames N; builds without the viewer support only headless mode.\n"
                    "--data resolves declared archive filenames below textassets/ without fallback.\n"
-                   "--quest replaces the scenario quest ID, retaining its explicit saved state.\n"
+                   "--quest replaces the scenario quest ID; mission_selection also binds that ID to decoded slot9/stage.\n"
                    "--capture requires viewer mode and --frames N; steps the native world before capturing its prepared viewport.\n"
                    "FPS/DEBUG/RNG and scenario state are explicit; deferred town transitions hold the old mission.\n"
                    "Input-enabled scenes replay native movement/attack controls; quest bootstrap and full-state hashes remain open.\n";return 0;

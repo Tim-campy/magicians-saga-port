@@ -13,6 +13,36 @@ from mission_scene_fixture import make_table_scene, make_shoot_scene, with_missi
 
 @unittest.skipUnless(EXE, 'saga_mission supplied by CTest')
 class MissionProfileTests(unittest.TestCase):
+    def test_saved_selection_uses_global_quest_id_for_both_quest_and_stage(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);scene=root/'scene.txt'
+            original=make_native_entry_scene(root,alternate_quest=True).replace('stage_loop quest 0 20 hold','stage_loop quest 0 0 hold')+'system_construct empty_manager\nquest_frame 0 0\n'
+            base=original.replace('quest 2 0\n','').replace('stage_start 0 null\n','')
+            def run(text,*args):
+                scene.write_text(text,encoding='utf-8');return self.run_host(scene,*args,frames=22)
+            native=base+'mission_selection 5 2 0\n'
+            manual=original.replace('stage_start 0 null','stage_start 2 area 5')
+            a=run(native);b=run(manual)
+            self.assertEqual(a.returncode,0,a.stderr);self.assertEqual(b.returncode,0,b.stderr)
+            data=json.loads(a.stdout);control=json.loads(b.stdout)
+            self.assertTrue(data['native_mission_selection']);self.assertEqual(data['stage_entry_stage'],2)
+            self.assertEqual(data['decoded_mission_selection'],{'area_slot8':5,'quest_slot9':2,'effective_quest_slot9':2})
+            for key in control.keys()-{'native_mission_selection'}:self.assertEqual(data[key],control[key],key)
+            changed=run(native,'--quest','3');expected=run(original.replace('quest 2 0','quest 3 0').replace('stage_start 0 null','stage_start 3 area 5'))
+            self.assertEqual(changed.returncode,0,changed.stderr);self.assertEqual(expected.returncode,0,expected.stderr)
+            data=json.loads(changed.stdout);control=json.loads(expected.stdout)
+            self.assertEqual(data['stage_entry_stage'],3);self.assertEqual(data['decoded_mission_selection']['effective_quest_slot9'],3)
+            for key in control.keys()-{'native_mission_selection'}:self.assertEqual(data[key],control[key],key)
+            # A valid cached area index can hold null; StartExplore checks only the array length.
+            gap=run(base+'mission_selection 0 2 0\n');self.assertEqual(gap.returncode,0,gap.stderr)
+            self.assertIsNone(json.loads(gap.stdout)['stage_area'])
+            for suffix in ('mission_selection -1 2 0\n','mission_selection 99 2 0\n','mission_selection 5 -1 0\n',
+                           'mission_selection 5 1 0\n','mission_selection 5 99 0\n','mission_selection 5 2\n',
+                           'mission_selection 5 2 0 extra\n','mission_selection 5 2 0\nquest 2 0\n',
+                           'mission_selection 5 2 0\nstage_start 2 area 5\n','stage_start 2 area 5\nmission_selection 5 2 0\n',
+                           'mission_selection 5 2 0\nmission_selection 5 3 0\n'):
+                self.assertNotEqual(run(base+suffix).returncode,0,suffix)
+
     def test_native_area_entry_retains_real_record_and_explicit_stage(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);scene=root/'scene.txt';text=make_native_entry_scene(root)

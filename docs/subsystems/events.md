@@ -42,7 +42,7 @@ Pipeline (ELF VAs, load bias 0):
 | `game.DelayEvent..ctor` (`0x11c9508`) | `game:0x0600062e` | Continuation record constructor | high |
 | `system.form.TapjoyForm.AcquireBalance` (`0x11b72a4`) | `game:0x0600053a` | Early-return guard before the queue pass in `SelectForm.Update` | medium |
 
-Related, documented here but owned elsewhere: `form.SelectForm.Update` `game:0x06000800` (ui), `form.SubForm.Finish` `game:0x060008cb` (ui), `form.SubForm.MakeTalkForm` `game:0x060008d2` / `MakeEvent` `game:0x060008d5` (text/presentation), `data.BaseData.get_isFound` `game:0x06001022` / `BaseData.Find` `game:0x06001027` (data), `StringArrayStream.*` (data/game tables), `system.billing.ui.BillingItem.GetState` `game:0x0600058d` (services), `DelayEvent.Serialize/Deserialize` (save).
+Related, documented here but owned elsewhere: `form.SelectForm.Update` `game:0x06000800` (ui), `form.SubForm.Finish` `game:0x060008cb` (ui), `form.SubForm.MakeTalkForm` `game:0x060008d2` / `MakeEvent` `game:0x060008d5` (text/presentation), `data.BaseData.get_isFound` `game:0x06001022` / `BaseData.Find` `game:0x06001027` (data), `StringArrayStream.*` (data/game tables), `system.billing.ui.BillingItem.GetState` `game:0x0600058d` (services), `DelayEvent.Serialize/Deserialize` (save). The slot8/9 writers and catalog aliases used at mission entry are described in [cached selection](data.md#cached-mission-selection).
 
 ## Behaviour
 

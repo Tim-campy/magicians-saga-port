@@ -131,9 +131,9 @@ def make_gauge_scene(root, defeats=6):
     return text + 'resource 23 "gauges.bin" "English.lproj" 0\nglobal_alias 23 23\nruntime 25 0 system 42\nenemy_gauges\n'
 
 
-def make_native_entry_scene(root):
+def make_native_entry_scene(root, alternate_quest=False):
     """Table-selected native Stage.Start with explicit decoded saved inputs."""
-    text=make_boss_scene(root,stage_entry=True)
+    text=make_boss_scene(root,stage_entry=True,alternate_quest=alternate_quest)
     replacements={'geometry 312 312 12':'geometry quest','human_system 10 0 95 0 0':'human_system quest 0 95 0 0',
                   'enemy_system 10000 0 10 25 7':'enemy_system quest 10000','enemy_pool 0\n':'',
                   'stage_notifications 1 0 0 2 0 0 -1':'stage_notifications 1 0 0 quest 1 0 -1',

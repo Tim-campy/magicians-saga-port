@@ -348,7 +348,14 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             if(!(row>>id>>count)||id<0||!progress.sortie_counts.emplace(id,count).second)throw std::invalid_argument("sorties requires unique character ID and saved int32 count");
             end(row);continue;
         }
-        if(operation=="quest"){
+        if(operation=="mission_selection"){
+            SavedMissionSelection saved{};
+            if(!native||selected_quest||stage_entry||!(row>>saved.area8>>saved.quest9>>rescued_prisoners))
+                throw std::invalid_argument("mission_selection requires decoded area-slot8 quest-slot9 rescued count, without quest/stage_start overrides");
+            saved_mission_selection_=saved;
+            selected_quest=selection.quest.value_or(saved.quest9);stage_entry=*selected_quest;stage_area_id=saved.area8;
+            native_stage_entry_=true;
+        }else if(operation=="quest"){
             std::int32_t id=0;
             if(!native||selected_quest||!(row>>id>>rescued_prisoners)||id<0)throw std::invalid_argument("quest requires one nonnegative ID and explicit saved rescued count");
             selected_quest=selection.quest.value_or(id);
@@ -552,7 +559,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         }else throw std::invalid_argument("unknown scene row type");
         end(row);
     }
-    if(selection.quest&&!selected_quest)throw std::invalid_argument("--quest requires a scenario quest row with explicit saved rescued count");
+    if(selection.quest&&!selected_quest)throw std::invalid_argument("--quest requires a scenario quest row or mission_selection with explicit saved rescued count");
     if(!has_world)throw std::invalid_argument("an explicit world matrix is required");
     const bool result_requested=wallet||record||recruits||stocks[0]||stocks[1]||stocks[2];
     if(construct_systems_&&(!initialized_loaded_||!stage_entry||menu_snapshot||std::find(enabled_rows.begin(),enabled_rows.end(),true)!=enabled_rows.end()))
@@ -576,12 +583,19 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             if(field.first&&!quest_fields.count(field.second))throw std::invalid_argument("selected quest conflicts with explicit static scenario fields");
         if(enemy_pool)throw std::invalid_argument("selected quest supplies enemy_pool; remove explicit override");
         catalog=std::make_unique<GameplayCatalog>(load_gameplay_catalog(*tables,false,parse_event_decimal,rewards.has_value()||collection||drop_catalog,result_requested,true,stage_area_id.has_value()));
-        if(stage_area_id){
+        const QuestDefinition* definition=nullptr;
+        if(saved_mission_selection_){
+            const auto records=select_mission_records(*catalog->areas,*catalog->quests,*stage_area_id,*selected_quest);
+            definition=records.quest;
+            if(records.area)stage_area=std::shared_ptr<AreaDefinition>(catalog->areas,records.area);
+        }else if(stage_area_id){
             auto& area=catalog->areas->at(static_cast<std::size_t>(*stage_area_id));
             if(!area)throw std::invalid_argument("selected area ID is a table gap");
             stage_area=std::shared_ptr<AreaDefinition>(catalog->areas,&*area);
         }
-        const auto& definition=catalog->quests->at(static_cast<std::size_t>(*selected_quest));
+        if(!saved_mission_selection_){
+            const auto& row=catalog->quests->at(static_cast<std::size_t>(*selected_quest));definition=row?&*row:nullptr;
+        }
         if(!definition)throw std::invalid_argument("selected quest ID is a table gap");
         auto q=std::make_shared<StageQuest>(definition->stage);q->rescued_prisoners=rescued_prisoners;
         human_scenario->distance=q->distance;human_scenario->quest=q;notifications->quest_flags=q->flags;
@@ -733,6 +747,9 @@ void MissionProfile::write_actor_parameters(ComponentSlots& actor,std::ostream& 
     if(const auto* enemy=dynamic_cast<EnemyRecordLink*>(actor.get(24)))out<<",\"enemy_state\":"<<enemy->state<<",\"enemy_frame\":"<<enemy->frame<<",\"enemy_flags\":"<<enemy->flags;
 }
 void MissionProfile::write_combat_report(std::ostream& out){
+    out<<",\"native_mission_selection\":"<<(saved_mission_selection_?"true":"false");
+    if(saved_mission_selection_)out<<",\"decoded_mission_selection\":{\"area_slot8\":"<<saved_mission_selection_->area8
+        <<",\"quest_slot9\":"<<saved_mission_selection_->quest9<<",\"effective_quest_slot9\":"<<*selected_quest<<'}';
     out<<",\"quest_frame_enabled\":"<<(quest_frame_?"true":"false")<<",\"world_update_calls\":"<<world_update_calls_<<",\"last_world_passes\":[";
     for(std::size_t i=0;i<last_world_passes_.size();++i){if(i)out<<',';out<<last_world_passes_[i];}out<<']';
     if(quest_frame_){

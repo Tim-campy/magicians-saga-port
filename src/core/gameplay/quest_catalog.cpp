@@ -1,5 +1,6 @@
 #include "quest_catalog.hpp"
 #include "table_catalog.hpp"
+#include <stdexcept>
 
 namespace saga::core {
 namespace {
@@ -46,5 +47,13 @@ QuestDefinition& load_quest_definition(QuestDefinition& receiver,std::optional<s
 }
 QuestTable load_quest_table(std::string_view text,bool normalize,const EventIntegerParser& parser){
     return detail::load_table_records<QuestDefinition>(text,normalize,parser,[](detail::TableTokens& t){QuestDefinition r;read(r,t);return r;});
+}
+MissionSelectionRecords select_mission_records(AreaTable& areas,QuestTable& quests,std::int32_t area_slot8,std::int32_t quest_slot9){
+    // AppData.StartExplore 0x11152c4..0x11152d4 validates the cache length,
+    // not the area row or Area.stages; QuestForm then indexes the global quest cache.
+    if(static_cast<std::size_t>(area_slot8)>=areas.size())throw std::out_of_range("mission area slot8 outside catalog");
+    auto& quest=quests.at(static_cast<std::size_t>(quest_slot9));
+    auto& area=areas.at(static_cast<std::size_t>(area_slot8));
+    return {area?&*area:nullptr,quest?&*quest:nullptr};
 }
 } // namespace saga::core

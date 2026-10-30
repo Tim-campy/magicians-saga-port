@@ -4,7 +4,7 @@ The save path is located statically end to end at the call level: `AppData.PackS
 
 ## Overview
 
-Two persisted objects live in `AppData` statics:
+Two persisted objects live in the singleton `AppData` instance (distinct from its static world binding):
 
 - **System save**: `SecureProperty` at `AppData+0x190`, built by `InitSystemSaveData`, filled from RecordStore record 0 by `LoadSystem`, written by `SaveRecorder.SaveSystem`.
 - **Game save (per slot)**: `SecureProperty` at `AppData+0x198`, rebuilt by `NewGame` and by `LoadGame`, read from record `slot+1`.
@@ -20,6 +20,8 @@ Known selectors (game save):
 | 13 | World (`EntityManager` then `SystemManager`) | `PackSave` → `World.Serialize` at `0x1107434` | `LoadGame` → `World.Deserialize` at `0x11086b4` |
 
 The selector is not a file offset, record number or version. Other selectors, and how `PackSave` iterates them, are not recovered.
+
+Normal-save integer slots are a different namespace from those selector blocks. SecureProperty+0x20 holds SecureInt references; QuestForm.Init reads decoded slots8/9 for area/global quest selection, and the UI stores the selected area/QuestData.id there. See [cached mission selection](data.md#cached-mission-selection). The mission host accepts decoded values at this boundary; it does not read or write the unresolved binary save envelope.
 
 Storage layer (`kairo.unity.io`): `RecordStore..ctor` calls `Storage.Open` (`0x1c997b4`) and `Storage.Read` (`0x1c9b8b0`). `RecordStore.ReadRecord(int)` (`0x1c98344`) calls `OpenRecordStore` and the long `ReadRecord` overload (`0x1c97bd4`), which calls `GetFileName`, `KairoPlugin.GetPreference` (`0x1c27f10`), `Storage.Read` (`0x1c99dd0`), two `Encrypter.Decode` overloads, `EncodeUtil.ByteAryToLong`, `CRC64.GetValue` and `IllegalFileException..ctor`. These are alternative paths, not a proven sequence. The name RecordStore does not prove a J2ME RMS layout.
 

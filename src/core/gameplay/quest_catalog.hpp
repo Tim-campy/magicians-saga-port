@@ -24,4 +24,12 @@ using QuestTable=std::vector<std::optional<QuestDefinition>>;
 // QuestData.Load 0x1172b44: null/empty preserves the receiver; failures keep successful stores.
 QuestDefinition& load_quest_definition(QuestDefinition&,std::optional<std::string_view>,const EventIntegerParser&);
 QuestTable load_quest_table(std::string_view,bool normalize_crlf,const EventIntegerParser&);
+struct MissionSelectionRecords {
+    AreaDefinition* area=nullptr;
+    QuestDefinition* quest=nullptr;
+};
+// QuestForm.Init selection projection (0x11d9d18..0x11da1b8): callers supply
+// decoded normal-save slots8/9. BootForm.Load caches alias these full catalogs.
+// StartExplore's area bound precedes quest indexing; gaps retain null identity.
+MissionSelectionRecords select_mission_records(AreaTable&,QuestTable&,std::int32_t area_slot8,std::int32_t quest_slot9);
 } // namespace saga::core

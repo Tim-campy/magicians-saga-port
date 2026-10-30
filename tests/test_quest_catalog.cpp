@@ -29,11 +29,22 @@ int main(int argc,char** argv){
         CHECK(area.stages!=stages&&*area.stages==EventIntegers({4})&&area.flags==7);
         load_area_definition(area,"8\tChanged\t9\t-2\t3",parse_event_decimal);CHECK(!area.stages&&area.flags==3);
         load_area_definition(area,"8\tChanged\t9\t0\t3",parse_event_decimal);CHECK(area.stages&&area.stages->empty());
-        const auto table=load_area_table("\xef\xbb\xbf" "2\tFirst\t5\t0\t1\r\n5\tOther\t7\t1\t8\t4\n2\tLast\t6\t-1\t2",false,parse_event_decimal);
+        auto table=load_area_table("\xef\xbb\xbf" "2\tFirst\t5\t0\t1\r\n5\tOther\t7\t1\t8\t4\n2\tLast\t6\t-1\t2",false,parse_event_decimal);
         CHECK(table.size()==6&&!table[0]&&!table[1]&&!table[3]&&!table[4]);
         CHECK(table[2]->name=="Last"&&!table[2]->stages&&table[2]->flags==2&&table[5]->stages->at(0)==8);
         CHECK(load_area_table("\r\n",true,parse_event_decimal).size()==1);
         try{load_area_table("-1\tBad\t0\t0\t0",false,parse_event_decimal);CHECK(false);}catch(const std::out_of_range&){}
+        QuestTable quests(8);quests[7]=QuestDefinition{};quests[7]->id=7;
+        auto selected=select_mission_records(table,quests,2,7);
+        CHECK(selected.area==&*table[2]&&selected.quest==&*quests[7]); // Global quest index, independent of null Area.stages.
+        quests[7]->image=91;CHECK(selected.quest->image==91);
+        CHECK(!select_mission_records(table,quests,0,7).area); // Cache gaps are not filtered out.
+        CHECK(!select_mission_records(table,quests,5,0).quest);
+        try{select_mission_records(table,quests,-1,7);CHECK(false);}catch(const std::out_of_range&){}
+        try{select_mission_records(table,quests,2,-1);CHECK(false);}catch(const std::out_of_range&){}
+        try{select_mission_records(table,quests,99,99);CHECK(false);}catch(const std::out_of_range& e){
+            CHECK(std::string(e.what()).find("area slot8")!=std::string::npos);
+        }
     }
     const std::string prefix="2\tSynthetic\t17\tmap\t4\t0\t1\t2\t3\tignored\talso ignored\t5\t6\t10\t40\t25\t3\t20\t150\t";
     const std::string suffix="1\t1\t2\t4\t90\t0\t7\t1\t0\t-1\t8\t9\t10\t2\t11";

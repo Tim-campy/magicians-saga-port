@@ -61,6 +61,8 @@ public:
     bool native_stage_controls()const{return initialization_complete_&&humans&&humans->stage_input_enabled();}
     bool accepts_fast_forward()const{return quest_frame_&&quest_frame_->debug_controls;}
 private:
+    struct SavedMissionSelection {std::int32_t area8,quest9;};
+    std::optional<SavedMissionSelection> saved_mission_selection_;
     struct QuestFrameConfig {bool debug_controls;std::int32_t orientation;};
     std::optional<QuestFrameConfig> quest_frame_;
     core::QuestFrameState quest_frame_state_; // SAGA_STUB(mission-form-fade-draw): timing is bound, fade overlay is not.
