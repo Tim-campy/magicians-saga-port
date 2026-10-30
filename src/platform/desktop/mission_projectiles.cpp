@@ -33,9 +33,12 @@ bool MissionHumans::damage(ComponentSlots* attacker,ComponentSlots& target,std::
 }
 void MissionHumans::enable_rewards(MissionRewardScenario scenario){
     if(reward_scenario_||!world_.reward_catalog_ready())throw std::invalid_argument("rewards require one explicit scenario and a loaded Treasure catalog");
-    if(enemy_scenario_&&(scenario.defeated!=enemies_.defeated_enemies||scenario.remaining!=enemies_.remaining_enemies))throw std::invalid_argument("reward counters conflict with enemy_population");
-    enemies_.defeated_enemies=scenario.defeated;enemies_.remaining_enemies=scenario.remaining;
-    for(const auto& row:records_.enemies)if(row)saved_.enemy_defeat_counts.emplace(row->id,scenario.saved_defeat_count);
+    if(!native_state_){
+        if(enemy_scenario_&&(scenario.defeated!=enemies_.defeated_enemies||scenario.remaining!=enemies_.remaining_enemies))throw std::invalid_argument("reward counters conflict with enemy_population");
+        enemies_.defeated_enemies=scenario.defeated;enemies_.remaining_enemies=scenario.remaining;
+    }
+    // EnemyData..ctor 0x116ee74 leaves defeatCount+0x20 at CLR zero; NewGame inherits RET.
+    for(const auto& row:records_.enemies)if(row)saved_.enemy_defeat_counts.emplace(row->id,native_state_?std::int32_t{}:scenario.saved_defeat_count);
     reward_scenario_=scenario;
 }
 void MissionHumans::defeat(ComponentSlots& e){

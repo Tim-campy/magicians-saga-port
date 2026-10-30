@@ -13,17 +13,21 @@ MissionStage::MissionStage(MissionHumans& owner,MissionStageScenario scenario):o
         enemy_entry_=std::make_unique<EnemyStageEntry>(owner_.enemies_,static_cast<EnemyPopulationHost&>(owner_));
         owner_.stage_.enemies=enemy_entry_.get();
     }
-    owner_.stage_.remaining_time=scenario_.remaining_time;owner_.stage_.boss_started=scenario_.boss_started;
-    if(scenario_.reset_timer)reset_stage_timer(owner_.stage_,*this);
-    owner_.quest_form_.fade_frame=scenario_.fade_frame;
+    if(!owner_.native_state_){
+        owner_.stage_.remaining_time=scenario_.remaining_time;owner_.stage_.boss_started=scenario_.boss_started;
+        if(scenario_.reset_timer)reset_stage_timer(owner_.stage_,*this);
+        owner_.quest_form_.fade_frame=scenario_.fade_frame;
+    }
     if(!owner_.table_quest_){
         auto rows=std::make_shared<std::vector<EventInstruction>>();
         for(const auto& e:scenario_.events)rows->push_back(std::make_shared<EventIntegers>(EventIntegers{e.first,e.second}));
         owner_.stage_.quest->events=std::make_shared<std::vector<EventScript>>(1,std::move(rows));
     }
-    const auto& groups=owner_.stage_.quest->events;
-    if(!groups||groups->empty()||!groups->at(0))throw std::invalid_argument("stage events require a first group");
-    owner_.stage_.event_states=std::make_shared<std::vector<std::uint8_t>>(groups->at(0)->size(),std::uint8_t{0});
+    if(!owner_.native_state_){
+        const auto& groups=owner_.stage_.quest->events;
+        if(!groups||groups->empty()||!groups->at(0))throw std::invalid_argument("stage events require a first group");
+        owner_.stage_.event_states=std::make_shared<std::vector<std::uint8_t>>(groups->at(0)->size(),std::uint8_t{0});
+    }
 }
 bool MissionStage::advance(std::int32_t pass,bool enabled){
     if(owner_.transition_pending())return false;

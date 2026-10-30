@@ -10,6 +10,7 @@ The host order is Human4 -> Enemy5 -> Projectile10 -> Move11 -> Emitter15 -> Mod
 
 | Method | Registry id | Role | Confidence |
 | --- | --- | --- | --- |
+| data.EnemyData..ctor | game:0x060010e6 | BaseData zero/sentinel initialization; defeatCount stays CLR zero | high |
 | ecs.EnemySystem.Init | game:0x06000e67 | Subset/system capture, quota arrays, ordered event23/29/30 registration | high |
 | ecs.EnemySystem.Update | game:0x06000e6a | Population prefix, live state pass, HP blink and activation/culling | high |
 | ecs.EnemySystem.UpdateWalking | game:0x06000e6c | Fresh speed, X following, boss Z bound | high |
@@ -116,6 +117,14 @@ MissionHumans calls initialize_enemies after Human Init and before Projectile In
 Explicit enemy_system/enemy_population/enemy_pool profile rows enable update_enemies with its real population prefix and factory-index5 gate. They supply Yugami, quest population limits/interval/base level, initial counters/boss flag and uniform section limits/counts. The same StageQuest object is used by Human/Stage/Enemy adapters. The existing 256-cell lottery scratch and counted RNG are shared across population calls. No Stage.OnStart is invoked merely to initialize the scenario: it would destroy the selected group. See [integration](integration.md#table-backed-enemy-init-frame-and-population-s1-a3) and [setup](../SETUP.md#headless-mission-host).
 
 The host tests cover fixed activation/movement, same-frame population/target assignment, the alternate Yugami cadence/level branch, repeatability, strict input groups and conflicting reward counters. The C++ MissionHumans contract sends actual ordered contact events, advances recoil to walking and verifies retargeting excludes a dead party member. A synthetic selected-frame shot profile can invoke Defeat twice while two shots are in flight before corpse expiry: the existing no-local-guard rule preserves two pending EXP/treasure pairs. This partial-schedule observation does not establish Android duplicate-reward behavior; caller/collision guards remain unresolved.
+
+### Fresh record and mission entry state
+
+EnemyData..ctor (`game:0x060010e6`, ELF0x116ee74,108 bytes) initializes metadata/class dependencies, calls Object..ctor, clears inherited discovery/new, and stores id=-1/flags0 through the known64-bit MOVI literal. It does not write defeatCount_ int32 at+0x20; successful fresh allocation therefore leaves that value zero. Its NewGame dispatch inherits BaseData.NewGame (`0x116bf98`,4-byte RET), so the fresh logical saved-defeat value is still zero after NewData. This is not a loaded-save decoder or a claim to port the complete record constructor.
+
+EnemySystem..ctor (`0x1151794`,88 bytes) forwards to BasePauseSystem without initializing game fields. Init allocates its actual ten-element arrays and retains counters/quest; OnStart establishes quest, runs Reset and fills quotas after initial creation. The mission_state new_game host mode preserves that sequence and omits the uniform counter/section snapshots. It seeds the canonical saved-defeat map with separate zero-baseline entries for every populated enemy record; all later AddDefeatCount mutations use it. Explicit Yugami and seeded RNG remain host inputs. The original rewards adapter and its uniform saved-state mode remain available for diagnostic/loaded snapshots.
+
+Evidence: complete ignored mission-enemy-fresh/EnemyData_ctor.asm and mission-construction/Factory05_EnemySystem_ctor.asm; existing BaseData virtual-slot inventory, Init/Reset and stage-start/F114e4b0.asm establish inheritance and call order. Ghidra addresses include project base0x100000; the addresses above are ELF VAs. Confidence high for static initialization; original runtime not compared.
 
 ## Evidence
 

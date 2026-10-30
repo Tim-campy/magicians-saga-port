@@ -21,6 +21,7 @@ struct MissionHumanScenario {
     std::int32_t distance,min_z_rate,max_z_rate,attribute,button;
     std::shared_ptr<core::StageQuest> quest; // Selected static table plus explicit saved state.
     bool stage_entry=false; // Fresh roster for native Start; selected mid-mission actors otherwise.
+    bool native_state=false; // Retain constructor/Init/Start state instead of applying scenario snapshots.
 };
 struct MissionRewardScenario {std::int32_t defeated,remaining,saved_defeat_count;};
 struct MissionNotificationScenario {
@@ -256,7 +257,7 @@ private:
     core::StageStartState stage_;core::AttackButtonState button_;core::MemberRoster members_;
     core::StageQuestForm quest_form_;
     core::EnemyCreationSystem enemies_;core::HumanFrameSystem system_;
-    bool deferred_init_=false;core::EnemyGaugeService* gauge_service_=nullptr;
+    bool deferred_init_=false,native_state_=false;core::EnemyGaugeService* gauge_service_=nullptr;
     std::unique_ptr<core::EnemyStageEntry> default_enemy_entry_;
     std::function<void(core::ComponentSlots*,std::int32_t)> damage_receiver_;
     core::HumanEventServices services_{records_,*this,*this};

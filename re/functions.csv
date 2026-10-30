@@ -4113,7 +4113,7 @@ game:0x060010e2,game:0x060010e2,data,,8,0x116ec24
 game:0x060010e3,data.EnemyData.Load,data,documented,344,0x116ec2c
 game:0x060010e4,game:0x060010e4,data,,120,0x116ed84
 game:0x060010e5,game:0x060010e5,data,,120,0x116edfc
-game:0x060010e6,game:0x060010e6,data,,108,0x116ee74
+game:0x060010e6,data.EnemyData..ctor,data,documented,108,0x116ee74
 game:0x060010e7,data.EnemyData..cctor,data,reimplemented,208,0x116eee0
 game:0x060010e8,game:0x060010e8,data,,8,0x116efb0
 game:0x060010e9,game:0x060010e9,data,,16,0x116efb8

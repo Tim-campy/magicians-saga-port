@@ -21,8 +21,12 @@ MissionHumans::MissionHumans(MissionEntities& world,const GameplayCatalog& data,
     table_quest_=static_cast<bool>(scenario.quest);
     stage_.quest=scenario.quest?std::move(scenario.quest):std::make_shared<StageQuest>();
     if(!table_quest_)stage_.quest->distance=scenario.distance;
-    stage_.min_z_rate=scenario.min_z_rate;stage_.max_z_rate=scenario.max_z_rate;stage_.attack_attribute=scenario.attribute;
-    button_.state=scenario.button;stage_.attack_buttons=std::make_shared<std::vector<AttackButtonState*>>(1,&button_);
+    native_state_=scenario.native_state;
+    if(native_state_&&!defer)throw std::invalid_argument("native mission state requires ordered Init and Stage.Start");
+    if(!native_state_){
+        stage_.min_z_rate=scenario.min_z_rate;stage_.max_z_rate=scenario.max_z_rate;stage_.attack_attribute=scenario.attribute;
+        button_.state=scenario.button;stage_.attack_buttons=std::make_shared<std::vector<AttackButtonState*>>(1,&button_);
+    }
     deferred_init_=defer;gauge_service_=gauge;
     if(!defer)enemies_.subset=world_.subset({24});stage_.members=&members_;stage_.humans=&system_;system_.transitions=static_cast<HumanFrameHost*>(this);
     auto cursor=required(world_.subset({14})).cursor();while(const auto actor=cursor.next()){

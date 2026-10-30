@@ -8,7 +8,7 @@ namespace saga::desktop {
 using namespace core;
 void MissionHumans::enable_enemies(MissionEnemyScenario scenario){
     if(enemy_scenario_)throw std::invalid_argument("enemy system requires one explicit scenario");
-    if(reward_scenario_&&(scenario.defeated!=enemies_.defeated_enemies||scenario.remaining!=enemies_.remaining_enemies))throw std::invalid_argument("enemy_population counters conflict with rewards");
+    if(!native_state_&&reward_scenario_&&(scenario.defeated!=enemies_.defeated_enemies||scenario.remaining!=enemies_.remaining_enemies))throw std::invalid_argument("enemy_population counters conflict with rewards");
     if(!table_quest_){
         auto& quest=*stage_.quest;quest.enemy_maximum=scenario.maximum;quest.enemy_total_limit=scenario.total;
         quest.enemy_interval=scenario.interval;quest.base_level=scenario.level;
@@ -16,10 +16,12 @@ void MissionHumans::enable_enemies(MissionEnemyScenario scenario){
         for(const auto& row:scenario.pool)rows->push_back(std::make_shared<EventIntegers>(EventIntegers{row.first,row.second}));
         quest.normal_enemies=std::make_shared<std::vector<EventScript>>(1,std::move(rows));
     }
-    enemies_.quest=stage_.quest;enemies_.created_enemies=scenario.created;
-    enemies_.defeated_enemies=scenario.defeated;enemies_.remaining_enemies=scenario.remaining;enemies_.loop_counter=scenario.loop_counter;
-    stage_.collection.boss_defeated=scenario.boss_defeated;
-    if(!deferred_init_){
+    if(!native_state_){
+        enemies_.quest=stage_.quest;enemies_.created_enemies=scenario.created;
+        enemies_.defeated_enemies=scenario.defeated;enemies_.remaining_enemies=scenario.remaining;enemies_.loop_counter=scenario.loop_counter;
+        stage_.collection.boss_defeated=scenario.boss_defeated;
+    }
+    if(!native_state_&&!deferred_init_){
         std::fill(enemies_.maximum_by_section->begin(),enemies_.maximum_by_section->end(),scenario.section_limit);
         std::fill(enemies_.created_by_section->begin(),enemies_.created_by_section->end(),scenario.section_created);
     }
@@ -27,7 +29,7 @@ void MissionHumans::enable_enemies(MissionEnemyScenario scenario){
 }
 void MissionHumans::apply_initialized_scenario(){
     if(input_)input_->apply_scenario();
-    if(enemy_scenario_){
+    if(enemy_scenario_&&!native_state_){
         std::fill(enemies_.maximum_by_section->begin(),enemies_.maximum_by_section->end(),enemy_scenario_->section_limit);
         std::fill(enemies_.created_by_section->begin(),enemies_.created_by_section->end(),enemy_scenario_->section_created);
     }
@@ -50,6 +52,7 @@ void MissionHumans::contact_sound(){} // SAGA_STUB(mission-contact-audio): nativ
 void MissionHumans::write_enemy_report(std::ostream& out){
     out<<",\"enemy_system_enabled\":"<<(enemy_scenario_?"true":"false");
     if(!enemy_scenario_)return;
+    if(native_state_)out<<",\"new_game_enemy_records\":"<<saved_.enemy_defeat_counts.size();
     out<<",\"enemy_created\":"<<enemies_.created_enemies<<",\"enemy_loop_counter\":"<<enemies_.loop_counter<<",\"enemies\":[";
     bool first=true;auto cursor=world_.subset({24,0})->cursor();while(const auto entry=cursor.next()){
         const auto* link=dynamic_cast<EnemyRecordLink*>((*entry)->get(24));const auto* pos=dynamic_cast<ContactPosition*>((*entry)->get(0));

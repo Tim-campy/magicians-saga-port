@@ -297,6 +297,9 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     std::vector<SelectedBubble> bubbles;
     std::vector<SelectedGauge> gauges;
     std::set<std::string> quest_fields;
+    bool native_mission_state=false;
+    std::int32_t native_yugami=0;
+    std::uint32_t native_held_keys=0;
     std::int32_t rescued_prisoners=0;
     std::optional<std::int32_t> stage_entry,stage_area_id;
     std::shared_ptr<AreaDefinition> stage_area;
@@ -523,6 +526,11 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
                 for(auto& value:values)if(!(row>>value))throw std::invalid_argument("mission_map requires start/middle/end/background chip IDs");
             }
             map_images=std::make_shared<EventIntegers>(std::move(values));
+        }else if(operation=="mission_state"){
+            std::string mode;std::uint64_t keys=0;
+            if(!native||native_mission_state||!(row>>mode>>native_yugami>>keys)||mode!="new_game"||keys>0xffffffffULL)
+                throw std::invalid_argument("mission_state requires new_game, explicit Yugami int32 and host-held keys uint32");
+            native_mission_state=true;native_held_keys=static_cast<std::uint32_t>(keys);
         }else if(operation=="human_system"){
             MissionHumanScenario value{};std::string distance;
             if(!native||human_scenario||!(row>>distance>>value.min_z_rate>>value.max_z_rate>>value.attribute>>value.button))throw std::invalid_argument("human_system requires distance min/max Z rates attribute button state");
@@ -651,6 +659,20 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             insert_render_command(queue,c);++commands;
         }else throw std::invalid_argument("unknown scene row type");
         end(row);
+    }
+    if(native_mission_state){
+        if(!new_game_save_||!fresh_hero_||!initialized_loaded_||*initialized_loaded_!=0||!construct_systems_||!quest_frame_||
+           human_scenario||rewards||notifications||collection||input_scenario||enemy_config||enemy_population||enemy_pool||
+           stage_loop||stage_events||stage_scenario.boss||(has_formation&&!fresh_formation))
+            throw std::invalid_argument("mission_state new_game requires new_game_save/fresh hero/system_init0/system_construct/quest_frame and excludes human/reward/enemy/notification/collection/input/stage snapshots or numeric formation");
+        human_scenario=MissionHumanScenario{};human_scenario->native_state=true;
+        rewards=MissionRewardScenario{};notifications=MissionNotificationScenario{};notifications->held_keys=native_held_keys;
+        quest_completion_new_game=true;collection=true;
+        input_scenario=MissionInputScenario{};input_scenario->held_keys=native_held_keys;
+        enemy.yugami=native_yugami;enemy_config=enemy_population=true;
+        stage_loop=stage_events=true;stage_scenario.boss=MissionBossScenario{};
+        has_formation=fresh_formation=true;
+        for(const auto* field:{"human_system","stage_notifications","enemy_system","stage_events","stage_loop","stage_boss"})quest_fields.insert(field);
     }
     if(new_game_save_){
         if(!selection.data_root||selected_quest||stage_entry||saved_town_count_||wallet||record||!quest_completion_new_game||

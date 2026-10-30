@@ -43,7 +43,7 @@ game:0x06000fb1	reimplemented	src/core/gameplay/quest_return.cpp	Desktop host bi
 game:0x06000fda	reimplemented	src/core/gameplay/quest_return.cpp	Deferred live area/stage snapshot, form switch then event 31 tested
 game:0x06000fb7	reimplemented	src/core/gameplay/stage_update.cpp	Native retry/state5/6 policy and ordered form/BGM suffix reachable from mission host through narrow StageGameOverHost; explicit initial state and answer.
 game:0x06000fb6	reimplemented	src/core/gameplay/human_impact.cpp	Main flag2 invokes game-over; mission event30 dispatch runs Stage before Enemy retarget; sub-character death does not require game-over inputs.
-game:0x06000f9b	reimplemented	src/core/gameplay/stage_start.cpp	Native ordered system references, three distinct state0/frame4 buttons, fresh collecting list and subscriptions30/9/15; failure/identity tests.
+game:0x06000f9b	reimplemented	src/core/gameplay/stage_start.cpp	Native ordered system references, three distinct state0/frame4 buttons, fresh collecting list and subscriptions30/9/15; failure/identity tests. Native mission-state mode keeps the Init-created button/collecting arrays.
 game:0x06000f9e	reimplemented	src/core/gameplay/stage_start.cpp	Complete startup ordering and partial failures; stage_start host binds native cleanup/map/party/enemy/drop chain with explicit saved inputs and audio stubs. Native fresh formation is retained; explicit saved formation remains an alternative.
 game:0x06000fbb	reimplemented	src/core/gameplay/combat_host.cpp	Enemy presence adds offered damage with wrap; null receiver faults; overkill and DEBUG integration tests
 game:0x06000fb2	reimplemented	src/core/gameplay/quest_rewards.cpp	Counters and signed bests ported with ordered live host reads and partial-failure tests
@@ -184,10 +184,10 @@ game:0x06000e73	reimplemented	src/core/gameplay/enemy_creation.cpp	Cached/boss/n
 game:0x06000e85	reimplemented	src/core/gameplay/enemy_factory.cpp	No-animation flag -> zero; parameter 5 binary32 multiply 2.23 then /100 and ordered floor 0.5575; factory tested.
 game:0x060000e3	reimplemented	src/core/gameplay/character_parameter_set.cpp	Enemy key order/growth/maxima into existing owning ParamSet; first duplicate retained, explicit level/maxLevel fields; actual factory tests.
 game:0x060010c9	reimplemented	src/core/gameplay/enemy_factory.cpp	Unsigned index<2; reuse matching character predicate, parameter map integration and boundary tests.
-game:0x06000e68	reimplemented	src/core/gameplay/enemy_population.cpp	Counter reset before quest guard, raw remaining total, zero current section counts then captured-world enemy destruction; partial failures tested.
+game:0x06000e68	reimplemented	src/core/gameplay/enemy_population.cpp	Counter reset before quest guard, raw remaining total, zero current section counts then captured-world enemy destruction; partial failures tested. Fresh mission uses this Reset without population snapshots.
 game:0x06000e78	reimplemented	src/core/gameplay/enemy_population.cpp	Capture current world before stored-group snapshot, require it after snapshot and destroy true; callback-created enemies survive; tested.
 game:0x06000e75	reimplemented	src/core/gameplay/enemy_population.cpp	Captured fixed rows/map, live map fields and current quest base level, actual fixed enemy creation; empty/null and mutation tests.
-game:0x06000e7b	reimplemented	src/core/gameplay/enemy_population.cpp	Publish quest, Reset/fixed/initial enemy, two-map coordinates and spinning entry, quotas/last-three 99999, live Yugami*100; concrete StageStart adapter tested.
+game:0x06000e7b	reimplemented	src/core/gameplay/enemy_population.cpp	Publish quest, Reset/fixed/initial enemy, two-map coordinates and spinning entry, quotas/last-three 99999, live Yugami*100; concrete StageStart adapter tested. Native mission-state mode retains Init arrays and computes quotas only here.
 game:0x06000e74	reimplemented	src/core/gameplay/enemy_population.cpp	Native weighted spawn and section bookkeeping use shared owner IDs/RNG/lottery in saga_mission; explicit pool and quota inputs.
 game:0x06000e8d	reimplemented	src/core/gameplay/enemy_population.cpp	Required entity/Enemy/data, count iff record NO_ANIMATION is clear; does not filter dead state; population cap tests.
 game:0x06000e8e	reimplemented	src/core/gameplay/enemy_population.cpp	Required second row integer before weighted draw; short later rows fault before selection even if earlier weight saturates the table; tested.
@@ -236,3 +236,4 @@ game:0x06000a8a	reimplemented	src/core/gameplay/quest_camera.cpp	Wrapping int32 
 game:0x06000a8b	reimplemented	src/core/gameplay/quest_camera.cpp	Wrapping int32 sum then signed truncation by2 inside actual camera projection; cursor offset/save/viewport integration tests.
 game:0x06000fd4	reimplemented	src/core/gameplay/stage_start.cpp	Explicit AttackButton constructor state0/frame4, confirmed from ELF0x6271d8 and tested through Stage.Init.
 game:0x06000ff1	reimplemented	src/core/gameplay/pass_initialization.cpp	Forward-removal quirk, three-int append and deferred/non-deferred rebuild boundary; partial-failure contract tested.
+game:0x060010e6	documented	docs/subsystems/combat-enemies.md	108-byte ctor only clears BaseData fields after Object ctor; defeatCount+0x20 stays CLR zero; fresh mission seeds separate saved counters

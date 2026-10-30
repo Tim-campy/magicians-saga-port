@@ -5,9 +5,11 @@ namespace saga::desktop {
 using namespace core;
 void MissionHumans::enable_notifications(MissionNotificationScenario scenario){
     if(notification_scenario_)throw std::invalid_argument("stage_notifications requires one explicit scenario");
-    stage_.state=scenario.state;stage_.frame=scenario.frame;stage_.retried=scenario.retried;
-    if(!table_quest_)stage_.quest->flags=scenario.quest_flags;
-    stage_.quest->completed=scenario.quest_completed?1:0;
+    if(!native_state_){
+        stage_.state=scenario.state;stage_.frame=scenario.frame;stage_.retried=scenario.retried;
+        if(!table_quest_)stage_.quest->flags=scenario.quest_flags;
+        stage_.quest->completed=scenario.quest_completed?1:0;
+    }
     held_keys_=scenario.held_keys;notification_scenario_=scenario;
 }
 void MissionHumans::game_over(std::int32_t reason){
@@ -15,6 +17,7 @@ void MissionHumans::game_over(std::int32_t reason){
     stage_game_over(stage_,reason,*this);
 }
 std::shared_ptr<StageDialog> MissionHumans::make_retry_form(std::int32_t cost){
+    if(native_state_)throw std::logic_error("mission service unbound: fresh retry form lifecycle and answer");
     auto form=std::make_shared<StageDialog>();form->answer=notification_scenario_.value().retry_answer;
     stage_forms_.push_back(form);form_names_[form.get()]="retry";
     notification_events_.push_back("make_retry:"+std::to_string(cost));return form;
@@ -52,6 +55,7 @@ void MissionHumans::send_touch_release(MovementControl& control,std::int32_t typ
     throw std::logic_error("mission service unbound: QuestForm touch release");
 }
 void MissionHumans::write_notification_report(std::ostream& out){
+    out<<",\"native_mission_state\":"<<(native_state_?"true":"false");
     out<<",\"notifications_enabled\":"<<(notification_scenario_?"true":"false");if(!notification_scenario_)return;
     out<<",\"stage_state\":"<<stage_.state<<",\"stage_frame\":"<<stage_.frame
        <<",\"boss_defeated\":"<<(stage_.collection.boss_defeated?"true":"false")

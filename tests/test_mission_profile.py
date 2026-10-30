@@ -68,6 +68,49 @@ class MissionProfileTests(unittest.TestCase):
             for bad in (text.replace('talk_layout 4 2 100 100\n',''),text.replace('talk_layout 4 2 100 100','talk_layout 4 1 100'),text.replace('mission_events fresh null 0 0 0','mission_events fresh missing 0 0 0')):
                 scene.write_text(bad,encoding='utf-8');self.assertNotEqual(self.run_host(scene,frames=22).returncode,0)
 
+    def test_native_mission_state_uses_init_start_without_snapshot_overrides(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);scene=root/'scene.txt'
+            original=make_native_entry_scene(root,alternate_quest=True).replace('stage_loop quest 0 20 hold','stage_loop quest 0 0 hold')+'system_construct empty_manager\nquest_frame 0 0\n'
+            fresh=original.replace('human 0 2 1 0 0 0 312 0 400\n','hero fresh\n').replace('player 0\n','').replace('system_init 1','system_init 0')
+            assets=root/'textassets';assets.mkdir()
+            for archive in root.glob('*.bin'):(assets/archive.name).write_bytes(archive.read_bytes())
+            (root/'new-game-save.tsv').write_text('new_game_save 1\nselection 5 2\ntown_capacity 1\nwallet 37 43\n',encoding='ascii')
+            snapshots=('human_system ','rewards ','enemy_system ','enemy_population ','enemy_pool ','stage_notifications ',
+                       'collection ','stage_loop ','stage_events ','input ','stage_boss ','party_formation ',
+                       'quest ','stage_start ','result_wallet ','result_record ')
+            text='\n'.join(line for line in fresh.splitlines() if not line.startswith(snapshots))+'\nnew_game_save\nmission_state new_game 10000 0\n'
+            def run(value,frames=21):
+                scene.write_text(value,encoding='utf8');return self.run_host(scene,'--data',str(root),frames=frames)
+            result=run(text);self.assertEqual(result.returncode,0,result.stderr);data=json.loads(result.stdout)
+            self.assertTrue(data['native_mission_state'] and data['native_party_formation'] and data['original_world_entry'])
+            self.assertEqual(data['new_game_enemy_records'],3)
+            expected=[-1]*16;expected[10]=2;self.assertEqual(data['party_formation'],expected)
+            self.assertEqual(data['attack_buttons'],[{'state':1,'frame':4},{'state':0,'frame':4},{'state':0,'frame':4}])
+            self.assertEqual(data['remaining_time'],5000);self.assertEqual(data['max_z_rate'],95)
+            self.assertEqual(data['input_held_keys'],0);self.assertEqual(data['saved_defeats'],[])
+            self.assertEqual(run(text).stdout,result.stdout)
+            # Same decoded inputs and native slot10 formation through the legacy explicit adapters.
+            control='\n'.join(line for line in fresh.splitlines() if not line.startswith(('quest ','stage_start ','result_wallet ','result_record ','party_formation ')))+'\nnew_game_save\nparty_formation '+' '.join(map(str,expected))+'\n'
+            control=control.replace('stage_notifications 1 0 0 quest 1 0 -1','stage_notifications 1 0 0 quest new_game 0 -1')
+            control=control.replace('rewards 0 1 4','rewards 0 1 0')
+            reference=run(control);self.assertEqual(reference.returncode,0,reference.stderr);reference=json.loads(reference.stdout)
+            excluded={'native_mission_state','native_party_formation'}
+            for key,value in reference.items():
+                if key not in excluded:self.assertEqual(data[key],value,key)
+            held=run(text.replace('new_game 10000 0','new_game 10000 131072'))
+            self.assertEqual(held.returncode,0,held.stderr);self.assertEqual(json.loads(held.stdout)['input_held_keys'],131072)
+            scene.write_text(text,encoding='utf8');replay=root/'native.replay';replay.write_text('25 attack 0\n',encoding='ascii')
+            touched=self.run_host(scene,'--data',str(root),'--replay',str(replay),frames=30)
+            self.assertEqual(touched.returncode,0,touched.stderr);self.assertEqual(json.loads(touched.stdout)['input_touches'],1)
+            for suffix in ('human_system quest 0 95 0 0','rewards 0 1 0','enemy_population 0 0 1 0 0 100 0',
+                           'stage_notifications 1 0 0 quest new_game 0 -1','collection fresh','stage_loop quest 0 0 hold',
+                           'stage_events quest','input fresh 0 0 0 0 0 0 0 0 0','stage_boss quest','mission_state new_game 10000 0'):
+                self.assertNotEqual(run(text+suffix+'\n').returncode,0,suffix)
+            for bad in (text.replace('new_game_save\n',''),text.replace('quest_frame 0 0\n',''),text.replace('system_init 0','system_init 1'),
+                        text.replace('new_game 10000 0','new_game 10000 4294967296'),text+'party_formation '+' '.join(map(str,expected))+'\n'):
+                self.assertNotEqual(run(bad).returncode,0)
+
     def test_native_fresh_formation_survives_member_init_into_stage_start(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);scene=root/'scene.txt'

@@ -10,9 +10,12 @@ ComponentSlots* MissionHumans::CollectionHost::front_line_human(){
 }
 void MissionHumans::enable_collection(){
     if(collection_enabled_||!notification_scenario_||!world_.reward_catalog_ready())throw std::invalid_argument("collection fresh requires one scenario, stage_notifications and Treasure catalog");
-    stage_.replace_rewards(std::make_shared<StageRewards>(StageRewards{0,0,0,{}}));
-    stage_.collection.collecting=std::make_shared<std::vector<ComponentSlots*>>();
-    stage_.collection.reward_box_picked_up=false;collection_enabled_=true;
+    if(!native_state_){
+        stage_.replace_rewards(std::make_shared<StageRewards>(StageRewards{0,0,0,{}}));
+        stage_.collection.collecting=std::make_shared<std::vector<ComponentSlots*>>();
+        stage_.collection.reward_box_picked_up=false;
+    }
+    collection_enabled_=true;
 }
 void MissionHumans::advance_collection(std::int32_t pass,bool enabled){
     if(!collection_enabled_||!gameplay_needs_update(3,enabled,pass)||stage_.dialog||stage_.state!=1)return;

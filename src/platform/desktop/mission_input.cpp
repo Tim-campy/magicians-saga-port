@@ -8,17 +8,21 @@ MissionInput::MissionInput(MissionHumans& owner,MissionInputScenario scenario,bo
     :owner_(owner),scenario_(std::move(scenario)),humans_{owner.system_,static_cast<HumanFrameHost&>(owner)}{
     const auto attribute=owner.stage_.attack_attribute;
     if(attribute<0||attribute>2||scenario_.last_active< -1||scenario_.last_active>2)throw std::invalid_argument("input requires native attack attributes0..2 and last-active -1..2");
-    if(scenario_.buttons.at(static_cast<std::size_t>(attribute)).state!=owner.button_.state)throw std::invalid_argument("input button state conflicts with human_system");
+    if(!owner_.native_state_&&scenario_.buttons.at(static_cast<std::size_t>(attribute)).state!=owner.button_.state)throw std::invalid_argument("input button state conflicts with human_system");
     if(owner.notification_scenario_&&scenario_.held_keys!=owner.held_keys_)throw std::invalid_argument("input held keys conflict with stage_notifications");
     controls_[0].touch={35,0x10011};controls_[1].touch={35,0x10013};
     for(std::int32_t i=0;i<3;++i)controls_.at(static_cast<std::size_t>(i+2)).touch={10,0x230000|i};
-    owner.held_keys_=scenario_.held_keys;owner.stage_.last_active_button=scenario_.last_active;owner.stage_.move_front_pushed=scenario_.front_pushed;
-    owner.stage_.attack_buttons=std::make_shared<std::vector<AttackButtonState*>>();
-    for(auto& button:scenario_.buttons)owner.stage_.attack_buttons->push_back(&button);
+    owner.held_keys_=scenario_.held_keys;
+    if(!owner_.native_state_){
+        owner.stage_.last_active_button=scenario_.last_active;owner.stage_.move_front_pushed=scenario_.front_pushed;
+        owner.stage_.attack_buttons=std::make_shared<std::vector<AttackButtonState*>>();
+        for(auto& button:scenario_.buttons)owner.stage_.attack_buttons->push_back(&button);
+    }
     if(!defer){initialize();subscribe_input_touch([this](const InputTouch* e){stage_touch(owner_.stage_,e);});}
 } // SAGA_STUB(mission-control-surfaces): stable native IDs/lifetime; SDL supplies keys, no Surface widgets.
 void MissionInput::initialize(){initialize_input(state_,this,*this);}
 void MissionInput::apply_scenario(){
+    if(owner_.native_state_)return;
     owner_.held_keys_=scenario_.held_keys;owner_.stage_.last_active_button=scenario_.last_active;owner_.stage_.move_front_pushed=scenario_.front_pushed;
     auto& buttons=*owner_.stage_.attack_buttons;
     for(std::size_t i=0;i<scenario_.buttons.size();++i)*buttons.at(i)=scenario_.buttons.at(i);
