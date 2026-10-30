@@ -249,13 +249,27 @@ build/viewer/queue_capture.exe scene.txt 600 220 --run-frames 12
 
 ### Headless mission host
 
-For table-selected quests, add `quest <id> <saved-rescued-count>` to the profile and use the `quest` source forms in [integration](subsystems/integration.md#table-selected-quests-s1-a1a3). Quest.txt comes from the existing tables archive; saved state, actors and resource bindings remain explicit. `stage_loop quest` uses the ported ResetTimer, while a numeric timer supplies an explicit mid-mission snapshot. The CLI accepts `--data` and `--quest` alongside the required `--scene`; standalone quest bootstrap remains open.
+The scene-free fresh entry uses the existing extracted media and four small local indexes. Generate the missing indexes without extracting the assets again:
+
+```powershell
+python -I tools/extract_assets.py --out extracted/full --mission-index
+python -I tools/extract_assets.py game/MagiciansSaga-1.4.0.apk --out extracted/full --new-game-save
+python -I tools/extract_assets.py game/MagiciansSaga-1.4.0.apk --out extracted/full --mission-initialization
+python -I tools/extract_assets.py --out extracted/full --mission-font
+.\build\viewer\saga_mission.exe --data .\extracted\full --quest 1
+# Fixed-pass execution without SDL:
+.\build\desktop\saga_mission.exe --data .\extracted\full --quest 1 --frames 600 --headless
+```
+
+The viewer command opens an interactive window; add `--frames N` for a bounded run or `--capture new-output.bmp --frames N` for a capture. Build it with `tools\build-viewer.cmd`. Native defaults and every unresolved context override are listed by `--help` and reported as provisional in bootstrap_context; FPS/damage DEBUG use MyConfig30/0, while the System.Random seed42 is declared host policy. The default font is selected from the manifest by Unity identity and its size/hash are checked by --mission-font. Automatic font selection covers English/default skin only; other policies require explicit --font. This entry initializes fresh records/world/formation; it does not load an Android save or boot through title/town. See [integration](subsystems/integration.md#scene-free-fresh-mission-s1-a1).
+
+For table-selected quests, add `quest <id> <saved-rescued-count>` to the profile and use the `quest` source forms in [integration](subsystems/integration.md#table-selected-quests-s1-a1a3). Quest.txt comes from the existing tables archive; saved state, actors and resource bindings remain explicit. `stage_loop quest` uses the ported ResetTimer, while a numeric timer supplies an explicit mid-mission snapshot. The diagnostic CLI accepts `--data` and `--quest` alongside `--scene`; the native fresh entry above needs no scene.
 
 Rotate13 follows actor speed after Move/Collision and before animation/rendering. Reports include rotation_steps and each selected actor's direction, direction_locked and animation_clip; no extra scenario row is needed. The local rotate-down.replay/rotate-up.replay demonstrations use the real quest profile above; see [facing integration](subsystems/integration.md#velocity-facing-rotation-s1-a2a3).
 
 The optional `enemy_gauges` row enables native enemy HP drawing. Bind resource23/global_alias23 to decoded `22_gauge.bin` and supply existing rewards saved counters explicitly; the original visibility threshold is saved defeats>=6. Headless mode reports ordered requests, while queue_capture renders their actual resource images. Local quest-gauges.txt and its run command are described in [health drawing](subsystems/integration.md#enemy-health-drawing-s1-a3).
 
-`saga_mission` is always built, including with `SAGA_BUILD_VIEWER=OFF`. It shares MissionProfile's archive/scene loader and selected logic step with queue_capture; no SDL is required. The existing pinned stb_image decoder is also built without the viewer because Gauge22 geometry reads image alpha. The selected profile must contain entities and an explicit simulate row. Archive paths are relative to the profile directory unless `--data` selects an extractor output root.
+`saga_mission` is always built, including with `SAGA_BUILD_VIEWER=OFF`. It shares MissionProfile's archive/scene loader and selected logic step with queue_capture; no SDL is required. The existing pinned stb_image decoder is also built without the viewer because Gauge22 geometry reads image alpha. Diagnostic profiles must contain entities and an explicit simulate row; the typed fresh entry prepares both directly. Archive paths are relative to the profile directory unless `--data` selects an extractor output root.
 
 ```powershell
 .\build\desktop\saga_mission.exe --scene .\research\exports\mission-data-scene\effects.txt --frames 120 --headless --fps 25 --debug 0 --rng system --seed 42
@@ -278,7 +292,7 @@ Use `mission_resources "English.lproj" 1` and `material_policy native` in the sc
 For a reproducible screenshot after native logic has processed a resize, add `--capture new-output.bmp --frames N` to the viewer host command. It steps and renders every frame through the retained mesh/material owner without wall-clock pacing, then saves the final viewport through the shared GL path; the destination must not exist. `--capture` is incompatible with `--headless`. This avoids adding a simulate override to the presentation owner, which deliberately starts with zero pre-roll.
 
 
-To open the prepared real-data mission directly through the game host (viewer build):
+To open an explicit diagnostic mission through the same game host (viewer build):
 
 ```powershell
 .\build\viewer\saga_mission.exe --data .\extracted\full --quest 1 --scene .\research\exports\mission-data-scene\quest-native-init.txt --fps 25 --debug 0 --rng system --seed 42

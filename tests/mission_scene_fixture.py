@@ -156,3 +156,31 @@ def make_native_entry_scene(root, alternate_quest=False, talk_events=False):
                  'result_wallet 10 20 0\nresult_record 0 0 0 0 0 0 0\n'
                  'result_inventory equipment 0 0 0\nresult_inventory cloth 0 0 0\n'
                  'result_inventory hat 0 0 0\nresult_recruits 0 0 0\n')
+
+
+def make_data_entry_fixture(root, font_file):
+    """Native bootstrap data and an equivalent diagnostic control; only synthetic/public bytes."""
+    from pathlib import Path
+    text=make_native_entry_scene(root,talk_events=True)
+    assets=root/'textassets';assets.mkdir()
+    for archive in root.glob('*.bin'):(assets/archive.name).write_bytes(archive.read_bytes())
+    entries=[(-1,'tables','xls'),(1,'hero','chara'),(3,'enemy','enemy-book'),(7,'quest','quest'),
+             (18,'map','chip'),(19,'bullet','bullet'),(20,'effect','effect'),(21,'hero','hat'),
+             (22,'hero','weapon'),(23,'effect','gauge')]
+    (root/'mission-resources.tsv').write_text('mission_resources 1\n'+''.join(
+        f'{"tables" if i==-1 else "resource"} {i} "textassets/{file}.bin" "{name}"\n' for i,file,name in entries),encoding='utf8')
+    (root/'new-game-save.tsv').write_text('new_game_save 1\nselection 5 2\ntown_capacity 1\nwallet 37 43\n',encoding='ascii')
+    (root/'mission-initialization.tsv').write_text('mission_initialization 1\nyugami 10000\norientation 0\nevent_arguments ""\n',encoding='ascii')
+    font=root/'unity/Font/different-number.ttf';font.parent.mkdir(parents=True);font.write_bytes(Path(font_file).read_bytes())
+    (root/'mission-font.tsv').write_text(f'mission_font 1\nfont "unity/Font/{font.name}" {font.stat().st_size}\n',encoding='ascii')
+    removed=('world ','projection ','slots ','view ','animate ','simulate ','gpu_depth ','material ',
+             'tables ','resource ','resource_name ','global_alias ','progress ','purchase ','sorties ','human ','player ',
+             'human_system ','rewards ','enemy_system ','enemy_population ','enemy_pool ','stage_notifications ',
+             'collection ','stage_loop ','stage_events ','input ','stage_boss ','party_formation ',
+             'quest ','stage_start ','result_wallet ','result_record ','result_inventory ','result_recruits ','gear_levels ')
+    control='mission_presentation 600 640 100 0 1 0 1500100 -1\nmission_resources "English.lproj" 1\nmaterial_policy native\ngpu_depth 24 1\n'
+    control+='\n'.join(line for line in text.splitlines() if not line.startswith(removed))+'\n'
+    control+='hero fresh\ntick_ms 40\nsystem_construct empty_manager\nquest_frame 0 initial\ngear_new_game\ncharacter_shop_new_game 1\nnew_game_save\nmission_initialization\nmission_state new_game initial 0\nmission_events new_game 0 0 0\nenemy_gauges\ncollisions\n'
+    control+=f'talk_font "{font.as_posix()}" 100 100 100 0 0 0 0 0\n'
+    control=control.replace('system_init 1','system_init 0').replace('runtime 25 0 system 42','runtime initial initial system 42')
+    return control

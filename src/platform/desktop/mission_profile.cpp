@@ -26,6 +26,22 @@ struct SelectedDrop {std::int32_t type,value,scale;ProjectilePoint position;};
 struct SelectedFreshHero {};
 struct SelectedBubble {std::int32_t parent,data_id,type,maximum,resource,clip;ProjectilePoint initial;};
 struct SelectedGauge {std::uint64_t step=0;std::int32_t parent=0;GaugeCreation args;};
+std::filesystem::path mission_font_path(const std::filesystem::path& root){
+    const auto index=root/"mission-font.tsv";
+    if(std::filesystem::file_size(index)>4096)throw std::length_error("mission font index exceeds4KiB");
+    std::ifstream in(index);std::string signature,kind,path;std::int32_t version=0;std::uint64_t size=0;
+    if(!(in>>signature>>version>>kind>>std::quoted(path)>>size)||signature!="mission_font"||version!=1||kind!="font"||size==0)
+        throw std::invalid_argument("invalid mission font index");
+    in>>std::ws;if(!in.eof())throw std::invalid_argument("unexpected mission font index fields");
+    const auto relative=std::filesystem::u8path(path);
+    if(relative.is_absolute()||relative.has_root_name()||relative.parent_path()!=std::filesystem::path("unity")/"Font"||relative.filename().empty())
+        throw std::invalid_argument("mission font must be a direct unity/Font child");
+    const auto result=std::filesystem::canonical(root/relative);
+    const auto child=result.lexically_relative(std::filesystem::canonical(root));
+    if(child.empty()||child.is_absolute()||std::find(child.begin(),child.end(),std::filesystem::path(".."))!=child.end()||std::filesystem::file_size(result)!=size)
+        throw std::invalid_argument("mission font path escapes data root or size differs");
+    return result;
+}
 }
 SceneResource::SceneResource(const std::filesystem::path& path,ResourceProfile profile,ArchiveImageSet::Decoder decoder)
     :archive(read(path),std::move(profile)),manager(archive){
@@ -251,7 +267,11 @@ void MissionProfile::load_replay(const std::filesystem::path& path){
         replay_[step].push_back({kind=="keys"?InputKind::keys:kind=="attack"?InputKind::attack:InputKind::pulse,argument});previous=step;
     }replay_bound_=true;
 }
-MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,ArchiveImageSet::Decoder decoder,std::optional<MissionRuntimeConfig> config,std::optional<std::filesystem::path> replay,MissionSelection selection):runtime(std::move(config)){
+MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,ArchiveImageSet::Decoder decoder,std::optional<MissionRuntimeConfig> config,std::optional<std::filesystem::path> replay,MissionSelection selection)
+    :MissionProfile(scene,native,std::move(decoder),std::move(config),std::move(replay),std::move(selection),nullptr){}
+MissionProfile::MissionProfile(const MissionBootstrapOptions& options,ArchiveImageSet::Decoder decoder,MissionRuntimeConfig config,std::optional<std::filesystem::path> replay)
+    :MissionProfile({},true,std::move(decoder),std::move(config),std::move(replay),MissionSelection{options.data_root,options.quest},&options){}
+MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,ArchiveImageSet::Decoder decoder,std::optional<MissionRuntimeConfig> config,std::optional<std::filesystem::path> replay,MissionSelection selection,const MissionBootstrapOptions* bootstrap):runtime(std::move(config)){
     if(selection.quest&&*selection.quest<0)throw std::invalid_argument("quest ID must be nonnegative");
     if(selection.data_root&&!std::filesystem::is_directory(*selection.data_root/"textassets"))throw std::invalid_argument("data root requires the extractor's textassets directory");
     const auto archive_path=[&](const std::string& path){
@@ -274,8 +294,42 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         if(value->images)textures.bind(*value->images);
         *slot=*alias=&value->manager.drawing();owners.push_back(std::move(value));
     };
+    const auto load_resources=[&](const std::string& language,std::int32_t dpi){
+        if(!native||!selection.data_root||tables||!owners.empty()||!resource_names.empty())
+            throw std::invalid_argument("mission resources require --data and no previous bindings");
+        const auto index=*selection.data_root/"mission-resources.tsv";
+        if(std::filesystem::file_size(index)>16384)throw std::length_error("mission resource index exceeds16KiB");
+        std::ifstream list(index);std::string signature;std::int32_t version=0;
+        if(!(list>>signature>>version)||signature!="mission_resources"||version!=1)throw std::invalid_argument("invalid mission resource index header");
+        std::set<std::int32_t> remaining{1,3,7,18,19,20,21,22,23};
+        for(std::string line;std::getline(list,line);){
+            std::istringstream entry(line);std::string kind,path,name;std::int32_t id=0;
+            entry>>std::ws;if(entry.eof())continue;
+            if(!(entry>>kind>>id>>std::quoted(path)>>std::quoted(name)))throw std::invalid_argument("invalid mission resource index row");end(entry);
+            const auto relative=std::filesystem::u8path(path);
+            if(relative.is_absolute()||relative.parent_path()!=std::filesystem::path("textassets")||relative.filename().empty())throw std::invalid_argument("mission resource path must be a direct textassets child");
+            const auto resolved=*selection.data_root/relative;
+            if(kind=="tables"&&id==-1&&name=="xls"&&!tables)
+                tables=std::make_unique<ResourceArchive>(read(resolved),ResourceProfile{language,dpi},ArchiveContents::data_only);
+            else if(kind=="resource"&&remaining.erase(id)&&!name.empty()&&resource_names.emplace(name,id).second)
+                load_resource(id,resolved,language,dpi);
+            else throw std::invalid_argument("duplicate or unexpected mission resource index entry");
+        }
+        if(!list.eof()||!tables||!remaining.empty())throw std::invalid_argument("incomplete mission resource index");
+    };
+    const auto presentation=[&](std::int32_t width,std::int32_t height,std::int32_t scale,std::int32_t auto_flag,std::int32_t update_flag,BitmapCamera camera){
+        if(!native||has_world||has_projection||has_view||has_slots||has_animation||simulate||scale<1||
+           (auto_flag!=0&&auto_flag!=1)||(update_flag!=0&&update_flag!=1))
+            throw std::invalid_argument("initial presentation requires native mode and no prior overrides");
+        offscreen_camera_=camera;view={width,height,scale,0,0,0,0,100};
+        has_world=has_projection=has_view=has_slots=has_animation=true;
+        reset_matrix(world);slots=35; // World.cctor MyEntityManager(0x23).
+        frames=0;automatic=auto_flag;application_update=update_flag;simulate=0;
+        resize_viewport(width,height);
+    };
     if(replay)load_replay(*replay);
-    std::ifstream input(scene);if(!input)throw std::runtime_error("cannot open scene description");
+    std::ifstream input;
+    if(!bootstrap){input.open(scene);if(!input)throw std::runtime_error("cannot open scene description");}
     std::vector<std::variant<HumanCreation,EnemyCreation,SelectedBullet,SelectedEffect,SelectedDrop,SelectedFreshHero>> selected;
     std::optional<MissionHumanScenario> human_scenario;bool runtime_row=false;
     MissionEventScenario event_scenario;bool event_context=false;
@@ -314,36 +368,13 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
                !(row>>width>>height>>scale>>auto_flag>>update_flag>>camera.near_clip>>camera.far_clip>>camera.z)||scale<1||
                (auto_flag!=0&&auto_flag!=1)||(update_flag!=0&&update_flag!=1))
                 throw std::invalid_argument("mission_presentation requires width height initial-form-scale animation0/1 update0/1 near far cameraZ and no presentation overrides");
-            // Spatial camera owns offsets. QuestForm margins0/0 and RenderSystem depth rate100 are native initializers.
-            offscreen_camera_=camera;view={width,height,scale,0,0,0,0,100};
-            has_world=has_projection=has_view=has_slots=has_animation=true;
-            reset_matrix(world);slots=35; // World.cctor MyEntityManager(0x23).
-            frames=0;automatic=auto_flag;application_update=update_flag;simulate=0; // Start-at-first-frame host policy.
-            resize_viewport(width,height);end(row);continue;
+            presentation(width,height,scale,auto_flag,update_flag,camera);end(row);continue;
         }
         if(operation=="mission_resources"){
             std::string language;std::int32_t dpi=0;
             if(!native||!selection.data_root||tables||!owners.empty()||!resource_names.empty()||!(row>>std::quoted(language)>>dpi))
                 throw std::invalid_argument("mission_resources requires --data, language/DPI and no previous resource bindings");
-            const auto index=*selection.data_root/"mission-resources.tsv";
-            if(std::filesystem::file_size(index)>16384)throw std::length_error("mission resource index exceeds16KiB");
-            std::ifstream list(index);std::string signature;std::int32_t version=0;
-            if(!(list>>signature>>version)||signature!="mission_resources"||version!=1)throw std::invalid_argument("invalid mission resource index header");
-            std::set<std::int32_t> remaining{1,3,7,18,19,20,21,22,23};
-            for(std::string line;std::getline(list,line);){
-                std::istringstream entry(line);std::string kind,path,name;std::int32_t id=0;
-                entry>>std::ws;if(entry.eof())continue;
-                if(!(entry>>kind>>id>>std::quoted(path)>>std::quoted(name)))throw std::invalid_argument("invalid mission resource index row");end(entry);
-                const auto relative=std::filesystem::u8path(path);
-                if(relative.is_absolute()||relative.parent_path()!=std::filesystem::path("textassets")||relative.filename().empty())throw std::invalid_argument("mission resource path must be a direct textassets child");
-                const auto resolved=*selection.data_root/relative;
-                if(kind=="tables"&&id==-1&&name=="xls"&&!tables)
-                    tables=std::make_unique<ResourceArchive>(read(resolved),ResourceProfile{language,dpi},ArchiveContents::data_only);
-                else if(kind=="resource"&&remaining.erase(id)&&!name.empty()&&resource_names.emplace(name,id).second)
-                    load_resource(id,resolved,language,dpi);
-                else throw std::invalid_argument("duplicate or unexpected mission resource index entry");
-            }
-            if(!list.eof()||!tables||!remaining.empty())throw std::invalid_argument("incomplete mission resource index");
+            load_resources(language,dpi);
             end(row);continue;
         }
         if(operation=="material_policy"){
@@ -672,6 +703,33 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         }else throw std::invalid_argument("unknown scene row type");
         end(row);
     }
+    if(bootstrap){
+        const auto& b=*bootstrap;
+        if(!runtime||b.tick_ms<1||b.tick_ms>1000||b.dpi<0||b.language.empty()||
+           std::any_of(b.language.begin(),b.language.end(),[](unsigned char c){return c<0x20;})||
+           b.depth_bits<17||b.depth_bits>32||(b.depth_step!=0&&b.depth_step!=1)||
+           b.font.requested_scale<1||!std::isfinite(b.font.application_ratio)||b.font.application_ratio<=0||
+           !std::isfinite(b.font.layout_scale)||b.font.layout_scale<=0||b.font.kerning_mode< -1||b.font.kerning_mode>1)
+            throw std::invalid_argument("invalid native mission bootstrap context");
+        auto font=b.font;
+        if(font.path.empty()){
+            if(b.language!="English.lproj"||font.japanese||font.japanese_style)
+                throw std::invalid_argument("automatic LegacyRuntime binding requires English/default skin; supply --font for other font policies");
+            font.path=mission_font_path(b.data_root);
+        }else font.path=std::filesystem::absolute(font.path);
+        presentation(b.width,b.height,100,b.automatic_images,b.application_update,b.camera);
+        load_resources(b.language,b.dpi);
+        bootstrap_options_=b;native_materials=true;has_gpu_depth=true;depth_bits=b.depth_bits;depth_step=b.depth_step;
+        fresh_hero_=true;selected.emplace_back(SelectedFreshHero{});players.push_back(0);tick_ms=b.tick_ms;
+        const auto map=initial_mission_map_creation();geometry=StageGeometry{map.step_x,map.step_z,0};
+        quest_fields.insert("geometry");map_images=std::make_shared<EventIntegers>(4,0);quest_fields.insert("mission_map");
+        collisions=enemy_gauges=true;initialized_loaded_=std::uint8_t{0};construct_systems_=true;
+        quest_frame_=QuestFrameConfig{b.debug_controls,0};initial_orientation=true;
+        gear_new_game_=true;character_shop_new_game_mask_=b.shop_find_mask;new_game_save_=true;
+        initial_context_requested=initial_yugami=true;native_mission_state=true; // Neutral host keys; SDL/replay supplies subsequent input.
+        event_context=true;event_scenario.new_game_context=true;event_scenario.short_words=b.short_words;
+        event_scenario.held_advance=b.held_advance;event_scenario.print=b.print;event_scenario.font=std::move(font);
+    }
     if(initial_context_requested){
         if(!selection.data_root||!new_game_save_||!fresh_hero_||!initialized_loaded_||*initialized_loaded_!=0||!construct_systems_)
             throw std::invalid_argument("mission_initialization requires --data/new_game_save/fresh hero/system_init0/system_construct");
@@ -963,6 +1021,19 @@ void MissionProfile::write_actor_parameters(ComponentSlots& actor,std::ostream& 
     if(const auto* enemy=dynamic_cast<EnemyRecordLink*>(actor.get(24)))out<<",\"enemy_state\":"<<enemy->state<<",\"enemy_frame\":"<<enemy->frame<<",\"enemy_flags\":"<<enemy->flags;
 }
 void MissionProfile::write_combat_report(std::ostream& out){
+    out<<",\"entry_source\":\""<<(bootstrap_options_?"data":"scene")<<'"';
+    if(bootstrap_options_){
+        const auto& b=*bootstrap_options_;const auto& f=b.font;
+        out<<",\"bootstrap_context\":{\"provisional\":true,\"language\":"<<std::quoted(b.language)<<",\"dpi\":"<<b.dpi<<",\"tick_ms\":"<<b.tick_ms
+           <<",\"debug_controls\":"<<(b.debug_controls?"true":"false")<<",\"short_words\":"<<(b.short_words?"true":"false")
+           <<",\"held_advance\":"<<(b.held_advance?"true":"false")<<",\"print\":"<<(b.print?"true":"false")
+           <<",\"font_source\":\""<<(f.path.empty()?"manifest-index":"explicit")<<"\",\"font_scale\":"<<f.requested_scale
+           <<",\"application_ratio\":"<<f.application_ratio<<",\"layout_scale\":"<<f.layout_scale
+           <<",\"japanese\":"<<(f.japanese?"true":"false")<<",\"japanese_style\":"<<(f.japanese_style?"true":"false")
+           <<",\"font_load_flags\":"<<f.load_flags<<",\"kerning_mode\":"<<f.kerning_mode<<",\"shop_find_mask\":"<<b.shop_find_mask
+           <<",\"camera\":["<<b.camera.near_clip<<','<<b.camera.far_clip<<','<<b.camera.z<<"],\"automatic_images\":"<<(b.automatic_images?"true":"false")
+           <<",\"application_update\":"<<(b.application_update?"true":"false")<<",\"depth_bits\":"<<b.depth_bits<<",\"depth_step\":"<<b.depth_step<<'}';
+    }
     out<<",\"replay_modal_ignored\":"<<replay_modal_ignored_;
     if(events_)events_->write_report(out);
     out<<",\"mission_initialization\":"<<(initial_context_?"true":"false");

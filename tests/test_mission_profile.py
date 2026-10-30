@@ -9,11 +9,49 @@ import unittest
 
 EXE = Path(sys.argv.pop(1)).resolve() if len(sys.argv) > 1 else None
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from mission_scene_fixture import make_table_scene, make_shoot_scene, with_mission_map, make_boss_scene, make_gauge_scene, make_native_entry_scene
+from mission_scene_fixture import make_table_scene, make_shoot_scene, with_mission_map, make_boss_scene, make_gauge_scene, make_native_entry_scene, make_data_entry_fixture
 
 
 @unittest.skipUnless(EXE, 'saga_mission supplied by CTest')
 class MissionProfileTests(unittest.TestCase):
+    @unittest.skipUnless(os.environ.get('SAGA_TEST_FONT'), 'public font fixture supplied by CTest')
+    def test_data_entry_has_no_scene_dependency_and_matches_native_control(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);control=make_data_entry_fixture(root,os.environ['SAGA_TEST_FONT'])
+            def run(*extra,frames=22):
+                return subprocess.run([str(EXE),'--data',str(root),'--quest','2','--frames',str(frames),'--headless',*extra],capture_output=True,text=True,timeout=30)
+            result=run();self.assertEqual(result.returncode,0,result.stderr);data=json.loads(result.stdout)
+            self.assertEqual(data['entry_source'],'data');self.assertTrue(data['bootstrap_context']['provisional'])
+            self.assertEqual(data['bootstrap_context']['font_source'],'manifest-index')
+            self.assertEqual(data['fps'],30);self.assertEqual(data['wallet'],{'money':37,'crystals':43})
+            self.assertTrue(data['native_mission_state'] and data['native_party_formation'] and data['talk_pending'])
+            self.assertEqual(data['event_execution_counts'],[[212,1]])
+            self.assertEqual(run().stdout,result.stdout)
+            scene=root/'control.txt';scene.write_text(control,encoding='utf8')
+            reference=self.run_host(scene,'--data',str(root),fps='initial',debug='initial',frames=22)
+            self.assertEqual(reference.returncode,0,reference.stderr);reference=json.loads(reference.stdout)
+            for key,value in reference.items():
+                if key!='entry_source':self.assertEqual(data[key],value,key)
+            scene.unlink() # Data entry still works when the only diagnostic file is absent.
+            self.assertEqual(run().stdout,result.stdout)
+            explicit=run('--font',os.environ['SAGA_TEST_FONT'],'--width','640','--height','600','--tick-ms','33','--ui-debug','1','--short-words','1',frames=21)
+            self.assertEqual(explicit.returncode,0,explicit.stderr);explicit=json.loads(explicit.stdout)
+            self.assertEqual(explicit['viewport']['width'],640);self.assertEqual(explicit['bootstrap_context']['tick_ms'],33)
+            self.assertTrue(explicit['bootstrap_context']['debug_controls'] and explicit['bootstrap_context']['short_words'])
+            self.assertEqual(explicit['bootstrap_context']['font_source'],'explicit')
+            for extra in (('--language','Japanese.lproj'),('--japanese','1'),('--ui-debug','2'),('--app-ratio','nan'),
+                          ('--tick-ms','0'),('--kerning','2'),('--width','0'),('--depth-bits','16')):
+                self.assertNotEqual(run(*extra).returncode,0,extra)
+            index=root/'mission-font.tsv';valid=index.read_text()
+            for bad in (valid+'font "unity/Font/other.ttf" 1\n',valid.replace('mission_font 1','mission_font 2'),
+                        valid.replace('unity/Font/different-number.ttf','../outside.ttf'),valid.replace(str((root/'unity/Font/different-number.ttf').stat().st_size),'1')):
+                index.write_text(bad);self.assertNotEqual(run().returncode,0)
+            index.unlink();self.assertNotEqual(run().returncode,0)
+            self.assertEqual(run('--font',os.environ['SAGA_TEST_FONT']).returncode,0)
+            # Diagnostic input and native context options have separate ownership.
+            scene.write_text(control,encoding='utf8')
+            self.assertNotEqual(self.run_host(scene,'--data',str(root),'--width','640',fps=30).returncode,0)
+
     @unittest.skipUnless(os.environ.get('SAGA_TEST_FONT'), 'public font fixture supplied by CTest')
     def test_talk_uses_font_blocks_instead_of_provisional_lengths(self):
         with tempfile.TemporaryDirectory() as directory:

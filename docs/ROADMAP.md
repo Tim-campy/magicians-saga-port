@@ -9,7 +9,7 @@ The plan in one page. Work happens in **vertical slices**: each ends in somethin
 | M0 | APK inventory, architecture, subsystem map | Done: [overview](subsystems/overview.md). |
 | M1 | Asset extraction and technical rendering | Partial: archives, OPT, SEB, Unity media verified; sprites of real entities render through GL; fonts and audio not ported. |
 | M2 | Boot, forms/menus and input | Static research; SelectForm passes ported in isolation (slice S2/S3). |
-| M3 | First playable gameplay loop | **Current = slice S1.** Scene host runs table-backed shots, terminal damage, enemy defeat, pending drops, enemy population, contact/area collisions, pickup and stage accumulation; clear/result grants, cleanup and decoded character writeback reach the scene host; native fresh-world/formation initialization runs; scene-free configuration, Continue restoration and interactive end flow remain open. |
+| M3 | First playable gameplay loop | **Current = slice S1.** Scene host runs table-backed shots, terminal damage, enemy defeat, pending drops, enemy population, contact/area collisions, pickup and stage accumulation; clear/result grants, cleanup and decoded character writeback reach the scene host; native fresh-world/formation initialization runs; scene-free fresh entry runs; Continue restoration and interactive end flow remain open. |
 | M4 | Save/load, progression, economy, content | Slice S3; save envelope not decoded. |
 | M5 | Windows/Linux release candidate | Windows builds and CTest; Linux builds in CI. |
 | M6 | 3DS feasibility benchmark | Not started; nothing is claimed. |
@@ -18,9 +18,9 @@ The plan in one page. Work happens in **vertical slices**: each ends in somethin
 
 ### S1 — Playable mission (current)
 
-Host: `saga_mission` (headless or SDL window; explicit scenario state remains required). Acceptance, checked by running it on the maintainer's extracted data:
+Host: `saga_mission` (headless or SDL window; fresh --data/--quest entry or explicit diagnostic scenario). Acceptance, checked by running it on the maintainer's extracted data:
 
-- [ ] A1. `saga_mission --data extracted --quest <id>` opens a window with the quest's map, party and enemies from the real tables.
+- [x] A1. `saga_mission --data extracted --quest <id>` opens a window with the quest's map, party and enemies from the real tables.
 - [ ] A2. Mouse/keyboard moves the hero and triggers attacks through the ported Human/Shoot/Projectile passes.
 - [ ] A3. The full system schedule runs each frame: enemies act, collisions, damage, defeat, drops, EXP.
 - [ ] A4. The stage ends (clear, game over, retreat) and prints the quest result (EXP, money, treasures, levels).
@@ -28,7 +28,6 @@ Host: `saga_mission` (headless or SDL window; explicit scenario state remains re
 - [ ] A6. Every service the host fakes is listed in the stub table of integration.md.
 
 Tasks:
-- [ ] Build `saga_mission --data/--quest` entry from the bound initial-state providers; expose unresolved viewport/font/UI inputs explicitly and remove diagnostic `--scene` (A1).
 - [ ] Bind Continue's decoded world/party/system restoration before selecting loaded InitWorld in `saga_mission` (A1).
 - [ ] Replace the synthetic catalogs/services of the 240-frame combat regression with the table-backed owner used by `saga_mission` (A3).
 - [ ] Add complete reached-world state hashing and record local per-quest golden replays (A5).

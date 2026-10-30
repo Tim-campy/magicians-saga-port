@@ -24,6 +24,8 @@ lowercase arrays from metadata default-data initializers.
 --runtime-tables exports the 288-byte Hashtable prime initializer from metadata.
 --collation exports seven version-3 resources from the mscorlib resource container.
 --collation-indexers adds the seven interval configurations derived from metadata/native initializers.
+--mission-font indexes the existing manifest's original LegacyRuntime font for the
+documented English/default-skin mission route, without re-extracting Unity media.
 Outputs and manifest stay local under extracted/; --check verifies all payloads and
 members. Names are retained in the manifest, output names have numeric prefixes
 to avoid Windows case collisions. No game content is embedded in the script.
@@ -146,6 +148,55 @@ def write_mission_index(root):
     output = bounded(root, 'mission-resources.tsv');payload = ('\n'.join(rows) + '\n').encode('utf-8')
     if output.exists() and output.read_bytes() != payload:
         raise ValueError('Refusing to replace differing mission resource index')
+    if not output.exists():
+        output.write_bytes(payload)
+    return output
+
+
+def write_mission_font(root):
+    """Index the English/default-skin font by Unity identity, never its output number.
+
+    The source GameSkin points to Font pathID10102 in Unity default resources.
+    Hash and size verification happens here; the native index needs no JSON or
+    cryptographic library. Font metrics/scales remain a separate host policy.
+    """
+    manifest = json.loads((root / 'manifest.json').read_text(encoding='utf-8'))
+    if (not isinstance(manifest, dict) or type(manifest.get('schema')) is not int or
+            manifest['schema'] != 3 or manifest.get('apk_sha256') != APK_SHA):
+        raise ValueError('Mission font requires the supported schema-3 extraction manifest')
+    media = manifest.get('unity_media')
+    if not isinstance(media, list) or any(not isinstance(entry, dict) for entry in media):
+        raise ValueError('Invalid mission font media inventory')
+    entries = [entry for entry in media if entry.get('name') == 'LegacyRuntime']
+    if len(entries) != 1:
+        raise ValueError('Mission LegacyRuntime font missing or ambiguous')
+    entry = entries[0]
+    if (entry.get('type') != 'Font' or entry.get('source') != 'assets/bin/Data/unity default resources' or
+            type(entry.get('path_id')) is not int or entry['path_id'] != 10102):
+        raise ValueError('Mission LegacyRuntime font identity mismatch')
+    relative = entry.get('output')
+    if not isinstance(relative, str):
+        raise ValueError('Invalid mission font output path')
+    parts = relative.split('/')
+    if (len(parts) != 3 or parts[:2] != ['unity', 'Font'] or parts[2] in ('', '.', '..') or
+            any(character in parts[2] for character in '\\:*?"<>|\r\n\t\0') or
+            Path(parts[2]).suffix.lower() not in ('.ttf', '.otf')):
+        raise ValueError('Mission font must be a direct unity/Font child')
+    path = bounded(root, relative)
+    if path.parent != (root / 'unity/Font').resolve() or not path.is_file():
+        raise ValueError('Mission font path is not a bounded font file')
+    size, checksum = entry.get('size'), entry.get('sha256')
+    if type(size) is not int or not 0 < size <= 64*1024*1024 or path.stat().st_size != size:
+        raise ValueError('Mission font size mismatch or outside64MiB host limit')
+    if not isinstance(checksum, str) or re.fullmatch('[0-9a-f]{64}', checksum) is None:
+        raise ValueError('Invalid mission font SHA256')
+    with path.open('rb') as font:
+        if hashlib.file_digest(font, 'sha256').hexdigest() != checksum:
+            raise ValueError('Mission font hash mismatch')
+    payload = (f'mission_font\t1\nfont\t{json.dumps(relative, ensure_ascii=False)}\t{size}\n').encode('utf-8')
+    output = bounded(root, 'mission-font.tsv')
+    if output.exists() and (not output.is_file() or output.stat().st_size != len(payload) or output.read_bytes() != payload):
+        raise ValueError('Refusing to replace differing mission font index')
     if not output.exists():
         output.write_bytes(payload)
     return output
@@ -721,6 +772,7 @@ def main():
     p.add_argument('--out', type=Path, default=Path('extracted'))
     p.add_argument('--check', action='store_true')
     p.add_argument('--mission-index', action='store_true', help='Index existing decoded mission archives for the native host; no APK re-extraction')
+    p.add_argument('--mission-font', action='store_true', help='Index the existing hash-checked LegacyRuntime font for English/default-skin mission entry')
     p.add_argument('--new-game-save', action='store_true', help='Export the reached normal-save NewGame seeds from the supported APK metadata only')
     p.add_argument('--mission-initialization', action='store_true', help='Export initial system Yugami/orientation and normal event-argument seeds from the supported APK metadata')
     p.add_argument('--collation-indexers', action='store_true', help='Include native indexer configurations and collation resources')
@@ -733,7 +785,13 @@ def main():
     p.add_argument('--unity-media', action='store_true', help='Also export Unity textures, fonts and FSB/WAV audio')
     args = p.parse_args()
     try:
-        if args.new_game_save or args.mission_initialization:
+        if args.mission_font:
+            if args.apk or args.check or any((args.mission_index, args.new_game_save, args.mission_initialization,
+                    args.unity_media, args.culture_signs, args.culture_names, args.culture_neutral,
+                    args.culture_lower, args.runtime_tables, args.collation, args.collation_indexers)):
+                raise ValueError('--mission-font requires existing --out only; cannot combine export/check modes')
+            print('Mission font index: ' + str(write_mission_font(args.out)))
+        elif args.new_game_save or args.mission_initialization:
             if not args.apk or args.check or args.mission_index or (args.new_game_save and args.mission_initialization) or any((args.unity_media, args.culture_signs, args.culture_names, args.culture_neutral, args.culture_lower, args.runtime_tables, args.collation, args.collation_indexers)):
                 raise ValueError('Select one mission seed export with APK and --out only')
             writer=write_new_game_save if args.new_game_save else write_mission_initialization

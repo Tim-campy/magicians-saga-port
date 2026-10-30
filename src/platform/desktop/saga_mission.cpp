@@ -1,4 +1,4 @@
-// Selected mission host. Loaded-world native Init is opt-in; original quest bootstrap remains unbound.
+// Native data-backed mission entry and explicit diagnostic scene entry share the same lifecycle.
 #include "mission_profile.hpp"
 #include "core/gameplay/game_random.hpp"
 #ifdef SAGA_MISSION_WINDOW
@@ -12,33 +12,55 @@
 #include <map>
 #include <set>
 #include <algorithm>
+#include <cmath>
 
 namespace {
 std::int32_t integer(std::string_view value){
     std::int32_t result=0;const auto parsed=std::from_chars(value.data(),value.data()+value.size(),result);
     if(parsed.ec!=std::errc{}||parsed.ptr!=value.data()+value.size())throw std::invalid_argument("invalid int32 option");return result;
 }
+float real(std::string_view value){
+    float result=0;const auto parsed=std::from_chars(value.data(),value.data()+value.size(),result);
+    if(parsed.ec!=std::errc{}||parsed.ptr!=value.data()+value.size()||!std::isfinite(result))throw std::invalid_argument("invalid finite float option");return result;
+}
+bool boolean(std::string_view value){const auto n=integer(value);if(n!=0&&n!=1)throw std::invalid_argument("bool options require0/1");return n!=0;}
 }
 int main(int argc,char** argv)try{
     if(argc==2&&std::string_view(argv[1])=="--help"){
-        std::cout<<"Usage: saga_mission --scene profile.txt --fps N --debug 0|1 --rng system --seed int32 [--data extracted-root] [--quest id] [--frames N] [--headless] [--replay inputs.txt] [--capture new-output.bmp]\n"
-                   "Viewer builds open a mission window; --frames N uses a bounded hidden window.\n"
-                   "--headless requires --frames N; builds without the viewer support only headless mode.\n"
-                   "--data resolves declared archive filenames below textassets/ without fallback.\n"
-                   "--quest replaces the scenario quest ID; mission_selection also binds that ID to decoded slot9/stage.\n"
-                   "--capture requires viewer mode and --frames N; steps the native world before capturing its prepared viewport.\n"
-                   "FPS/DEBUG accept initial for shipped MyConfig defaults (30/0); RNG/seed and other context remain explicit.\n"
-                   "Input-enabled scenes replay native movement/attack controls; quest bootstrap and full-state hashes remain open.\n";return 0;
+        std::cout<<"Usage: saga_mission --data extracted-root --quest id [options]\n"
+                   "Diagnostic: --scene profile.txt --fps N|initial --debug 0|1|initial --rng system --seed int32\n"
+                   "Viewer builds open a window; --frames N runs a bounded hidden window; --headless requires --frames N.\n"
+                   "Common: --replay inputs.txt --capture new.bmp; capture requires viewer mode and bounded frames.\n"
+                   "Data entry uses shipped FPS30/DEBUG0 and provisional desktop context: System RNG seed42,600x640,English.lproj,DPI1,tick40ms.\n"
+                   "Context: --width --height --language --dpi --tick-ms --ui-debug --short-words --held-advance --print.\n"
+                   "Font: --font path (otherwise manifest index, English/default skin only), --font-scale --app-ratio --layout-scale,\n"
+                   "      --japanese --japanese-style --ft-load --kerning (defaults100/100/100,0/0/0/0).\n"
+                   "Presentation: --camera-near --camera-far --camera-z --auto-images --application-update --depth-bits --depth-step.\n"
+                   "Other: --shop-mask; --fps/--debug accept initial; --rng system/--seed override the host defaults.\n"
+                   "Bootstrap options apply only without --scene. Context inputs are provisional, not observed Android runtime settings.\n";return 0;
     }
-    const std::set<std::string> required{"--scene","--fps","--debug","--rng","--seed"};
-    auto allowed=required;for(const auto* key:{"--replay","--frames","--data","--quest","--capture"})allowed.insert(key);
+    const std::set<std::string> legacy_required{"--scene","--fps","--debug","--rng","--seed"};
+    const std::set<std::string> bootstrap_keys{"--width","--height","--language","--dpi","--tick-ms","--ui-debug","--short-words","--held-advance","--print",
+        "--font","--font-scale","--app-ratio","--layout-scale","--japanese","--japanese-style","--ft-load","--kerning",
+        "--camera-near","--camera-far","--camera-z","--auto-images","--application-update","--depth-bits","--depth-step","--shop-mask"};
+    auto allowed=legacy_required;for(const auto* key:{"--replay","--frames","--data","--quest","--capture"})allowed.insert(key);
+    allowed.insert(bootstrap_keys.begin(),bootstrap_keys.end());
     std::map<std::string,std::string> options;bool headless=false;
     for(int i=1;i<argc;++i){const std::string key=argv[i];
         if(key=="--headless"){if(headless)throw std::invalid_argument("duplicate --headless");headless=true;continue;}
         if(!allowed.count(key)||i+1>=argc)throw std::invalid_argument("unsupported or incomplete option: "+key);
         if(!options.emplace(key,argv[++i]).second)throw std::invalid_argument("duplicate option: "+key);
     }
-    if(std::any_of(required.begin(),required.end(),[&](const auto& key){return !options.count(key);})||(headless&&!options.count("--frames")))throw std::invalid_argument("explicit scene/fps/debug/rng/seed and headless frames required; see --help");
+    const bool diagnostic=options.count("--scene")!=0;
+    if((diagnostic&&std::any_of(legacy_required.begin(),legacy_required.end(),[&](const auto& key){return !options.count(key);}))||
+       (!diagnostic&&(!options.count("--data")||!options.count("--quest")))||(headless&&!options.count("--frames")))
+        throw std::invalid_argument("explicit scene/fps/debug/rng/seed or --data/--quest and headless frames required; see --help");
+    if(diagnostic&&std::any_of(bootstrap_keys.begin(),bootstrap_keys.end(),[&](const auto& key){return options.count(key)!=0;}))
+        throw std::invalid_argument("bootstrap context options cannot be mixed with --scene");
+    if(!diagnostic){
+        options.try_emplace("--fps","initial");options.try_emplace("--debug","initial");
+        options.try_emplace("--rng","system");options.try_emplace("--seed","42"); // Declared deterministic host policy.
+    }
     const auto frames=options.count("--frames")?integer(options.at("--frames")):0;
     if(options.count("--capture")&&(headless||!options.count("--frames")))throw std::invalid_argument("capture requires viewer mode and --frames N");
     const auto defaults=saga::core::initial_game_frame_configuration;
@@ -57,7 +79,27 @@ int main(int argc,char** argv)try{
 #else
     if(!headless)throw std::invalid_argument("this build has no window; build with SAGA_BUILD_VIEWER=ON or pass --headless --frames N");
 #endif
-    saga::desktop::MissionProfile profile(std::filesystem::u8path(options.at("--scene")),true,decoder,saga::desktop::MissionRuntimeConfig{fps,debug!=0,seed,options.at("--rng")},replay,selection);
+    const saga::desktop::MissionRuntimeConfig runtime{fps,debug!=0,seed,options.at("--rng")};
+    std::unique_ptr<saga::desktop::MissionProfile> owner;
+    if(diagnostic)owner=std::make_unique<saga::desktop::MissionProfile>(std::filesystem::u8path(options.at("--scene")),true,decoder,runtime,replay,selection);
+    else{
+        saga::desktop::MissionBootstrapOptions b;b.data_root=*selection.data_root;b.quest=*selection.quest;
+        const auto set_int=[&](const char* key,std::int32_t& target){if(options.count(key))target=integer(options.at(key));};
+        const auto set_float=[&](const char* key,float& target){if(options.count(key))target=real(options.at(key));};
+        const auto set_bool=[&](const char* key,bool& target){if(options.count(key))target=boolean(options.at(key));};
+        set_int("--width",b.width);set_int("--height",b.height);set_int("--dpi",b.dpi);set_int("--tick-ms",b.tick_ms);
+        set_int("--depth-bits",b.depth_bits);set_int("--depth-step",b.depth_step);set_int("--shop-mask",b.shop_find_mask);
+        if(options.count("--language"))b.language=options.at("--language");
+        if(options.count("--font"))b.font.path=std::filesystem::u8path(options.at("--font"));
+        set_int("--font-scale",b.font.requested_scale);set_int("--ft-load",b.font.load_flags);set_int("--kerning",b.font.kerning_mode);
+        set_float("--app-ratio",b.font.application_ratio);set_float("--layout-scale",b.font.layout_scale);
+        set_float("--camera-near",b.camera.near_clip);set_float("--camera-far",b.camera.far_clip);set_float("--camera-z",b.camera.z);
+        set_bool("--japanese",b.font.japanese);set_bool("--japanese-style",b.font.japanese_style);
+        set_bool("--auto-images",b.automatic_images);set_bool("--application-update",b.application_update);
+        set_bool("--ui-debug",b.debug_controls);set_bool("--short-words",b.short_words);set_bool("--held-advance",b.held_advance);set_bool("--print",b.print);
+        owner=std::make_unique<saga::desktop::MissionProfile>(b,decoder,runtime,replay);
+    }
+    auto& profile=*owner;
     if(!profile.mission||!profile.simulate)throw std::invalid_argument("mission host requires selected entities and an explicit simulate row");
 #ifdef SAGA_MISSION_WINDOW
     if(!headless){
@@ -84,5 +126,5 @@ int main(int argc,char** argv)try{
     }
     std::cout<<']';profile.write_combat_report(std::cout);
     std::cout<<",\"render_commands\":"<<profile.queue.counts->at(0)+profile.queue.counts->at(1)
-             <<",\"scope\":\"selected scene; full application entry, save restoration and complete-state hashes unbound\"}\n";return 0;
+             <<",\"scope\":\"selected mission; full application entry, save restoration and complete-state hashes unbound\"}\n";return 0;
 }catch(const std::exception& error){std::cerr<<"saga_mission: "<<error.what()<<'\n';return 1;}

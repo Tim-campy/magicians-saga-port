@@ -21,13 +21,26 @@ struct MissionSelection {
     std::optional<std::filesystem::path> data_root;
     std::optional<std::int32_t> quest;
 };
-// Shared strict scenario loader. An empty decoder decodes only images needed by Gauge22 logic.
-// Scenario state remains explicit; selecting a table row does not perform Stage.Start.
+// Provisional desktop/locale/font context. Game records and mission state come from native providers.
+// Defaults are exposed by the CLI and reported; they are not an Android runtime capture.
+struct MissionBootstrapOptions {
+    std::filesystem::path data_root;
+    std::int32_t quest=0,width=600,height=640,tick_ms=40,dpi=1,shop_find_mask=1;
+    std::string language="English.lproj";
+    BitmapCamera camera{0.0F,1500100.0F,-1.0F};
+    MissionFontScenario font{{},100,0,0,100.0F,100.0F,false,false};
+    std::int32_t depth_bits=24,depth_step=1;
+    bool automatic_images=false,application_update=true;
+    bool debug_controls=false,short_words=false,held_advance=false,print=false;
+};
+// Shared typed mission bootstrap and strict diagnostic loader.
+// An empty decoder decodes only images needed by Gauge22 logic.
 class MissionProfile:private core::GaugeDrawingHost,private core::AuxiliaryInitializationWorld,private core::TownInitializationWorld,private core::SystemPauseManager,
     private core::QuestFrameHost,private core::SelectPreludeHost,private core::FreshTownHost,
     private core::MissionWorldEntryHost,private core::MissionWorldEntryTarget {
 public:
     MissionProfile(const std::filesystem::path&,bool native,ArchiveImageSet::Decoder = {},std::optional<MissionRuntimeConfig> = std::nullopt,std::optional<std::filesystem::path> replay =std::nullopt,MissionSelection = {});
+    MissionProfile(const MissionBootstrapOptions&,ArchiveImageSet::Decoder,MissionRuntimeConfig,std::optional<std::filesystem::path> replay=std::nullopt);
     MissionProfile(const MissionProfile&)=delete;
     MissionProfile& operator=(const MissionProfile&)=delete;
     bool step(); // False at an explicitly held deferred transition; no further old-mission logic.
@@ -66,6 +79,8 @@ public:
     bool accepts_live_gameplay_input()const{return accepts_live_input()&&!talk_pending();}
     std::string talk_title()const{return events_?events_->title():std::string{};}
 private:
+    MissionProfile(const std::filesystem::path&,bool,ArchiveImageSet::Decoder,std::optional<MissionRuntimeConfig>,std::optional<std::filesystem::path>,MissionSelection,const MissionBootstrapOptions*);
+    std::optional<MissionBootstrapOptions> bootstrap_options_;
     std::unique_ptr<MissionEvents> events_;
     struct SavedMissionSelection {std::int32_t area8,quest9;};
     std::optional<SavedMissionSelection> saved_mission_selection_;

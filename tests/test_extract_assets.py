@@ -6,6 +6,7 @@ import json
 import tempfile
 import unittest
 import hashlib
+import io
 from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location('extract_assets', Path(__file__).parents[1]/'tools/extract_assets.py')
@@ -95,6 +96,108 @@ class MissionInitializationTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError,'replace differing'):extractor.write_mission_initialization(apk,root)
                 self.assertEqual(output.read_bytes(),b'keep user context')
             self.assertEqual(other.read_bytes(),b'keep normal save seed')
+
+
+class MissionFontTests(unittest.TestCase):
+    def fixture(self, root, filename='991_renamed font.ttf'):
+        relative='unity/Font/'+filename
+        path=root/relative;path.parent.mkdir(parents=True)
+        payload=b'synthetic font payload'
+        path.write_bytes(payload)
+        entry={'source':'assets/bin/Data/unity default resources', 'path_id':10102,
+               'name':'LegacyRuntime', 'type':'Font', 'output':relative,
+               'size':len(payload), 'sha256':hashlib.sha256(payload).hexdigest()}
+        manifest={'schema':3, 'apk_sha256':extractor.APK_SHA, 'unity_media':[entry]}
+        self.write_manifest(root, manifest)
+        return manifest,entry,path,payload
+
+    def write_manifest(self, root, manifest):
+        (root/'manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+
+    def test_identity_selection_ignores_numeric_filename_and_repeats(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);manifest,entry,path,payload=self.fixture(root,'991_renamed á.ttf')
+            original=(root/'manifest.json').read_bytes()
+            output=extractor.write_mission_font(root)
+            self.assertEqual(output.read_text(encoding='utf-8'),
+                             f'mission_font\t1\nfont\t"{entry["output"]}"\t{len(payload)}\n')
+            self.assertEqual(extractor.write_mission_font(root),output)
+            self.assertEqual((root/'manifest.json').read_bytes(),original)
+            self.assertEqual(path.read_bytes(),payload)
+
+    def test_missing_duplicate_and_wrong_identity_fail_without_output(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);manifest,entry,_,_=self.fixture(root)
+            cases=[[],[entry,dict(entry)]]
+            for key,value in (('name','Other'),('type','Texture2D'),('source','other bundle'),('path_id',3),('path_id',True)):
+                changed=dict(entry);changed[key]=value;cases.append([changed])
+            for media in cases+[None,{},['bad row']]:
+                with self.subTest(media=media):
+                    manifest['unity_media']=media;self.write_manifest(root,manifest)
+                    with self.assertRaises(ValueError):extractor.write_mission_font(root)
+                    self.assertFalse((root/'mission-font.tsv').exists())
+
+    def test_version_size_and_hash_checks_preserve_existing_output(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);manifest,entry,path,payload=self.fixture(root)
+            output=root/'mission-font.tsv';output.write_bytes(b'keep user index')
+            cases=[('schema',2),('schema',4),('schema',3.0),('schema',True),('apk_sha256','other APK')]
+            for key,value in cases:
+                changed=dict(manifest);changed[key]=value;self.write_manifest(root,changed)
+                with self.subTest(key=key,value=value),self.assertRaises(ValueError):extractor.write_mission_font(root)
+            for changed in ([],None):
+                self.write_manifest(root,changed)
+                with self.assertRaises(ValueError):extractor.write_mission_font(root)
+            for key,value in (('size',0),('size',-1),('size',True),('size',64*1024*1024+1),('size',1),
+                              ('sha256',None),('sha256','bad'),('sha256','0'*64)):
+                changed=dict(entry);changed[key]=value;manifest['unity_media']=[changed];self.write_manifest(root,manifest)
+                with self.subTest(key=key,value=value),self.assertRaises(ValueError):extractor.write_mission_font(root)
+                self.assertEqual(output.read_bytes(),b'keep user index')
+            manifest['unity_media']=[entry];self.write_manifest(root,manifest)
+            path.write_bytes(b'x'*len(payload))
+            with self.assertRaisesRegex(ValueError,'hash mismatch'):extractor.write_mission_font(root)
+            self.assertEqual(output.read_bytes(),b'keep user index')
+
+    def test_paths_are_direct_bounded_font_children(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);manifest,entry,_,_=self.fixture(root)
+            for relative in ('/absolute.ttf','../outside.ttf','C:/absolute.ttf','unity/Font/../x.ttf',
+                             'unity/Font/nested/x.ttf','unity/Font\\x.ttf','unity/Font/x:y.ttf',
+                             'unity/Font/.','unity/Font/','unity/Font/x.png','unity/Font/x\n.ttf',
+                             'unity/Font/x"y.ttf','unity/Font/x?y.ttf',None):
+                changed=dict(entry);changed['output']=relative;manifest['unity_media']=[changed];self.write_manifest(root,manifest)
+                with self.subTest(relative=relative),self.assertRaises(ValueError):extractor.write_mission_font(root)
+                self.assertFalse((root/'mission-font.tsv').exists())
+            entry['output']='unity/Font/missing.ttf';manifest['unity_media']=[entry];self.write_manifest(root,manifest)
+            with self.assertRaises(ValueError):extractor.write_mission_font(root)
+
+    def test_symlink_cannot_escape_font_directory(self):
+        with tempfile.TemporaryDirectory() as directory,tempfile.TemporaryDirectory() as outside:
+            root=Path(directory);manifest,entry,path,payload=self.fixture(root)
+            target=Path(outside)/'outside.ttf';target.write_bytes(payload);path.unlink()
+            try:path.symlink_to(target)
+            except OSError:self.skipTest('File symlinks are unavailable on this host')
+            with self.assertRaisesRegex(ValueError,'escapes destination'):extractor.write_mission_font(root)
+            path.unlink();target=root/'elsewhere.ttf';target.write_bytes(payload);path.symlink_to(target)
+            with self.assertRaisesRegex(ValueError,'bounded font file'):extractor.write_mission_font(root)
+            self.assertFalse((root/'mission-font.tsv').exists())
+
+    def test_differing_index_is_preserved(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);self.fixture(root)
+            output=extractor.write_mission_font(root);output.write_bytes(b'keep user index')
+            with self.assertRaisesRegex(ValueError,'replace differing'):extractor.write_mission_font(root)
+            self.assertEqual(output.read_bytes(),b'keep user index')
+
+    def test_cli_font_mode_is_exclusive_before_reading_or_extracting(self):
+        flags=('owned.apk','--check','--mission-index','--new-game-save','--mission-initialization',
+               '--unity-media','--culture-signs','--culture-names','--culture-neutral','--culture-lower',
+               '--runtime-tables','--collation','--collation-indexers')
+        for flag in flags:
+            with self.subTest(flag=flag),patch.object(extractor.sys,'argv',['extract_assets.py','--mission-font',flag]),\
+                    patch.object(extractor,'write_mission_font') as writer,patch.object(extractor.sys,'stderr',io.StringIO()):
+                with self.assertRaises(SystemExit) as result:extractor.main()
+                self.assertEqual(result.exception.code,1);writer.assert_not_called()
 
 
 class MissionIndexTests(unittest.TestCase):
