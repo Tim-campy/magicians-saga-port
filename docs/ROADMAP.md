@@ -9,7 +9,7 @@ The plan in one page. Work happens in **vertical slices**: each ends in somethin
 | M0 | APK inventory, architecture, subsystem map | Done: [overview](subsystems/overview.md). |
 | M1 | Asset extraction and technical rendering | Partial: archives, OPT, SEB, Unity media verified; sprites of real entities render through GL; fonts and audio not ported. |
 | M2 | Boot, forms/menus and input | Static research; SelectForm passes ported in isolation (slice S2/S3). |
-| M3 | First playable gameplay loop | **Current = slice S1.** Scene host runs table-backed shots, terminal damage, enemy defeat, pending drops, enemy population, contact/area collisions, pickup and stage accumulation; clear/result grants, cleanup and decoded character writeback reach the scene host; save-backed quest selection, interactive end flow and fresh-world bootstrap remain open. |
+| M3 | First playable gameplay loop | **Current = slice S1.** Scene host runs table-backed shots, terminal damage, enemy defeat, pending drops, enemy population, contact/area collisions, pickup and stage accumulation; clear/result grants, cleanup and decoded character writeback reach the scene host; native fresh-world/formation initialization runs; scene-free configuration, Continue restoration and interactive end flow remain open. |
 | M4 | Save/load, progression, economy, content | Slice S3; save envelope not decoded. |
 | M5 | Windows/Linux release candidate | Windows builds and CTest; Linux builds in CI. |
 | M6 | 3DS feasibility benchmark | Not started; nothing is claimed. |
@@ -28,7 +28,7 @@ Host: `saga_mission` (headless or SDL window; explicit scenario state remains re
 - [ ] A6. Every service the host fakes is listed in the stub table of integration.md.
 
 Tasks:
-- [ ] Bind remaining Area/Building/KingReward resets, party setup and configuration to `saga_mission --data/--quest`; remove diagnostic `--scene` for fresh mission entry (A1).
+- [ ] Bind remaining fresh-mission configuration and initial-state providers to `saga_mission --data/--quest`; remove diagnostic `--scene` for fresh mission entry (A1).
 - [ ] Bind Continue's decoded world/party/system restoration before selecting loaded InitWorld in `saga_mission` (A1).
 - [ ] Replace the synthetic catalogs/services of the 240-frame combat regression with the table-backed owner used by `saga_mission` (A3).
 - [ ] Add complete reached-world state hashing and record local per-quest golden replays (A5).
@@ -43,6 +43,7 @@ Tasks:
 Host: `saga_town`. Acceptance: SelectForm town runs with the real map and residents; choosing a quest starts S1's mission; the result returns to town and progression (EXP, money, levels, stock, quest record) is applied in memory; event scripts fire on return (event 31, 1133).
 
 - [ ] (blocking) Find the owner and data of the town map/residents that SelectForm draws, and the quest-selection path into QuestForm.
+- [ ] Bind Area/Building/KingReward NewGame state to the town rebuild/menus and return path before those consumers become reachable.
 - [ ] Bind `update_select_form` to a desktop host with orientation/image-dictionary storage, camera dimensions and form factories.
 - [ ] Port decor/town/capture callbacks needed by the town host.
 - [ ] Bind billing-item/catalog providers as stubs and the notification manager adapters, preserving task execution gates.

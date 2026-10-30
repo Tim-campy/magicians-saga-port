@@ -300,7 +300,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     std::int32_t rescued_prisoners=0;
     std::optional<std::int32_t> stage_entry,stage_area_id;
     std::shared_ptr<AreaDefinition> stage_area;
-    EventIntegers formation;bool has_formation=false;
+    EventIntegers formation;bool has_formation=false,fresh_formation=false;
     for(std::string line;std::getline(input,line);){
         std::istringstream row(line);row.imbue(std::locale::classic());std::string operation;
         if(!(row>>operation)||operation.front()=='#')continue;
@@ -411,7 +411,13 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         }
         if(operation=="party_formation"){
             if(has_formation)throw std::invalid_argument("duplicate party_formation");
-            formation.resize(16);for(auto& id:formation)if(!(row>>id)||id< -1)throw std::invalid_argument("party_formation requires sixteen character IDs or -1");
+            std::string first;if(!(row>>first))throw std::invalid_argument("party_formation requires new_game or sixteen character IDs/-1");
+            fresh_formation=first=="new_game";
+            if(!fresh_formation){
+                formation.resize(16);formation[0]=parse_event_decimal(first);
+                if(formation[0]< -1)throw std::invalid_argument("party_formation IDs must be -1 or nonnegative");
+                for(std::size_t i=1;i<formation.size();++i)if(!(row>>formation[i])||formation[i]< -1)throw std::invalid_argument("party_formation requires sixteen character IDs or -1");
+            }
             has_formation=true;end(row);continue;
         }
         if(operation=="sorties"){
@@ -671,6 +677,8 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         throw std::invalid_argument("hero fresh requires system_init 0, system_construct, native stage entry, town_save19 and no other selected actors");
     if(!fresh_hero_&&((initialized_loaded_&&*initialized_loaded_==0)||saved_town_count_))
         throw std::invalid_argument("system_init 0 and town_save19 require hero fresh");
+    if(fresh_formation&&(!fresh_hero_||!initialized_loaded_||*initialized_loaded_!=0||!construct_systems_||!stage_entry))
+        throw std::invalid_argument("party_formation new_game requires fresh hero/system_init0/system_construct and native stage entry");
     const bool result_requested=wallet||record||recruits||stocks[0]||stocks[1]||stocks[2]||gear_new_game_||character_shop_new_game_mask_.has_value();
     if(character_shop_new_game_mask_&&(!fresh_hero_||!initialized_loaded_||*initialized_loaded_!=0||!construct_systems_||!progress.characters.empty()||!progress.shop_purchases.empty()||!progress.sortie_counts.empty()||recruits))
         throw std::invalid_argument("character_shop_new_game requires fresh hero/system_init0/system_construct and excludes progress/purchase/sorties/result_recruits snapshots");
@@ -816,7 +824,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
                 created.at(players.front())=member_hero(&entity_world->player_world());
                 if(!created.at(players.front()))throw std::logic_error("fresh Member Init did not publish a hero");
             }
-            if(stage_entry)humans->start_mission(*stage_entry,formation,*spatial,
+            if(stage_entry)humans->start_mission(*stage_entry,fresh_formation?nullptr:&formation,*spatial,
                 [this]{return initialization_.paused;},[this]{pause_systems(false);},std::move(stage_area));
             for(const auto& request:states)humans->set_state(*created.at(std::get<0>(request)),std::get<1>(request),std::get<2>(request));
         }else if(!states.empty())throw std::invalid_argument("actor_state requires human_system");

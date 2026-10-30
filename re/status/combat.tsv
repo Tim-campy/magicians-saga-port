@@ -44,7 +44,7 @@ game:0x06000fda	reimplemented	src/core/gameplay/quest_return.cpp	Deferred live a
 game:0x06000fb7	reimplemented	src/core/gameplay/stage_update.cpp	Native retry/state5/6 policy and ordered form/BGM suffix reachable from mission host through narrow StageGameOverHost; explicit initial state and answer.
 game:0x06000fb6	reimplemented	src/core/gameplay/human_impact.cpp	Main flag2 invokes game-over; mission event30 dispatch runs Stage before Enemy retarget; sub-character death does not require game-over inputs.
 game:0x06000f9b	reimplemented	src/core/gameplay/stage_start.cpp	Native ordered system references, three distinct state0/frame4 buttons, fresh collecting list and subscriptions30/9/15; failure/identity tests.
-game:0x06000f9e	reimplemented	src/core/gameplay/stage_start.cpp	Complete startup ordering and partial failures; stage_start host binds native cleanup/map/party/enemy/drop chain with explicit saved inputs and audio stubs.
+game:0x06000f9e	reimplemented	src/core/gameplay/stage_start.cpp	Complete startup ordering and partial failures; stage_start host binds native cleanup/map/party/enemy/drop chain with explicit saved inputs and audio stubs. Native fresh formation is retained; explicit saved formation remains an alternative.
 game:0x06000fbb	reimplemented	src/core/gameplay/combat_host.cpp	Enemy presence adds offered damage with wrap; null receiver faults; overkill and DEBUG integration tests
 game:0x06000fb2	reimplemented	src/core/gameplay/quest_rewards.cpp	Counters and signed bests ported with ordered live host reads and partial-failure tests
 game:0x06000fc9	documented	docs/subsystems/rewards.md	signed max of bestTotalGaveDamage over questData
@@ -142,7 +142,7 @@ game:0x060000e2	reimplemented	src/core/gameplay/character_parameter_set.cpp	Capt
 game:0x06001076	reimplemented	src/core/gameplay/character_parameter_set.cpp	Unsigned key below two; negative/other keys have no base maximum; actual parameter creation tested.
 game:0x06000c1d	reimplemented	src/core/gameplay/human_factory.cpp	Require each visited hat, Check flags mask 2; public first-match/default selection and pre-allocation failures tested.
 game:0x06000bed	reimplemented	src/core/gameplay/hero_bootstrap.cpp	First nonnull main record ID -> receiver human factory at level 1/EXP 0 -> shared Player; real Member Init/OnStart chain tested.
-game:0x06000f32	reimplemented	src/core/gameplay/hero_bootstrap.cpp	Whole argument loaded-byte gate, current-world creation, independent hero/cache re-query and guarded slot-10 assignment; generic initializer composed.
+game:0x06000f32	reimplemented	src/core/gameplay/hero_bootstrap.cpp	Whole argument loaded-byte gate, current-world creation, independent hero/cache re-query and guarded slot-10 assignment; generic initializer composed. Fresh mission formation reaches Stage.Start without a scenario array replacement.
 game:0x06000bff	reimplemented	src/core/gameplay/hero_bootstrap.cpp	Not-loaded predicate compares entire byte to zero; noncanonical bytes and global-query skip tested.
 game:0x06000b8f	reimplemented	src/core/gameplay/hero_bootstrap.cpp	Insert shared Entity.playerComponent_ at slot 30, no pool/cache mutation; null/shared pointers and listener failure tested.
 game:0x06000c1c	reimplemented	src/core/gameplay/hero_bootstrap.cpp	Null character rows skip main-record search; first mask-2 match used, no-match pre-allocation failure tested.

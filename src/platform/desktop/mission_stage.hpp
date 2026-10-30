@@ -32,7 +32,7 @@ public:
     void answer_dialog(std::int32_t);
     void report(std::ostream&);
     bool started()const{return started_;}
-    void start(std::int32_t,const core::EventIntegers&,core::StageMapLoader&,
+    void start(std::int32_t,const core::EventIntegers*,core::StageMapLoader&,
                std::function<bool()>,std::function<void()>,std::shared_ptr<core::AreaDefinition>);
 private:
     core::StageCleanupHost& cleanup_host()override;
@@ -103,6 +103,6 @@ private:
     std::function<void(bool)> pause_;
     bool answer_received_=false;
     std::uint64_t modal_wait_steps_=0,dialog_answers_=0;
-    bool started_=false;
+    bool started_=false,inherited_formation_=false;
 };
 }

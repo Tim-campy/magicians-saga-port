@@ -68,6 +68,31 @@ class MissionProfileTests(unittest.TestCase):
             for bad in (text.replace('talk_layout 4 2 100 100\n',''),text.replace('talk_layout 4 2 100 100','talk_layout 4 1 100'),text.replace('mission_events fresh null 0 0 0','mission_events fresh missing 0 0 0')):
                 scene.write_text(bad,encoding='utf-8');self.assertNotEqual(self.run_host(scene,frames=22).returncode,0)
 
+    def test_native_fresh_formation_survives_member_init_into_stage_start(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);scene=root/'scene.txt'
+            original=make_native_entry_scene(root).replace('stage_loop quest 0 20 hold','stage_loop quest 0 0 hold')+'system_construct empty_manager\nquest_frame 0 0\n'
+            fresh=original.replace('human 0 2 1 0 0 0 312 0 400\n','hero fresh\n').replace('player 0\n','').replace('system_init 1','system_init 0')+'town_save19 0\n'
+            snapshot='party_formation 2 3 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1'
+            self.assertIn(snapshot,fresh);text=fresh.replace(snapshot,'party_formation new_game')
+            def run(value):
+                scene.write_text(value,encoding='utf8');return self.run_host(scene,frames=21)
+            result=run(text);self.assertEqual(result.returncode,0,result.stderr);data=json.loads(result.stdout)
+            self.assertTrue(data['native_party_formation'] and data['original_world_entry'])
+            expected=[-1]*16;expected[10]=2;self.assertEqual(data['party_formation'],expected)
+            self.assertEqual(len(data['entry_members']),1)
+            self.assertEqual(data['sortie_counts'],[{'id':2,'count':8},{'id':3,'count':9}])
+            # Compare against the same native formation supplied explicitly, including placement/RNG/render state.
+            control=fresh.replace(snapshot,'party_formation '+' '.join(map(str,expected)))
+            reference=run(control);self.assertEqual(reference.returncode,0,reference.stderr);reference=json.loads(reference.stdout)
+            self.assertEqual({k:v for k,v in data.items() if k!='native_party_formation'},
+                             {k:v for k,v in reference.items() if k!='native_party_formation'})
+            self.assertEqual(run(text).stdout,result.stdout)
+            for bad in (text+'party_formation new_game\n',text.replace('party_formation new_game','party_formation new_game 2'),
+                        text.replace('system_init 0','system_init 1'),text.replace('system_construct empty_manager\n',''),
+                        original.replace(snapshot,'party_formation new_game')):
+                self.assertNotEqual(run(bad).returncode,0)
+
     def test_new_game_save_initializes_wallet_selection_town_and_quest_records(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);scene=root/'scene.txt';seeds=root/'new-game-save.tsv'
