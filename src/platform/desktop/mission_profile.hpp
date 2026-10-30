@@ -136,6 +136,8 @@ private:
     std::uint64_t town_count_writes_=0;
     bool fresh_town_initialized_=false,fresh_hero_=false;
     bool gear_new_game_=false;
+    bool new_game_save_=false;
+    std::array<std::size_t,2> new_game_quest_counts_{}; // Records and discovered records.
     std::optional<std::int32_t> character_shop_new_game_mask_;
     // Retained reset outputs, separate from canonical live progression/result owners.
     std::map<std::int32_t,core::CharacterNewGameState> initial_character_records_;

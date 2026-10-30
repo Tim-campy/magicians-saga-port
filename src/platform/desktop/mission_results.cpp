@@ -95,7 +95,7 @@ void MissionHumans::write_result_report(std::ostream& out){
 void MissionResults::report(std::ostream& out){
     out<<",\"result_granted\":"<<(result_?"true":"false")<<",\"transition_pending\":"<<(transition_pending()?"true":"false")
        <<",\"quest_completed\":"<<(owner_.stage_.quest->completed?"true":"false")<<",\"wallet\":{\"money\":"<<state_.money<<",\"crystals\":"<<state_.crystals<<"},\"rescued_prisoners\":"<<rescued_prisoners();
-    const auto& q=state_.record;out<<",\"quest_record\":{\"best_experience\":"<<q.best_experience<<",\"best_money\":"<<q.best_money<<",\"challenges\":"<<q.challenges<<",\"clears\":"<<q.clears<<",\"defeated\":"<<q.defeated<<",\"rescued\":"<<q.rescued<<",\"best_damage\":"<<q.best_damage<<'}';
+    const auto& q=quest_record();out<<",\"quest_record\":{\"best_experience\":"<<q.best_experience<<",\"best_money\":"<<q.best_money<<",\"challenges\":"<<q.challenges<<",\"clears\":"<<q.clears<<",\"defeated\":"<<q.defeated<<",\"rescued\":"<<q.rescued<<",\"best_damage\":"<<q.best_damage<<'}';
     out<<",\"saved_characters\":[";bool first=true;for(const auto& entry:owner_.saved_.characters){if(!first)out<<',';first=false;out<<"{\"id\":"<<entry.first<<",\"level\":"<<entry.second.level<<",\"experience\":"<<entry.second.experience<<'}';}out<<']';
     if(auto* hero=member_hero(&owner_.world_.player_world())){const auto& ids=*field<EquipmentRecordLinks>(*hero,8).ids;
         out<<",\"result_gear_levels\":{\"weapon\":"<<owner_.saved_.equipment_levels.at(ids.at(static_cast<std::size_t>(EquipmentSlot::weapon)))

@@ -1,4 +1,5 @@
 #include "core/gameplay/quest_catalog.hpp"
+#include "core/gameplay/quest_rewards.hpp"
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
@@ -12,6 +13,31 @@ int main(int argc,char** argv){
         const auto table=load_quest_table(text,false,parse_event_decimal);
         std::size_t count=0;for(const auto& row:table)if(row)++count;
         std::cout<<"quest slots="<<table.size()<<" populated="<<count<<'\n';return 0;
+    }
+    {
+        QuestDefinition r;r.stage.flags=3;r.stage.completed=7;r.stage.rescued_prisoners=9;
+        r.record=std::make_shared<QuestRecord>(QuestRecord{1,2,3,4,5,6,7});const auto old=r.record;
+        reset_quest_for_new_game(r);
+        CHECK(r.discovery_state==1&&r.is_new&&r.stage.completed==0&&r.stage.flags==3&&r.stage.rescued_prisoners==9);
+        CHECK(r.record&&r.record!=old&&old->best_experience==1);
+        const auto& q=*r.record;
+        CHECK(q.best_experience==0&&q.best_money==0&&q.challenges==0&&q.clears==0&&q.defeated==0&&q.rescued==0&&q.best_damage==0);
+        r.discovery_state=2;r.is_new=false;find_quest_record(r,false);
+        CHECK(r.discovery_state==2&&!r.is_new);
+        r.discovery_state=0;find_quest_record(r,false);CHECK(r.discovery_state==1&&r.is_new); // Argument is ignored.
+        r.stage.flags=2;r.stage.completed=1;r.discovery_state=0;r.is_new=false;
+        reset_quest_for_new_game(r,[](bool){CHECK(false);});
+        CHECK(r.discovery_state==0&&!r.is_new&&r.stage.completed==0); // Bit1 is not the discovery gate.
+        const auto retained=r.record;r.stage.flags=1;r.stage.completed=9;
+        try{reset_quest_for_new_game(r,[](bool argument){CHECK(argument);throw std::runtime_error("find");});CHECK(false);}catch(const std::runtime_error&){}
+        CHECK(r.record==retained&&r.stage.completed==9);
+        bool found=false;
+        try{reset_quest_for_new_game(r,[&](bool argument){CHECK(argument&&r.stage.completed==9);found=true;r.discovery_state=4;},[&]()->std::shared_ptr<QuestRecord>{
+            CHECK(found&&r.discovery_state==4&&r.stage.completed==0&&r.record==retained);throw std::runtime_error("allocate");
+        });CHECK(false);}catch(const std::runtime_error&){}
+        CHECK(r.stage.completed==0&&r.record==retained&&r.discovery_state==4);
+        const auto supplied=std::make_shared<QuestRecord>();
+        reset_quest_for_new_game(r,{},[&]{return supplied;});CHECK(r.record==supplied);
     }
     {
         AreaDefinition area;

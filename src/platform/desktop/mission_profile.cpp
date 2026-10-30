@@ -282,6 +282,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     std::array<bool,32> enabled_rows{};bool menu_snapshot=false;
     std::optional<MissionRewardScenario> rewards;
     std::optional<MissionNotificationScenario> notifications;
+    bool quest_completion_new_game=false;
     bool collection=false,drop_catalog=false;
     EventInstruction map_images;
     std::optional<MissionInputScenario> input_scenario;
@@ -418,7 +419,10 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             if(!(row>>id>>count)||id<0||!progress.sortie_counts.emplace(id,count).second)throw std::invalid_argument("sorties requires unique character ID and saved int32 count");
             end(row);continue;
         }
-        if(operation=="mission_selection"){
+        if(operation=="new_game_save"){
+            if(!native||new_game_save_)throw std::invalid_argument("new_game_save requires native mode and one reset request");
+            new_game_save_=true;
+        }else if(operation=="mission_selection"){
             SavedMissionSelection saved{};
             if(!native||selected_quest||stage_entry||!(row>>saved.area8>>saved.quest9>>rescued_prisoners))
                 throw std::invalid_argument("mission_selection requires decoded area-slot8 quest-slot9 rescued count, without quest/stage_start overrides");
@@ -489,8 +493,10 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             std::string kind;if(!native||collection||!(row>>kind)||kind!="fresh")throw std::invalid_argument("collection requires one explicit fresh selection");collection=true;
         }else if(operation=="stage_notifications"){
             MissionNotificationScenario value{};std::int32_t retried=0,completed=0;std::uint64_t keys=0;
-            std::string flags;
-            if(!native||notifications||!(row>>value.state>>value.frame>>retried>>flags>>completed>>keys>>value.retry_answer)||(retried!=0&&retried!=1)||(completed!=0&&completed!=1)||keys>0xffffffffULL)throw std::invalid_argument("stage_notifications requires state frame retried0/1 quest-flags completed0/1 held-keys-uint32 retry-answer");
+            std::string flags,completion;
+            if(!native||notifications||!(row>>value.state>>value.frame>>retried>>flags>>completion>>keys>>value.retry_answer)||(retried!=0&&retried!=1)||keys>0xffffffffULL)throw std::invalid_argument("stage_notifications requires state frame retried0/1 quest-flags completed0/1/new_game held-keys-uint32 retry-answer");
+            quest_completion_new_game=completion=="new_game";
+            if(!quest_completion_new_game){completed=parse_event_decimal(completion);if(completed!=0&&completed!=1)throw std::invalid_argument("quest completion must be bool0/1 or new_game");}
             if(flags=="quest")quest_fields.insert(operation);else value.quest_flags=parse_event_decimal(flags);
             value.retried=retried!=0;value.quest_completed=completed!=0;value.held_keys=static_cast<std::uint32_t>(keys);notifications=value;
         }else if(operation=="collisions"){
@@ -640,7 +646,23 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         }else throw std::invalid_argument("unknown scene row type");
         end(row);
     }
-    if(selection.quest&&!selected_quest)throw std::invalid_argument("--quest requires a scenario quest row or mission_selection with explicit saved rescued count");
+    if(new_game_save_){
+        if(!selection.data_root||selected_quest||stage_entry||saved_town_count_||wallet||record||!quest_completion_new_game||
+           !fresh_hero_||!initialized_loaded_||*initialized_loaded_!=0||!construct_systems_)
+            throw std::invalid_argument("new_game_save requires --data, fresh hero/system_init0/system_construct and completion new_game; excludes quest/mission_selection/stage_start/town_save19/result_wallet/result_record snapshots");
+        const auto path=*selection.data_root/"new-game-save.tsv";
+        if(std::filesystem::file_size(path)>1024)throw std::length_error("new-game defaults exceed1KiB");
+        std::ifstream seeds(path);seeds.imbue(std::locale::classic());std::string signature,selection_label,town_label,wallet_label;
+        std::int32_t version=0,town=0;SavedMissionSelection saved{};
+        if(!(seeds>>signature>>version>>selection_label>>saved.area8>>saved.quest9>>town_label>>town>>wallet_label>>result_state.money>>result_state.crystals)||
+           signature!="new_game_save"||version!=1||selection_label!="selection"||town_label!="town_capacity"||wallet_label!="wallet")
+            throw std::invalid_argument("invalid new-game save defaults");
+        seeds>>std::ws;if(!seeds.eof())throw std::invalid_argument("unexpected new-game default fields");
+        saved_mission_selection_=saved;saved_town_count_=town;
+        selected_quest=selection.quest.value_or(saved.quest9);stage_entry=*selected_quest;stage_area_id=saved.area8;
+        native_stage_entry_=true;wallet=record=true;
+    }else if(quest_completion_new_game)throw std::invalid_argument("completion new_game requires new_game_save");
+    if(selection.quest&&!selected_quest)throw std::invalid_argument("--quest requires a scenario quest row, mission_selection or new_game_save provider");
     if(!has_world)throw std::invalid_argument("an explicit world matrix is required");
     if(event_context&&(!quest_frame_||!tick_ms))throw std::invalid_argument("mission_events requires quest_frame and an explicit tick_ms clock");
     if(!event_context&&!event_scenario.page_lengths.empty())throw std::invalid_argument("talk_layout requires mission_events");
@@ -675,6 +697,10 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             if(field.first&&!quest_fields.count(field.second))throw std::invalid_argument("selected quest conflicts with explicit static scenario fields");
         if(enemy_pool)throw std::invalid_argument("selected quest supplies enemy_pool; remove explicit override");
         catalog=std::make_unique<GameplayCatalog>(load_gameplay_catalog(*tables,false,parse_event_decimal,rewards.has_value()||collection||drop_catalog,result_requested,true,stage_area_id.has_value(),fresh_hero_));
+        if(new_game_save_)for(auto& row:*catalog->quests)if(row){
+            reset_quest_for_new_game(*row);++new_game_quest_counts_[0];
+            if(row->discovery_state==1)++new_game_quest_counts_[1];
+        }
         if(character_shop_new_game_mask_)reset_character_shop_records(result_state);
         if(fresh_hero_){
             const auto main=std::find_if(catalog->characters.begin(),catalog->characters.end(),[](const auto& r){return r&&(r->flags&2)!=0;});
@@ -694,6 +720,10 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             const auto& row=catalog->quests->at(static_cast<std::size_t>(*selected_quest));definition=row?&*row:nullptr;
         }
         if(!definition)throw std::invalid_argument("selected quest ID is a table gap");
+        if(new_game_save_){
+            result_state.quest_record=definition->record;result_state.rescued=definition->stage.rescued_prisoners;
+            notifications->quest_completed=definition->stage.completed!=0;rescued_prisoners=result_state.rescued;
+        }
         auto q=std::make_shared<StageQuest>(definition->stage);q->rescued_prisoners=rescued_prisoners;
         human_scenario->distance=q->distance;human_scenario->quest=q;notifications->quest_flags=q->flags;
         enemy.maximum=q->enemy_maximum;enemy.total=q->enemy_total_limit;enemy.interval=q->enemy_interval;enemy.level=q->base_level;
@@ -875,6 +905,8 @@ void MissionProfile::write_combat_report(std::ostream& out){
     out<<",\"replay_modal_ignored\":"<<replay_modal_ignored_;
     if(events_)events_->write_report(out);
     out<<",\"fresh_hero_bootstrap\":"<<(fresh_hero_?"true":"false")<<",\"fresh_town_initialized\":"<<(fresh_town_initialized_?"true":"false");
+    out<<",\"new_game_save\":"<<(new_game_save_?"true":"false");
+    if(new_game_save_)out<<",\"new_game_quest_counts\":["<<new_game_quest_counts_[0]<<','<<new_game_quest_counts_[1]<<']';
     out<<",\"original_world_entry\":"<<(original_world_entry_?"true":"false")<<",\"world_entry_order\":[";
     for(std::size_t i=0;i<world_entry_order_.size();++i){if(i)out<<',';out<<std::quoted(world_entry_order_[i]);}out<<']';
     out<<",\"gear_new_game\":"<<(gear_new_game_?"true":"false")<<",\"new_game_gear_counts\":[";

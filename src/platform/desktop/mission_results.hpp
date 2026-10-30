@@ -12,6 +12,7 @@ class MissionHumans;
 struct MissionResultScenario {
     std::int64_t money,crystals;std::int32_t rescued;
     core::QuestRecord record;
+    std::shared_ptr<core::QuestRecord> quest_record;
     std::array<core::ItemStock,3> inventory;
     core::RecruitmentState recruits;
     std::optional<std::array<std::map<std::int32_t,core::ItemStock>,3>> inventory_records;
@@ -36,7 +37,7 @@ private:
     core::RecruitmentState& character(std::int32_t)override;
     void add_money(std::int32_t)override;void add_crystals(std::int32_t)override;
     std::int32_t& rescued_prisoners()override;
-    core::QuestRecord& quest_record()override{return state_.record;}
+    core::QuestRecord& quest_record()override{return state_.quest_record?*state_.quest_record:state_.record;}
     core::QuestExperienceHost& members()override;
     std::int32_t defeated_enemies()override;
     std::int32_t collected_prisoners()override;
@@ -46,7 +47,7 @@ private:
     std::int32_t parameter_zero(core::QuestMemberId)override;
     std::int32_t table_count()override;
     std::int32_t next_experience(core::MemberExperience&,std::int32_t)override;
-    core::QuestRecord& return_record()override{return state_.record;}
+    core::QuestRecord& return_record()override{return quest_record();}
     void cleanup_stage()override{core::cleanup_quest_stage(*this);}
     core::MemberFinishHost& finish_members_host()override;
     void make_transition(std::int32_t,std::function<void()>,bool,std::uint32_t)override;

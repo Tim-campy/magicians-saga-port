@@ -47,6 +47,53 @@ MISSION_RESOURCES = ((1, 'chara'), (3, 'enemy'), (7, 'quest'), (18, 'chip'),
                      (19, 'bullet'), (20, 'effect'), (21, 'hat'), (22, 'weapon'), (23, 'gauge'))
 
 
+def new_game_save_payload(metadata):
+    """AppData.cctor normal-save seeds, consumed by NewGame at ELF0x1101e30.
+
+    Field handles at ELF0x272ff50/0x272fef0 resolve to metadata fields24359/24245.
+    Reuse the public v31 field-default layout; export only the five reached values.
+    This is decoded initialization data, not a SecureProperty save-file decoder.
+    """
+    if len(metadata) < 256 or struct.unpack_from('<II', metadata) != (0xfab11baf, 31):
+        raise ValueError('Expected v31 metadata for new-game save defaults')
+    fields, field_size, data, data_size = struct.unpack_from('<IIII', metadata, 64)
+    if (fields < 256 or data < 256 or field_size % 12 or
+            fields+field_size > len(metadata) or data+data_size > len(metadata) or
+            max(fields, data) < min(fields+field_size, data+data_size)):
+        raise ValueError('Invalid new-game default sections')
+    defaults = {}
+    for field, _, offset in struct.iter_unpack('<iii', metadata[fields:fields+field_size]):
+        if field not in (24359, 24245):
+            continue
+        size = 116 if field == 24359 else 24
+        if field in defaults or offset < 0 or offset+size > data_size:
+            raise ValueError('Invalid or duplicate new-game initializer')
+        defaults[field] = struct.unpack_from('<29i' if size == 116 else '<3q', metadata, data+offset)
+    if len(defaults) != 2:
+        raise ValueError('Missing new-game initializer')
+    integers, longs = defaults[24359], defaults[24245]
+    return (f'new_game_save\t1\nselection\t{integers[8]}\t{integers[9]}\n'
+            f'town_capacity\t{integers[19]}\nwallet\t{longs[0]}\t{longs[1]}\n').encode('ascii')
+
+
+def write_new_game_save(apk, root):
+    """Derive the mission seed without re-extracting Unity media or changing the manifest."""
+    manifest = json.loads((root / 'manifest.json').read_text(encoding='utf-8'))
+    if manifest.get('schema') not in (2, 3) or manifest.get('apk_sha256') != APK_SHA:
+        raise ValueError('New-game defaults require the supported extraction manifest')
+    with apk.open('rb') as source:
+        if hashlib.file_digest(source, 'sha256').hexdigest() != APK_SHA:
+            raise ValueError('New-game defaults require the supported APK')
+    with zipfile.ZipFile(apk) as archive:
+        payload = new_game_save_payload(archive.read(METADATA))
+    output = bounded(root, 'new-game-save.tsv')
+    if output.exists() and output.read_bytes() != payload:
+        raise ValueError('Refusing to replace differing new-game defaults')
+    if not output.exists():
+        output.write_bytes(payload)
+    return output
+
+
 def write_mission_index(root):
     """Publish a small native-host index from already extracted, hash-checked files."""
     manifest = json.loads((root / 'manifest.json').read_text(encoding='utf-8'))
@@ -643,6 +690,7 @@ def main():
     p.add_argument('--out', type=Path, default=Path('extracted'))
     p.add_argument('--check', action='store_true')
     p.add_argument('--mission-index', action='store_true', help='Index existing decoded mission archives for the native host; no APK re-extraction')
+    p.add_argument('--new-game-save', action='store_true', help='Export the reached normal-save NewGame seeds from the supported APK metadata only')
     p.add_argument('--collation-indexers', action='store_true', help='Include native indexer configurations and collation resources')
     p.add_argument('--collation', action='store_true', help='Include seven original version-3 collation resources')
     p.add_argument('--runtime-tables', action='store_true', help='Include the 72-entry runtime Hashtable prime table')
@@ -653,7 +701,11 @@ def main():
     p.add_argument('--unity-media', action='store_true', help='Also export Unity textures, fonts and FSB/WAV audio')
     args = p.parse_args()
     try:
-        if args.mission_index:
+        if args.new_game_save:
+            if not args.apk or args.check or args.mission_index or any((args.unity_media, args.culture_signs, args.culture_names, args.culture_neutral, args.culture_lower, args.runtime_tables, args.collation, args.collation_indexers)):
+                raise ValueError('--new-game-save requires APK and --out only')
+            print('New-game defaults: ' + str(write_new_game_save(args.apk, args.out)))
+        elif args.mission_index:
             if args.apk or args.check:
                 raise ValueError('--mission-index cannot combine with APK or --check')
             print('Mission resource index: ' + str(write_mission_index(args.out)))

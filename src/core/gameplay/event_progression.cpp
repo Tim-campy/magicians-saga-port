@@ -68,7 +68,7 @@ bool apply_event_progression(const EventIntegers& row, EventProgression& state) 
     case 15: {
         auto& quest = entry(state.quests, row.at(1));
         // QuestData.Find38509 ignores true and changes only state zero.
-        if (quest.state == 0) { quest.state = 1; quest.is_new = true; }
+        find_quest_discovery(quest.state,quest.is_new,true);
         return true;
     }
     default: return false;

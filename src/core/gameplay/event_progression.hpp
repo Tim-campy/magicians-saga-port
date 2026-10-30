@@ -8,6 +8,10 @@ struct DiscoveryState {
     std::int32_t state;
     bool is_new;
 };
+// QuestData.Find 0x1172f0c: bool argument ignored; preserve every nonzero state.
+inline void find_quest_discovery(std::int32_t& state,bool& is_new,bool){
+    if(state==0){state=1;is_new=true;}
+}
 struct EventProgression {
     std::int64_t money;
     std::int64_t crystals;

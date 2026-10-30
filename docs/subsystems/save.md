@@ -43,7 +43,7 @@ Storage layer (`kairo.unity.io`): `RecordStore..ctor` calls `Storage.Open` (`0x1
 | `kairo.unity.io.RecordStore.ReadRecord` (impl) | `kairo:0x06000fa1` | File name, preference, decode, CRC64, exception | low |
 | `kairo.unity.io.RecordStore.GetFileName` | `kairo:0x06000fb1` | Record file name | low |
 | `kairo.unity.io.Storage.Open` / `Storage.Read` ×2 | `kairo:0x06000fd0`, `kairo:0x06000fdb`, `kairo:0x06000fd4` | Platform storage | low |
-| `kairo.unity.util.SecureProperty..ctor` | `kairo:0x0600051b` | Container of selector blocks | medium |
+| `kairo.unity.util.SecureProperty..ctor` | `kairo:0x0600051b` | Typed-array initialization order; decoded normal-save mission seed | high |
 | `kairo.unity.util.SecureProperty.Load` | `kairo:0x06000526` | Parses record bytes into blocks | low |
 | `java.io.ByteArrayInputStream..ctor` | `kairo:0x060001f6` | Wraps a block in `System.IO.MemoryStream` (`this+0x18`) | high |
 | `java.io.InputStream.Read` | `kairo:0x0600022d` | vtable slot 11; maps managed `Read` result `<1` to `-1` | high |
@@ -112,6 +112,16 @@ When `AppData.FlagCheck(4)` is true (otherwise a dialog is prepared): updates so
 ### NewGame (`0x1101d58`, 1420 bytes)
 
 Calls `SaveRecorder.SaveSystem` first (unconditionally — the zero argument does not gate it), then creates a new `SecureProperty` at `AppData+0x198`, `InitSystemSaveData`, `NewData` (BaseData reset, see [data.md](data.md)), recreates collections and initialises data fields. At `0x11020b0` it walks every row of `AppData+0x248` (check-script groups) from row 0, calling `CheckNotFind` (slot 16) and, if bit 0 of the result is set, `CheckTerm` (slot 15); both return 0 in this build, and the groups are empty. Do not invent a "prepare without writing" mode.
+
+### Normal-save NewGame seeds
+
+At `0x1101e30..0x1101e64`, AppData.NewGame calls SecureProperty..ctor `0x1c07a98` with static arrays at `+0x360/+0x348/+0x350/+0x340/+0x358`. The124-byte constructor takes the nested-property array as arg1, int32 array as arg2, int64 array as arg3, string array as arg4 and byte-block array as arg5. It returns no value and calls Object..ctor, then SetData for int32, int64, string, byte-block and nested-property arrays in that order. A throwing setter prevents later calls without rolling back earlier stores. NewGame, InitSystemSaveData and LoadGame use this typed-array constructor. SetData(int32[]) (`0x1c07b14`,288 bytes) stores newly wrapped values in `SecureProperty+0x20`; SetData(int64[]) (`0x1c07c34`,272 bytes) stores them at `+0x28`. Logical values preserve source widths; wrapper obfuscation is outside the decoded adapter. Confidence high from complete bounded bodies.
+
+AppData.cctor at `0x11198b8..0x111990c` creates the29-int32 and3-int64 arrays using RuntimeHelpers.InitializeArray. Relocated field-handle cells at ELF `0x272ff50/0x272fef0` resolve through v31 field-reference indices132/18, native type8809 and metadata type4550 to fields24359/24245. Their raw initializers are default_data offsets189088 (116 bytes) and171128 (24 bytes). The consumed normal-save values are area slot8=0, quest slot9=0, town-capacity slot19=1, money long-slot0=100 and crystals long-slot1=100. These are fresh defaults, not a loaded save or proof of later title/event effects.
+
+`python -I tools/extract_assets.py <maintainer.apk> --out extracted/full --new-game-save` hash-checks the supported APK and existing extraction manifest, reads only metadata and writes local new-game-save.tsv. Schema1 contains header new_game_save, selection(area8,quest9), town_capacity(int32) and wallet(two int64), in that order. Only these five consumed values are exported. An identical rerun is allowed; differing output is preserved and reported. No media re-extraction, game-value source constants, key or proprietary output is committed. The fixed-record parser follows the existing [public v31 schema](https://github.com/Perfare/Il2CppDumper/blob/4741d46ba9cd6159c5d853eb9d6fc48b4bfa2b1a/Il2CppDumper/Il2Cpp/MetadataClass.cs); no public runtime algorithm is reconstructed.
+
+The new_game_save mission adapter consumes these defaults and the native quest resets; it does not implement the full SecureProperty constructor, binary envelope, system save or whole NewGame call chain. Original normal-save slot2 is adjusted later from display dimensions; configuration/orientation remains an explicit scenario boundary.
 
 ### World destroy and title
 

@@ -1605,7 +1605,7 @@ game:0x0600065d,game:0x0600065d,gameplay,,104,0x11cd60c
 game:0x0600065e,game:0x0600065e,gameplay,,2224,0x11cd748
 game:0x0600065f,game:0x0600065f,gameplay,,204,0x11cdff8
 game:0x06000660,game:0x06000660,gameplay,,204,0x11ce0c4
-game:0x06000661,game.QuestRecord..ctor,gameplay,documented,8,0x11ce190
+game:0x06000661,game.QuestRecord..ctor,gameplay,reimplemented,8,0x11ce190
 game:0x06000662,game:0x06000662,ui,,116,0x11ce198
 game:0x06000663,game:0x06000663,ui,,8,0x11ce234
 game:0x06000664,game:0x06000664,ui,,8,0x11ce23c
@@ -4372,7 +4372,7 @@ game:0x060011ea,data.QuestData.get_remainingPrisonersNum,data,reimplemented,100,
 game:0x060011eb,data.QuestData.get_isNoncompletion,data,reimplemented,16,0x1172e70
 game:0x060011ec,data.QuestData.get_isCompleted,data,documented,32,0x116c3b4
 game:0x060011ed,game:0x060011ed,data,,8,0x1172e80
-game:0x060011ee,data.QuestData.NewGame,data,traced,120,0x1172e88
+game:0x060011ee,data.QuestData.NewGame,data,reimplemented,120,0x1172e88
 game:0x060011ef,data.QuestData.Complete,data,reimplemented,12,0x1172f00
 game:0x060011f0,data.QuestData.Find,data,reimplemented,28,0x1172f0c
 game:0x060011f1,data.QuestData.AddRescuedPrisoner,data,documented,16,0x1172f28
@@ -5570,7 +5570,7 @@ kairo:0x06000517,kairo:0x06000517,util,,104,0x1c079d8
 kairo:0x06000518,kairo:0x06000518,util,,72,0x1c07a40
 kairo:0x06000519,kairo:0x06000519,util,,8,0x1c07a88
 kairo:0x0600051a,kairo:0x0600051a,util,,8,0x1c07a90
-kairo:0x0600051b,kairo.unity.util.SecureProperty..ctor,util,traced,124,0x1c07a98
+kairo:0x0600051b,kairo.unity.util.SecureProperty..ctor,util,documented,124,0x1c07a98
 kairo:0x0600051c,kairo:0x0600051c,util,,124,0x1c0805c
 kairo:0x0600051d,kairo:0x0600051d,util,,108,0x1c0826c
 kairo:0x0600051e,kairo:0x0600051e,util,,136,0x1c080d8

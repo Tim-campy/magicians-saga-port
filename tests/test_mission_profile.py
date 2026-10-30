@@ -68,6 +68,38 @@ class MissionProfileTests(unittest.TestCase):
             for bad in (text.replace('talk_layout 4 2 100 100\n',''),text.replace('talk_layout 4 2 100 100','talk_layout 4 1 100'),text.replace('mission_events fresh null 0 0 0','mission_events fresh missing 0 0 0')):
                 scene.write_text(bad,encoding='utf-8');self.assertNotEqual(self.run_host(scene,frames=22).returncode,0)
 
+    def test_new_game_save_initializes_wallet_selection_town_and_quest_records(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);scene=root/'scene.txt';seeds=root/'new-game-save.tsv'
+            original=make_native_entry_scene(root,alternate_quest=True).replace('stage_loop quest 0 20 hold','stage_loop quest 0 0 hold')+'system_construct empty_manager\nquest_frame 0 0\n'
+            fresh=original.replace('human 0 2 1 0 0 0 312 0 400\n','hero fresh\n').replace('player 0\n','').replace('system_init 1','system_init 0')
+            assets=root/'textassets';assets.mkdir()
+            for archive in root.glob('*.bin'):(assets/archive.name).write_bytes(archive.read_bytes())
+            text='\n'.join(line for line in fresh.splitlines() if not line.startswith(('quest ','stage_start ','result_wallet ','result_record ')))+'\nnew_game_save\n'
+            text=text.replace('stage_notifications 1 0 0 quest 1 0 -1','stage_notifications 1 0 0 quest new_game 0 -1')
+            payload='new_game_save 1\nselection 5 2\ntown_capacity 99\nwallet 5000000000 -6000000000\n'
+            seeds.write_text(payload,encoding='ascii');scene.write_text(text,encoding='utf-8')
+            result=self.run_host(scene,'--data',str(root),frames=21)
+            self.assertEqual(result.returncode,0,result.stderr);report=json.loads(result.stdout)
+            self.assertTrue(report['new_game_save'] and report['original_world_entry'])
+            self.assertEqual(report['new_game_quest_counts'],[2,0])
+            self.assertEqual(report['wallet'],{'money':5000000000,'crystals':-6000000000})
+            self.assertEqual(report['town_save19'],99);self.assertEqual(report['town_save19_writes'],0)
+            self.assertEqual(report['decoded_mission_selection'],{'area_slot8':5,'quest_slot9':2,'effective_quest_slot9':2})
+            self.assertFalse(report['quest_completion_byte']);self.assertEqual(report['rescued_prisoners'],0)
+            self.assertTrue(all(value==0 for value in report['quest_record'].values()))
+            self.assertEqual(self.run_host(scene,'--data',str(root),frames=21).stdout,result.stdout)
+            overridden=self.run_host(scene,'--data',str(root),'--quest','3',frames=21)
+            self.assertEqual(overridden.returncode,0,overridden.stderr)
+            self.assertEqual(json.loads(overridden.stdout)['decoded_mission_selection']['effective_quest_slot9'],3)
+            for bad in (text+'result_wallet 1 2 0\n',text+'result_record 0 0 0 0 0 0 0\n',text+'town_save19 0\n',text+'mission_selection 5 2 0\n',text+'new_game_save\n',
+                        text.replace('quest new_game','quest 0'),text.replace('system_init 0','system_init 1'),text.replace('new_game_save\n','')):
+                scene.write_text(bad,encoding='utf-8');self.assertNotEqual(self.run_host(scene,'--data',str(root),frames=21).returncode,0)
+            scene.write_text(text,encoding='utf-8')
+            for bad in (payload.replace('new_game_save 1','new_game_save 2'),payload.replace('5000000000','9223372036854775808'),payload.replace('selection 5 2','selection -1 2'),payload+'extra\n'):
+                seeds.write_text(bad,encoding='ascii');self.assertNotEqual(self.run_host(scene,'--data',str(root),frames=21).returncode,0)
+            seeds.unlink();self.assertNotEqual(self.run_host(scene,'--data',str(root),frames=21).returncode,0)
+
     def test_new_game_character_shop_state_replaces_saved_snapshot_rows(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);scene=root/'scene.txt'

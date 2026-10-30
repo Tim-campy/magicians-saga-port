@@ -1,5 +1,7 @@
 #include "quest_catalog.hpp"
 #include "table_catalog.hpp"
+#include "quest_rewards.hpp"
+#include "event_progression.hpp"
 #include <stdexcept>
 
 namespace saga::core {
@@ -47,6 +49,17 @@ QuestDefinition& load_quest_definition(QuestDefinition& receiver,std::optional<s
 }
 QuestTable load_quest_table(std::string_view text,bool normalize,const EventIntegerParser& parser){
     return detail::load_table_records<QuestDefinition>(text,normalize,parser,[](detail::TableTokens& t){QuestDefinition r;read(r,t);return r;});
+}
+void find_quest_record(QuestDefinition& receiver,bool){
+    find_quest_discovery(receiver.discovery_state,receiver.is_new,false);
+}
+void reset_quest_for_new_game(QuestDefinition& receiver,const std::function<void(bool)>& find,
+                             const std::function<std::shared_ptr<QuestRecord>()>& allocate){
+    if((receiver.stage.flags&1)!=0){if(find)find(true);else find_quest_record(receiver,true);}
+    receiver.stage.completed=0;
+    // QuestRecord..ctor 0x11ce190 only calls Object..ctor: seven CLR-zero int32 fields.
+    auto record=allocate?allocate():std::make_shared<QuestRecord>();
+    receiver.record=std::move(record);
 }
 MissionSelectionRecords select_mission_records(AreaTable& areas,QuestTable& quests,std::int32_t area_slot8,std::int32_t quest_slot9){
     // AppData.StartExplore 0x11152c4..0x11152d4 validates the cache length,

@@ -6,10 +6,57 @@ import json
 import tempfile
 import unittest
 import hashlib
+from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location('extract_assets', Path(__file__).parents[1]/'tools/extract_assets.py')
 extractor = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(extractor)
+
+
+class NewGameSaveTests(unittest.TestCase):
+    def metadata(self):
+        data=bytearray(512+160)
+        struct.pack_into('<II',data,0,0xfab11baf,31)
+        struct.pack_into('<IIII',data,64,256,24,512,160)
+        struct.pack_into('<iiiiii',data,256,24359,77,0,24245,88,116)
+        integers=list(range(29));integers[8]=-3;integers[9]=17;integers[19]=-2147483648
+        struct.pack_into('<29i',data,512,*integers)
+        struct.pack_into('<3q',data,512+116,-9223372036854775808,9223372036854775807,23)
+        return data
+
+    def test_widths_selection_and_reached_slots_only(self):
+        payload=extractor.new_game_save_payload(self.metadata())
+        self.assertEqual(payload,b'new_game_save\t1\nselection\t-3\t17\ntown_capacity\t-2147483648\nwallet\t-9223372036854775808\t9223372036854775807\n')
+
+    def test_bounds_missing_and_duplicate_fields(self):
+        for offset,value in ((4,30),(64,1),(68,23),(72,256),(76,99999),(264,-1),(276,150),(268,24359),(256,7)):
+            with self.subTest(offset=offset,value=value):
+                data=self.metadata();struct.pack_into('<i',data,offset,value)
+                with self.assertRaises(ValueError):extractor.new_game_save_payload(data)
+        with self.assertRaises(ValueError):extractor.new_game_save_payload(b'bad')
+
+    def test_apk_hash_precedes_output_write(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);apk=root/'synthetic.apk';apk.write_bytes(b'synthetic')
+            (root/'manifest.json').write_text(json.dumps({'schema':3,'apk_sha256':extractor.APK_SHA}))
+            with self.assertRaisesRegex(ValueError,'supported APK'):extractor.write_new_game_save(apk,root)
+            self.assertFalse((root/'new-game-save.tsv').exists())
+
+    def test_synthetic_apk_round_trip_and_existing_output_preservation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);apk=root/'synthetic.apk';metadata=self.metadata()
+            with extractor.zipfile.ZipFile(apk,'w') as archive:archive.writestr(extractor.METADATA,metadata)
+            checksum=hashlib.sha256(apk.read_bytes()).hexdigest()
+            manifest=json.dumps({'schema':3,'apk_sha256':checksum})
+            (root/'manifest.json').write_text(manifest)
+            with patch.object(extractor,'APK_SHA',checksum):
+                output=extractor.write_new_game_save(apk,root)
+                self.assertEqual(output.read_bytes(),extractor.new_game_save_payload(metadata))
+                self.assertEqual(extractor.write_new_game_save(apk,root),output)
+                output.write_bytes(b'keep this user file')
+                with self.assertRaisesRegex(ValueError,'replace differing'):extractor.write_new_game_save(apk,root)
+                self.assertEqual(output.read_bytes(),b'keep this user file')
+                self.assertEqual((root/'manifest.json').read_text(),manifest)
 
 
 class MissionIndexTests(unittest.TestCase):
