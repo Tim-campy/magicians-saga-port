@@ -49,7 +49,7 @@ Inline markup used in presentation text (`Talk.txt`, `EventMsg.txt` and anything
 
 - Candidate = `<` up to the next `>`, distance ≤ 32 code units.
 - Entries tested in index order: exact tags with `String.CompareTo`, parameterised with `String.StartsWith(prefix through '=')` (comparison culture/ordinal not proven).
-- Behaviour for no match, unterminated `<` or distance > 32 (literal fallback) follows the original flow and is not yet reconstructed — do not assume unknown tags vanish.
+- No match or an unterminated `<` takes ordinary-character processing. A closed candidate with closing-minus-opening distance>32 advances one source unit without emitting the opening `<`; remaining units are processed normally. Basis: scanner branches0x1bbdaf8..0x1bbdb70 and0x1bbe854 in the bounded builder export; confidence medium/high, no runtime comparison.
 
 ### Numeric parameters (all parameterised tags)
 
@@ -76,6 +76,6 @@ Letters searched in fixed order: horizontal `l`,`c`,`r` → bits 1/2/4; vertical
 ## Open questions
 
 1. (blocking) Semantics of `si`, `st`, `bl`, `pic`, `bo`, `btn`, `ff`, `kr`, `em`, `ruby` and their end tags.
-2. (blocking) Scanner fallback for unmatched/overlong/unterminated `<…>`.
+2. Port and test the established scanner fallback, including the overlong opener-drop quirk; preserve unmatched short markup.
 3. Culture of `CompareTo`/`StartsWith` and `Int32.Parse` (current NumberFormatInfo).
 4. Whether translated text introduces other tags (Hindi/Thai packs, `UnicodeToChanakya`).

@@ -9020,10 +9020,10 @@ kairo:0x060012cf,kairo:0x060012cf,ui,,112,0x1b7bc1c
 kairo:0x060012d0,kairo:0x060012d0,ui,,156,0x1b79504
 kairo:0x060012d1,kairo:0x060012d1,ui,,156,0x1b78264
 kairo:0x060012d2,kairo:0x060012d2,ui,,104,0x1b7a380
-kairo:0x060012d3,kairo.unity.ui.Font.GetGUIStyleId,ui,traced,520,0x1b784ac
+kairo:0x060012d3,kairo.unity.ui.Font.GetGUIStyleId,ui,documented,520,0x1b784ac
 kairo:0x060012d4,kairo:0x060012d4,ui,,140,0x1b7bf1c
 kairo:0x060012d5,kairo:0x060012d5,ui,,200,0x1b7bfa8
-kairo:0x060012d6,kairo.unity.ui.Font.GetGUIStyle,ui,traced,112,0x1b7a310
+kairo:0x060012d6,kairo.unity.ui.Font.GetGUIStyle,ui,documented,112,0x1b7a310
 kairo:0x060012d7,kairo.unity.ui.Font..cctor,ui,documented,752,0x1b7c070
 kairo:0x060012d8,kairo:0x060012d8,ui,,4,0x1b7c360
 kairo:0x060012d9,kairo:0x060012d9,ui,,8,0x1b7c364
@@ -9428,7 +9428,7 @@ kairo:0x06001469,kairo:0x06001469,ui,,4,0x1b86d70
 kairo:0x0600146a,kairo:0x0600146a,ui,,424,0x1b86af4
 kairo:0x0600146b,kairo:0x0600146b,ui,,252,0x1b86d74
 kairo:0x0600146c,kairo:0x0600146c,ui,,208,0x1b86e70
-kairo:0x0600146d,kairo:0x0600146d,ui,,160,0x1b7a270
+kairo:0x0600146d,kairo.unity.ui.IApplication.GetScaleRatio,ui,documented,160,0x1b7a270
 kairo:0x0600146e,kairo:0x0600146e,ui,,8,0x1b86f40
 kairo:0x0600146f,kairo:0x0600146f,ui,,112,0x1b86f48
 kairo:0x06001470,kairo:0x06001470,ui,,116,0x1b86fb8
@@ -10397,7 +10397,7 @@ kairo:0x0600183a,kairo:0x0600183a,ui,,8,0x1bc0940
 kairo:0x0600183b,kairo.unity.ui.TextLayout._makeTextBlocks,ui,traced,10344,0x1bbd4c4
 kairo:0x0600183c,kairo.unity.ui.TextLayout._makeTextRubies,ui,traced,2904,0x1bbfde8
 kairo:0x0600183d,kairo:0x0600183d,ui,,1540,0x1bc0b18
-kairo:0x0600183e,kairo.unity.ui.TextLayout.GetHeight,ui,traced,188,0x1bbfd2c
+kairo:0x0600183e,kairo.unity.ui.TextLayout.GetHeight,ui,documented,188,0x1bbfd2c
 kairo:0x0600183f,kairo:0x0600183f,ui,,344,0x1bc112c
 kairo:0x06001840,kairo:0x06001840,ui,,8,0x1bc1284
 kairo:0x06001841,kairo.unity.ui.TextLayout.Draw,ui,traced,1384,0x1bc128c

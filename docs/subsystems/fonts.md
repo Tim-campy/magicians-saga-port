@@ -1,6 +1,6 @@
 # Fonts
 
-`kairo.unity.ui.Font` wraps a Unity font + `GUIStyle` and keeps a numeric size/scale state; text width is measured either through Unity `GUIStyle.CalcSize` or, when `useFontTexture_` is set, through a Java `Paint` call on Android. The default Unity font is chosen per language code (`Fonts/default-<lang>-<region>` → `-<lang>` → `-ja` → `default`), the language code comes from language packs or the Japanese/English fallback, and talk layouts get their fonts from the default `TextLayout` constructor. The numeric state (size request, preset tables, scale updates, adjust arithmetic) is ported and tested; which backend and which font are effectively used in talks, and therefore real metrics, remain unknown — the port has no font backend yet. All static evidence; nothing observed at runtime.
+`kairo.unity.ui.Font` wraps a Unity font + `GUIStyle` and keeps a numeric size/scale state; text width is measured either through Unity `GUIStyle.CalcSize` or, when `useFontTexture_` is set, through a Java `Paint` call on Android. The default Unity font is chosen per language code (`Fonts/default-<lang>-<region>` → `-<lang>` → `-ja` → `default`), and talk layouts get their fonts from the default `TextLayout` constructor. The numeric state is ported and tested. Fresh talk construction uses the GUIStyle route; the shipped default GameSkin supplies LegacyRuntime when English resource lookup misses. Equivalent desktop metrics remain unverified, and the port has no font backend yet. All static evidence; nothing observed at runtime.
 
 ## Overview
 
@@ -28,8 +28,14 @@
   2. `Fonts/default-<c0>` (`0x1b7b16c`)
   3. if `Language.Japanese()`: `Fonts/default-ja` (`0x1b7b250`)
   4. `Fonts/default` (`0x1b7b300`)
-  Result cast to `UnityEngine.Font` (a type exception is not "missing"). Literals: `Fonts/default` GOT `0x273d7a8`, `-` `0x272fb60`, `-ja` `0x273d7a0`. No system-font creation when all fail; `GetGUIStyleId` finds a GUIStyle with the same font or creates one and `set_font(arg)` (null → Unity behaviour, not proven equal to LegacyRuntime or Android SANS_SERIF).
+  Result cast to `UnityEngine.Font` (a type exception is not "missing"). Literals: `Fonts/default` GOT `0x273d7a8`, `-` `0x272fb60`, `-ja` `0x273d7a0`. No system-font creation when all fail; `GetGUIStyleId` finds a GUIStyle with the same font or creates one and `set_font(arg)`. Null uses the current-skin fallback described below, rather than Android SANS_SERIF.
 - APK `ResourceManager` (pathID 13 of `globalgamemanagers`) has exactly four font keys: `fonts/default-en-switch`, `fonts/default-hi`, `fonts/default-ja`, `fonts/default-th` (FileIDs 1114–1117, Font pathID 3). No `fonts/default`, `-en`, `-en-us`, `-ko`, `-zh`, `-zh-cn`. Nothing maps `en-US` → `en-switch`. Unity default resources also hold Font `LegacyRuntime` (pathID 10102). All five fonts are extracted (see assets docs, report 14).
+
+### Shipped default-skin font
+
+The shipped GameSkin (MonoBehaviour pathID11000 in `assets/bin/Data/unity default resources`, byte start1099048, size8488) has its first GUISkin-specific field at raw offset0x28: m_Font PPtr(fileID0,pathID10102). It resolves to that file's LegacyRuntime font,50788 bytes, whose metadata lists Liberation Sans/Arial. The aligned common prefix consumes40 bytes; the generic MonoBehaviour typetree reader reads only that prefix and fails its8488-byte size check. This finding is a bounded aligned field read, not a complete typetree parse.
+
+Public [Unity2022.3 GUISkin source](https://raw.githubusercontent.com/Unity-Technologies/UnityCsReference/2022.3/Modules/IMGUI/GUISkin.cs) declares m_Font first and assigns it as GUIStyle's default in MakeCurrent. [GUIStyle.font](https://docs.unity3d.com/2022.3/Documentation/ScriptReference/GUIStyle-font.html) specifies the current-skin fallback for null fonts. Thus the shipped default-skin English path selects the extracted `unity/Font/110_LegacyRuntime.ttf`; a different live skin/language remains an explicit runtime input.
 
 ### Language code
 
@@ -41,7 +47,7 @@
 ### Width measurement
 
 `Font.StringWidthF(text)` (`0x1b798ec`) → overload (`0x1b79778`, null extra arg): `IApplication.CheckUiThread` → direct `_stringWidthF` (`0x1b798f8`) or UI dispatch. `_stringWidthF`: `guiStyleId_ == -1` or null text → 0.
-- `useFontTexture_ == false`: `Font.GetGUIStyle` (`0x1b7a310`); set `GUIStyle.fontSize/fontStyle`, `GUIContent.text`; `GUIStyle.CalcSize` (`0x23e9e28`). A cache replaces spaces with dots under a condition not fully closed. Result ×100 / application factor.
+- `useFontTexture_ == false`: `Font.GetGUIStyle` (`0x1b7a310`); set `GUIStyle.fontSize/fontStyle`, `GUIContent.text`; `GUIStyle.CalcSize` (`0x23e9e28`). A contains-space check selects cached space-to-dot replacement before measurement, as detailed below. Result ×100 / the captured application factor.
 - `useFontTexture_ == true`: scaled size → `KairoPlugin.GetFontTextureSize(text,size)` (`0x1c2b724`) → delegate `<>c__DisplayClass151_0.<GetFontTextureSize>b__0` (`0x1c3683c`, captures text +0x10, size +0x18):
   - `Config.UNITY_EDITOR` (static +0x30): reflection into `WinLib` / `kairo.windows.plugin.Utility.GetFontTextureSize` (not present; not a port dependency).
   - else `Config.APPLI_TYPE` (static 0) == 2: `AndroidJavaObject.CallStatic<byte[]>("getFontTextureSize", text, size)` at `0x1c36b3c` on static `KairoPlugin`+0x10; otherwise returns null.
@@ -49,9 +55,21 @@
 - `KairoPlugin.Init` (`0x1c22a6c`, if APPLI_TYPE==2 and not editor): `kairo.android.plugin.Utility` → static +0x10, `kairo.android.plugin.Config` → +0x8, `android.os.Build$VERSION` → +0x18.
 - Java `kairo.android.plugin.Utility.getFontTextureSize(Ljava/lang/String;I)[B`: new `Paint`, linearText on, `setTextSize((float)size)`, `Typeface.SANS_SERIF`, antiAlias on; `measureText(text)`; second value = float return of `getFontMetrics(null)` (line spacing, not pixel bounds); `DataOutputStream.writeFloat` both (big-endian) → byte[]. Uses no APK font.
 
+### GUIStyle measurement and scale contract
+
+The GUIStyle branch of Font._stringWidthF captures IApplication.GetScaleRatio(false), gets its GUIStyle, then configures fontSize using binary32 `(applicationRatio * guiFontSize /100) +0.001` (literal bits0x3a83126f at0x6279d0). ARM FCVTZS saturates finite overflow and maps NaN to0; the explicit positive-infinity branch returns INT32_MIN. It assigns fontStyle from instance+0x28 and normal.textColor from instance floats+0x30..+0x3c. These are colour writes, not padding or glyph metrics. After measurement it returns ordered binary32 `width*100/applicationRatio`; the captured ratio is not re-read for that division.
+
+The transformed measurement text is tested for U+0020. If present, a cache keyed by that text supplies a copy with every space replaced by U+002E; GUIContent receives that replacement. No-space text is assigned directly. GUIStyle.CalcSize therefore measures dots instead of spaces on this route. The alternate Android texture call receives the original transformed text. Font.LT_DISABLE_TEXTLAYOUT suppresses recursive translation inside block construction; outside that scope, TranslateText, UnicodeToChanakya and optional automatic layout still matter.
+
+IApplication.GetScaleRatio (`0x1b7a270`,160 bytes; bool force) returns binary32 `instance+0xfc * instance+0x124 /100` when force=false and cached+0xfc is not NaN. Its raw-bit guard admits infinities as well as finite values: absolute bits below0x7f800001. Force=true or NaN calls KairoPlugin.GetScaleRatio(240,240). Initial/live field values remain explicit scenario/runtime inputs; do not replace this contract with a universal100.
+
+Font.GetGUIStyleId (`0x1b784ac`,520 bytes) traverses the shared style list in order, reads each style.font and tests Unity Object equality with the supplied font. It returns the first match. Otherwise construct a fresh GUIStyle, assign that font, append, then return the current count minus1. A null list/style fails; destroyed-object/null equality remains the external Unity object-lifetime contract. Font.GetGUIStyle (`0x1b7a310`,112 bytes) returns null for id=-1; otherwise delegates indexed access to the shared style provider. Public containers suffice for the list operations.
+
+Public [Unity2022.3 bindings](https://raw.githubusercontent.com/Unity-Technologies/UnityCsReference/2022.3/Modules/IMGUI/GUIStyle.bindings.cs) expose CalcSize as a native extern; the reference-only C# source does not implement its metrics and must not be copied into this GPL repository. [FreeType](https://freetype.org/license) is a public implementation candidate under its GPLv2 option, but identical font bytes do not establish matching hinting, kerning, bounds, scaling or rounding. Compare the desktop provider against original GUIStyle measurements before claiming equivalent line breaks; do not reconstruct Unity's native font engine.
+
 ### Who sets `useFontTexture_`
 
-Stores to Font+0x48: `Font._set` (`0x1b78c3c`, copies from source font), `Font._copy` (`0x1b7a650`, copies), `Graphics.Init` (`0x1b5c978..0x1b5c988`: first Graphics font ← `Graphics.DefaultUseFontTexture`). `Font..ctor`, `_init`, `_setSize`, `_updateGUIFont` write nothing to it. `DefaultUseFontTexture`: getter `0x1b5b494` reads static +0x59; setter `0x1b5b4ec` stores `arg & 1` (`0x1b5b540`); no immediate callers of the setter; `Graphics..cctor` does not store +0x59 (zero-initialised → false at start). `KairoBase.Start` STRB +0x59 at `0x1c6c004` is on its own instance (discarded). Talk TextLayout fonts are created by `Font..ctor`, not copied from Graphics: no `Graphics.GetFont` → `TextLayout.SetFont` link found (no immediate callers of `SetFont`). Hence talk fonts most likely start with `useFontTexture_ = false` (Unity GUIStyle route), but this is not proven.
+Stores to Font+0x48: `Font._set` (`0x1b78c3c`, copies from source font), `Font._copy` (`0x1b7a650`, copies), `Graphics.Init` (`0x1b5c978..0x1b5c988`: first Graphics font ← `Graphics.DefaultUseFontTexture`). `Font..ctor`, `_init`, `_setSize`, `_updateGUIFont` write nothing to it. `DefaultUseFontTexture`: getter `0x1b5b494` reads static +0x59; setter `0x1b5b4ec` stores `arg & 1` (`0x1b5b540`); no immediate callers of the setter; `Graphics..cctor` does not store +0x59 (zero-initialised → false at start). `KairoBase.Start` STRB +0x59 at `0x1c6c004` is on its own instance (discarded). Talk TextLayout fonts are created by `Font..ctor`, not copied from Graphics: no `Graphics.GetFont` → `TextLayout.SetFont` link found (no immediate callers of `SetFont`). For the reached fresh constructor -> _init -> localization/work-copy chain, useFontTexture_ stays at its CLR-zero false: neither constructor/_init writes +0x48, and copies preserve it. This establishes the GUIStyle route for this fresh chain, without a global claim about aliases/reflection or restored/custom fonts.
 
 ### Localization scope in `_makeTextBlocks`
 
@@ -141,14 +159,16 @@ A measurement service returning float widths for a run of text at a given Font s
 
 ## Evidence
 
+The current-slice font blocker uses complete ignored font-backend/M17759.asm, font-init-body/M17761.asm, font-metrics-core/F1b798f8.asm and mission-text-metrics/ exports. Space literal GOT0x272f400 ->cell0x27eb9d0 ->encoded0xa00000f9 resolves stringLiteral124 to U+0020. GameSkin bytes remain local in research/exports/mission-talk-font/GameSkin.bin; research/unity-assets.json records its object identity/offset. Confidence high for the fresh/default-skin route and wrapper arithmetic; desktop metric equivalence needs an original runtime oracle.
+
 - [../archive/reports/96-text-lines-and-font-metrics.md](../archive/reports/96-text-lines-and-font-metrics.md), [97-font-texture-delegate.md](../archive/reports/97-font-texture-delegate.md), [98-android-font-measurement.md](../archive/reports/98-android-font-measurement.md), [99-default-font-resource-selection.md](../archive/reports/99-default-font-resource-selection.md), [100-language-pack-font-code.md](../archive/reports/100-language-pack-font-code.md), [101-talk-font-construction-and-startup.md](../archive/reports/101-talk-font-construction-and-startup.md), [103-initial-text-font-correction.md](../archive/reports/103-initial-text-font-correction.md), [104-font-localization-scope.md](../archive/reports/104-font-localization-scope.md), [105-font-adjustment-and-preparation-exceptions.md](../archive/reports/105-font-adjustment-and-preparation-exceptions.md), [106-native-font-numeric-state.md](../archive/reports/106-native-font-numeric-state.md), [107-font-presets-and-graphics-initialization.md](../archive/reports/107-font-presets-and-graphics-initialization.md), [108-font-backend-access-and-draw-scale.md](../archive/reports/108-font-backend-access-and-draw-scale.md)
 - Local (`build/research/`): `font-width/`, `font-metrics-core/`, `font-texture-size/`, `font-backend/`, `font-backend-start/`, `font-selection/`, `font-selection-default/` (incl. M17770, M17820), `font-init-body/M17761.asm`, `font-language-selection/`, `language-font-origin/`, `pack-directives.json`, `language-init-callers.json`, `talk-font-boot/`, `talk-layout-constructor/`, `font-scale-correction/`, `font-scale-callers.json`, `font-localize-scope/`, `font-adjust-wrapper/`, `font-presets/initial-tables.json`, `font-type-reference-scan.json` (candidates only, has false positives), `font-store-candidates.json`, `font-java-classes.json`, `font-java-smali/`, `font-java-binding/`, `font-float-decoder/`, `font-float-bits/`; `research/local/unity-assets.json`.
 - APK SHA-256 `d58943e6…6eead`, ELF SHA-256 `17a6cf3a…526f` (see [overview.md](overview.md)).
 
 ## Open questions
 
-1. (blocking) Effective measurement backend for talk text: is `useFontTexture_` ever true on talk fonts (any write through copies/aliases/reflection)? Effective `Config.APPLI_TYPE`.
-2. (blocking) Which Unity font is actually loaded for English (`en-US` finds no key; Unity fallback for null `Resources.Load`/null `GUIStyle.font`) and its IMGUI metrics; a reference measurement set is needed to validate any desktop substitute.
+1. (blocking, runtime oracle) GUIStyle run widths/heights for the selected LegacyRuntime font and sizes/scales; compare any public desktop backend before claiming equivalent line breaks.
+2. Effective live skin/restored-font selection outside the established fresh/default-skin English projection.
 3. (blocking) Effective `requestFontScale_`, `Config.LOCALIZE_FONT_SCALE`, `Config.ASIA_FONT_SCALE`, application scale feeding `scaleRatio_`, and `Graphics`+0x5c at draw.
 4. Effective language at boot: `Language.Get`, PlayerPrefs value, guard on config +0x60, `LoadLanguagePack` rollback scope.
 5. `Font._setSize` preset table choice per caller; later writers of `HEIGHT`/`WIDTH`.

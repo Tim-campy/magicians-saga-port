@@ -26,7 +26,7 @@ kairo:0x06001837	documented	docs/subsystems/text.md	font_, scaleRatio_, pos=0 sp
 kairo:0x06001839	documented	docs/subsystems/text.md	SetText order; slices ported in text_fit/text_reveal
 kairo:0x0600183b	traced	docs/subsystems/text.md	markup parser / line formation; not ported
 kairo:0x0600183c	traced	docs/subsystems/text.md	ruby pass after blocks
-kairo:0x0600183e	traced	docs/subsystems/text.md	layout height used by auto-fit
+kairo:0x0600183e	documented	docs/subsystems/text.md	Ordered nonempty-block max(y+numeric font size), binary32 accumulation, +0.9 FCVTZS/+infinity handling; distinct from ascent/descent.
 kairo:0x06001841	traced	docs/subsystems/text.md	draw-time scale refresh, TextBlock.Draw per block
 kairo:0x06001843	documented	docs/subsystems/text.md	timing part ported in text_reveal; blink/draw counters not
 kairo:0x06001844	reimplemented	src/core/gameplay/text_reveal.cpp	reset_text_reveal; text_reveal_contract
@@ -60,8 +60,8 @@ kairo:0x060012c9	reimplemented	src/core/gameplay/text_font.cpp	update_text_font_
 kairo:0x060012ca	traced	docs/subsystems/fonts.md	dispatch to _getDefaultGUIFont
 kairo:0x060012cb	documented	docs/subsystems/fonts.md	per-language font search and cache
 kairo:0x060012cd	traced	docs/subsystems/fonts.md	may swap GUIStyle; no flag write
-kairo:0x060012d3	traced	docs/subsystems/fonts.md	find/create GUIStyle for font
-kairo:0x060012d6	traced	docs/subsystems/fonts.md	GUIStyle used for measurement
+kairo:0x060012d3	documented	docs/subsystems/fonts.md	First shared-style font equality match or fresh style/font assignment/append/current count-1; Unity Object equality remains external.
+kairo:0x060012d6	documented	docs/subsystems/fonts.md	Null for id=-1, otherwise indexed shared provider; used by run measurement.
 kairo:0x060012d7	documented	docs/subsystems/fonts.md	HEIGHT/WIDTH presets, requestFontScale_=100
 kairo:0x060012ed	documented	docs/subsystems/fonts.md	reads static +0x59
 kairo:0x060012ee	documented	docs/subsystems/fonts.md	stores arg&1; no direct callers
@@ -77,3 +77,4 @@ kairo:0x060003df	traced	docs/subsystems/fonts.md	language index compared by Japa
 game:0x060008b8	traced	docs/subsystems/text.md	Type0 page branch ported/tested and host-reachable; opening/close guards and modal ordering documented; other types remain outside the port.
 game:0x060008f9	documented	docs/subsystems/text.md	IsDrawWindowEnd captures close/style, membership0/1/2 and live frame or wrapped8-close gate; actual type0 config style2.
 game:0x06000907	traced	docs/subsystems/text.md	SubForm static initializer assigns configData row0 style2; no reconstruction of unrelated type rows.
+kairo:0x0600146d	documented	docs/subsystems/fonts.md	Cached binary32 product/division unless force or NaN; infinities pass guard, fallback platform scale provider receives240/240.

@@ -28,7 +28,7 @@ Host: `saga_mission` (headless or SDL window; explicit scenario state remains re
 - [ ] A6. Every service the host fakes is listed in the stub table of integration.md.
 
 Tasks:
-- [ ] (blocking) Replace provisional talk_layout lengths with actual TextLayout block construction/font measurements for Quest1 dialogue; retain explicit language/save inputs (A1/A4).
+- [ ] (blocking) Build Quest1 TextLayout blocks with the documented GUIStyle/LegacyRuntime run-measurement contract; replace talk_layout only with a bound provider and retain metric-oracle limits (A1/A4).
 - [ ] Bind saved-state/configuration and original InitWorld fresh/loaded entry to `saga_mission --data/--quest` so a diagnostic `--scene` profile is no longer required (A1).
 - [ ] Replace the synthetic catalogs/services of the 240-frame combat regression with the table-backed owner used by `saga_mission` (A3).
 - [ ] Add complete reached-world state hashing and record local per-quest golden replays (A5).

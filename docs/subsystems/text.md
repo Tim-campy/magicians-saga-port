@@ -54,6 +54,8 @@ Pipeline (each stage names its port module, if any):
 
 ### Markup parser (`_makeTextBlocks`, `0x1bbd4c4`, 10,344 bytes)
 
+SetText calls TranslateConsoleText before reveal reset and has an extra split/rejoin branch conditional on `<ff>`/`<FF>` (GOT0x273e830/0x273e868). Talks4..7 do not reach that branch; this does not authorize dropping it for other text. The existing SetText export also has an outgoing branch at0x1bbd004 to0x25fe2f0 whose exceptional/cold role remains unproven.
+
 Entry: saves `font_`; font localization scope (see [fonts.md](fonts.md)); creates a work font copy and `AdjustFontSize(scaleRatio_)`; then at `0x1bbd9a4..0x1bbda18`: `Language.TranslateText(text, true)` → `Language.UnicodeToChanakya` → literal `<br>` → LF (`StringUtil.Replace` overload). So table text does not reach the parser unchanged, and the whole text is translated a second time (independent of the argument translation in stage 3).
 
 Tag scan (`0x1bbdad4`): find `<` and next `>`, require distance ≤ 32, walk the 19-entry static `TAG` array (built by `TextLayout..cctor`, static +0x18) in order: `String.CompareTo` for exact tags, `String.StartsWith` with the prefix up to `=` for parameterised tags. Handling dispatch: uint16 jump table at `0x68dd0e`, target = `0x1bbe854` + entry×4 (co → `0x1bbeaac`, /co → `0x1bbec9c`, po → `0x1bbee5c`). Tag semantics and parameter parsing: [../formats/text-markup.md](../formats/text-markup.md). Tags actually used by the shipped tables: `br`, `co`, `/co`, `po`, plus `<0>`/`<1>` substitution markers.
@@ -61,6 +63,8 @@ Tag scan (`0x1bbdad4`): find `<` and next `>`, require distance ≤ 32, walk the
 `TextBlock` (type 2268): `text_`+0x28, `isButton_`+0x44, `isPictograph_`+0x45. `TextBlock..ctor` (`0x1bc09e8`) takes parent/font/colour/x/y/blink, **copies** the Font, starts with empty text, `start_`=`length_`=−1, `borderColor`=−1. `TextLayout.textBlocks_` is assigned the new array at `0x1bbf528` before it is fully populated (no transactional rollback).
 
 ### Line formation
+
+An unterminated `<` or an exhausted TAG search takes ordinary-character processing (`0x1bbdaf8..0x1bbdb70` -> `0x1bbdcc4`). A closed candidate with closing-minus-opening distance>32 advances past the opener without emitting that `<` (`0x1bbdb0c..0x1bbdb14` -> `0x1bbe854`). Preserve this quirk instead of stripping all unknown markup. Fresh talk Init has format=false, excluding the U+3001/U+3002 format-overflow branch. Actual wrapping still needs accumulated-run measurements and native lookahead, not a conventional replacement word-wrap algorithm.
 
 - `0x1bbde50..0x1bbdec4`: LF (U+000A) forces a break. Otherwise compare accumulated width + increment with `width_`(+0x38); `width_ == -1`, processing flags and `multiLine_`(+0x84) change the path. With `format_`(+0x6c) set, U+3001/U+3002 get special overflow handling. Not "N characters per line".
 - Increment may be computed by measuring the block text with the new character appended minus the previous width (`0x1bbdee4..0x1bbdf34`) — summing per-character widths is not equivalent.
@@ -148,6 +152,8 @@ Fields: `length_`+0x34, `pos_`+0x40, `speed_`+0x44, `beginTime_`+0x48 (64-bit), 
 Only if `adjustFontSize_`(+0x86) false and `multiLine_`(+0x84) true; independent of `autoScale_` (so applies to Japanese talks). size = `Font.usedSize_`(+0x1c), f = static `Font.requestFontScale_`(+0x44, captured once): `r = ((wrap32(size*100) / f) * 100 wrapped) / f` (signed truncating, two separate divisions; f=0 → 0; INT_MIN/−1 → INT_MIN), `SetSize(r,false)`, then `adjustFontSize_ = true` only after a normal return. 10/150 → 4; −10/150 → −4. The result is a request to the setter, not necessarily the drawn size. `TextLayout.SetFont` clears +0x86.
 
 ### Auto-fit (SetText `0x1bbd32c..0x1bbd420`)
+
+TextLayout.GetHeight (`0x1bbfd2c`,188 bytes) starts a binary32 maximum at0 and traverses textBlocks_ in order, requiring the array and each block. Null text fails before the font query. Empty text contributes no height and does not require its font; nonempty text requires block.font and computes binary32 `block.y + int32(font.usedSize)` from offsets+0x34/+0x1c. Only ordered greater values replace the maximum; negative/NaN candidates do not increase it. It returns ARM FCVTZS of binary32 `maximum +0.9` (literal0x3f666666 at0x6278bc), with explicit +infinity ->INT32_MIN. This numeric font size is not a FreeType ascent/descent/line-spacing result. Evidence: complete ignored mission-text-metrics/TextLayout_GetHeight.asm, project base0x100000 subtracted; confidence high for the static getter.
 Requires `autoScale_`(+0x78) and height(+0x3c) > 0.
 - Multiline: while `GetHeight()` > height+1: size = usedSize−1 (wrap32), `SetSize(size,false)`, rebuild blocks; exit when the **requested** size was 1 (even if the setter produced another size); else re-measure. After the loop: if height < `GetHeight()` again, call `GetHeight()` once more and store it into height (1-px tolerance can still grow the layout). Repeated queries are not merged.
 - Single line: also requires width > 0; reduce while width < `textWidth_`(+0x68), rebuilding each time; no GetHeight; same requested-size-1 stop. No iteration cap.
@@ -169,14 +175,14 @@ Compare float `Graphics`+0x5c with `scaleRatio_`(+0x7c) (FCMP/B.EQ: NaN ≠, ±0
 | Module (`src/core/gameplay/`) | Implements | Test (CTest) |
 |---|---|---|
 | `presentation_text.{hpp,cpp}` | `split_form_text` (TAB, trim), `split_event_text_fields` (`&`), `split_text_color_fields` (`,` trim); `substitute_form_arguments` with `PresentationTextHost` (translate_argument, remove_duplicate_honorific read after each translation). UTF-16 `std::u16string`, null vs empty kept via `std::optional`. | `presentation_text_contract` (`tests/test_presentation_text.cpp`), `presentation_arguments_contract` (`tests/test_presentation_arguments.cpp`) |
-| `presentation_forms.{hpp,cpp}` | `prepare_talk_form` (type 0 data, `.at(0)` fault on no page), `prepare_event_form` (type 4, `parse_event_type` host before field1 access). No TextLayout, no catalogue. | `presentation_forms_contract` (also executor → opcode 8 → wait 10 → opcode 12 integration with fixtures) |
+| `presentation_forms.{hpp,cpp}` | `prepare_talk_form` (type 0 data, `.at(0)` fault on no page), `prepare_event_form` (type 4, `parse_event_type` host before field1 access). TalkData/table join and type0 page advance are also host-bound; no complete TextLayout. | `presentation_forms_contract` (also executor → opcode 8 → wait 10 → opcode 12 integration with fixtures) |
 | `text_parameters.{hpp,cpp}` | `parse_text_tag_numbers`, `text_tag_argb`; `ManagedTextParseError` = catchable managed exception category | `text_parameters_contract` |
 | `text_reveal.{hpp,cpp}` | `reveal_length`, `configured_reveal_speed`, `TextRevealState`, reset/restart, `advance_text_reveal_timing`, `flush_text_reveal`, `text_reveal_ended`; host `TextRevealClock`; unsigned arithmetic for wrap | `text_reveal_contract` |
 | `text_fit.{hpp,cpp}` | `prepare_text_font_size`, `fit_text_blocks` with `TextFitHost` (font size/setter/rebuild/height) | `text_fit_contract` |
 
 Tools: `tools/inspect_presentation_table.py` (record layout audit + lexical `<...>` inventory; ASCII-decimal Int32 subset; keeps CR, extra tokens, null vs empty; no translation) with `tests/test_presentation_table.py` (7 tests); `tools/inspect_exception_callsites.py` (LSDA call-site ranges + landing pads with ELF SHA-256, pyelftools from `.tools/python-libs`; does not decode catch types/action chains) with `tests/test_exception_callsites.py` (2 tests). Last recorded Windows build: 20/20 CTest (MSVC 14.51, `tools\build-desktop.cmd`). No Linux run, no comparison with the original.
 
-Missing: talk catalogue host, real `TranslateText`/`UnicodeToChanakya`, SanSanRemove state, the markup parser and block generation, line formation and measurement, `_makeTextRubies`, parser cleanup, Frame blink/draw counters, page advance state machine, type-4 update/draw, TextLayout/TextBlock rendering.
+Missing: real `TranslateText`/`UnicodeToChanakya`, SanSanRemove state, the markup parser and block generation, line formation and measurement, `_makeTextRubies`, parser cleanup, Frame blink/draw counters, non-factory talk continuation, type-4 update/draw, TextLayout/TextBlock rendering.
 
 ## Evidence
 
