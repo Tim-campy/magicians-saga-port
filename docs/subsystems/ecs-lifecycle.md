@@ -1,6 +1,6 @@
 # ECS lifecycle
 
-The fixed32-system mission factory constructs every system before adding the array to SystemManager. Base construction captures the current static world's manager and enables the concrete type, including virtual enable hooks. The desktop host binds that lifecycle as an explicit empty-manager entry mode; save restoration and original world/entry selection remain external.
+The fixed32-system mission factory constructs every system before adding the array to SystemManager. Base construction captures the current static world's manager and enables the concrete type, including virtual enable hooks. The desktop host binds that lifecycle as an explicit empty-manager entry mode; save restoration and original fresh/loaded entry remain external. World, AppData and BaseSystem have distinct world slots whose initial aliasing is established below.
 
 ## Overview
 
@@ -11,6 +11,7 @@ System identities, factory indices, complete Init/Update dispatch and component 
 | Method | Registry id | ELF address | Contract |
 | --- | --- | --- | --- |
 | BaseSystem..ctor | game:0x06000cc4 | 0x113af4c | Require current static world, capture its manager, enable before virtual OnEnabled |
+| BaseSystem.SetWorld | game:0x06000cc7 | 0x113b4c4 | Nullable store into BaseSystem static world only; other roots/managers remain unchanged |
 | BaseSystem.set_enabled | game:0x06000cc6 | 0x113b48c | Changed-value store before enable/disable hook |
 | BasePauseSystem.OnEnabled | game:0x06000cc0 | 0x113b020 | Require captured manager, PauseSystems(true) |
 | BasePauseSystem.OnDisabled | game:0x06000cc1 | 0x113b324 | Require captured manager, PauseSystems(false) |
@@ -20,6 +21,16 @@ System identities, factory indices, complete Init/Update dispatch and component 
 | MenuSystem.Pause | game:0x06000f62 | 0x115eec8 | Set enabled to !pause |
 
 ## Behaviour
+
+### Initial world ownership
+
+World.world_ is a static field at offset0; AppData.world_ is static+0x18; BaseSystem.world_ is static+0x20. They are distinct fields. The metadata usage cells resolve GOT0x272f5f0 to World (encoded0x20008c25, native type17938, metadata4360),0x272f360 to AppData (native9048, metadata4165), and0x2730cc0 to BaseSystem (native9411, metadata4396). Registered field offsets, rather than matching register names, establish their layouts.
+
+World..cctor (`0x11332b0`) constructs MyEntityManager, then a World with that manager, stores it into World.world_ at0x1133340, and copies the same identity into BaseSystem.world_ at0x113339c after BaseSystem class initialization. World..ctor (`0x11333ac`) owns the supplied entity manager, a fresh SystemManager, fresh EventManager and fresh visible-entity set. World.get_world (`0x11334c8`,88 bytes) ensures World class initialization and returns World.world_. BaseSystem..ctor reads this World slot to capture its manager; it does not read BaseSystem.world_.
+
+AppData.Init (`0x1100298`,2268 bytes) ensures the World class is initialized and copies World.world_ to AppData.world_ at0x11004d8. Therefore the normal initial bindings share a world identity after application initialization. BaseSystem..cctor also captures AppData, Canvas, FormManager and GameView in four other static slots. It does not create another world.
+
+BaseSystem.SetWorld (`0x113b4c4`,92 bytes; one nullable World argument, void return) ensures BaseSystem class initialization, then stores the supplied reference only into BaseSystem.world_. It does not update World.world_, AppData.world_, existing captured system managers or loaded state. A failure before that store preserves the old reference. Later overrides must not be modeled as rebinding every world dependency at once. The desktop mission's single owner matches the established initial aliases; arbitrary later SetWorld overrides are not bound. The remaining entry problem is restoration/selection of state and the fresh/loaded InitWorld path, rather than an unknown initial world object.
 
 ### Construction before registration
 
@@ -64,10 +75,12 @@ Tests cover manager rebinding while enabled, missing world, null manager, virtua
 
 ## Evidence
 
+The world roots use complete ignored bounded exports in research/exports/mission-world-entry/ and mission-area-entry/, together with entity-registration/M36958_World__cctor.asm, entity-factory/M36984_World__ctor.asm, mission-construction/BaseSystem_ctor.asm and mission-original-entry/kairo_unity_ecs_BaseSystem_SetWorld.asm. AppData.Init copy is ELF0x11004c0..0x11004d8; static/instance offsets come from registered table0x277ece8 and the v31 metadata. Only the world-binding part of AppData.Init is established here; its complete form/bootstrap contract is not claimed.
+
 Local research/exports/mission-construction.tsv and mission-construction/ contain all32 selected constructor bodies plus BaseSystem and SystemManager constructors, with full syntactic coverage. Factory order comes from ecs-order/M37991_CreateSystems.asm and factory-order.json; ecs-lifecycle/M37236_Deserialize.asm establishes construction before AddSystems. pause-hooks/ and mission-pause/ supply BasePause and Menu hook bodies. The analyzed ELF SHA256 is17a6cf3a3cef9bd7b387c4b9627df113a8b214f0deb07e1778585dac1143526f; Ghidra's image base0x100000 is subtracted from instruction addresses. Confidence high for these static call/field contracts; no Android comparison.
 
 ## Open questions
 
-- (blocking) Bind original world/SetWorld/entry selection and decoded system state. The constructor mode explicitly starts from an empty manager and does not establish the original Continue/new-game caller.
+- (blocking) Bind decoded system state and the original fresh/loaded InitWorld entry. Initial world aliases and SetWorld scope are established; the constructor mode still does not restore a save or establish Continue/new-game state.
 - Bind the fresh Town list and its construction consumers when S2 reaches them; do not infer town state from a loaded mission snapshot.
 - Bind generic manager-list mutation, delegate-hash collision inputs and native FormManager timing only when the mission/town host requires them.

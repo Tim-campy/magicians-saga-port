@@ -579,5 +579,5 @@ Evidence: local `research/exports/effect-factory/kairo_unity_ecs_Entity_AddImage
 5. Continue/deserialization entry-state preparation remains unresolved; World.Destroy retains the group directory and does not reset the counter or loaded flag. Do not add implicit resets to cover this gap.
 6. `entitiesCache_`/`dirty_` production and delegate disposal of subsets; get_entity is now resolved to public Enumerable.First and ported above.
 7. Meaning of `World.byte+0x38`; entity+0x2c is the destroyed guard, set after successful manager deletion; who subscribes OnSystemEnabled/Disabled.
-8. (blocking) Bind saved system state and original world/SetWorld/entry selection to the constructor and Init contracts in [ECS lifecycle](ecs-lifecycle.md). The explicit empty-manager constructor mode does not restore a save or select the original entry path.
-9. Remaining SystemManager collections (`+0x38,+0x40,+0x50,+0x58,+0x60`) and BaseSystem ctor / SetWorld initial state.
+8. (blocking) Bind saved system state and original fresh/loaded entry to the constructor and Init contracts in [ECS lifecycle](ecs-lifecycle.md). The explicit empty-manager constructor mode does not restore a save or select the original entry path.
+9. Remaining SystemManager collections (`+0x38,+0x40,+0x50,+0x58,+0x60`); initial world aliases, BaseSystem construction and SetWorld scope are established in [ECS lifecycle](ecs-lifecycle.md).

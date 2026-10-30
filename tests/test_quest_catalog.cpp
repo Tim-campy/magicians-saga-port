@@ -13,6 +13,28 @@ int main(int argc,char** argv){
         std::size_t count=0;for(const auto& row:table)if(row)++count;
         std::cout<<"quest slots="<<table.size()<<" populated="<<count<<'\n';return 0;
     }
+    {
+        AreaDefinition area;
+        CHECK(&load_area_definition(area,"5\tArea\t17\t2\t2\t-3\t7\textra",parse_event_decimal)==&area);
+        CHECK(area.id==5&&area.name=="Area"&&area.image==17&&area.flags==7);
+        CHECK(area.stages&&*area.stages==EventIntegers({2,-3}));
+        const auto stages=area.stages;
+        load_area_definition(area,std::nullopt,parse_event_decimal);load_area_definition(area,"",parse_event_decimal);
+        CHECK(area.stages==stages&&area.id==5);
+        try{load_area_definition(area,"8\tChanged\tbad",parse_event_decimal);CHECK(false);}catch(const std::invalid_argument&){}
+        CHECK(area.id==8&&area.name=="Changed"&&area.image==17&&area.stages==stages);
+        try{load_area_definition(area,"8\tChanged\t9\t2\t4\tbad",parse_event_decimal);CHECK(false);}catch(const std::invalid_argument&){}
+        CHECK(area.image==9&&area.stages==stages&&area.flags==7);
+        try{load_area_definition(area,"8\tChanged\t9\t1\t4\tbad",parse_event_decimal);CHECK(false);}catch(const std::invalid_argument&){}
+        CHECK(area.stages!=stages&&*area.stages==EventIntegers({4})&&area.flags==7);
+        load_area_definition(area,"8\tChanged\t9\t-2\t3",parse_event_decimal);CHECK(!area.stages&&area.flags==3);
+        load_area_definition(area,"8\tChanged\t9\t0\t3",parse_event_decimal);CHECK(area.stages&&area.stages->empty());
+        const auto table=load_area_table("\xef\xbb\xbf" "2\tFirst\t5\t0\t1\r\n5\tOther\t7\t1\t8\t4\n2\tLast\t6\t-1\t2",false,parse_event_decimal);
+        CHECK(table.size()==6&&!table[0]&&!table[1]&&!table[3]&&!table[4]);
+        CHECK(table[2]->name=="Last"&&!table[2]->stages&&table[2]->flags==2&&table[5]->stages->at(0)==8);
+        CHECK(load_area_table("\r\n",true,parse_event_decimal).size()==1);
+        try{load_area_table("-1\tBad\t0\t0\t0",false,parse_event_decimal);CHECK(false);}catch(const std::out_of_range&){}
+    }
     const std::string prefix="2\tSynthetic\t17\tmap\t4\t0\t1\t2\t3\tignored\talso ignored\t5\t6\t10\t40\t25\t3\t20\t150\t";
     const std::string suffix="1\t1\t2\t4\t90\t0\t7\t1\t0\t-1\t8\t9\t10\t2\t11";
     QuestDefinition r;r.stage.rescued_prisoners=3;r.stage.completed=1;

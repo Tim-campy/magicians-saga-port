@@ -253,7 +253,8 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     std::vector<SelectedGauge> gauges;
     std::set<std::string> quest_fields;
     std::int32_t rescued_prisoners=0;
-    std::optional<std::int32_t> stage_entry;
+    std::optional<std::int32_t> stage_entry,stage_area_id;
+    std::shared_ptr<AreaDefinition> stage_area;
     EventIntegers formation;bool has_formation=false;
     for(std::string line;std::getline(input,line);){
         std::istringstream row(line);row.imbue(std::locale::classic());std::string operation;
@@ -329,7 +330,12 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         }
         if(operation=="stage_start"){
             std::int32_t stage=0;std::string area;
-            if(stage_entry||!(row>>stage>>area)||area!="null")throw std::invalid_argument("stage_start requires one stage int32 and explicit null area");
+            if(stage_entry||!(row>>stage>>area)||(area!="null"&&area!="area"))throw std::invalid_argument("stage_start requires one stage int32 and null or area <id>");
+            if(area=="area"){
+                std::int32_t id=0;
+                if(!(row>>id)||id<0)throw std::invalid_argument("stage_start area requires a nonnegative AreaData ID");
+                stage_area_id=id;
+            }
             stage_entry=stage;native_stage_entry_=true;end(row);continue;
         }
         if(operation=="party_formation"){
@@ -569,7 +575,12 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         for(const auto& field:std::vector<std::pair<bool,const char*>>{{enemy_config,"enemy_system"},{stage_events,"stage_events"},{stage_scenario.boss.has_value(),"stage_boss"},{static_cast<bool>(map_images),"mission_map"},{geometry.has_value(),"geometry"}})
             if(field.first&&!quest_fields.count(field.second))throw std::invalid_argument("selected quest conflicts with explicit static scenario fields");
         if(enemy_pool)throw std::invalid_argument("selected quest supplies enemy_pool; remove explicit override");
-        catalog=std::make_unique<GameplayCatalog>(load_gameplay_catalog(*tables,false,parse_event_decimal,rewards.has_value()||collection||drop_catalog,result_requested,true));
+        catalog=std::make_unique<GameplayCatalog>(load_gameplay_catalog(*tables,false,parse_event_decimal,rewards.has_value()||collection||drop_catalog,result_requested,true,stage_area_id.has_value()));
+        if(stage_area_id){
+            auto& area=catalog->areas->at(static_cast<std::size_t>(*stage_area_id));
+            if(!area)throw std::invalid_argument("selected area ID is a table gap");
+            stage_area=std::shared_ptr<AreaDefinition>(catalog->areas,&*area);
+        }
         const auto& definition=catalog->quests->at(static_cast<std::size_t>(*selected_quest));
         if(!definition)throw std::invalid_argument("selected quest ID is a table gap");
         auto q=std::make_shared<StageQuest>(definition->stage);q->rescued_prisoners=rescued_prisoners;
@@ -646,7 +657,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
                 if(!initialized_loaded_)spatial->observe_cursor_click([this](CursorPointRef point){mission->deliver_info_click(std::move(point));});}
             if(initialized_loaded_)initialize_loaded_world();
             if(stage_entry)humans->start_mission(*stage_entry,formation,*spatial,
-                [this]{return initialization_.paused;},[this]{pause_systems(false);});
+                [this]{return initialization_.paused;},[this]{pause_systems(false);},std::move(stage_area));
             for(const auto& request:states)humans->set_state(*created.at(std::get<0>(request)),std::get<1>(request),std::get<2>(request));
         }else if(!states.empty())throw std::invalid_argument("actor_state requires human_system");
         for(auto& selected_button:buttons){

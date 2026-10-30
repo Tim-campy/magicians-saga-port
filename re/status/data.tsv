@@ -1,0 +1,2 @@
+id	status	evidence	note
+game:0x0600101d	reimplemented	src/core/gameplay/quest_catalog.cpp	Ordered AreaData.Load fields, nullable arrays and partial mutation; test_quest_catalog.cpp and native Stage.Start host area binding.

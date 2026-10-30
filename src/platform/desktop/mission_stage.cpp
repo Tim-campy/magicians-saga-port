@@ -55,13 +55,13 @@ void MissionStage::answer_dialog(std::int32_t answer){
     owner_.notification_events_.push_back("answer_exit:"+std::to_string(answer));
 }
 void MissionStage::start(std::int32_t stage,const EventIntegers& formation,StageMapLoader& map,
-    std::function<bool()> paused,std::function<void()> resume){
+    std::function<bool()> paused,std::function<void()> resume,std::shared_ptr<AreaDefinition> area){
     if(started_||formation.size()!=16||!owner_.results_||!owner_.stage_.enemies)
         throw std::invalid_argument("stage_start requires fresh entry, sixteen formation slots, results and native Init");
     owner_.members_.formation=std::make_shared<EventIntegers>(formation);
     map_loader_=&map;paused_=std::move(paused);resume_=std::move(resume);
-    // The scenario explicitly supplies null area; original area/quest selection belongs to S2.
-    start_stage(owner_.stage_,nullptr,owner_.stage_.quest,stage,owner_.random_,*this);started_=true;
+    // The scenario selects a canonical Area.txt row or declares the diagnostic null-area boundary.
+    start_stage(owner_.stage_,std::move(area),owner_.stage_.quest,stage,owner_.random_,*this);started_=true;
 }
 StageCleanupHost& MissionStage::cleanup_host(){return owner_.results_->cleanup_service();}
 StageQuestForm* MissionStage::quest_form(){return &owner_.quest_form_;}
@@ -135,6 +135,14 @@ void MissionStage::report(std::ostream& out){
        <<",\"exit_dialog_answers\":"<<dialog_answers_<<",\"exit_dialog_wait_steps\":"<<modal_wait_steps_;
     out<<",\"native_stage_started\":"<<(started_?"true":"false");
     if(started_){
+        out<<",\"stage_entry_stage\":"<<owner_.stage_.stage<<",\"stage_area\":";
+        if(owner_.stage_.area){
+            const auto& area=*static_cast<const AreaDefinition*>(owner_.stage_.area.get());
+            out<<"{\"id\":"<<area.id<<",\"image\":"<<area.image<<",\"flags\":"<<area.flags<<",\"stages\":";
+            if(area.stages){out<<'[';for(std::size_t i=0;i<area.stages->size();++i){if(i)out<<',';out<<area.stages->at(i);}out<<']';}
+            else out<<"null";
+            out<<'}';
+        }else out<<"null";
         out<<",\"quest_form_scale\":"<<owner_.quest_form_.scale<<",\"entry_members\":[";bool first=true;
         for(auto* e:owner_.members_.members->entities()){if(!first)out<<',';first=false;out<<owner_.world_.id(*e);}out<<"],\"sortie_counts\":[";first=true;
         for(const auto& e:owner_.saved_.sortie_counts){if(!first)out<<',';first=false;out<<"{\"id\":"<<e.first<<",\"count\":"<<e.second<<'}';}out<<']';
@@ -149,9 +157,9 @@ void MissionHumans::enable_stage_loop(MissionStageScenario scenario){
     stage_loop_=std::make_unique<MissionStage>(*this,std::move(scenario));
 }
 void MissionHumans::start_mission(std::int32_t stage,const EventIntegers& formation,StageMapLoader& map,
-    std::function<bool()> paused,std::function<void()> resume){
+    std::function<bool()> paused,std::function<void()> resume,std::shared_ptr<AreaDefinition> area){
     if(!stage_loop_)throw std::invalid_argument("stage_start requires stage_loop");
-    stage_loop_->start(stage,formation,map,std::move(paused),std::move(resume));
+    stage_loop_->start(stage,formation,map,std::move(paused),std::move(resume),std::move(area));
 }
 bool MissionHumans::advance_stage(std::int32_t pass,bool enabled){
     if(stage_loop_)return stage_loop_->advance(pass,enabled);

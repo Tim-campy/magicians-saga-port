@@ -71,8 +71,14 @@ void MissionResults::clear_collecting_drops(){required(owner_.stage_.collection.
 void MissionResults::make_transition(std::int32_t mode,std::function<void()> callback,bool,std::uint32_t){
     owner_.notification_events_.push_back("transition:"+std::to_string(mode));transition_=std::move(callback);
 } // SAGA_STUB(mission-return-transition): retain callback; explicit scene policy holds old mission here.
-std::int32_t MissionResults::return_area_id(){unavailable("town-return area");}
-std::int32_t MissionResults::return_stage(){unavailable("town-return stage");}
+std::int32_t MissionResults::return_area_id(){
+    if(!owner_.stage_.area)unavailable("town-return area");
+    return static_cast<const AreaDefinition*>(owner_.stage_.area.get())->id;
+}
+std::int32_t MissionResults::return_stage(){
+    if(!owner_.stage_loop_||!owner_.stage_loop_->started())unavailable("town-return stage");
+    return owner_.stage_.stage;
+}
 void MissionResults::change_to_town_form(bool){unavailable("town form switch");}
 void MissionResults::send_town_return(std::int32_t,const TownReturnEvent&){unavailable("town event31");}
 void MissionHumans::enable_results(MissionResultScenario scenario){

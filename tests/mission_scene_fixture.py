@@ -34,6 +34,7 @@ def make_table_scene(root, valid_png=True, human_frame=False, shoot=False, rewar
     if boss_entry:
         tables['Enemy.txt'] += '\n' + tables['Enemy.txt'].replace('4\tEnemy', '1\tExtra', 1)
     if stage_entry:
+        tables['Area.txt'] = '5\tSynthetic area\t17\t2\t2\t3\t7\n9\tOther area\t18\t-1\t4'
         # Subcharacters use EquipmentData.bullet by id; the main hero selects Bullet0 by attribute.
         if shoot:tables['Bullet.txt'] += '\n' + tables['Bullet.txt'].replace('0\t', '3\t', 1)
         tables['Enemy.txt'] += '\n' + tables['Enemy.txt'].replace('4\tEnemy', '0\tInitial', 1)

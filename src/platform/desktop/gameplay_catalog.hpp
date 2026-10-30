@@ -17,7 +17,8 @@ struct GameplayCatalog {
     std::optional<core::TreasureTable> treasures; // Loaded only for a requested reward-capable scene.
     std::optional<core::LevelTable> levels;
     std::optional<core::QuestTable> quests;
+    std::shared_ptr<core::AreaTable> areas; // Optional native Stage.Start area owner; preserves row identity.
     std::map<std::string,std::string> members; // Logical table name -> actual selected archive member.
 };
-GameplayCatalog load_gameplay_catalog(ResourceArchive&,bool normalize_crlf,const core::EventIntegerParser&,bool include_rewards=false,bool include_results=false,bool include_quests=false);
+GameplayCatalog load_gameplay_catalog(ResourceArchive&,bool normalize_crlf,const core::EventIntegerParser&,bool include_rewards=false,bool include_results=false,bool include_quests=false,bool include_areas=false);
 } // namespace saga::desktop

@@ -296,7 +296,7 @@ game:0x0600013a,main.AppData.UpdateImageAnimations,boot,documented,440,0x10ffc6c
 game:0x0600013b,game:0x0600013b,boot,,868,0x10ffe24
 game:0x0600013c,game:0x0600013c,boot,,88,0x1100188
 game:0x0600013d,game:0x0600013d,boot,,184,0x11001e0
-game:0x0600013e,game:0x0600013e,boot,,2268,0x1100298
+game:0x0600013e,main.AppData.Init,boot,traced,2268,0x1100298
 game:0x0600013f,game:0x0600013f,boot,,280,0x1100b74
 game:0x06000140,game:0x06000140,boot,,376,0x1100c8c
 game:0x06000141,game:0x06000141,boot,,400,0x1100e04
@@ -3070,7 +3070,7 @@ game:0x06000cc3,game:0x06000cc3,ecs,,248,0x113b394
 game:0x06000cc4,kairo.unity.ecs.BaseSystem..ctor,ecs,reimplemented,212,0x113af4c
 game:0x06000cc5,game:0x06000cc5,ecs,,8,0x113b4bc
 game:0x06000cc6,kairo.unity.ecs.BaseSystem.set_enabled,ecs,reimplemented,48,0x113b48c
-game:0x06000cc7,game:0x06000cc7,ecs,,92,0x113b4c4
+game:0x06000cc7,kairo.unity.ecs.BaseSystem.SetWorld,ecs,documented,92,0x113b4c4
 game:0x06000cc8,kairo.unity.ecs.BaseSystem.OnEnabled,ecs,documented,4,0x113b520
 game:0x06000cc9,kairo.unity.ecs.BaseSystem.OnDisabled,ecs,documented,4,0x113b524
 game:0x06000cca,kairo.unity.ecs.BaseSystem.OnPause,ecs,traced,4,0x113b528
@@ -3912,7 +3912,7 @@ game:0x06001019,game:0x06001019,data,,8,0x116c3f4
 game:0x0600101a,game:0x0600101a,data,,8,0x116c3fc
 game:0x0600101b,game:0x0600101b,data,,8,0x116c404
 game:0x0600101c,game:0x0600101c,data,,8,0x116c40c
-game:0x0600101d,game:0x0600101d,data,,200,0x116c414
+game:0x0600101d,data.AreaData.Load,data,reimplemented,200,0x116c414
 game:0x0600101e,game:0x0600101e,data,,120,0x116c4dc
 game:0x0600101f,game:0x0600101f,data,,120,0x116c5d4
 game:0x06001020,game:0x06001020,data,,108,0x116c6d0

@@ -13,6 +13,27 @@ from mission_scene_fixture import make_table_scene, make_shoot_scene, with_missi
 
 @unittest.skipUnless(EXE, 'saga_mission supplied by CTest')
 class MissionProfileTests(unittest.TestCase):
+    def test_native_area_entry_retains_real_record_and_explicit_stage(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);scene=root/'scene.txt';text=make_native_entry_scene(root)
+            scene.write_text(text,encoding='utf-8');result=self.run_host(scene,frames=1)
+            self.assertEqual(result.returncode,0,result.stderr);baseline=json.loads(result.stdout)
+            self.assertIsNone(baseline['stage_area']);self.assertEqual(baseline['stage_entry_stage'],0)
+            def run(stage,area):
+                scene.write_text(text.replace('stage_start 0 null',f'stage_start {stage} area {area}'),encoding='utf-8')
+                return self.run_host(scene,frames=1)
+            result=run(37,5);self.assertEqual(result.returncode,0,result.stderr);data=json.loads(result.stdout)
+            self.assertEqual(data['stage_area'],{'id':5,'image':17,'flags':7,'stages':[2,3]})
+            self.assertEqual(data['stage_entry_stage'],37) # Start stores the argument without inferring an index into Area.stages.
+            for key in baseline.keys()-{'stage_area','stage_entry_stage'}:self.assertEqual(data[key],baseline[key],key)
+            result=run(-7,9);self.assertEqual(result.returncode,0,result.stderr);data=json.loads(result.stdout)
+            self.assertEqual(data['stage_entry_stage'],-7);self.assertEqual(data['stage_area'],{'id':9,'image':18,'flags':4,'stages':None})
+            for area in (-1,0,6,10,'bad','5 extra',''):
+                self.assertNotEqual(run(0,area).returncode,0,area)
+            # Legacy null-area profiles need no Area table; selecting an area requires it explicitly.
+            make_boss_scene(root)
+            missing=run(0,5);self.assertNotEqual(missing.returncode,0);self.assertIn('missing gameplay table: Area.txt',missing.stderr)
+
     def test_native_quest_frames_intro_and_fast_forward_passes(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);scene=root/'scene.txt';replay=root/'frames.txt'

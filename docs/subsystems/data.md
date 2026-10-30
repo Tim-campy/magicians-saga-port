@@ -40,6 +40,7 @@ Types were resolved from metadata return types and SZARRAY element pointers, not
 | `data.Data.get_<x>Data` Ã—10 (list above) | see TSV | Return `Data` array fields | high |
 | `main.AppData.GetResourceId` | `game:0x0600023d` | Static name row1 lookup; mission resource index | high |
 | `main.AppData.GetDataList` | `game:0x06000194` | 10 descriptors (array, selector) | high |
+| `data.AreaData.Load` | `game:0x0600101d` | Ordered static area fields and retained partial writes; canonical mission area | high |
 | `main.AppData.NewData` | `game:0x0600015b` | `BaseData.NewGame` on every list object; tail `InitCheckScriptData` | high |
 | `main.AppData.DeserializeData` | `game:0x06000190` | Reads BaseData save sections | medium |
 | `main.AppData.InitCheckScriptData` | `game:0x0600015c` | Builds check-script groups `AppData+0x248` | high |
@@ -121,6 +122,16 @@ See [../formats/game-tables.md](../formats/game-tables.md): `LoadStringArray` â†
 `CharaData.Load` reads: id; baseName (string); lockLevel; res (string); img; res2 (string); weaponId; recruitType; recruitCost; initLevel; rank; needExpRate; parameters (count-prefixed int32[][]); voiceId; townId; areaId; residentTerm (count-prefixed int32[][]); appearRate; inherited flag (`+0x1c`). The first twelve logical fields are fixed tokens; nested arrays make later token positions variable. needExpRate is token 11 (zero-based), stored at `+0x9c`. Saved level/exp and witchExp are not loaded here.
 
 Confidence: high for read/store order from bounded ARM64 instructions and metadata field offsets. Calls are GetInt `0x1126e4c`, GetString `0x1126dcc`, GetIntDoubleArray `0x112708c`. These game record mappings require no new Mono/runtime implementation.
+
+### Area records at mission entry
+
+AreaData.Load (`0x116c414`,200 bytes; game:0x0600101d) returns its receiver, preserving it for a null or empty line. Otherwise StringArrayStream reads/stores, in order, id int32 (`+0x18`), name string (`+0x40`), image int32 (`+0x48`), count-prefixed stages int32[] (`+0x50`) and inherited flag int32 (`+0x1c`). An array is stored only after its entire read succeeds; later failures retain earlier fields. Negative array counts mean null and zero means a distinct empty array. No discovery, arrival-stage or per-stage damage state is read from Area.txt. Trailing tokens are ignored. AreaData.GetStageNum (`0x116c3d4`,8 bytes) returns constant1; do not substitute stages-array length for that observed method.
+
+QuestForm.Init calls Data.get_areaData at0x11da164, indexes it by AppData.exploreArea_, and passes that row with its stored QuestData and AppData.exploreStage_ to StageSystem.Start at0x11da1b8. Its QuestData field is selected earlier from AppData.questData_[exploreStage_] at0x11d9e48..0x11d9e68. AppData.areaData_/questData_ are separate cached instance fields at+0x1e0/+0x1e8, while the Data catalog is a separate owner. The producer of that cache remains open; no relation between Area.stages values, local stage numbers and global Quest IDs is inferred here.
+
+Port: the existing [quest catalog](../../src/core/gameplay/quest_catalog.hpp), [implementation](../../src/core/gameplay/quest_catalog.cpp) and [contract test](../../tests/test_quest_catalog.cpp) cover Area Load, partial mutation, null/empty arrays, id gaps and duplicate replacement through the shared table reader. The mission catalog loads Area.txt only when stage_start requests an area. An aliasing shared pointer retains the canonical catalog row and its table owner through Stage.Start, results and the held return callback. The native start/return argument is bound without guessing a quest-selection mapping or decoding saved area state; host commands and provisional selections are in [integration](integration.md#table-backed-area-at-stage-start-s1-a1).
+
+Evidence: complete ignored bounded exports mission-world-entry/AreaData_Load.asm, mission-area-entry/AreaData_GetStageNum.asm and mission-original-entry/form_QuestForm_Init.asm; registered field offsets0x277ece8, metadata type fields and library SHA25617a6cf3a3cef9bd7b387c4b9627df113a8b214f0deb07e1778585dac1143526f. Addresses subtract Ghidra base0x100000. Confidence high for static load/storage/call contracts; no Android comparison.
 
 ### Combat table projections
 
@@ -231,6 +242,8 @@ The native `mission_resources "English.lproj" 1` scenario row requires `--data`,
 - Local (`build/research/`): `basedata-newgame-overrides.json`, `basedata-newgame.tsv`, `basedata-newgame/`, `basedata-slot8.json`, `basedata-reset-callees/`, `data-list-return-types.json`, `checkscript-context/`, `data-list-getters/`, `script-checks/`, `makearray-helpers/`, `checkscript-field-candidates.json`, `newdata-preload.tsv`, `newdata-tail.tsv`, `data-generic-load/`, `data-load-helpers/`, `data-load-entry/`, `data-text-reader/`, `string-lines/`, `string-lines-helpers/`, `data-encoding/`, `event-index-model.json`, `game-table-text-audit.json`
 
 ## Open questions
+
+- (blocking for scene-free mission selection) Find the population/filtering of AppData.areaData_/questData_, and the writers of decoded saved area/stage slots8/9. The desktop host binds an explicit Area.txt row and independent stage argument; it does not infer the original selection from Area.stages.
 
 1. (blocking) Body of `<LoadData>b__74_0`: does it call `EventData.Load`/`<T>.Load` per line, and what happens with invalid/null lines and trailing CR?
 2. (blocking) Full list of the 21 table names and their `Data` fields/types (only Event.txt position 5 is resolved).

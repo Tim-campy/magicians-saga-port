@@ -68,7 +68,7 @@ public:
     void enable_results(MissionResultScenario);
     void enable_stage_loop(MissionStageScenario);
     void start_mission(std::int32_t,const core::EventIntegers&,core::StageMapLoader&,
-                       std::function<bool()>,std::function<void()>);
+                       std::function<bool()>,std::function<void()>,std::shared_ptr<core::AreaDefinition> = {});
     bool advance_stage(std::int32_t pass=0,bool enabled=true);
     bool transition_pending()const;
     void write_result_report(std::ostream&);

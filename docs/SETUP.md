@@ -217,7 +217,7 @@ For table-backed entity scenes, replace manual draw rows with tables, progress a
 | result_recruits | initial found int32, is-new0/1, recruited int32, applied uniformly to present character IDs |
 | stage_loop | remaining-time int32, boss-started0/1, fade-frame int32, literal hold; native Stage.Update with explicit deferred-transition hold policy |
 | stage_events | literal fresh, count0..1000, then event-ID/progress int32 pairs; consumed flags start zero; reached script dispatch fails |
-| stage_start | stage int32 and literal null area; requires selected quest, loaded-world system_init, stage_loop/results and party_formation; runs original Start instead of a mid-mission snapshot |
+| stage_start | stage int32 followed by null, or area and a nonnegative Area.txt ID; requires selected quest, loaded-world system_init, stage_loop/results and party_formation; area mode retains the canonical record; stage remains an explicit saved input |
 | party_formation | sixteen saved character IDs or -1; required by stage_start, duplicates retained |
 | sorties | unique character ID and saved sortie count int32; required for every started member; native increment wraps |
 | stage_boss | optional boss ID int32 and level int32; requires stage_loop and complete enemy inputs; no default boss binding |

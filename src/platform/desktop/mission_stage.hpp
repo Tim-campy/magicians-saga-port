@@ -2,6 +2,7 @@
 #include "core/gameplay/stage_update.hpp"
 #include "core/gameplay/stage_recovery.hpp"
 #include "core/gameplay/enemy_population.hpp"
+#include "core/gameplay/quest_catalog.hpp"
 #include <map>
 #include <optional>
 #include <ostream>
@@ -29,8 +30,9 @@ public:
     bool exit_dialog_pending()const;
     void answer_dialog(std::int32_t);
     void report(std::ostream&);
+    bool started()const{return started_;}
     void start(std::int32_t,const core::EventIntegers&,core::StageMapLoader&,
-               std::function<bool()>,std::function<void()>);
+               std::function<bool()>,std::function<void()>,std::shared_ptr<core::AreaDefinition>);
 private:
     core::StageCleanupHost& cleanup_host()override;
     core::StageMapLoader* current_map_system()override{return map_loader_;}
