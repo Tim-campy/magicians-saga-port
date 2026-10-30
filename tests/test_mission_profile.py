@@ -14,6 +14,76 @@ from mission_scene_fixture import make_table_scene, make_shoot_scene, with_missi
 
 @unittest.skipUnless(EXE, 'saga_mission supplied by CTest')
 class MissionProfileTests(unittest.TestCase):
+    def test_legacy_retry_snapshot_keeps_unsupported_lifecycle_guard(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);scene=root/'legacy.txt'
+            text=make_boss_scene(root).replace('stage_loop 5000 0 20 hold','stage_loop 0 0 20 hold')
+            scene.write_text(text,encoding='utf8')
+            result=self.run_host(scene,frames=2)
+            self.assertNotEqual(result.returncode,0)
+            self.assertIn('retry/defeat form lifecycle and recovery',result.stderr)
+
+    @unittest.skipUnless(os.environ.get('SAGA_TEST_FONT'),'public font fixture supplied by CTest')
+    def test_native_retry_choices_gate_world_and_use_live_wallet(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);make_data_entry_fixture(root,os.environ['SAGA_TEST_FONT'],quest_time_limit=0)
+            seed=root/'new-game-save.tsv';original=seed.read_text();replay=root/'retry.replay'
+            opening='28 pulse 1048576\n29 pulse 1048576\n30 pulse 1048576\n31 pulse 1048576\n'
+            def run(frames,tail='',crystals=143,*extra):
+                seed.write_text(original.replace('wallet 37 43',f'wallet 37 {crystals}'))
+                replay.write_text(opening+tail,encoding='ascii')
+                result=subprocess.run([str(EXE),'--data',str(root),'--quest','2','--frames',str(frames),'--headless','--replay',str(replay),*extra],capture_output=True,text=True,timeout=30)
+                self.assertEqual(result.returncode,0,result.stderr);return json.loads(result.stdout)
+            waiting=run(60)
+            self.assertEqual(waiting['stage_modal_stack'],['retry','defeat'])
+            self.assertFalse(waiting['stage_retried'] or waiting['stage_dialog_answer_received'])
+            self.assertEqual(waiting['world_update_calls'],23)
+            ignored=run(60,'41 attack 1\n42 click 1 2\n')
+            self.assertEqual(ignored['world_update_calls'],23);self.assertEqual(ignored['replay_modal_ignored'],2)
+            prefix='40 answer 0\n'
+            choice=run(60,prefix);self.assertEqual(choice['stage_modal_stack'],['retry'])
+            self.assertEqual(choice['wallet']['crystals'],143);self.assertEqual(choice['world_update_calls'],23)
+            paid=run(41,prefix+'41 answer 0\n')
+            self.assertTrue(paid['stage_retried']);self.assertIsNone(paid['retry_dialog'])
+            self.assertEqual(paid['stage_modal_stack'],[]);self.assertEqual(paid['wallet']['crystals'],43)
+            self.assertEqual(paid['positions'][0]['invincible_time'],89)
+            self.assertGreater(paid['positions'][0]['mp'],waiting['positions'][0]['mp'])
+            self.assertEqual(run(41,prefix+'41 answer 0\n'),paid)
+            static=run(41,prefix+'41 answer 0\n',143,'--human-static-fps','17')
+            self.assertEqual(static['retry_invincibility_frames'],51);self.assertEqual(static['positions'][0]['invincible_time'],50)
+            declined=run(43,prefix+'41 answer 2\n')
+            self.assertTrue(declined['transition_pending']);self.assertFalse(declined['stage_retried'])
+            self.assertEqual(declined['wallet']['crystals'],143);self.assertEqual(declined['stage_state'],6)
+            insufficient=run(41,prefix+'41 answer 0\n',43)
+            self.assertEqual(insufficient['stage_modal_stack'],['retry','insufficient_crystals'])
+            self.assertFalse(insufficient['stage_retried'] or insufficient['stage_dialog_answer_received'])
+            notice=run(60,prefix+'41 answer 0\n42 answer 0\n',43)
+            self.assertEqual(notice['stage_modal_stack'],['retry']);self.assertEqual(notice['wallet']['crystals'],43)
+            self.assertEqual(notice['world_update_calls'],24)
+            ad=run(60,prefix+'41 answer 1\n',43)
+            self.assertTrue(ad['stage_retried']);self.assertEqual(ad['wallet']['crystals'],43)
+            self.assertEqual(ad['stage_modal_stack'],['ad_request']);self.assertEqual(ad['positions'][0]['invincible_time'],89)
+            # CheckCrystal uses the nominal100; the distinct SubCrystal call applies live Yugami scaling.
+            initial=root/'mission-initialization.tsv';initial.write_text(initial.read_text().replace('yugami 10000','yugami 9999'))
+            scaled=run(41,prefix+'41 answer 0\n');self.assertTrue(scaled['stage_retried'])
+            self.assertEqual(scaled['wallet']['crystals'],0)
+
+    @unittest.skipUnless(os.environ.get('SAGA_TEST_FONT'),'public font fixture supplied by CTest')
+    def test_native_notice_victory_and_result_modal_acknowledgement(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);make_data_entry_fixture(root,os.environ['SAGA_TEST_FONT'])
+            replay=root/'forms.replay'
+            def run(mask,ack=False):
+                replay.write_text(f'1 keys 16\n1 pulse {mask}\n'+('11 answer 0\n12 keys 16\n' if ack else ''),encoding='ascii')
+                result=subprocess.run([str(EXE),'--data',str(root),'--quest','2','--frames','12','--headless','--ui-debug','1','--replay',str(replay)],capture_output=True,text=True,timeout=30)
+                self.assertEqual(result.returncode,0,result.stderr);return json.loads(result.stdout)
+            for mask,kind in ((128,'defeat'),(256,'victory'),(32,'result')):
+                with self.subTest(kind=kind):
+                    waiting=run(mask);self.assertEqual(waiting['stage_modal_stack'],[kind])
+                    self.assertEqual(waiting['world_update_calls'],1)
+                    closed=run(mask,True);self.assertEqual(closed['stage_modal_stack'],[])
+                    self.assertEqual(closed['last_world_passes'],[0,1,2]);self.assertEqual(closed['world_update_calls'],5)
+
     def test_shared_catalog_combat_regression(self):
         for physical in (False,True):
             with self.subTest(physical=physical),tempfile.TemporaryDirectory() as directory:

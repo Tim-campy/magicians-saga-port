@@ -36,13 +36,13 @@ int main(int argc,char** argv)try{
                    "Font: --font path (otherwise manifest index, English/default skin only), --font-scale --app-ratio --layout-scale,\n"
                    "      --japanese --japanese-style --ft-load --kerning (defaults100/100/100,0/0/0/0).\n"
                    "Presentation: --camera-near --camera-far --camera-z --auto-images --application-update --depth-bits --depth-step.\n"
-                   "Other: --shop-mask; --fps/--debug accept initial; --rng system/--seed override the host defaults.\n"
+                   "Other: --shop-mask; --human-static-fps (default30, captured retry duration); --fps/--debug accept initial; --rng system/--seed override host defaults.\n"
                    "Bootstrap options apply only without --scene. Context inputs are provisional, not observed Android runtime settings.\n";return 0;
     }
     const std::set<std::string> legacy_required{"--scene","--fps","--debug","--rng","--seed"};
     const std::set<std::string> bootstrap_keys{"--width","--height","--language","--dpi","--tick-ms","--ui-debug","--short-words","--held-advance","--print",
         "--font","--font-scale","--app-ratio","--layout-scale","--japanese","--japanese-style","--ft-load","--kerning",
-        "--camera-near","--camera-far","--camera-z","--auto-images","--application-update","--depth-bits","--depth-step","--shop-mask"};
+        "--camera-near","--camera-far","--camera-z","--auto-images","--application-update","--depth-bits","--depth-step","--shop-mask","--human-static-fps"};
     auto allowed=legacy_required;for(const auto* key:{"--replay","--frames","--data","--quest","--capture"})allowed.insert(key);
     allowed.insert(bootstrap_keys.begin(),bootstrap_keys.end());
     std::map<std::string,std::string> options;bool headless=false;
@@ -88,7 +88,7 @@ int main(int argc,char** argv)try{
         const auto set_float=[&](const char* key,float& target){if(options.count(key))target=real(options.at(key));};
         const auto set_bool=[&](const char* key,bool& target){if(options.count(key))target=boolean(options.at(key));};
         set_int("--width",b.width);set_int("--height",b.height);set_int("--dpi",b.dpi);set_int("--tick-ms",b.tick_ms);
-        set_int("--depth-bits",b.depth_bits);set_int("--depth-step",b.depth_step);set_int("--shop-mask",b.shop_find_mask);
+        set_int("--depth-bits",b.depth_bits);set_int("--depth-step",b.depth_step);set_int("--shop-mask",b.shop_find_mask);set_int("--human-static-fps",b.human_static_fps);
         if(options.count("--language"))b.language=options.at("--language");
         if(options.count("--font"))b.font.path=std::filesystem::u8path(options.at("--font"));
         set_int("--font-scale",b.font.requested_scale);set_int("--ft-load",b.font.load_flags);set_int("--kerning",b.font.kerning_mode);

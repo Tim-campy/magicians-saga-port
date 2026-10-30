@@ -167,6 +167,7 @@ After all area markers, Update fully enumerates equipmentData, hatData and cloth
 - Jump table at `0x627b6e`, 15 uint16 entries relative to `0x110cee0`, scale 4; opcode 31 has a separate branch at `0x110cefc`. Opcode 10's entry is the common return (no scheduling here). Per-opcode effects: see the opcode table in [../formats/event-table.md](../formats/event-table.md).
 
 ### Money and crystals (opcodes 1, 2)
+- `CheckCrystal` (`game:0x060001a9`, `0x1109c80`,132 bytes) returns true for signed64 request<=0 before reading the normal-save property. Positive requests compare signed64 crystal balance>=request; no Yugami scaling occurs in this check. Its desktop retry consumer uses the same live result wallet as the separate SubCrystal debit. Evidence: complete mission-retry/AppData_CheckCrystal.asm, ELF0x1109cb0..0x1109ce4, zero missing words; the decoded-value helper and int64 boundary tests are in event_progression.
 - Arg ≥ 0 → `Add*`; arg < 0 → negated **in 32 bits** (`INT_MIN` stays `INT_MIN`) → `Sub*`.
 - `AddMoney`/`AddCrystal`: int64 balance + sign-extended int32, wrap64, no clamp.
 - `SubMoney`: int64 − sign-extended int32, wrap64, then `< 0 → 0`. So `-INT_MIN` subtraction increases the balance.

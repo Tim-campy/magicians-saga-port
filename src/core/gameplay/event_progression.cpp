@@ -41,6 +41,11 @@ EventIntegers resolve_event_arguments(const EventIntegers& row,
 }
 
 std::int64_t add_decoded_currency(std::int64_t value,std::int32_t amount){return add(value,amount);}
+bool check_decoded_crystals(std::int64_t value,std::int64_t amount){return amount<=0||value>=amount;}
+std::int64_t subtract_decoded_crystals(std::int64_t value,std::int32_t amount,std::int32_t yugami){
+    auto cost=static_cast<std::uint32_t>(amount);if(yugami!=10000)cost*=10000U;
+    return subtract(value,signed32(cost));
+}
 bool apply_event_progression(const EventIntegers& row, EventProgression& state) {
     switch (row.at(0)) {
     case 1: {
@@ -53,9 +58,8 @@ bool apply_event_progression(const EventIntegers& row, EventProgression& state) 
         const auto amount = row.at(1);
         if (amount >= 0) state.crystals = add(state.crystals, amount);
         else {
-            auto cost = 0U - static_cast<std::uint32_t>(amount);
-            if (state.crystal_subtraction_mode != 10000) cost *= 10000U;
-            state.crystals = subtract(state.crystals, signed32(cost));
+            const auto cost=signed32(0U-static_cast<std::uint32_t>(amount));
+            state.crystals=subtract_decoded_crystals(state.crystals,cost,state.crystal_subtraction_mode);
         }
         return true;
     }

@@ -121,6 +121,16 @@ int run_native_mission(MissionProfile& profile,std::int32_t width,std::int32_t h
                 else if(event.type==SDL_EVENT_KEY_DOWN&&!event.key.repeat){
                     if(event.key.key==SDLK_ESCAPE)running=false;
                     else if(event.key.key==SDLK_SPACE)paused=!paused;
+                    else if(interactive&&profile.humans&&profile.humans->stage_modal_pending()){
+                        const auto kind=profile.humans->stage_modal_kind();
+                        if(kind==98){
+                            if(event.key.key==SDLK_C)profile.humans->answer_stage_dialog(0);
+                            else if(event.key.key==SDLK_A)profile.humans->answer_stage_dialog(1);
+                            else if(event.key.key==SDLK_N)profile.humans->answer_stage_dialog(2);
+                        }else if(kind==99){
+                            if(event.key.key==SDLK_Y||event.key.key==SDLK_N)profile.humans->answer_stage_dialog(event.key.key==SDLK_Y?0:1);
+                        }else if(event.key.key==SDLK_RETURN)profile.humans->answer_stage_dialog(0);
+                    }
                     else if(interactive&&profile.accepts_live_gameplay_input()&&profile.humans->exit_dialog_pending()&&(event.key.key==SDLK_Y||event.key.key==SDLK_N))
                         profile.humans->answer_stage_dialog(event.key.key==SDLK_Y?0:1);
                     else if(event.key.key==SDLK_N)single_step=true;
@@ -148,7 +158,8 @@ int run_native_mission(MissionProfile& profile,std::int32_t width,std::int32_t h
             if(!paused||single_step){if(profile.step())++logic_steps;else{paused=true;if(bounded)break;}}
             if(interactive&&profile.accepts_live_input()&&profile.native_stage_controls()){
                 const std::string talk_title=profile.talk_title();
-                const std::string next=!talk_title.empty()?talk_title:profile.humans->exit_dialog_pending()?"Retreat from mission? Y confirms, N cancels":
+                const auto stage_title=profile.humans->stage_modal_title();
+                const std::string next=!stage_title.empty()?stage_title:!talk_title.empty()?talk_title:profile.humans->exit_dialog_pending()?"Retreat from mission? Y confirms, N cancels":
                     profile.humans->stage_state()==2?"Mission paused - P resumes, Q requests retreat":input_title;
                 if(next!=current_title){require(SDL_SetWindowTitle(window.get(),next.c_str()),"SDL mission state title");current_title=next;}
             }

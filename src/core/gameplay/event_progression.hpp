@@ -4,6 +4,9 @@
 namespace saga::core {
 // AppData.AddMoney/AddCrystal decoded-value contract: sign-extend int32, wrap64, no clamp.
 std::int64_t add_decoded_currency(std::int64_t value,std::int32_t amount);
+// AppData.CheckCrystal 0x1109c80: signed int64 amount <=0 succeeds without reading storage.
+bool check_decoded_crystals(std::int64_t value,std::int64_t amount);
+std::int64_t subtract_decoded_crystals(std::int64_t value,std::int32_t amount,std::int32_t yugami);
 struct DiscoveryState {
     std::int32_t state;
     bool is_new;

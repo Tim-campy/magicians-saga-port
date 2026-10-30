@@ -1,7 +1,7 @@
 """Synthetic table/archive profile shared by mission and GPU contracts."""
 from test_sprite_preview import jar, png, seb
 
-def make_table_scene(root, valid_png=True, human_frame=False, shoot=False, rewards=False, area=False, lethal_contact=False, treasure_flags=0, spell_attribute=3, boss_entry=False, alternate_quest=False, stage_entry=False, talk_events=False, bullet_category=0):
+def make_table_scene(root, valid_png=True, human_frame=False, shoot=False, rewards=False, area=False, lethal_contact=False, treasure_flags=0, spell_attribute=3, boss_entry=False, alternate_quest=False, stage_entry=False, talk_events=False, bullet_category=0, quest_time_limit=None):
     params = '13' + '\t2\t100\t1000' * 13
     tables = {
         'Quest.txt': ('2\tSynthetic quest\t0\tmap\t4\t0\t1\t2\t3\tunused\tunused\t7\t7\t10\t200\t25\t0\t10\t150\t'
@@ -14,6 +14,8 @@ def make_table_scene(root, valid_png=True, human_frame=False, shoot=False, rewar
         'Enemy.txt': f'4\tEnemy\t0\t2\t10\t100\t0\t0\t0\tenemy-book\t7\t0\t0\t0\t{params}\t0',
         'Bullet.txt': '3\t0\t0\tbullet\t5\t6\teffect\t7\t0',
     }
+    if quest_time_limit is not None:
+        quest=tables['Quest.txt'].split('\t');quest[14]=str(quest_time_limit);tables['Quest.txt']='\t'.join(quest)
     if shoot:
         weapon = tables['Equipment.txt'].split('\t')
         for i, value in {9: 3, 13: 15, 14: 4, 15: 12, 16: 3, 17: 0, 18: 1}.items():
@@ -71,9 +73,9 @@ def make_table_scene(root, valid_png=True, human_frame=False, shoot=False, rewar
     return text
 
 
-def make_shoot_scene(root, rewards=False, area=False, lethal_contact=False, treasure_flags=0, spell_attribute=3, boss_entry=False, alternate_quest=False, stage_entry=False, talk_events=False, bullet_category=0):
-    text = make_table_scene(root, human_frame=True, shoot=True, rewards=rewards, area=area, lethal_contact=lethal_contact, treasure_flags=treasure_flags, spell_attribute=spell_attribute, boss_entry=boss_entry, alternate_quest=alternate_quest, stage_entry=stage_entry, talk_events=talk_events, bullet_category=bullet_category)
-    for name, image, clips in [('bullet', 5, [0, 1]), ('effect', 7, [0, 100, 101])]:
+def make_shoot_scene(root, rewards=False, area=False, lethal_contact=False, treasure_flags=0, spell_attribute=3, boss_entry=False, alternate_quest=False, stage_entry=False, talk_events=False, bullet_category=0, quest_time_limit=None):
+    text = make_table_scene(root, human_frame=True, shoot=True, rewards=rewards, area=area, lethal_contact=lethal_contact, treasure_flags=treasure_flags, spell_attribute=spell_attribute, boss_entry=boss_entry, alternate_quest=alternate_quest, stage_entry=stage_entry, talk_events=talk_events, bullet_category=bullet_category, quest_time_limit=quest_time_limit)
+    for name, image, clips in [('bullet', 5, [0, 1]), ('effect', 7, [0, 100, 101, 102])]:
         (root / f'{name}.bin').write_bytes(jar([
             ('img.inf', '\n'.join(f'{i}\ta.png,bin' for i in [image, 1, 2, 6, 24, 27]).encode()),
             ('seb.inf', '\n'.join(f'{clip}\ta.seb' for clip in clips).encode()),
@@ -109,9 +111,9 @@ def with_mission_map(root, text):
               'mission_map fresh 0 1 2 3\nruntime 25 0 system 42\n')
 
 
-def make_boss_scene(root, alternate_quest=False, stage_entry=False, talk_events=False):
+def make_boss_scene(root, alternate_quest=False, stage_entry=False, talk_events=False, quest_time_limit=None):
     """Explicit near-boss entry state; Stage3 creates both native enemies and the fence."""
-    text = make_shoot_scene(root, rewards=True, treasure_flags=1, spell_attribute=0, boss_entry=True, alternate_quest=alternate_quest, stage_entry=stage_entry, talk_events=talk_events)
+    text = make_shoot_scene(root, rewards=True, treasure_flags=1, spell_attribute=0, boss_entry=True, alternate_quest=alternate_quest, stage_entry=stage_entry, talk_events=talk_events, quest_time_limit=quest_time_limit)
     text = '\n'.join(line for line in text.splitlines() if not line.startswith('enemy ')) + '\n'
     text = (text.replace('human 0 2 1 0 0 0 0 0 100', 'human 0 2 1 0 0 0 312 0 400')
             .replace('human_system 10 0 100 3 1', 'human_system 10 0 95 0 0'))
@@ -139,9 +141,9 @@ def make_gauge_scene(root, defeats=6):
     return text + 'resource 23 "gauges.bin" "English.lproj" 0\nglobal_alias 23 23\nruntime 25 0 system 42\nenemy_gauges\n'
 
 
-def make_native_entry_scene(root, alternate_quest=False, talk_events=False):
+def make_native_entry_scene(root, alternate_quest=False, talk_events=False, quest_time_limit=None):
     """Table-selected native Stage.Start with explicit decoded saved inputs."""
-    text=make_boss_scene(root,stage_entry=True,alternate_quest=alternate_quest,talk_events=talk_events)
+    text=make_boss_scene(root,stage_entry=True,alternate_quest=alternate_quest,talk_events=talk_events,quest_time_limit=quest_time_limit)
     replacements={'geometry 312 312 12':'geometry quest','human_system 10 0 95 0 0':'human_system quest 0 95 0 0',
                   'enemy_system 10000 0 10 25 7':'enemy_system quest 10000','enemy_pool 0\n':'',
                   'stage_notifications 1 0 0 2 0 0 -1':'stage_notifications 1 0 0 quest 1 0 -1',
@@ -158,10 +160,10 @@ def make_native_entry_scene(root, alternate_quest=False, talk_events=False):
                  'result_inventory hat 0 0 0\nresult_recruits 0 0 0\n')
 
 
-def make_data_entry_fixture(root, font_file):
+def make_data_entry_fixture(root, font_file, quest_time_limit=None):
     """Native bootstrap data and an equivalent diagnostic control; only synthetic/public bytes."""
     from pathlib import Path
-    text=make_native_entry_scene(root,talk_events=True)
+    text=make_native_entry_scene(root,talk_events=True,quest_time_limit=quest_time_limit)
     assets=root/'textassets';assets.mkdir()
     for archive in root.glob('*.bin'):(assets/archive.name).write_bytes(archive.read_bytes())
     entries=[(-1,'tables','xls'),(1,'hero','chara'),(3,'enemy','enemy-book'),(7,'quest','quest'),
@@ -180,7 +182,7 @@ def make_data_entry_fixture(root, font_file):
              'quest ','stage_start ','result_wallet ','result_record ','result_inventory ','result_recruits ','gear_levels ')
     control='mission_presentation 600 640 100 0 1 0 1500100 -1\nmission_resources "English.lproj" 1\nmaterial_policy native\ngpu_depth 24 1\n'
     control+='\n'.join(line for line in text.splitlines() if not line.startswith(removed))+'\n'
-    control+='hero fresh\ntick_ms 40\nsystem_construct empty_manager\nquest_frame 0 initial\ngear_new_game\ncharacter_shop_new_game 1\nnew_game_save\nmission_initialization\nmission_state new_game initial 0\nmission_events new_game 0 0 0\nenemy_gauges\ncollisions\n'
+    control+='human_static_fps 30\nhero fresh\ntick_ms 40\nsystem_construct empty_manager\nquest_frame 0 initial\ngear_new_game\ncharacter_shop_new_game 1\nnew_game_save\nmission_initialization\nmission_state new_game initial 0\nmission_events new_game 0 0 0\nenemy_gauges\ncollisions\n'
     control+=f'talk_font "{font.as_posix()}" 100 100 100 0 0 0 0 0\n'
     control=control.replace('system_init 1','system_init 0').replace('runtime 25 0 system 42','runtime initial initial system 42')
     return control

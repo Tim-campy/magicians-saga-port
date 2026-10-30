@@ -37,7 +37,7 @@ game:0x06000fa4	reimplemented	src/core/gameplay/drop_collection.cpp	Native front
 game:0x06000fa5	reimplemented	src/core/gameplay/drop_collection.cpp	Native hero snapshot/live list/31-update credit bound in Stage3 collection prefix beforeHuman4; dialog/state gates preserve pending work.
 game:0x06000fb9	reimplemented	src/core/gameplay/drop_collection.cpp	Stage credit then real numeric/common effect factories, Garbage0 and audio adapters; numeric glyph output explicitly stubbed, no permanent grants.
 game:0x06000d36	reimplemented	src/core/gameplay/drop_collection.cpp	Signed frame >=0 predicate used by tested live collection pass.
-game:0x06000f9d	reimplemented	src/core/gameplay/stage_update.cpp	All seven states ported/tested; desktop stage_loop reaches collection/clear, native SDL/replay confirmation, grants/gear/completion/return scheduling; script/recovery/dialog/pause branches fail explicitly when unbound.
+game:0x06000f9d	reimplemented	src/core/gameplay/stage_update.cpp	All seven states ported/tested; native mission host binds explicit retry/exit/modal choices, wallet debit, recovery, grants and held return; legacy initialized snapshots retain unsupported retry guard.
 game:0x06000fa0	documented	docs/subsystems/rewards.md	Gameplay reward pipeline bound to desktop live members, Table/Treasure catalogs and decoded inventory/currency/record state; full result UI suffix remains a service stub, so status stays documented.
 game:0x06000fb1	reimplemented	src/core/gameplay/quest_return.cpp	Desktop host binds native cleanup/member writeback and retains deferred transition callback; explicit hold stops old mission; town callback remains unexecuted.
 game:0x06000fda	reimplemented	src/core/gameplay/quest_return.cpp	Deferred live area/stage snapshot, form switch then event 31 tested
@@ -164,13 +164,13 @@ game:0x06000fa6	reimplemented	src/core/gameplay/stage_update.cpp	Captured event 
 game:0x06000fa7	reimplemented	src/core/gameplay/stage_update.cpp	Front-line Position.z forwarding; null front returns zero; tested through stage progress/events.
 game:0x06000fa8	reimplemented	src/core/gameplay/stage_update.cpp	Two live map reads, wrapping distance/percentage, FCVTZS edge cases and direct ARM SDIV semantics; tested.
 game:0x06000faf	reimplemented	src/core/gameplay/stage_update.cpp	Captured buttons, wrapping increment and upper-only frame cap 4; partial/null/overflow contract.
-game:0x06000fb8	reimplemented	src/core/gameplay/stage_update.cpp	Native cost100 dialog reason/kind98 bound to retained presentation object; retry answer explicit and no automatic Stage Update retry.
+game:0x06000fb8	reimplemented	src/core/gameplay/stage_update.cpp	Native cost100 reason/kind98 dialog bound to retained native modal stack and a separate answer-received gate; explicit keyboard/replay choices, insufficient-funds replacement and no automatic selection.
 game:0x06000d6b	reimplemented	src/core/gameplay/stage_update.cpp	Alive excludes exactly states 4/5 without HP; actual celebration transitions tested.
 game:0x060010ad	reimplemented	src/core/gameplay/stage_update.cpp	Cloth level wraps addition by argument then upper-clamps at 100; ordered real-hero result binding tested.
 game:0x060010f1	reimplemented	src/core/gameplay/stage_update.cpp	Equipment level wraps increment then upper-clamps at 100; no lower clamp; result failures preserve earlier increase.
 game:0x0600117a	reimplemented	src/core/gameplay/stage_update.cpp	Hat level wraps increment then upper-clamps at 100; freshly re-read hero equipment IDs; tested.
 game:0x060011ef	reimplemented	src/core/gameplay/stage_update.cpp	Completed byte becomes 1 before ReturnTown(0); actual grant/writeback/town event scenario tested.
-game:0x06000f9f	reimplemented	src/core/gameplay/stage_recovery.cpp	Full Retry: snapshot clip-100 effects, signed hero column, live member recovery/formation/effects, independent invincibility reads, modifier pool and BGM; integrated tests.
+game:0x06000f9f	reimplemented	src/core/gameplay/stage_recovery.cpp	Full Retry bound to native mission world/roster/formation/effect/modifier/timer owners; explicit static-FPS invincibility input; real-data paid/ad/decline paths and capture parity.
 game:0x06000fb4	reimplemented	src/core/gameplay/stage_recovery.cpp	Native threshold branch bound to MissionStage via narrow StageBossHost; actual shared-world boss/auxiliary/fence, retained failure prefix, cleanup and ordered audio stubs; core/host/real-data/GPU evidence.
 game:0x06000fd8	reimplemented	src/core/gameplay/stage_recovery.cpp	Required entity/Seb predicate tests animation ID 100, independent of Effect type/value; complete filtered snapshot before destruction.
 game:0x06000f47	reimplemented	src/core/gameplay/stage_recovery.cpp	Two current-global hero queries, binary32 X subtraction/addition and live member offset; world-replacement tests.

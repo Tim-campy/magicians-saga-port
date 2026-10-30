@@ -403,7 +403,7 @@ game:0x060001a5,game:0x060001a5,boot,,128,0x1109970
 game:0x060001a6,game:0x060001a6,boot,,96,0x1106eac
 game:0x060001a7,main.AppData.AddCrystal,boot,reimplemented,212,0x11099f0
 game:0x060001a8,main.AppData.SubCrystal,boot,reimplemented,444,0x1109ac4
-game:0x060001a9,game:0x060001a9,boot,,132,0x1109c80
+game:0x060001a9,main.AppData.CheckCrystal,boot,reimplemented,132,0x1109c80
 game:0x060001aa,game:0x060001aa,boot,,144,0x1109650
 game:0x060001ab,game:0x060001ab,boot,,4,0x1109d04
 game:0x060001ac,game:0x060001ac,boot,,284,0x1109d08

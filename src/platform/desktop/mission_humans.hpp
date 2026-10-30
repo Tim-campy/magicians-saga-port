@@ -95,6 +95,12 @@ public:
     std::int32_t stage_state()const{return stage_.state;}
     bool exit_dialog_pending()const;
     bool has_stage_dialog()const{return static_cast<bool>(stage_.dialog);}
+    bool stage_modal_pending()const{return !stage_modals_.empty();}
+    bool stage_modal_choice()const{return stage_modal_pending()&&stage_modals_.back().form&&stage_modals_.back().form==stage_.dialog.get();}
+    std::int32_t stage_modal_kind()const{return stage_modal_choice()?stage_.dialog->kind:0;}
+    std::string stage_modal_title()const;
+    void wait_stage_modal(){++stage_modal_wait_frames_;}
+    void bind_human_static_fps(std::int32_t fps){retry_invincibility_time_=core::initial_human_invincible_time(fps);}
     void answer_stage_dialog(std::int32_t);
     void begin_stage_frame(std::uint64_t);
     void end_stage_frame();
@@ -270,6 +276,11 @@ private:
     std::optional<MissionNotificationScenario> notification_scenario_;
     std::uint32_t held_keys_=0;
     std::vector<std::shared_ptr<core::StageForm>> stage_forms_;
+    struct StageModal {core::StageForm* form=nullptr;core::VictoryForm* victory=nullptr;std::string kind;};
+    std::vector<StageModal> stage_modals_;
+    std::optional<std::int32_t> retry_invincibility_time_;
+    std::uint64_t stage_modal_wait_frames_=0;
+    std::shared_ptr<core::StageForm> make_notice(const std::string&);
     std::vector<std::unique_ptr<core::VictoryForm>> victory_forms_;
     std::map<const core::StageForm*,std::string> form_names_;
     std::vector<std::string> notification_events_; // One ordered presentation stream for both stack projections.

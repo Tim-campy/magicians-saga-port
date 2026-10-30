@@ -37,10 +37,10 @@ bool MissionStage::advance(std::int32_t pass,bool enabled){
     else{auto pulse=scenario_.pulses.find(steps_);pulse_=pending_pulse_;pending_pulse_=0;
         if(pulse!=scenario_.pulses.end())pulse_|=pulse->second;}
     if(owner_.stage_.dialog){
-        if(owner_.stage_.dialog->kind!=99)unavailable("retry/defeat form lifecycle and recovery");
+        if(owner_.stage_.dialog->kind!=99&&!owner_.native_state_)unavailable("retry/defeat form lifecycle and recovery");
         // SAGA_STUB(mission-exit-modal): explicit close notification replaces the unbound FormManager gate.
         // Negative answers are valid native cancellations, never a pending sentinel.
-        if(!answer_received_){++modal_wait_steps_;return true;}
+        if((owner_.stage_.dialog->kind==99||owner_.native_state_)&&!answer_received_){++modal_wait_steps_;return true;}
     }
     if(owner_.stage_.state==1)++owner_.collection_steps_;
     update_stage(owner_.stage_,*this);
@@ -54,9 +54,9 @@ void MissionStage::begin_frame(std::uint64_t frame){
 }
 bool MissionStage::exit_dialog_pending()const{return owner_.stage_.dialog&&owner_.stage_.dialog->kind==99&&!answer_received_;}
 void MissionStage::answer_dialog(std::int32_t answer){
-    if(!exit_dialog_pending())throw std::invalid_argument("no pending exit dialog to answer");
+    if(!owner_.stage_.dialog||answer_received_||(owner_.stage_.dialog->kind!=99&&owner_.stage_.dialog->kind!=98))throw std::invalid_argument("no pending stage dialog to answer");
     owner_.stage_.dialog->answer=answer;answer_received_=true;++dialog_answers_;
-    owner_.notification_events_.push_back("answer_exit:"+std::to_string(answer));
+    owner_.notification_events_.push_back(std::string(owner_.stage_.dialog->kind==99?"answer_exit:":"answer_retry:")+std::to_string(answer));
 }
 void MissionStage::start(std::int32_t stage,const EventIntegers* formation,StageMapLoader& map,
     std::function<bool()> paused,std::function<void()> resume,std::shared_ptr<AreaDefinition> area){
@@ -107,7 +107,16 @@ bool MissionStage::execute_stage_event(std::int32_t id){
     if(owner_.stage_event_executor_)return owner_.stage_event_executor_(id);
     throw std::logic_error("mission service unbound: stage event catalog dispatch id="+std::to_string(id));
 }
-StageRecoveryHost& MissionStage::recovery_host(){unavailable("stage retry recovery");}
+StageRecoveryHost& MissionStage::recovery_host(){if(!owner_.retry_invincibility_time_)unavailable("human_static_fps for retry duration");return *this;}
+EntitySubset* MissionStage::recovery_effect_subset(){return owner_.world_.subset({26});}
+QuestEntityHost* MissionStage::recovery_destruction_world(){return &owner_.world_;}
+QuestMemberId MissionStage::recovery_entity_id(ComponentSlots& e){return owner_.world_.handle(e);}
+PartyCharacter* MissionStage::recovery_character(HumanRecordLink& h){return character(h);}
+void MissionStage::recovery_change_animation(ComponentSlots& e,std::int32_t clip,bool reset){change_animation(e,clip,reset);}
+DropEffectWorld* MissionStage::recovery_effect_world(){return &owner_.world_.effect_world();}
+PlayerWorldState* MissionStage::recovery_world(){return &owner_.world_.player_world();}
+std::int32_t MissionStage::invincible_time(){return owner_.retry_invincibility_time_.value();}
+void MissionStage::release_recovery_modification(Component* c){owner_.world_.return_component(15,c);}
 StageBossHost& MissionStage::boss_host(){if(!enemy_entry_)unavailable("stage_boss inputs");return *this;}
 StagePlacementHost& MissionStage::boss_coordinates(){return static_cast<StagePlacementHost&>(owner_);}
 ComponentSlots* MissionStage::create_stage_boss(StageEnemyStart& receiver){
@@ -117,8 +126,11 @@ ComponentSlots* MissionStage::create_stage_boss(StageEnemyStart& receiver){
 ProjectileModification& MissionStage::acquire_modification(){return owner_.world_.acquire_modification();}
 void MissionStage::play_boss_bgm(){owner_.notification_events_.push_back("play_boss_bgm");} // SAGA_STUB(mission-stage-audio).
 void MissionStage::play_boss_sound(){owner_.notification_events_.push_back("play_boss_sound");} // SAGA_STUB(mission-stage-audio).
-bool MissionStage::check_crystals(std::int32_t){unavailable("crystal retry decision");}
-void MissionStage::subtract_crystals(std::int32_t){unavailable("crystal retry subtraction");}
+bool MissionStage::check_crystals(std::int32_t amount){if(!owner_.results_)unavailable("retry wallet");return owner_.results_->check_crystals(amount);}
+void MissionStage::subtract_crystals(std::int32_t amount){
+    if(!owner_.results_||!owner_.enemy_scenario_)unavailable("retry wallet/system Yugami");
+    owner_.results_->subtract_crystals(amount,owner_.enemy_scenario_->yugami);
+}
 StageFormStack* MissionStage::stage_form_stack(){return owner_.stage_form_stack();}
 std::shared_ptr<StageDialog> MissionStage::make_retry_form(std::int32_t cost){return owner_.make_retry_form(cost);}
 std::shared_ptr<StageDialog> MissionStage::make_exit_form(){
@@ -126,8 +138,8 @@ std::shared_ptr<StageDialog> MissionStage::make_exit_form(){
     owner_.stage_forms_.push_back(form);owner_.form_names_[form.get()]="exit";
     owner_.notification_events_.push_back("make_exit");answer_received_=false;return form;
 } // SAGA_STUB(mission-stage-forms): retained identity; desktop title supplies the explicit exit choices.
-std::shared_ptr<StageForm> MissionStage::make_insufficient_crystals_form(){unavailable("insufficient crystals dialog");}
-std::shared_ptr<StageForm> MissionStage::make_interstitial_ad(){unavailable("retry ad request");}
+std::shared_ptr<StageForm> MissionStage::make_insufficient_crystals_form(){return owner_.make_notice("insufficient_crystals");}
+std::shared_ptr<StageForm> MissionStage::make_interstitial_ad(){return owner_.make_notice("ad_request");} // SAGA_STUB(mission-retry-ad): offline request presentation only; native Retry follows the request, not an invented success callback.
 std::shared_ptr<StageForm> MissionStage::make_defeat_form(std::int32_t reason){return owner_.make_defeat_form(reason);}
 void MissionStage::stop_stage_bgm(){owner_.stop_stage_bgm();}
 void MissionStage::show_quest_result(){if(!owner_.results_)unavailable("result state providers");owner_.results_->grant();}
@@ -140,6 +152,8 @@ std::int32_t* MissionStage::equipment_level(EquipmentSlot kind,std::int32_t id){
 }
 QuestReturnHost& MissionStage::return_host(){if(!owner_.results_)unavailable("return state providers");return *owner_.results_;}
 void MissionStage::report(std::ostream& out){
+    out<<",\"stage_retried\":"<<(owner_.stage_.retried?"true":"false");
+    out<<",\"stage_dialog_answer_received\":"<<(answer_received_?"true":"false");
     out<<",\"exit_dialog_pending\":"<<(exit_dialog_pending()?"true":"false")
        <<",\"exit_dialog_answers\":"<<dialog_answers_<<",\"exit_dialog_wait_steps\":"<<modal_wait_steps_;
     out<<",\"native_stage_started\":"<<(started_?"true":"false");
@@ -178,6 +192,10 @@ bool MissionHumans::advance_stage(std::int32_t pass,bool enabled){
     advance_collection(pass,enabled);return true;
 }
 void MissionHumans::pulse_stage_keys(std::uint32_t mask){
+    if(stage_modal_pending()){
+        if(!stage_modal_choice()&&(mask&0x100000U)!=0)answer_stage_dialog(0);
+        return;
+    }
     if(!stage_loop_)throw std::invalid_argument("stage_loop is required for pulse input");stage_loop_->pulse(mask);
 }
 void MissionHumans::bind_stage_pause(std::function<void(bool)> callback){
@@ -185,7 +203,14 @@ void MissionHumans::bind_stage_pause(std::function<void(bool)> callback){
 }
 bool MissionHumans::exit_dialog_pending()const{return stage_loop_&&stage_loop_->exit_dialog_pending();}
 void MissionHumans::answer_stage_dialog(std::int32_t answer){
-    if(!stage_loop_)throw std::invalid_argument("stage_loop is required for dialog answers");stage_loop_->answer_dialog(answer);
+    if(!stage_loop_)throw std::invalid_argument("stage_loop is required for dialog answers");
+    if(stage_modal_pending()){
+        if(stage_modal_choice())stage_loop_->answer_dialog(answer);
+        else if(answer!=0)throw std::invalid_argument("stage notice requires answer0 acknowledgement");
+        notification_events_.push_back("close:"+stage_modals_.back().kind);stage_modals_.pop_back();
+        if(input_)clear_form_input();return;
+    }
+    stage_loop_->answer_dialog(answer);
 }
 void MissionHumans::begin_stage_frame(std::uint64_t frame){if(!stage_loop_)throw std::logic_error("native quest frame requires stage_loop");stage_loop_->begin_frame(frame);}
 void MissionHumans::end_stage_frame(){stage_loop_->end_frame();}

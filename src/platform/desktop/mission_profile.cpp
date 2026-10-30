@@ -342,6 +342,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     std::optional<MissionInputScenario> input_scenario;
     MissionResultScenario result_state{};bool wallet=false,record=false,recruits=false;std::array<bool,3> stocks{};
     MissionStageScenario stage_scenario{};bool stage_loop=false,stage_events=false;
+    std::optional<std::int32_t> human_static_fps;
     MissionEnemyScenario enemy{};bool enemy_config=false,enemy_population=false,enemy_pool=false;
     std::map<std::string,std::int32_t> gear_defaults;
     std::vector<std::size_t> players;
@@ -410,6 +411,10 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             std::int32_t loaded=0;
             if(initialized_loaded_||!(row>>loaded)||loaded<0||loaded>255)throw std::invalid_argument("system_init requires one explicit loaded byte0..255; zero requires hero fresh and town_save19");
             initialized_loaded_=static_cast<std::uint8_t>(loaded);end(row);continue;
+        }
+        if(operation=="human_static_fps"){
+            std::int32_t value=0;if(human_static_fps||!(row>>value)||value<1||value>1000)throw std::invalid_argument("human_static_fps requires one explicit value1..1000");
+            human_static_fps=value;end(row);continue;
         }
         if(operation=="system_construct"){
             std::string mode;
@@ -705,7 +710,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     }
     if(bootstrap){
         const auto& b=*bootstrap;
-        if(!runtime||b.tick_ms<1||b.tick_ms>1000||b.dpi<0||b.language.empty()||
+        if(!runtime||b.tick_ms<1||b.tick_ms>1000||b.human_static_fps<1||b.human_static_fps>1000||b.dpi<0||b.language.empty()||
            std::any_of(b.language.begin(),b.language.end(),[](unsigned char c){return c<0x20;})||
            b.depth_bits<17||b.depth_bits>32||(b.depth_step!=0&&b.depth_step!=1)||
            b.font.requested_scale<1||!std::isfinite(b.font.application_ratio)||b.font.application_ratio<=0||
@@ -719,7 +724,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         }else font.path=std::filesystem::absolute(font.path);
         presentation(b.width,b.height,100,b.automatic_images,b.application_update,b.camera);
         load_resources(b.language,b.dpi);
-        bootstrap_options_=b;native_materials=true;has_gpu_depth=true;depth_bits=b.depth_bits;depth_step=b.depth_step;
+        bootstrap_options_=b;human_static_fps=b.human_static_fps;native_materials=true;has_gpu_depth=true;depth_bits=b.depth_bits;depth_step=b.depth_step;
         fresh_hero_=true;selected.emplace_back(SelectedFreshHero{});players.push_back(0);tick_ms=b.tick_ms;
         const auto map=initial_mission_map_creation();geometry=StageGeometry{map.step_x,map.step_z,0};
         quest_fields.insert("geometry");map_images=std::make_shared<EventIntegers>(4,0);quest_fields.insert("mission_map");
@@ -920,6 +925,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         if(human_scenario){
             if(!runtime||!geometry||!simulate)throw std::invalid_argument("human_system requires runtime, geometry and simulate rows");
             humans=std::make_unique<MissionHumans>(*entity_world,*catalog,progress,live_map?static_cast<StageGeometry&>(*live_map):*geometry,*runtime,*human_scenario,initialized_loaded_.has_value(),mission->gauge_service());
+            if(human_static_fps)humans->bind_human_static_fps(*human_static_fps);
             if(rewards)humans->enable_rewards(*rewards);
             if(enemy_requested)humans->enable_enemies(std::move(enemy));
             if(notifications)humans->enable_notifications(*notifications);
@@ -986,7 +992,8 @@ bool MissionProfile::step(){
     if(humans&&humans->transition_pending())return false;
     const auto input=replay_.find(logic_steps+1);
     if(input!=replay_.end())for(const auto& action:input->second){
-        if(talk_pending()&&action.kind!=InputKind::keys&&action.kind!=InputKind::pulse&&action.kind!=InputKind::viewport){++replay_modal_ignored_;continue;}
+        if((talk_pending()||(humans&&humans->stage_modal_pending()))&&action.kind!=InputKind::keys&&action.kind!=InputKind::pulse&&action.kind!=InputKind::viewport&&
+           !(action.kind==InputKind::answer&&humans&&humans->stage_modal_pending())){++replay_modal_ignored_;continue;}
         if(action.kind==InputKind::keys)humans->set_input_keys(action.value);
         else if(action.kind==InputKind::attack)humans->select_input_attack(static_cast<std::int32_t>(action.value));
         else if(action.kind==InputKind::pulse)humans->pulse_stage_keys(action.value);
@@ -998,6 +1005,7 @@ bool MissionProfile::step(){
         ++replay_applied_;
     }
     last_updates_.clear();last_world_passes_.clear();halted_=false;
+    if(humans&&humans->stage_modal_pending()){humans->wait_stage_modal();++logic_steps;return true;} // SAGA_STUB(mission-stage-modal): explicit top-form acknowledgement gates the parent mission.
     if(quest_frame_){
         humans->begin_stage_frame(logic_steps+1);
         try{
@@ -1016,7 +1024,7 @@ void MissionProfile::write_actor_parameters(ComponentSlots& actor,std::ostream& 
     if(const auto* cell=dynamic_cast<CellComponent*>(actor.get(5)))out<<",\"cell_xi\":"<<cell->xi<<",\"cell_yi\":"<<cell->yi;
     if(actor.contains(23)){
         out<<",\"hp\":"<<resolve_combat_parameter(actor,0)->value;
-        if(actor.contains(14)){const auto& h=*dynamic_cast<HumanRecordLink*>(actor.get(14));out<<",\"mp\":"<<resolve_combat_parameter(actor,1)->value<<",\"human_experience\":"<<h.experience<<",\"human_level\":"<<h.level<<",\"human_dash_speed\":"<<h.dash_speed;}
+        if(actor.contains(14)){const auto& h=*dynamic_cast<HumanRecordLink*>(actor.get(14));out<<",\"mp\":"<<resolve_combat_parameter(actor,1)->value<<",\"human_experience\":"<<h.experience<<",\"human_level\":"<<h.level<<",\"human_dash_speed\":"<<h.dash_speed<<",\"invincible_time\":"<<h.invincible_time;}
     }
     if(const auto* enemy=dynamic_cast<EnemyRecordLink*>(actor.get(24)))out<<",\"enemy_state\":"<<enemy->state<<",\"enemy_frame\":"<<enemy->frame<<",\"enemy_flags\":"<<enemy->flags;
 }
@@ -1025,7 +1033,7 @@ void MissionProfile::write_combat_report(std::ostream& out){
     if(bootstrap_options_){
         const auto& b=*bootstrap_options_;const auto& f=b.font;
         out<<",\"bootstrap_context\":{\"provisional\":true,\"language\":"<<std::quoted(b.language)<<",\"dpi\":"<<b.dpi<<",\"tick_ms\":"<<b.tick_ms
-           <<",\"debug_controls\":"<<(b.debug_controls?"true":"false")<<",\"short_words\":"<<(b.short_words?"true":"false")
+           <<",\"human_static_fps\":"<<b.human_static_fps<<",\"debug_controls\":"<<(b.debug_controls?"true":"false")<<",\"short_words\":"<<(b.short_words?"true":"false")
            <<",\"held_advance\":"<<(b.held_advance?"true":"false")<<",\"print\":"<<(b.print?"true":"false")
            <<",\"font_source\":\""<<(f.path.empty()?"manifest-index":"explicit")<<"\",\"font_scale\":"<<f.requested_scale
            <<",\"application_ratio\":"<<f.application_ratio<<",\"layout_scale\":"<<f.layout_scale

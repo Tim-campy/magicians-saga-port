@@ -25,6 +25,8 @@ public:
     MissionResults(MissionHumans&,MissionResultScenario);
     void grant();
     void report(std::ostream&);
+    bool check_crystals(std::int64_t amount)const;
+    void subtract_crystals(std::int32_t amount,std::int32_t yugami);
     bool transition_pending()const{return static_cast<bool>(transition_);}
     core::StageCleanupHost& cleanup_service(){return *this;}
 private:

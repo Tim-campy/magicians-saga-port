@@ -33,6 +33,8 @@ ItemStock& MissionResults::item(RewardItem kind,std::int32_t id){return inventor
 RecruitmentState& MissionResults::character(std::int32_t id){return recruits_.at(id);}
 void MissionResults::add_money(std::int32_t amount){state_.money=add_decoded_currency(state_.money,amount);}
 void MissionResults::add_crystals(std::int32_t amount){state_.crystals=add_decoded_currency(state_.crystals,amount);}
+bool MissionResults::check_crystals(std::int64_t amount)const{return check_decoded_crystals(state_.crystals,amount);}
+void MissionResults::subtract_crystals(std::int32_t amount,std::int32_t yugami){state_.crystals=subtract_decoded_crystals(state_.crystals,amount,yugami);}
 std::int32_t& MissionResults::rescued_prisoners(){return required(owner_.stage_.quest.get()).rescued_prisoners;}
 QuestExperienceHost& MissionResults::members(){auto list=owner_.members_.members;grant_cursor_={list,required(list.get()).version(),0};return *this;}
 std::int32_t MissionResults::defeated_enemies(){return owner_.enemies_.defeated_enemies;}

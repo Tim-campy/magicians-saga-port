@@ -17,7 +17,7 @@ struct MissionStageScenario {
     std::optional<MissionBossScenario> boss;
     bool reset_timer=false; // Explicit fresh timer from selected QuestData; not saved-state restoration.
 };
-class MissionStage final:private core::StageUpdateHost,private core::StageBossHost,private core::StageStartHost,
+class MissionStage final:private core::StageUpdateHost,private core::StageRecoveryHost,private core::StageStartHost,
     private core::PartyStartHost,private core::MemberInitializationHost {
 public:
     MissionStage(MissionHumans&,MissionStageScenario);
@@ -30,6 +30,7 @@ public:
     void bind_pause(std::function<void(bool)> callback){pause_=std::move(callback);}
     bool exit_dialog_pending()const;
     void answer_dialog(std::int32_t);
+    void prepare_dialog(){answer_received_=false;}
     void report(std::ostream&);
     bool started()const{return started_;}
     void start(std::int32_t,const core::EventIntegers*,core::StageMapLoader&,
@@ -73,6 +74,16 @@ private:
     void pause_systems(bool)override;
     bool execute_stage_event(std::int32_t)override;
     core::StageRecoveryHost& recovery_host()override;
+    core::StageStartHost& recovery_start_host()override{return *this;}
+    core::EntitySubset* recovery_effect_subset()override;
+    core::QuestEntityHost* recovery_destruction_world()override;
+    core::QuestMemberId recovery_entity_id(core::ComponentSlots&)override;
+    core::PartyCharacter* recovery_character(core::HumanRecordLink&)override;
+    void recovery_change_animation(core::ComponentSlots&,std::int32_t,bool)override;
+    core::DropEffectWorld* recovery_effect_world()override;
+    core::PlayerWorldState* recovery_world()override;
+    std::int32_t invincible_time()override;
+    void release_recovery_modification(core::Component*)override;
     core::StageBossHost& boss_host()override;
     core::StagePlacementHost& boss_coordinates()override;
     core::ComponentSlots* create_stage_boss(core::StageEnemyStart&)override;

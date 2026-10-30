@@ -17,17 +17,23 @@ void MissionHumans::game_over(std::int32_t reason){
     stage_game_over(stage_,reason,*this);
 }
 std::shared_ptr<StageDialog> MissionHumans::make_retry_form(std::int32_t cost){
-    if(native_state_)throw std::logic_error("mission service unbound: fresh retry form lifecycle and answer");
-    auto form=std::make_shared<StageDialog>();form->answer=notification_scenario_.value().retry_answer;
+    auto form=std::make_shared<StageDialog>();
+    if(!native_state_)form->answer=notification_scenario_.value().retry_answer;
+    if(stage_loop_)stage_loop_->prepare_dialog();
     stage_forms_.push_back(form);form_names_[form.get()]="retry";
     notification_events_.push_back("make_retry:"+std::to_string(cost));return form;
-} // SAGA_STUB(mission-stage-forms): retained identity and observations, no drawn dialog or answer selection.
+} // SAGA_STUB(mission-stage-forms): desktop modal input is bound; original drawing and transition timing remain separate.
 std::shared_ptr<StageForm> MissionHumans::make_defeat_form(std::int32_t reason){
     auto form=std::make_shared<StageForm>();stage_forms_.push_back(form);form_names_[form.get()]="defeat";
     notification_events_.push_back("make_defeat:"+std::to_string(reason));return form;
 } // SAGA_STUB(mission-stage-forms).
 void MissionHumans::push(StageForm* form){
     const auto it=form_names_.find(form);notification_events_.push_back("push:"+(it==form_names_.end()?std::string(form?"unknown":"null"):it->second));
+    if(native_state_&&form){
+        if(it==form_names_.end())throw std::invalid_argument("unowned stage form");
+        stage_modals_.push_back({form,nullptr,it->second});
+        if(input_)clear_form_input();
+    }
 } // SAGA_STUB(mission-stage-forms).
 void MissionHumans::stop_stage_bgm(){notification_events_.push_back("stop_bgm");} // SAGA_STUB(mission-stage-audio).
 void MissionHumans::boss_defeated(ComponentSlots& enemy){
@@ -46,7 +52,20 @@ VictoryForm* MissionHumans::make_victory(std::int32_t enemy,bool completed){
     victory_forms_.push_back(std::make_unique<VictoryForm>());
     notification_events_.push_back("make_victory:"+std::to_string(enemy)+":"+(completed?"1":"0"));return victory_forms_.back().get();
 } // SAGA_STUB(mission-stage-forms).
-void MissionHumans::push(VictoryForm*){notification_events_.push_back("push:victory");} // SAGA_STUB(mission-stage-forms).
+void MissionHumans::push(VictoryForm* form){
+    notification_events_.push_back("push:victory");
+    if(native_state_&&form){stage_modals_.push_back({nullptr,form,"victory"});if(input_)clear_form_input();}
+} // SAGA_STUB(mission-stage-forms).
+std::shared_ptr<StageForm> MissionHumans::make_notice(const std::string& kind){
+    auto form=std::make_shared<StageForm>();stage_forms_.push_back(form);form_names_[form.get()]=kind;
+    notification_events_.push_back("make_"+kind);return form;
+}
+std::string MissionHumans::stage_modal_title()const{
+    if(!stage_modal_pending())return {};
+    if(stage_modal_kind()==98)return "Retry? C: 100 crystals, A: offline ad request, N: decline";
+    if(stage_modal_kind()==99)return "Retreat from mission? Y confirms, N cancels";
+    return stage_modals_.back().kind+" - Enter to continue";
+}
 MovementControl* MissionHumans::movement_control(std::int32_t group,std::int32_t id){
     notification_events_.push_back("control_lookup:"+std::to_string(group)+":"+std::to_string(id));return input_?input_->movement_control(group,id):nullptr;
 } // SAGA_STUB(mission-movement-controls): without input fresh no QuestForm controls are bound.
@@ -55,6 +74,9 @@ void MissionHumans::send_touch_release(MovementControl& control,std::int32_t typ
     throw std::logic_error("mission service unbound: QuestForm touch release");
 }
 void MissionHumans::write_notification_report(std::ostream& out){
+    out<<",\"stage_modal_wait_frames\":"<<stage_modal_wait_frames_<<",\"stage_modal_stack\":[";
+    for(std::size_t i=0;i<stage_modals_.size();++i){if(i)out<<',';out<<'"'<<stage_modals_[i].kind<<'"';}out<<']';
+    out<<",\"retry_invincibility_frames\":";if(retry_invincibility_time_)out<<*retry_invincibility_time_;else out<<"null";
     out<<",\"native_mission_state\":"<<(native_state_?"true":"false");
     out<<",\"notifications_enabled\":"<<(notification_scenario_?"true":"false");if(!notification_scenario_)return;
     out<<",\"stage_state\":"<<stage_.state<<",\"stage_frame\":"<<stage_.frame

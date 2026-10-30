@@ -33,6 +33,11 @@ struct Host : EventFlowHost {
     }
 };
 int main() {
+    check(check_decoded_crystals(-1,0)&&check_decoded_crystals(-1,-1),"nonpositive crystal request succeeds");
+    check(check_decoded_crystals(100,100)&&!check_decoded_crystals(99,100),"signed64 crystal threshold");
+    check(check_decoded_crystals(std::numeric_limits<std::int64_t>::max(),std::numeric_limits<std::int64_t>::max()),"full signed64 request retained");
+    check(!check_decoded_crystals(-1,std::numeric_limits<std::int64_t>::max()),"negative balance cannot satisfy positive request");
+    check(subtract_decoded_crystals(143,100,10000)==43&&subtract_decoded_crystals(143,100,9999)==0,"check and scaled debit are separate contracts");
     check(add_decoded_currency(std::numeric_limits<std::int64_t>::max(),1)==std::numeric_limits<std::int64_t>::min(),"decoded money wrap64");
     check(add_decoded_currency(0,-1)==-1,"decoded add has no lower clamp");
     check(add_decoded_currency(0,std::numeric_limits<std::int32_t>::min())==-2147483648LL,"decoded delta sign extension");

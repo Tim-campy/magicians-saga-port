@@ -25,7 +25,7 @@ struct MissionSelection {
 // Defaults are exposed by the CLI and reported; they are not an Android runtime capture.
 struct MissionBootstrapOptions {
     std::filesystem::path data_root;
-    std::int32_t quest=0,width=600,height=640,tick_ms=40,dpi=1,shop_find_mask=1;
+    std::int32_t quest=0,width=600,height=640,tick_ms=40,dpi=1,shop_find_mask=1,human_static_fps=30;
     std::string language="English.lproj";
     BitmapCamera camera{0.0F,1500100.0F,-1.0F};
     MissionFontScenario font{{},100,0,0,100.0F,100.0F,false,false};
@@ -76,7 +76,7 @@ public:
     bool native_stage_controls()const{return initialization_complete_&&humans&&humans->stage_input_enabled();}
     bool accepts_fast_forward()const{return quest_frame_&&quest_frame_->debug_controls;}
     bool talk_pending()const{return events_&&events_->pending();}
-    bool accepts_live_gameplay_input()const{return accepts_live_input()&&!talk_pending();}
+    bool accepts_live_gameplay_input()const{return accepts_live_input()&&!talk_pending()&&!humans->stage_modal_pending();}
     std::string talk_title()const{return events_?events_->title():std::string{};}
 private:
     MissionProfile(const std::filesystem::path&,bool,ArchiveImageSet::Decoder,std::optional<MissionRuntimeConfig>,std::optional<std::filesystem::path>,MissionSelection,const MissionBootstrapOptions*);
@@ -107,10 +107,10 @@ private:
     void debug_show_result()override{humans->debug_show_result();}
     void debug_complete_quest()override{core::complete_stage_quest(*humans->quest());}
     void queue_debug_return()override{throw std::logic_error("mission DEBUG UI-thread town callback is unbound");}
-    void push_debug_defeat(std::int32_t reason)override{humans->debug_defeat_form(reason);debug_modal_=true;}
-    void push_debug_victory(std::int32_t enemy,bool completed)override{humans->debug_victory_form(enemy,completed);debug_modal_=true;}
+    void push_debug_defeat(std::int32_t reason)override{humans->debug_defeat_form(reason);debug_modal_=!humans->stage_modal_pending();}
+    void push_debug_victory(std::int32_t enemy,bool completed)override{humans->debug_victory_form(enemy,completed);debug_modal_=!humans->stage_modal_pending();}
     bool active()override{return is_top_form();}
-    bool is_top_form()override{return (!events_||!events_->pending())&&!debug_modal_&&!humans->has_stage_dialog()&&!humans->transition_pending();} // SAGA_STUB(mission-form-top): other form kinds remain unbound.
+    bool is_top_form()override{return (!events_||!events_->pending())&&!debug_modal_&&!humans->stage_modal_pending()&&!humans->has_stage_dialog()&&!humans->transition_pending();} // SAGA_STUB(mission-form-top): known mission modals; full FormManager remains separate.
     void update_world(std::int32_t pass)override;
     void change_state(std::int32_t)override{throw std::logic_error("mission native form layout transition is unbound");}
     std::int32_t saved_orientation()override{return quest_frame_->orientation;}
