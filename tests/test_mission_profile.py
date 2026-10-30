@@ -13,6 +13,38 @@ from mission_scene_fixture import make_table_scene, make_shoot_scene, with_missi
 
 @unittest.skipUnless(EXE, 'saga_mission supplied by CTest')
 class MissionProfileTests(unittest.TestCase):
+    def test_stage_event_talk_holds_world_and_requires_page_confirmation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);scene=root/'scene.txt';replay=root/'talk.replay'
+            text=make_native_entry_scene(root,talk_events=True).replace('stage_loop quest 0 20 hold','stage_loop quest 0 0 hold')
+            text=text.replace('stage_notifications 1 0 0 quest 1 0 -1','stage_notifications 1 0 0 quest 0 0 -1')
+            text+='system_construct empty_manager\nquest_frame 0 0\ntick_ms 40\nmission_events fresh null 0 0 0\ntalk_layout 4 2 100 100\n'
+            scene.write_text(text,encoding='utf-8')
+            def run(frames,replaying=False):
+                result=self.run_host(scene,*(['--replay',str(replay)] if replaying else []),frames=frames)
+                self.assertEqual(result.returncode,0,result.stderr);return json.loads(result.stdout)
+            opened=run(22);self.assertTrue(opened['talk_pending']);self.assertEqual(opened['talk']['form_state'],0)
+            self.assertEqual(opened['executed_stage_events'],[212]);self.assertEqual(opened['event_execution_counts'],[[212,1]])
+            held=run(200);self.assertTrue(held['talk_pending']);self.assertEqual(held['talk']['page'],0)
+            self.assertEqual(held['world_update_calls'],22);self.assertEqual(held['remaining_time'],5000)
+            replay.write_text('24 attack 2\n25 touch 0 35 65553\n26 cursor 3 4\n27 click 5 6\n',encoding='ascii')
+            blocked=run(30,True);baseline=run(30)
+            for key in ['attack_buttons','attack_attribute','last_active_button','move_front_pushed','cursor','cursor_touches','cursor_clicks']:
+                self.assertEqual(blocked[key],baseline[key],key)
+            self.assertEqual(blocked['replay_modal_ignored'],4)
+            # Init clears input, opening ignores input, then explicit flush/next/flush/close and eight Updates.
+            replay.write_text('23 pulse 1048576\n24 pulse 1048576\n28 pulse 1048576\n29 pulse 1048576\n30 pulse 1048576\n31 pulse 1048576\n',encoding='ascii')
+            flushing=run(28,True);self.assertEqual(flushing['talk']['page'],0);self.assertEqual(flushing['talk_flushes'],1)
+            closing=run(31,True);self.assertEqual(closing['talk']['close_counter'],8);self.assertEqual(closing['talk_flushes'],2)
+            self.assertTrue(run(38,True)['talk_pending'])
+            resumed=run(39,True);self.assertFalse(resumed['talk_pending']);self.assertEqual(resumed['talk_forms_closed'],1)
+            self.assertEqual(resumed['world_update_calls'],23);self.assertEqual(resumed['remaining_time'],4999)
+            self.assertEqual(resumed['event_execution_counts'],[[212,1]])
+            self.assertEqual(resumed['talk_lifecycle'],['push:4','init:4','resume:4','pop:4','finish:4','remove:4'])
+            self.assertEqual(run(39,True),resumed)
+            for bad in (text.replace('talk_layout 4 2 100 100\n',''),text.replace('talk_layout 4 2 100 100','talk_layout 4 1 100'),text.replace('mission_events fresh null 0 0 0','mission_events fresh missing 0 0 0')):
+                scene.write_text(bad,encoding='utf-8');self.assertNotEqual(self.run_host(scene,frames=22).returncode,0)
+
     def test_fresh_world_initializers_create_hero_and_town_from_tables(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);scene=root/'scene.txt'

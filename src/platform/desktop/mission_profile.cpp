@@ -240,6 +240,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     std::ifstream input(scene);if(!input)throw std::runtime_error("cannot open scene description");
     std::vector<std::variant<HumanCreation,EnemyCreation,SelectedBullet,SelectedEffect,SelectedDrop,SelectedFreshHero>> selected;
     std::optional<MissionHumanScenario> human_scenario;bool runtime_row=false;
+    MissionEventScenario event_scenario;bool event_context=false;
     std::array<bool,32> enabled_rows{};bool menu_snapshot=false;
     std::optional<MissionRewardScenario> rewards;
     std::optional<MissionNotificationScenario> notifications;
@@ -306,6 +307,20 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             std::string policy;
             if(!native||native_materials||!materials.empty()||!(row>>policy)||policy!="native")throw std::invalid_argument("material_policy native is exclusive with explicit material rows");
             native_materials=true;end(row);continue;
+        }
+        if(operation=="mission_events"){
+            std::string mode;std::int32_t short_words=0,held=0,print=0;
+            if(event_context||!(row>>mode)||mode!="fresh")throw std::invalid_argument("mission_events requires one explicit fresh event catalog state");
+            row>>std::ws;
+            if(row.peek()=='"'){std::string args;if(!(row>>std::quoted(args)))throw std::invalid_argument("invalid decoded event save string0");event_scenario.save_string0=decode_mission_text(args);}
+            else{std::string null;if(!(row>>null)||null!="null")throw std::invalid_argument("mission_events requires null or quoted decoded save string0");}
+            if(!(row>>short_words>>held>>print)||(short_words!=0&&short_words!=1)||(held!=0&&held!=1)||(print!=0&&print!=1))throw std::invalid_argument("mission_events requires explicit IsShortWords, held-advance and Config.PRINT bools");
+            event_scenario.short_words=short_words!=0;event_scenario.held_advance=held!=0;event_scenario.print=print!=0;event_context=true;end(row);continue;
+        }
+        if(operation=="talk_layout"){
+            std::int32_t id=0,count=0;
+            if(!(row>>id>>count)||id<0||count<1||count>10000||event_scenario.page_lengths.count(id))throw std::invalid_argument("talk_layout requires unique id, page count1..10000 and explicit layout-provider lengths");
+            auto& lengths=event_scenario.page_lengths[id];for(std::int32_t i=0;i<count;++i){std::int32_t n=0;if(!(row>>n)||n<0||n>2147483)throw std::invalid_argument("talk_layout length outside selected host bounds");lengths.push_back(n);}end(row);continue;
         }
         if(operation=="system_init"){
             std::int32_t loaded=0;
@@ -575,6 +590,8 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     }
     if(selection.quest&&!selected_quest)throw std::invalid_argument("--quest requires a scenario quest row or mission_selection with explicit saved rescued count");
     if(!has_world)throw std::invalid_argument("an explicit world matrix is required");
+    if(event_context&&(!quest_frame_||!tick_ms))throw std::invalid_argument("mission_events requires quest_frame and an explicit tick_ms clock");
+    if(!event_context&&!event_scenario.page_lengths.empty())throw std::invalid_argument("talk_layout requires mission_events");
     if(fresh_hero_&&(!initialized_loaded_||*initialized_loaded_!=0||!construct_systems_||!stage_entry||!saved_town_count_||selected.size()!=1))
         throw std::invalid_argument("hero fresh requires system_init 0, system_construct, native stage entry, town_save19 and no other selected actors");
     if(!fresh_hero_&&((initialized_loaded_&&*initialized_loaded_==0)||saved_town_count_))
@@ -725,6 +742,11 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             else if((action.kind==InputKind::cursor||action.kind==InputKind::click)&&!spatial)throw std::invalid_argument("cursor/click replay requires mission_map fresh");
         for(std::int32_t i=0;i<frames;++i)mission->advance_animations({automatic!=0,application_update!=0});
         if(spatial)spatial->advance_visibility();
+        if(event_context){
+            if(!tables||!humans||!humans->stage_input_enabled())throw std::invalid_argument("mission_events requires table-backed Stage Update");
+            events_=std::make_unique<MissionEvents>(*tables,std::move(event_scenario),[this]{humans->clear_form_input();});
+            humans->bind_stage_events([this](std::int32_t id){return events_->execute(id);});
+        }
         if(simulate&&*simulate>0){for(std::int32_t i=0;i<*simulate;++i)if(!step())break;}else{queue=mission->render();if(!mission->faults().empty())throw std::invalid_argument("entity render fault: "+mission->faults().front().message);}
         commands=static_cast<std::size_t>(queue.counts->at(0))+static_cast<std::size_t>(queue.counts->at(1));
     }
@@ -743,6 +765,7 @@ bool MissionProfile::step(){
     if(humans&&humans->transition_pending())return false;
     const auto input=replay_.find(logic_steps+1);
     if(input!=replay_.end())for(const auto& action:input->second){
+        if(talk_pending()&&action.kind!=InputKind::keys&&action.kind!=InputKind::pulse&&action.kind!=InputKind::viewport){++replay_modal_ignored_;continue;}
         if(action.kind==InputKind::keys)humans->set_input_keys(action.value);
         else if(action.kind==InputKind::attack)humans->select_input_attack(static_cast<std::int32_t>(action.value));
         else if(action.kind==InputKind::pulse)humans->pulse_stage_keys(action.value);
@@ -756,7 +779,10 @@ bool MissionProfile::step(){
     last_updates_.clear();last_world_passes_.clear();halted_=false;
     if(quest_frame_){
         humans->begin_stage_frame(logic_steps+1);
-        try{quest_frame_result_=update_quest_frame(quest_frame_state_,humans->quest_form().fade_frame,*this);}
+        try{
+            const bool modal=events_&&events_->advance(logic_steps+1,*tick_ms,humans->stage_frame_pulse(0x100000U),humans->stage_frame_key(0x40U));
+            if(!modal)quest_frame_result_=update_quest_frame(quest_frame_state_,humans->quest_form().fade_frame,*this);
+        }
         catch(...){humans->end_stage_frame();throw;}
         humans->end_stage_frame();
     }else update_world(0);
@@ -774,6 +800,8 @@ void MissionProfile::write_actor_parameters(ComponentSlots& actor,std::ostream& 
     if(const auto* enemy=dynamic_cast<EnemyRecordLink*>(actor.get(24)))out<<",\"enemy_state\":"<<enemy->state<<",\"enemy_frame\":"<<enemy->frame<<",\"enemy_flags\":"<<enemy->flags;
 }
 void MissionProfile::write_combat_report(std::ostream& out){
+    out<<",\"replay_modal_ignored\":"<<replay_modal_ignored_;
+    if(events_)events_->write_report(out);
     out<<",\"fresh_hero_bootstrap\":"<<(fresh_hero_?"true":"false")<<",\"fresh_town_initialized\":"<<(fresh_town_initialized_?"true":"false");
     if(fresh_town_initialized_){
         out<<",\"town_save19\":"<<*saved_town_count_<<",\"town_save19_writes\":"<<town_count_writes_<<",\"town_build_enable\":[";

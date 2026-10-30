@@ -28,7 +28,7 @@ Host: `saga_mission` (headless or SDL window; explicit scenario state remains re
 - [ ] A6. Every service the host fakes is listed in the stub table of integration.md.
 
 Tasks:
-- [ ] (blocking) Bind Quest1 events212..215 through the existing indexed event/opcode8 kernels and talk-form modal lifecycle in `saga_mission`; preserve explicit acknowledgement and saved text inputs (A1/A4).
+- [ ] (blocking) Replace provisional talk_layout lengths with actual TextLayout block construction/font measurements for Quest1 dialogue; retain explicit language/save inputs (A1/A4).
 - [ ] Bind saved-state/configuration and original InitWorld fresh/loaded entry to `saga_mission --data/--quest` so a diagnostic `--scene` profile is no longer required (A1).
 - [ ] Replace the synthetic catalogs/services of the 240-frame combat regression with the table-backed owner used by `saga_mission` (A3).
 - [ ] Add complete reached-world state hashing and record local per-quest golden replays (A5).
@@ -72,7 +72,7 @@ Host: `saga`. Acceptance: talk and event forms show their text with the correct 
 
 - [ ] (blocking) Choose the desktop font backend: can `useFontTexture_` be true on talk fonts, which Unity font English loads; define a reference measurement set.
 - [ ] Reconstruct `_makeTextBlocks` for the tags the tables use (`br`, `co`, `/co`, `po`), including the scanner fallback.
-- [ ] Port the talk page-advance state machine on the existing modules; trace the type-4 event form and the producers of `nextIndex_`.
+- [ ] Bind talk page advance to original layout/font providers; trace the type-4 event form and the producers of `nextIndex_`.
 - [ ] Port the font localization scope with its two cleanup scopes, plus the `Frame` blink and draw counters.
 - [ ] Close the translation path (`CallTranslateText` flags and fallback, `UnicodeToChanakya`), the boot language state and SanSanRemove.
 - [ ] Decide the audio path (FSB5 Vorbis from the extractor output, streaming policy for 74 MB of PCM) and play BGM/SE through SDL.

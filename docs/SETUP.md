@@ -181,6 +181,8 @@ For table-backed entity scenes, replace manual draw rows with tables, progress a
 | view | width, height, scale, camera X/Y, VIEW margins X/Y, extra-depth rate |
 | geometry | map step X/Z and height; required when a selected bullet reaches the map |
 | animate | initial animation-pass count0..10000, automatic flag0/1, application-update flag0/1 |
+| mission_events | literal fresh, null or quoted UTF8 decoded normal-save string0, IsShortWords0/1, Config held-advance0/1, Config.PRINT0/1; requires quest_frame and tick_ms; fresh event execution counters, invariant translation service |
+| talk_layout | talk id, page count and that many nonnegative reveal lengths; provisional TextLayout provider outputs, never inferred from raw text; requires mission_events |
 | hero | literal fresh; replaces a selected human/player declaration; requires system_init0, system_construct, native stage entry, town_save19 and explicit saved progression for the first table main character |
 | town_save19 | decoded int32 normal-save town count; required with hero fresh; Town7 raises it to the number of flag1 Town.txt records only when larger |
 | system_init | loaded byte0..255; zero requires hero fresh, town_save19, system_construct and native stage entry; requires Human/Input/map providers; dispatches all32 concrete initializers; saved state stays explicit |

@@ -98,6 +98,7 @@ BossNotificationHost& MissionStage::movement_host(){return owner_;}
 bool MissionStage::key_pulse(std::int32_t mask){return (frame_pulse_.value_or(pulse_)&static_cast<std::uint32_t>(mask))!=0;}
 void MissionStage::pause_systems(bool value){if(!pause_)unavailable("stage pause/resume lifecycle");pause_(value);}
 bool MissionStage::execute_stage_event(std::int32_t id){
+    if(owner_.stage_event_executor_)return owner_.stage_event_executor_(id);
     throw std::logic_error("mission service unbound: stage event catalog dispatch id="+std::to_string(id));
 }
 StageRecoveryHost& MissionStage::recovery_host(){unavailable("stage retry recovery");}
@@ -179,6 +180,7 @@ void MissionHumans::answer_stage_dialog(std::int32_t answer){
 }
 void MissionHumans::begin_stage_frame(std::uint64_t frame){if(!stage_loop_)throw std::logic_error("native quest frame requires stage_loop");stage_loop_->begin_frame(frame);}
 void MissionHumans::end_stage_frame(){stage_loop_->end_frame();}
+void MissionHumans::clear_form_input(){set_input_keys(0);if(stage_loop_)stage_loop_->clear_form_keys();}
 bool MissionHumans::stage_frame_pulse(std::uint32_t mask)const{return stage_loop_&&stage_loop_->frame_key_pulse(mask);}
 void MissionHumans::debug_show_result(){if(!results_)unavailable("DEBUG result providers");results_->grant();}
 void MissionHumans::debug_defeat_form(std::int32_t reason){auto form=make_defeat_form(reason);push(form.get());}

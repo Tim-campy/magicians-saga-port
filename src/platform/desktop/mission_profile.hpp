@@ -3,6 +3,7 @@
 #include "mission_scene.hpp"
 #include "mission_humans.hpp"
 #include "mission_spatial.hpp"
+#include "mission_events.hpp"
 #include "core/ecs/update_scheduler.hpp"
 #include "core/gameplay/quest_frame.hpp"
 #include "core/gameplay/select_prelude.hpp"
@@ -60,7 +61,11 @@ public:
     bool accepts_live_input()const{return humans&&humans->input_enabled()&&!humans->transition_pending()&&!replay_bound_;}
     bool native_stage_controls()const{return initialization_complete_&&humans&&humans->stage_input_enabled();}
     bool accepts_fast_forward()const{return quest_frame_&&quest_frame_->debug_controls;}
+    bool talk_pending()const{return events_&&events_->pending();}
+    bool accepts_live_gameplay_input()const{return accepts_live_input()&&!talk_pending();}
+    std::string talk_title()const{return events_?events_->title():std::string{};}
 private:
+    std::unique_ptr<MissionEvents> events_;
     struct SavedMissionSelection {std::int32_t area8,quest9;};
     std::optional<SavedMissionSelection> saved_mission_selection_;
     struct QuestFrameConfig {bool debug_controls;std::int32_t orientation;};
@@ -86,7 +91,7 @@ private:
     void push_debug_defeat(std::int32_t reason)override{humans->debug_defeat_form(reason);debug_modal_=true;}
     void push_debug_victory(std::int32_t enemy,bool completed)override{humans->debug_victory_form(enemy,completed);debug_modal_=true;}
     bool active()override{return is_top_form();}
-    bool is_top_form()override{return !debug_modal_&&!humans->has_stage_dialog()&&!humans->transition_pending();} // SAGA_STUB(mission-form-top).
+    bool is_top_form()override{return (!events_||!events_->pending())&&!debug_modal_&&!humans->has_stage_dialog()&&!humans->transition_pending();} // SAGA_STUB(mission-form-top): other form kinds remain unbound.
     void update_world(std::int32_t pass)override;
     void change_state(std::int32_t)override{throw std::logic_error("mission native form layout transition is unbound");}
     std::int32_t saved_orientation()override{return quest_frame_->orientation;}
@@ -157,6 +162,7 @@ private:
     struct InputAction {InputKind kind;std::uint32_t value=0;std::int32_t x=0,y=0,z=0;};
     std::map<std::uint64_t,std::vector<InputAction>> replay_;
     bool replay_bound_=false;std::uint64_t replay_applied_=0;
+    std::uint64_t replay_modal_ignored_=0;
     void load_replay(const std::filesystem::path&);
 };
 } // namespace saga::desktop

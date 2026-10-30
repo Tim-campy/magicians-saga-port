@@ -88,6 +88,7 @@ public:
     bool stage_input_enabled()const{return static_cast<bool>(stage_loop_);}
     void pulse_stage_keys(std::uint32_t);
     void bind_stage_pause(std::function<void(bool)>);
+    void bind_stage_events(std::function<bool(std::int32_t)> callback){stage_event_executor_=std::move(callback);}
     void construct_member_roster(){members_=core::MemberRoster{};} // MemberSystem ctor post-base lists/formation.
     std::int32_t stage_state()const{return stage_.state;}
     bool exit_dialog_pending()const;
@@ -95,6 +96,7 @@ public:
     void answer_stage_dialog(std::int32_t);
     void begin_stage_frame(std::uint64_t);
     void end_stage_frame();
+    void clear_form_input();
     bool stage_frame_pulse(std::uint32_t)const;
     bool stage_frame_key(std::uint32_t mask)const{return (held_keys_&mask)!=0;}
     void debug_show_result();
@@ -271,6 +273,7 @@ private:
     std::vector<std::string> notification_events_; // One ordered presentation stream for both stack projections.
     bool collection_enabled_=false;std::uint64_t collection_steps_=0,collection_sounds_=0,collection_jingles_=0;
     std::unique_ptr<MissionResults> results_;std::unique_ptr<MissionStage> stage_loop_;
+    std::function<bool(std::int32_t)> stage_event_executor_;
     std::optional<core::DropPlacementWorld> placement_world_;
     std::unique_ptr<MissionInput> input_;
 };

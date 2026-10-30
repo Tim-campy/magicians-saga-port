@@ -126,6 +126,18 @@ A factory exception leaves the previous dialog marker untouched; a manager excep
 
 SelectForm event scheduling is documented in [events.md](events.md): dialog/state/balance gates, loopCounter_ arithmetic, evenCheck_ initialization and periodic requests, and the portable reached queue/selection block. The complete form Update and Push behavior remain unported.
 
+### Mission talk modal lifecycle
+
+The simple Quest -> fresh type0 talk -> Quest path uses the synchronous UI-thread projection. FormManagerBase.Push (`0x1bdf670`) retains manager/child/parent/option in a closure and schedules it unless manager byte+0x31 is set; RunOnUiThread (`0x1b7bc8c`) invokes the delegate immediately when CheckUiThread succeeds. The callback (`0x1be68b8`) inserts the child in state0 and assigns its manager; it does not initialize or suspend it. GetTopForm (`0x1bdcd34`) reads the last current form. The top change stops further Quest passes after the current world pass, without updating the child during that dispatch.
+
+Before the following top-form update, _executeInitAndFinish (`0x1bdfba0`) processes state4 forms descending, calling Finish5 before removing only successful unchanged state4 forms; it then processes state0 forms ascending, calling Init0 and changing0->1 only after successful unchanged state0. Canvas input is cleared after processing. The normal loop calls manager.Resume (`0x1be2358`) for state1, clears/reset its input providers and changes1->2 before Update. Successful Update may change2->3. The simple modal transition does not dispatch a form Suspend4/Resume3 pair.
+
+After the talk's close8 countdown, FormBase.Pop (`0x1bd9f3c`) calls the manager Pop wrapper/core (`0x1bdf7c8`/`0x1bdd3c8`). Its callback (`0x1be6d74`) marks the selected form4; it does not erase it. It can change the nearest underlying state3 form to1. The Update loop then calls the Init/Finish processor and, without a manager wait, selects the underlying Quest again in the same dispatch. Fresh SubForm.Finish (`0x120488c`) has null continuation/share fields, calls its base cleanup and AppData.FinishMainBlur, and returns true. Nonnull delayed continuation remains outside this projection.
+
+The desktop host retains typed form identities and preserves push/next-dispatch Init, native page/close counters, Finish-before-removal and same-dispatch Quest resumption. It clears logical input at Init/Resume/Finish so an acknowledgement does not leak into resumed gameplay. Common UI/portrait/resource cleanup remains a listed service stub. The enclosing manager's state3 eligibility, asynchronous transitions and FPS/pass policy remain unbound; explicit fixed scenario ticks do not establish that full scheduler.
+
+Evidence: complete ignored mission-talk-modal/, mission-talk-manager/, mission-talk-lifecycle/ and mission-talk-process/ exports; existing frame-policy-followup/M19675__execute.asm has the top-change break at0x1be0eec..0x1be0ef8 and post-close re-selection at0x1be0f3c..0x1be0f58. Fresh Finish uses delay-resume/M36168.asm. Confidence high for the reached synchronous path; no Android observation.
+
 ### DoMethod (19739, `0x1be48e4`)
 
 Codes 0..5; byte table at ELF `0x68dd53` = `00 3c 0c 37 05 67`, target = `0x1be4958 + 4*byte`.

@@ -98,7 +98,7 @@ int run_native_mission(MissionProfile& profile,std::int32_t width,std::int32_t h
         renderer.begin_frame(GlBitmapClear::color_and_depth,{0,0,0,0},projection);submit_mesh_streams(s,1,host);
     };
     std::uint64_t rendered=0,logic_steps=0;
-    if(loop){bool running=true,paused=false;std::string_view current_title=title;
+    if(loop){bool running=true,paused=false;std::string current_title=title;
         while(running&&(!bounded||rendered<static_cast<std::uint64_t>(frame_limit))){const auto deadline=SDL_GetTicks()+static_cast<Uint64>(capture?0:*tick_ms);bool single_step=false;SDL_Event event;
             while(SDL_PollEvent(&event)){
                 if(event.type==SDL_EVENT_QUIT)running=false;
@@ -108,13 +108,14 @@ int run_native_mission(MissionProfile& profile,std::int32_t width,std::int32_t h
                 else if(event.type==SDL_EVENT_KEY_DOWN&&!event.key.repeat){
                     if(event.key.key==SDLK_ESCAPE)running=false;
                     else if(event.key.key==SDLK_SPACE)paused=!paused;
-                    else if(interactive&&profile.accepts_live_input()&&profile.humans->exit_dialog_pending()&&(event.key.key==SDLK_Y||event.key.key==SDLK_N))
+                    else if(interactive&&profile.accepts_live_gameplay_input()&&profile.humans->exit_dialog_pending()&&(event.key.key==SDLK_Y||event.key.key==SDLK_N))
                         profile.humans->answer_stage_dialog(event.key.key==SDLK_Y?0:1);
                     else if(event.key.key==SDLK_N)single_step=true;
                     else if(interactive&&profile.accepts_live_input()){
-                        if(event.key.key>=SDLK_1&&event.key.key<=SDLK_3)profile.humans->select_input_attack(static_cast<std::int32_t>(event.key.key-SDLK_1));
+                        if(event.key.key==SDLK_RETURN&&profile.humans->stage_input_enabled())profile.humans->pulse_stage_keys(0x100000U);
+                        else if(!profile.accepts_live_gameplay_input())continue;
+                        else if(event.key.key>=SDLK_1&&event.key.key<=SDLK_3)profile.humans->select_input_attack(static_cast<std::int32_t>(event.key.key-SDLK_1));
                         else if(event.key.key==SDLK_F)profile.humans->select_input_attack(profile.humans->selected_attack());
-                        else if(event.key.key==SDLK_RETURN&&profile.humans->stage_input_enabled())profile.humans->pulse_stage_keys(0x100000U);
                         else if(profile.native_stage_controls()&&!profile.humans->exit_dialog_pending()){
                             const auto state=profile.humans->stage_state();
                             if(event.key.key==SDLK_P&&(state==1||state==2))profile.humans->pulse_stage_keys(state==1?0x2000000U:0x4000000U);
@@ -122,7 +123,7 @@ int run_native_mission(MissionProfile& profile,std::int32_t width,std::int32_t h
                         }
                     }
                 }
-                else if(interactive&&profile.accepts_live_input()&&event.type==SDL_EVENT_MOUSE_BUTTON_DOWN&&event.button.button==SDL_BUTTON_LEFT)
+                else if(interactive&&profile.accepts_live_gameplay_input()&&event.type==SDL_EVENT_MOUSE_BUTTON_DOWN&&event.button.button==SDL_BUTTON_LEFT)
                     profile.humans->select_input_attack(profile.humans->selected_attack());
             }
             if(!running)break;
@@ -133,9 +134,10 @@ int run_native_mission(MissionProfile& profile,std::int32_t width,std::int32_t h
             }
             if(!paused||single_step){if(profile.step())++logic_steps;else{paused=true;if(bounded)break;}}
             if(interactive&&profile.accepts_live_input()&&profile.native_stage_controls()){
-                const char* next=profile.humans->exit_dialog_pending()?"Retreat from mission? Y confirms, N cancels":
+                const std::string talk_title=profile.talk_title();
+                const std::string next=!talk_title.empty()?talk_title:profile.humans->exit_dialog_pending()?"Retreat from mission? Y confirms, N cancels":
                     profile.humans->stage_state()==2?"Mission paused - P resumes, Q requests retreat":input_title;
-                if(next!=current_title){require(SDL_SetWindowTitle(window.get(),next),"SDL mission state title");current_title=next;}
+                if(next!=current_title){require(SDL_SetWindowTitle(window.get(),next.c_str()),"SDL mission state title");current_title=next;}
             }
             if(profile.resizable_viewport()&&(profile.view.width!=width||profile.view.height!=height)){
                 require(SDL_SetWindowSize(window.get(),profile.view.width,profile.view.height),"SDL replay window size");

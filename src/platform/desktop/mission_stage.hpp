@@ -25,6 +25,7 @@ public:
     void pulse(std::uint32_t mask){if(frame_pulse_)*frame_pulse_|=mask;else pending_pulse_|=mask;}
     void begin_frame(std::uint64_t);
     void end_frame(){frame_pulse_.reset();}
+    void clear_form_keys(){pending_pulse_=0;pulse_=0;if(frame_pulse_)*frame_pulse_=0;}
     bool frame_key_pulse(std::uint32_t mask)const{return (frame_pulse_.value_or(0)&mask)!=0;}
     void bind_pause(std::function<void(bool)> callback){pause_=std::move(callback);}
     bool exit_dialog_pending()const;

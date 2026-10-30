@@ -1,7 +1,7 @@
 id	status	evidence	note
-game:0x06001213	documented	docs/subsystems/text.md	TalkData.Load: id, charaIndex, counted string array
+game:0x06001213	reimplemented	src/core/gameplay/presentation_forms.cpp	TalkData.Load ordered scalars/counted nullable UTF16 strings with injected decoder; table gaps/duplicates and partial failures tested; live mission owner.
 game:0x06001135	documented	docs/subsystems/text.md	EventMsgData.Load: id, type, one token
-game:0x0600071e	documented	docs/subsystems/text.md	talk catalogue delegate: String.Join(TAB, text)
+game:0x0600071e	reimplemented	src/core/gameplay/presentation_forms.cpp	Boot talk catalog delegate joins nullable counted array with TAB; empty fragments/null failure tested; mission MakeTalkForm consumes the result.
 game:0x060008d2	traced	docs/subsystems/text.md	outer MakeTalkForm: charaIndex + talks_[id]
 game:0x060008d4	documented	docs/subsystems/text.md	type-0 factory; data part in presentation_forms, TextLayout setup not ported
 game:0x060008d5	documented	docs/subsystems/text.md	outer MakeEvent: type&text
@@ -74,3 +74,6 @@ kairo:0x060003fa	traced	docs/subsystems/fonts.md	@language directive, code norma
 kairo:0x060003fe	documented	docs/subsystems/fonts.md	langPackCode_ or ja-JP/en-US
 kairo:0x060003e1	traced	docs/subsystems/fonts.md	Language.Get()==0
 kairo:0x060003df	traced	docs/subsystems/fonts.md	language index compared by Japanese
+game:0x060008b8	traced	docs/subsystems/text.md	Type0 page branch ported/tested and host-reachable; opening/close guards and modal ordering documented; other types remain outside the port.
+game:0x060008f9	documented	docs/subsystems/text.md	IsDrawWindowEnd captures close/style, membership0/1/2 and live frame or wrapped8-close gate; actual type0 config style2.
+game:0x06000907	traced	docs/subsystems/text.md	SubForm static initializer assigns configData row0 style2; no reconstruction of unrelated type rows.

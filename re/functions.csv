@@ -1776,7 +1776,7 @@ game:0x0600071a,game:0x0600071a,ui,,956,0x11d4b44
 game:0x0600071b,game:0x0600071b,unassigned,,92,0x11d4f00
 game:0x0600071c,game:0x0600071c,unassigned,,8,0x11d4f5c
 game:0x0600071d,game:0x0600071d,unassigned,,24,0x11d4f64
-game:0x0600071e,<>c.<Load>b__40_2,unassigned,documented,84,0x11d4f7c
+game:0x0600071e,<>c.<Load>b__40_2,unassigned,reimplemented,84,0x11d4f7c
 game:0x0600071f,game:0x0600071f,unassigned,,24,0x11d4fd0
 game:0x06000720,game:0x06000720,unassigned,,8,0x11d4fe8
 game:0x06000721,game:0x06000721,ui,,272,0x11d4ff0
@@ -2186,7 +2186,7 @@ game:0x060008b4,game:0x060008b4,ui,,84,0x11f6508
 game:0x060008b5,game:0x060008b5,ui,,2536,0x11f655c
 game:0x060008b6,game:0x060008b6,ui,,144,0x11f758c
 game:0x060008b7,game:0x060008b7,ui,,1064,0x11f761c
-game:0x060008b8,game:0x060008b8,ui,,4720,0x11f7a44
+game:0x060008b8,form.SubForm.Update,ui,traced,4720,0x11f7a44
 game:0x060008b9,game:0x060008b9,ui,,3968,0x11f8ed0
 game:0x060008ba,game:0x060008ba,ui,,616,0x11fac8c
 game:0x060008bb,game:0x060008bb,ui,,27208,0x11fb04c
@@ -2251,7 +2251,7 @@ game:0x060008f5,game:0x060008f5,ui,,116,0x11fa890
 game:0x060008f6,game:0x060008f6,ui,,4,0x1204318
 game:0x060008f7,game:0x060008f7,ui,,1156,0x1201a94
 game:0x060008f8,game:0x060008f8,ui,,1092,0x12058a0
-game:0x060008f9,game:0x060008f9,ui,,204,0x11f8cd8
+game:0x060008f9,form.SubForm.IsDrawWindowEnd,ui,documented,204,0x11f8cd8
 game:0x060008fa,game:0x060008fa,ui,,712,0x1201f18
 game:0x060008fb,game:0x060008fb,ui,,176,0x12021e0
 game:0x060008fc,game:0x060008fc,ui,,1176,0x1205da8
@@ -2265,7 +2265,7 @@ game:0x06000903,game:0x06000903,ui,,12,0x11fa098
 game:0x06000904,game:0x06000904,ui,,32,0x11fa00c
 game:0x06000905,game:0x06000905,ui,,108,0x11fa02c
 game:0x06000906,game:0x06000906,ui,,740,0x1202760
-game:0x06000907,game:0x06000907,ui,,2964,0x1206570
+game:0x06000907,form.SubForm..cctor,ui,traced,2964,0x1206570
 game:0x06000908,game:0x06000908,ui,,352,0x1207104
 game:0x06000909,game:0x06000909,unassigned,,92,0x12179f0
 game:0x0600090a,game:0x0600090a,unassigned,,8,0x1217a4c
@@ -4409,7 +4409,7 @@ game:0x0600120f,game:0x0600120f,data,,8,0x117345c
 game:0x06001210,game:0x06001210,data,,8,0x1173464
 game:0x06001211,game:0x06001211,data,,8,0x117346c
 game:0x06001212,game:0x06001212,data,,8,0x1173474
-game:0x06001213,data.TalkData.Load,data,documented,168,0x117347c
+game:0x06001213,data.TalkData.Load,data,reimplemented,168,0x117347c
 game:0x06001214,game:0x06001214,data,,4,0x1173524
 game:0x06001215,game:0x06001215,data,,4,0x1173528
 game:0x06001216,game:0x06001216,data,,108,0x117352c
@@ -10862,7 +10862,7 @@ kairo:0x06001a10,kairo:0x06001a10,ui,,24,0x1bdf7c8
 kairo:0x06001a11,kairo:0x06001a11,ui,,340,0x1bdd3c8
 kairo:0x06001a12,kairo:0x06001a12,ui,,500,0x1bdf7e8
 kairo:0x06001a13,kairo:0x06001a13,ui,,452,0x1bdf9dc
-kairo:0x06001a14,kairo:0x06001a14,ui,,1360,0x1bdfba0
+kairo:0x06001a14,kairo.unity.form.FormManagerBase._executeInitAndFinish,ui,traced,1360,0x1bdfba0
 kairo:0x06001a15,kairo:0x06001a15,ui,,232,0x1be00f0
 kairo:0x06001a16,kairo.unity.form.FormManagerBase._execute,ui,traced,4624,0x1be01d8
 kairo:0x06001a17,kairo:0x06001a17,ui,,68,0x1be17a4
@@ -10955,6 +10955,6 @@ kairo:0x06001a6d,kairo:0x06001a6d,unassigned,,380,0x1be5dd8
 kairo:0x06001a6e,kairo:0x06001a6e,unassigned,,388,0x1be5f54
 kairo:0x06001a6f,kairo:0x06001a6f,unassigned,,2016,0x1be60d8
 kairo:0x06001a70,kairo:0x06001a70,unassigned,,8,0x1bdf7c0
-kairo:0x06001a71,kairo:0x06001a71,unassigned,,1212,0x1be68b8
+kairo:0x06001a71,<>c__DisplayClass73_0.<Push>b__0,unassigned,traced,1212,0x1be68b8
 kairo:0x06001a72,kairo:0x06001a72,unassigned,,8,0x1bdf7e0
-kairo:0x06001a73,kairo:0x06001a73,unassigned,,1024,0x1be6d74
+kairo:0x06001a73,<>c__DisplayClass75_0.<Pop>b__0,unassigned,traced,1024,0x1be6d74
