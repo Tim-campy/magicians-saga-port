@@ -81,5 +81,5 @@ int main(int argc,char** argv)try{
     }
     std::cout<<']';profile.write_combat_report(std::cout);
     std::cout<<",\"render_commands\":"<<profile.queue.counts->at(0)+profile.queue.counts->at(1)
-             <<",\"scope\":\"selected scene; fresh-world init, quest bootstrap and complete-state hashes unbound\"}\n";return 0;
+             <<",\"scope\":\"selected scene; full application entry, save restoration and complete-state hashes unbound\"}\n";return 0;
 }catch(const std::exception& error){std::cerr<<"saga_mission: "<<error.what()<<'\n';return 1;}

@@ -1,9 +1,51 @@
 #include "pass_initialization.hpp"
 #include "input_frame.hpp"
 #include "member_selection.hpp"
+#include "table_catalog.hpp"
 #include <stdexcept>
 
 namespace saga::core {
+namespace {
+template<class T>T& town_required(const std::shared_ptr<T>& value){if(!value)throw std::invalid_argument("missing fresh town state");return *value;}
+TownDefinition& town_record(const std::shared_ptr<TownTable>& table,std::size_t index){
+    auto& row=town_required(table).at(index);if(!row)throw std::invalid_argument("missing town record");return *row;
+}
+void read_town(TownDefinition& r,detail::TableTokens& t){
+    r.id=t.integer();r.first_build=t.integer();r.open_term=t.script();r.rock_term=t.script();r.flags=t.integer();
+}
+}
+TownDefinition& load_town_definition(TownDefinition& r,std::optional<std::string_view> line,const EventIntegerParser& parser){
+    // TownData.Load 0x11735c8: ordered stores, null/empty receiver preservation.
+    if(line&&!line->empty()){detail::TableTokens t(*line,parser);read_town(r,t);}return r;
+}
+TownTable load_town_table(std::string_view text,bool normalize,const EventIntegerParser& parser){
+    return detail::load_table_records<TownDefinition>(text,normalize,parser,[](detail::TableTokens& t){TownDefinition r;read_town(r,t);return r;});
+}
+void set_town_building(TownInitializationState& state,std::int32_t town,std::int32_t building,std::int32_t value,bool deferred,FreshTownHost& host){
+    // TownSystem.SetBuildingList 0x1169934. Native forward RemoveAt skips a shifted consecutive match.
+    auto list=state.building_list;
+    for(std::size_t i=0;i<town_required(list).size();++i){
+        const auto row=town_required(list).at(i);
+        if(town_required(row).at(0)==town)town_required(state.building_list).erase(town_required(state.building_list).begin()+static_cast<std::ptrdiff_t>(i));
+        list=state.building_list;
+    }
+    town_required(list).push_back(std::make_shared<EventIntegers>(EventIntegers{town,building,value}));
+    if(!deferred)host.rebuild_town();
+}
+void initialize_fresh_town(TownInitializationState& state,FreshTownHost& host){
+    // TownSystem.Init 0x1169678..0x1169894, after event31 and the global loaded-byte gate.
+    state.build_enable=std::make_shared<std::vector<std::uint8_t>>(town_required(host.town_records()).size(),std::uint8_t{0});
+    std::int32_t first_count=0;
+    for(std::size_t i=0;i<town_required(host.town_records()).size();++i){
+        const auto term=town_record(host.town_records(),i).open_term;
+        if(!term||term->empty())town_required(state.build_enable).at(i)=1;
+        if((static_cast<std::uint32_t>(town_record(host.town_records(),i).flags)&1U)!=0){
+            const auto building=town_record(host.town_records(),i).first_build;
+            set_town_building(state,static_cast<std::int32_t>(i),building,0,true,host);++first_count;
+        }
+    }
+    if(first_count>host.saved_town_count())host.save_town_count(first_count);
+}
 void initialize_town_entry(TownInitializationWorld* world,std::function<void(const TownReturnEvent&)> receiver){
     if(!world)throw std::invalid_argument("missing town initialization world");
     world->subscribe_town_return(std::move(receiver));

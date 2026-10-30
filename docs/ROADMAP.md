@@ -28,12 +28,13 @@ Host: `saga_mission` (headless or SDL window; explicit scenario state remains re
 - [ ] A6. Every service the host fakes is listed in the stub table of integration.md.
 
 Tasks:
+- [ ] (blocking) Bind Quest1 events212..215 through the existing indexed event/opcode8 kernels and talk-form modal lifecycle in `saga_mission`; preserve explicit acknowledgement and saved text inputs (A1/A4).
 - [ ] Bind saved-state/configuration and original InitWorld fresh/loaded entry to `saga_mission --data/--quest` so a diagnostic `--scene` profile is no longer required (A1).
 - [ ] Replace the synthetic catalogs/services of the 240-frame combat regression with the table-backed owner used by `saga_mission` (A3).
 - [ ] Add complete reached-world state hashing and record local per-quest golden replays (A5).
 - [ ] Bind retry/defeat/victory form answers and modal form lifecycle to Stage Update without automatic crystal or ad choices (A4).
 - [ ] Bind remaining QuestForm touch/cursor widgets and gesture routing to SDL input events (A2).
-- [ ] Bind Retry recovery and quest event dispatch to the live mission host before result/return (A4).
+- [ ] Bind Retry recovery to the live mission host before result/return (A4).
 - [ ] Bind resource image-animation clocks, complete World.DynamicDraw order/gates and Human/Stage HUD to the existing bitmap backend (A3).
 - [ ] Group `src/core/gameplay/` (138 files) into subdirectories by subsystem (`combat/`, `mission/`, `town/`, `render/`, `events/`, `text/`, `runtime/`) without behaviour changes; CMake targets and tests keep their names.
 

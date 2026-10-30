@@ -181,7 +181,9 @@ For table-backed entity scenes, replace manual draw rows with tables, progress a
 | view | width, height, scale, camera X/Y, VIEW margins X/Y, extra-depth rate |
 | geometry | map step X/Z and height; required when a selected bullet reaches the map |
 | animate | initial animation-pass count0..10000, automatic flag0/1, application-update flag0/1 |
-| system_init | loaded-world byte1..255; requires native human_system, input fresh and mission_map providers; dispatches all32 concrete initializers before map/snapshot application; byte0/fresh-town bootstrap is unsupported |
+| hero | literal fresh; replaces a selected human/player declaration; requires system_init0, system_construct, native stage entry, town_save19 and explicit saved progression for the first table main character |
+| town_save19 | decoded int32 normal-save town count; required with hero fresh; Town7 raises it to the number of flag1 Town.txt records only when larger |
+| system_init | loaded byte0..255; zero requires hero fresh, town_save19, system_construct and native stage entry; requires Human/Input/map providers; dispatches all32 concrete initializers; saved state stays explicit |
 | system_construct | literal empty_manager; requires system_init and stage_start; runs constructor enable phases before registration/Init, with native Menu/SubMenu/Debug hooks; exclusive with system_enabled/menu_visible overrides; current world/configuration remain explicit |
 | quest_frame | Config static byte+0x10 bool0/1 and decoded saved orientation int32; requires system_construct, stage_start and stage_loop fade0; enables original QuestForm.Update, intro fade and gated 1/3 world passes; both inputs explicit |
 | menu_visible | bool0/1; optional provisional Init-only visibility snapshot with declared legacy default true; requires system_init and excludes system_construct, whose native constructor supplies false |

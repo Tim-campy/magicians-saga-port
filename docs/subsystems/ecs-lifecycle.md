@@ -18,6 +18,7 @@ System identities, factory indices, complete Init/Update dispatch and component 
 | SystemManager.PauseSystems | game:0x06000cf3 | 0x113b03c | Store pause, dispatch IPausable, then all OnPause only for true |
 | MenuSystem.OnEnabled | game:0x06000f5d | 0x115e9e0 | Base RET, fresh world query, add event11 |
 | MenuSystem.OnDisabled | game:0x06000f5e | 0x115eac0 | Base RET, fresh world query, remove event11 |
+| TownSystem.Init / SetBuildingList | game:0x06000feb / game:0x06000ff1 | 0x1169540 / 0x1169934 | Loaded gate or table-backed setup, preserved list-removal order and slot19 maximum |
 | MenuSystem.Pause | game:0x06000f62 | 0x115eec8 | Set enabled to !pause |
 
 ## Behaviour
@@ -43,7 +44,7 @@ Twenty-six concrete constructors only forward to their base after class initiali
 | Factory / type | Constructor ELF | Payload relative to base |
 | --- | --- | --- |
 | 6 Member | 0x115c1ec | After base: two fresh entity lists, then sixteen formation IDs all -1 |
-| 7 Town | 0x11694a0 | Before base: fresh list at +0x20; its fresh-town consumer remains outside S1 |
+| 7 Town | 0x11694a0 | Before base: fresh list at +0x20; fresh Town.Init consumes the list in S1; entity rebuild remains S2 |
 | 8 Camera | 0x1144860 | Before base: fresh int32[2] at +0x48 |
 | 9 Exp | 0x115194c | After base: dictionary with thirteen distinct empty lists keyed0..12 |
 | 16 Fukidashi | 0x1152318 | After base: fresh lists at +0x28/+0x30 |
@@ -61,6 +62,16 @@ Menu.OnDisabled removes one event11 registration and leaves orientation27 regist
 
 BasePauseSystem has no nesting counter: enable/disable forwards true/false to its captured manager. RemoveAllSystems (0x113c1bc), called by World.Destroy, enumerates all registered systems and calls DisableSystem for each before clearing lists. It resets sizes/versions/references at+0x20/+0x28/+0x30/+0x38/+0x40/+0x48/+0x58/+0x60 and makes a separate generic call on+0x50. Hooks and manager notifications precede these clears. The operation is documented, not bound to this desktop entry.
 
+### Fresh Town initialization
+
+TownSystem.Init (`0x1169540`,896 bytes) subscribes event31 on its supplied world before querying the global World.world_. A nonzero loaded byte skips the fresh branch. For zero, allocate a fresh byte-bool buildEnable_ array (`+0x28`) with the current TownData catalog length. For each index, re-read the catalog/length, require its record and set that byte to1 only when openTerm_ is null or empty. Test the record's inherited flag mask1 separately: set its building-list entry from firstBuild_ with third value0 and deferred=true, and increment a local count. After the whole traversal, read decoded normal-save integer slot19; store the flagged-record count only if it is larger. Failures retain earlier array/list mutations and do not perform the late save read prematurely. Gaps are not skipped. Fresh Init never invokes the non-deferred entity rebuild through this call.
+
+TownSystem.SetBuildingList (`0x1169934`,464 bytes; town index, building id, value, deferred bool) traverses buildingList_ (`+0x20`) forward. For each nonnull int32 row require slot0; remove a matching town entry with RemoveAt, then increment the index anyway. Consecutive matches shifted left can survive; preserve that quirk. Append a fresh three-int row containing the three supplied integers. Deferred=true returns; false invokes the separate town rebuild callback after the append. The constructor supplies an empty list before BaseSystem construction. The port uses the existing C++ containers for List operations; no managed collection implementation is reconstructed.
+
+TownData.Load (`0x11735c8`,200 bytes) reads/stores id int32 (`+0x18`), firstBuild int32 (`+0x20`), openTerm int32[][] (`+0x28`), rockTerm int32[][] (`+0x30`), then inherited flags (`+0x1c`). Null/empty input preserves the receiver; failures preserve earlier stores. The existing counted-script/table readers retain null arrays, id gaps and duplicate replacement. TownData.NewGame inherits the base RET; the fresh Init branch consumes the static table fields without needing to reconstruct a building catalog.
+
+Port: [pass_initialization.hpp](../../src/core/gameplay/pass_initialization.hpp), [implementation](../../src/core/gameplay/pass_initialization.cpp) and [contract](../../tests/test_pass_initialization.cpp) cover the complete loaded/fresh Init projection, ordered table queries, partial failures, slot19 maximum, deferred rebuild and forward-removal quirk. The desktop host calls the same kernels from Town7.Init with a canonical Town.txt owner and explicit decoded slot19. Building entity rebuild/event31 and town drawing remain S2 boundaries.
+
 ### Positional serialization
 
 SystemManager.Serialize (0x113ce34) enumerates all systems in order and calls slots11/7/9, OnBeforeSerialize -> Serialize -> SerializeExtra, without writing an ID/count wrapper. Deserialize (0x113cefc) constructs/adds systems, then calls slots8/10/12, Deserialize -> DeserializeExtra -> OnDeserialized, in that same order. It does not call RemoveAllSystems first. World.Deserialize loads entities before systems, then writes loaded byte1 only after both succeed. Existing-manager restoration must not be substituted for the explicit empty-manager entry without establishing its caller.
@@ -69,11 +80,13 @@ SystemManager.Serialize (0x113ce34) enumerates all systems in order and calls sl
 
 `update_scheduler.hpp/.cpp` supplies construct_base_system, captured-manager BasePause hooks, changed-value enable hooks and the fixed gameplay pause projection. Its generic Update dispatcher remains separate from pause. The general manager's mutable/versioned pause lists, removal delegates and positional serialization remain documented only.
 
-`system_construct empty_manager` requires system_init and stage_start, rejecting system_enabled/menu_visible snapshot overrides. MissionProfile supplies the current world and an explicitly empty manager, runs the32 constructor enable phases before Init, calls the existing Member/Camera/Exp/Fukidashi/Info state owners, and binds Menu/SubMenu/Debug hooks. C++ storage owners are allocated before that phase; managed allocation-failure identity/order and the unused Town list are not claimed as reconstructed. No runtime, collection or pathfinding implementation is recreated. Scenario configuration and saved data remain explicit; fresh Town creation is still rejected. Without construction, menu_visible0/1 exposes the provisional Init-only visibility snapshot, whose declared legacy default is true; the constructor mode derives false from the native zeroed field instead.
+`system_construct empty_manager` requires system_init and stage_start, rejecting system_enabled/menu_visible snapshot overrides. MissionProfile supplies the current world and an explicitly empty manager, runs the32 constructor enable phases before Init, calls the existing Member/Camera/Exp/Fukidashi/Info state owners, and binds Menu/SubMenu/Debug hooks. C++ storage owners are allocated before that phase; managed allocation-failure identity/order and the full CLR allocation semantics are not claimed as reconstructed. Town7 owns its constructor list before base construction. No runtime, collection or pathfinding implementation is recreated. Scenario configuration and saved data remain explicit; system_init0 uses the table-backed fresh Town path described above. Native New Game/reset and binary restoration remain separate. Without construction, menu_visible0/1 exposes the provisional Init-only visibility snapshot, whose declared legacy default is true; the constructor mode derives false from the native zeroed field instead.
 
 Tests cover manager rebinding while enabled, missing world, null manager, virtual-hook failure prefixes, second-enable no-op, constructor pause before registration, all32 enable flags, native member/start state, Menu duplicate delivery/removal/restoration and continued gameplay after Init. Host commands and real-data observations belong to [integration](integration.md).
 
 ## Evidence
+
+Fresh-town contracts use complete bounded ignored system-initializers/TownSystem.asm and mission-fresh-world/{TownSystem_SetBuildingList,TownData_Load}.asm, plus the registered field offsets. GOT0x272fce8 resolves encoded MethodSpec0xc001c32f -> spec57751 -> method definition33936 IListExtension.IsNullOrEmpty. The bounded180-byte shared body in mission-fresh-empty-check/ confirms null or Count==0; the port uses null/empty checks rather than porting its runtime interface dispatch. The public [Il2CppDumper schema](https://github.com/Perfare/Il2CppDumper/blob/4741d46ba9cd6159c5d853eb9d6fc48b4bfa2b1a/Il2CppDumper/Il2Cpp/Il2CppClass.cs) identifies the12-byte MethodSpec records. The validated registration anchor is0x26b50d0, methodSpecs pointer0x6968d4; only the required method identity is used. Confidence high for static contracts; Android comparison remains absent.
 
 The world roots use complete ignored bounded exports in research/exports/mission-world-entry/ and mission-area-entry/, together with entity-registration/M36958_World__cctor.asm, entity-factory/M36984_World__ctor.asm, mission-construction/BaseSystem_ctor.asm and mission-original-entry/kairo_unity_ecs_BaseSystem_SetWorld.asm. AppData.Init copy is ELF0x11004c0..0x11004d8; static/instance offsets come from registered table0x277ece8 and the v31 metadata. Only the world-binding part of AppData.Init is established here; its complete form/bootstrap contract is not claimed.
 
@@ -82,5 +95,5 @@ Local research/exports/mission-construction.tsv and mission-construction/ contai
 ## Open questions
 
 - (blocking) Bind decoded system state and the original fresh/loaded InitWorld entry. Initial world aliases and SetWorld scope are established; the constructor mode still does not restore a save or establish Continue/new-game state.
-- Bind the fresh Town list and its construction consumers when S2 reaches them; do not infer town state from a loaded mission snapshot.
+- Bind non-deferred town entity rebuild and event31 consumers when S2 reaches them; the fresh Town list/permissions and slot19 Init branch are host-reachable.
 - Bind generic manager-list mutation, delegate-hash collision inputs and native FormManager timing only when the mission/town host requires them.

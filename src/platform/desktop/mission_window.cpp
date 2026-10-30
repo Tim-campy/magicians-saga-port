@@ -155,7 +155,7 @@ int run_native_mission(MissionProfile& profile,std::int32_t width,std::int32_t h
             profile.write_actor_parameters(*created[i],std::cout);
             std::cout<<'}';}
         std::cout<<']';profile.write_combat_report(std::cout);
-        std::cout<<",\"profile\":\"selected mission systems; fresh-world init, quest bootstrap and complete-state hashes unbound\"}\n";return 0;}
+        std::cout<<",\"profile\":\"selected mission systems; full application entry, save restoration and complete-state hashes unbound\"}\n";return 0;}
     }
     if(!loop||rendered==0)submit();auto pixels=renderer.read_pixels();
     Surface captured(SDL_CreateSurfaceFrom(width,height,SDL_PIXELFORMAT_RGBA32,pixels.rgba.data(),width*4),SDL_DestroySurface);require(captured!=nullptr,"SDL_CreateSurfaceFrom");

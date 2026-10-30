@@ -13,6 +13,28 @@ from mission_scene_fixture import make_table_scene, make_shoot_scene, with_missi
 
 @unittest.skipUnless(EXE, 'saga_mission supplied by CTest')
 class MissionProfileTests(unittest.TestCase):
+    def test_fresh_world_initializers_create_hero_and_town_from_tables(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);scene=root/'scene.txt'
+            original=make_native_entry_scene(root).replace('stage_loop quest 0 20 hold','stage_loop quest 0 0 hold')+'system_construct empty_manager\nquest_frame 0 0\n'
+            fresh=original.replace('human 0 2 1 0 0 0 312 0 400\n','hero fresh\n').replace('player 0\n','').replace('system_init 1','system_init 0')+'town_save19 0\n'
+            self.assertIn('hero fresh\n',fresh)
+            def run(text,frames=22):
+                scene.write_text(text,encoding='utf-8');return self.run_host(scene,frames=frames)
+            r=run(fresh);self.assertEqual(r.returncode,0,r.stderr);data=json.loads(r.stdout)
+            self.assertTrue(data['fresh_hero_bootstrap']);self.assertTrue(data['fresh_town_initialized'])
+            self.assertEqual(data['town_build_enable'],[1,0,1]);self.assertEqual(data['town_buildings'],[[0,7,0],[2,9,0]])
+            self.assertEqual(data['town_save19'],2);self.assertEqual(data['town_save19_writes'],1)
+            self.assertEqual(data['positions'][0]['human_level'],1);self.assertEqual(data['positions'][0]['human_experience'],0)
+            self.assertEqual(data['stage_state'],1);self.assertEqual(data['remaining_time'],4999)
+            self.assertEqual(json.loads(run(fresh).stdout),data)
+            high=run(fresh.replace('town_save19 0','town_save19 99'));self.assertEqual(high.returncode,0,high.stderr)
+            high=json.loads(high.stdout);self.assertEqual(high['town_save19'],99);self.assertEqual(high['town_save19_writes'],0)
+            for bad in (fresh.replace('town_save19 0\n',''),fresh.replace('system_construct empty_manager\n',''),
+                        fresh.replace('system_init 0','system_init 1'),fresh+'player 0\n',fresh+'hero fresh\n',
+                        fresh.replace('progress 2 1 0\n',''),original+'town_save19 0\n'):
+                self.assertNotEqual(run(bad).returncode,0)
+
     def test_saved_selection_uses_global_quest_id_for_both_quest_and_stage(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);scene=root/'scene.txt'

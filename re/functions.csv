@@ -3862,13 +3862,13 @@ game:0x06000fe7,game:0x06000fe7,ecs,,8,0x1168824
 game:0x06000fe8,game:0x06000fe8,ecs,,8,0x116882c
 game:0x06000fe9,game:0x06000fe9,ecs,,8,0x1168834
 game:0x06000fea,ecs.Systems.CreateSystems,ecs,traced,3172,0x116883c
-game:0x06000feb,ecs.TownSystem.Init,ecs,traced,896,0x1169540
+game:0x06000feb,ecs.TownSystem.Init,ecs,reimplemented,896,0x1169540
 game:0x06000fec,ecs.TownSystem.OnReturnFromQuest,ecs,documented,320,0x1169b04
 game:0x06000fed,game:0x06000fed,ecs,,452,0x1169c44
 game:0x06000fee,game:0x06000fee,ecs,,604,0x1169e08
 game:0x06000fef,game:0x06000fef,ecs,,324,0x116a064
 game:0x06000ff0,game:0x06000ff0,ecs,,536,0x116a20c
-game:0x06000ff1,game:0x06000ff1,ecs,,464,0x1169934
+game:0x06000ff1,ecs.TownSystem.SetBuildingList,ecs,reimplemented,464,0x1169934
 game:0x06000ff2,game:0x06000ff2,ecs,,376,0x116a424
 game:0x06000ff3,game:0x06000ff3,ecs,,48,0x116a59c
 game:0x06000ff4,game:0x06000ff4,ecs,,164,0x116a5cc
@@ -4419,7 +4419,7 @@ game:0x06001219,game:0x06001219,data,,8,0x11735a8
 game:0x0600121a,game:0x0600121a,data,,8,0x11735b0
 game:0x0600121b,game:0x0600121b,data,,8,0x11735b8
 game:0x0600121c,game:0x0600121c,data,,8,0x11735c0
-game:0x0600121d,game:0x0600121d,data,,200,0x11735c8
+game:0x0600121d,data.TownData.Load,data,reimplemented,200,0x11735c8
 game:0x0600121e,game:0x0600121e,data,,4,0x1173690
 game:0x0600121f,game:0x0600121f,data,,4,0x1173694
 game:0x06001220,game:0x06001220,data,,108,0x1173698

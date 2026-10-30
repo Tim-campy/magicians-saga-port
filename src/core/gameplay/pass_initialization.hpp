@@ -3,20 +3,42 @@
 #include "collision_pass.hpp"
 #include "combat_event_receivers.hpp"
 #include "../ecs/entity_events.hpp"
+#include "table_tokens.hpp"
 #include <optional>
 
 namespace saga::core {
 struct InputTouch;
 struct PlayerWorldState;
 struct TownReturnEvent;
+struct TownDefinition {
+    std::int32_t id=-1,first_build=0,flags=0;
+    EventScript open_term,rock_term;
+};
+using TownTable=std::vector<std::optional<TownDefinition>>;
+TownDefinition& load_town_definition(TownDefinition&,std::optional<std::string_view>,const EventIntegerParser&);
+TownTable load_town_table(std::string_view,bool normalize_crlf,const EventIntegerParser&);
+struct TownInitializationState {
+    std::shared_ptr<std::vector<EventInstruction>> building_list; // Constructor's fresh list, +0x20.
+    std::shared_ptr<std::vector<std::uint8_t>> build_enable; // Fresh Init bool array, +0x28.
+};
+class FreshTownHost {
+public:
+    virtual ~FreshTownHost()=default;
+    virtual std::shared_ptr<TownTable> town_records()=0;
+    virtual std::int32_t saved_town_count()=0; // Normal-save integer slot19, decoded.
+    virtual void save_town_count(std::int32_t)=0;
+    virtual void rebuild_town()=0; // SetBuildingList's deferred=false path; fresh Init passes true.
+};
+void set_town_building(TownInitializationState&,std::int32_t town,std::int32_t building,std::int32_t value,bool deferred,FreshTownHost&);
+void initialize_fresh_town(TownInitializationState&,FreshTownHost&);
 class TownInitializationWorld {
 public:
     virtual ~TownInitializationWorld()=default;
     virtual void subscribe_town_return(std::function<void(const TownReturnEvent&)>)=0;
     virtual PlayerWorldState* current_town_world()=0; // Global world, distinct from the subscription receiver.
-    virtual void initialize_fresh_town()=0; // Fresh-town construction remains an explicit required domain service.
+    virtual void initialize_fresh_town()=0;
 };
-void initialize_town_entry(TownInitializationWorld*,std::function<void(const TownReturnEvent&)>); // Town.Init 0x1169540; loaded branch complete.
+void initialize_town_entry(TownInitializationWorld*,std::function<void(const TownReturnEvent&)>); // Town.Init 0x1169540; fresh branch delegates to the table-backed kernel.
 using MenuRowShapes=std::shared_ptr<std::vector<std::optional<std::size_t>>>;
 MenuRowShapes initial_menu_row_shapes(); // MenuSystem..cctor: seven int32[4] rows; cells are outside this projection.
 class AuxiliaryInitializationWorld {

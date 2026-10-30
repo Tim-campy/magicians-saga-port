@@ -23,6 +23,7 @@ void end(std::istringstream& row){row>>std::ws;if(!row.eof())throw std::invalid_
 struct SelectedBullet {std::int32_t id,damage,attribute,parent;ProjectilePoint position;};
 struct SelectedEffect {std::int32_t clip,image;bool loop;ProjectilePoint position;};
 struct SelectedDrop {std::int32_t type,value,scale;ProjectilePoint position;};
+struct SelectedFreshHero {};
 struct SelectedBubble {std::int32_t parent,data_id,type,maximum,resource,clip;ProjectilePoint initial;};
 struct SelectedGauge {std::uint64_t step=0;std::int32_t parent=0;GaugeCreation args;};
 }
@@ -89,10 +90,14 @@ void MissionProfile::initialize_loaded_world(){
     if(!native_stage_entry_)spatial->load_selected_map();
     humans->apply_initialized_scenario(); // Explicit input/population snapshot; Start replaces its native entry fields.
 }
+void MissionProfile::initialize_fresh_town(){
+    core::initialize_fresh_town(town_state_,*this);fresh_town_initialized_=true;
+}
 void MissionProfile::construct_systems(){
     // Native CreateSystems allocation order; storage owners precede this phase, with no Init subscriptions.
     SystemConstructionWorld world{this};constructing_systems_=true;menu_visible_=false; // CLR-zeroed Menu visible flag.
     for(std::size_t id=0;id<system_states_.size();++id){
+        if(id==7)town_state_.building_list=std::make_shared<std::vector<EventInstruction>>(); // Town ctor payload precedes BaseSystem.
         if(id==8)spatial->construct_camera();
         auto& state=system_states_[id];state.enabled=false;
         construct_base_system(state,&world);
@@ -233,7 +238,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     };
     if(replay)load_replay(*replay);
     std::ifstream input(scene);if(!input)throw std::runtime_error("cannot open scene description");
-    std::vector<std::variant<HumanCreation,EnemyCreation,SelectedBullet,SelectedEffect,SelectedDrop>> selected;
+    std::vector<std::variant<HumanCreation,EnemyCreation,SelectedBullet,SelectedEffect,SelectedDrop,SelectedFreshHero>> selected;
     std::optional<MissionHumanScenario> human_scenario;bool runtime_row=false;
     std::array<bool,32> enabled_rows{};bool menu_snapshot=false;
     std::optional<MissionRewardScenario> rewards;
@@ -304,13 +309,18 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         }
         if(operation=="system_init"){
             std::int32_t loaded=0;
-            if(initialized_loaded_||!(row>>loaded)||loaded<1||loaded>255)throw std::invalid_argument("system_init requires one explicit loaded-world byte1..255; fresh-game bootstrap is unbound");
+            if(initialized_loaded_||!(row>>loaded)||loaded<0||loaded>255)throw std::invalid_argument("system_init requires one explicit loaded byte0..255; zero requires hero fresh and town_save19");
             initialized_loaded_=static_cast<std::uint8_t>(loaded);end(row);continue;
         }
         if(operation=="system_construct"){
             std::string mode;
             if(construct_systems_||!(row>>mode)||mode!="empty_manager")throw std::invalid_argument("system_construct requires one explicit empty_manager entry");
             end(row);construct_systems_=true;continue;
+        }
+        if(operation=="town_save19"){
+            std::int32_t value=0;
+            if(saved_town_count_||!(row>>value))throw std::invalid_argument("town_save19 requires one explicit decoded integer");
+            saved_town_count_=value;end(row);continue;
         }
         if(operation=="quest_frame"){
             std::int32_t debug=0,orientation=0;
@@ -500,6 +510,10 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         }else if(operation=="animate"){
             if(!native||has_animation||!(row>>frames>>automatic>>application_update)||frames<0||frames>10000||(automatic!=0&&automatic!=1)||(application_update!=0&&application_update!=1))throw std::invalid_argument("animate requires count0..10000 and two flag0/1 values");
             has_animation=true;
+        }else if(operation=="hero"){
+            std::string mode;
+            if(!native||fresh_hero_||!(row>>mode)||mode!="fresh")throw std::invalid_argument("hero fresh requires one native bootstrap request");
+            fresh_hero_=true;players.push_back(selected.size());selected.emplace_back(SelectedFreshHero{});
         }else if(operation=="human"){
             HumanCreation h;if(!native||!(row>>h.direction>>h.character>>h.level>>h.formation_x>>h.formation_z>>h.experience>>h.x>>h.y>>h.z))throw std::invalid_argument("human requires six int32 and XYZ binary32 inputs");selected.emplace_back(h);
         }else if(operation=="enemy"){
@@ -561,6 +575,10 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     }
     if(selection.quest&&!selected_quest)throw std::invalid_argument("--quest requires a scenario quest row or mission_selection with explicit saved rescued count");
     if(!has_world)throw std::invalid_argument("an explicit world matrix is required");
+    if(fresh_hero_&&(!initialized_loaded_||*initialized_loaded_!=0||!construct_systems_||!stage_entry||!saved_town_count_||selected.size()!=1))
+        throw std::invalid_argument("hero fresh requires system_init 0, system_construct, native stage entry, town_save19 and no other selected actors");
+    if(!fresh_hero_&&((initialized_loaded_&&*initialized_loaded_==0)||saved_town_count_))
+        throw std::invalid_argument("system_init 0 and town_save19 require hero fresh");
     const bool result_requested=wallet||record||recruits||stocks[0]||stocks[1]||stocks[2];
     if(construct_systems_&&(!initialized_loaded_||!stage_entry||menu_snapshot||std::find(enabled_rows.begin(),enabled_rows.end(),true)!=enabled_rows.end()))
         throw std::invalid_argument("system_construct requires system_init and stage_start without system_enabled/menu_visible snapshot overrides");
@@ -582,7 +600,11 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         for(const auto& field:std::vector<std::pair<bool,const char*>>{{enemy_config,"enemy_system"},{stage_events,"stage_events"},{stage_scenario.boss.has_value(),"stage_boss"},{static_cast<bool>(map_images),"mission_map"},{geometry.has_value(),"geometry"}})
             if(field.first&&!quest_fields.count(field.second))throw std::invalid_argument("selected quest conflicts with explicit static scenario fields");
         if(enemy_pool)throw std::invalid_argument("selected quest supplies enemy_pool; remove explicit override");
-        catalog=std::make_unique<GameplayCatalog>(load_gameplay_catalog(*tables,false,parse_event_decimal,rewards.has_value()||collection||drop_catalog,result_requested,true,stage_area_id.has_value()));
+        catalog=std::make_unique<GameplayCatalog>(load_gameplay_catalog(*tables,false,parse_event_decimal,rewards.has_value()||collection||drop_catalog,result_requested,true,stage_area_id.has_value(),fresh_hero_));
+        if(fresh_hero_){
+            const auto main=std::find_if(catalog->characters.begin(),catalog->characters.end(),[](const auto& r){return r&&(r->flags&2)!=0;});
+            if(main==catalog->characters.end()||!progress.characters.count((*main)->id))throw std::invalid_argument("hero fresh requires saved progression for the first table main character");
+        }
         const QuestDefinition* definition=nullptr;
         if(saved_mission_selection_){
             const auto records=select_mission_records(*catalog->areas,*catalog->quests,*stage_area_id,*selected_quest);
@@ -645,6 +667,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             [&](std::string_view name){auto it=resource_names.find(std::string(name));if(it==resource_names.end())throw std::invalid_argument("unbound enemy resource name: "+std::string(name));return it->second;});
         MapComponent* live_map=map_images?&entity_world->create_initial_map():nullptr;
         for(const auto& request:selected){ComponentSlots* entity=nullptr;
+            if(std::holds_alternative<SelectedFreshHero>(request)){created.push_back(nullptr);continue;} // Member6.Init creates it after the earlier initializers.
             if(const auto* h=std::get_if<HumanCreation>(&request))entity=&entity_world->human(*h);
             else if(const auto* e=std::get_if<EnemyCreation>(&request))entity=entity_world->enemy(*e);
             else if(const auto* b=std::get_if<SelectedBullet>(&request)){ComponentSlots* parent=nullptr;
@@ -655,7 +678,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             if(!entity)throw std::invalid_argument("selected entity record is unavailable");created.push_back(entity);
         }
         mission=std::make_unique<MissionScene>(*entity_world,application,*entity_world->subset({0,2}),view,live_map,initialized_loaded_.has_value());
-        for(const auto ordinal:players){auto& actor=*created.at(ordinal);if(!actor.contains(14))throw std::invalid_argument("selected player needs Human component");entity_world->mark_player(actor);}
+        for(const auto ordinal:players){auto* actor=created.at(ordinal);if(!actor&&fresh_hero_)continue;if(!actor||!actor->contains(14))throw std::invalid_argument("selected player needs Human component");entity_world->mark_player(*actor);}
         if(human_scenario){
             if(!runtime||!geometry||!simulate)throw std::invalid_argument("human_system requires runtime, geometry and simulate rows");
             humans=std::make_unique<MissionHumans>(*entity_world,*catalog,progress,live_map?static_cast<StageGeometry&>(*live_map):*geometry,*runtime,*human_scenario,initialized_loaded_.has_value(),mission->gauge_service());
@@ -670,6 +693,10 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             if(map_images){spatial=std::make_unique<MissionSpatial>(*entity_world,*live_map,view,humans->quest_form(),humans->quest(),map_images,initialized_loaded_.has_value());mission->bind_spatial(*spatial,!initialized_loaded_);
                 if(!initialized_loaded_)spatial->observe_cursor_click([this](CursorPointRef point){mission->deliver_info_click(std::move(point));});}
             if(initialized_loaded_)initialize_loaded_world();
+            if(fresh_hero_){
+                created.at(players.front())=member_hero(&entity_world->player_world());
+                if(!created.at(players.front()))throw std::logic_error("fresh Member Init did not publish a hero");
+            }
             if(stage_entry)humans->start_mission(*stage_entry,formation,*spatial,
                 [this]{return initialization_.paused;},[this]{pause_systems(false);},std::move(stage_area));
             for(const auto& request:states)humans->set_state(*created.at(std::get<0>(request)),std::get<1>(request),std::get<2>(request));
@@ -747,6 +774,12 @@ void MissionProfile::write_actor_parameters(ComponentSlots& actor,std::ostream& 
     if(const auto* enemy=dynamic_cast<EnemyRecordLink*>(actor.get(24)))out<<",\"enemy_state\":"<<enemy->state<<",\"enemy_frame\":"<<enemy->frame<<",\"enemy_flags\":"<<enemy->flags;
 }
 void MissionProfile::write_combat_report(std::ostream& out){
+    out<<",\"fresh_hero_bootstrap\":"<<(fresh_hero_?"true":"false")<<",\"fresh_town_initialized\":"<<(fresh_town_initialized_?"true":"false");
+    if(fresh_town_initialized_){
+        out<<",\"town_save19\":"<<*saved_town_count_<<",\"town_save19_writes\":"<<town_count_writes_<<",\"town_build_enable\":[";
+        for(std::size_t i=0;i<town_state_.build_enable->size();++i){if(i)out<<',';out<<static_cast<int>(town_state_.build_enable->at(i));}out<<"],\"town_buildings\":[";
+        for(std::size_t i=0;i<town_state_.building_list->size();++i){if(i)out<<',';out<<'[';const auto& row=*town_state_.building_list->at(i);for(std::size_t j=0;j<row.size();++j){if(j)out<<',';out<<row[j];}out<<']';}out<<']';
+    }
     out<<",\"native_mission_selection\":"<<(saved_mission_selection_?"true":"false");
     if(saved_mission_selection_)out<<",\"decoded_mission_selection\":{\"area_slot8\":"<<saved_mission_selection_->area8
         <<",\"quest_slot9\":"<<saved_mission_selection_->quest9<<",\"effective_quest_slot9\":"<<*selected_quest<<'}';

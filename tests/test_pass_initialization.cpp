@@ -27,7 +27,33 @@ struct World final:PassInitializationWorld {
     }
 };
 template<class F>void fails(F f){bool caught=false;try{f();}catch(const std::exception&){caught=true;}check(caught);}
+struct FreshTown final:FreshTownHost {
+    std::shared_ptr<TownTable> records=std::make_shared<TownTable>(load_town_table("0\t7\t0\t-1\t1\n1\t8\t1\t1\t99\t0\t0\n2\t9\t-1\t0\t1",false,parse_event_decimal));
+    std::int32_t saved=-5;int reads=0,writes=0,rebuilds=0,queries=0;bool fail_read=false,fail_rebuild=false;
+    std::shared_ptr<TownTable> town_records()override{++queries;return records;}
+    std::int32_t saved_town_count()override{++reads;if(fail_read)throw std::runtime_error("save");return saved;}
+    void save_town_count(std::int32_t n)override{++writes;saved=n;}
+    void rebuild_town()override{++rebuilds;if(fail_rebuild)throw std::runtime_error("rebuild");}
+};
 int main(){
+    {FreshTown h;TownInitializationState s;s.building_list=std::make_shared<std::vector<EventInstruction>>();
+     initialize_fresh_town(s,h);check(*s.build_enable==std::vector<std::uint8_t>({1,0,1}));
+     check(h.saved==2&&h.writes==1&&h.reads==1&&h.rebuilds==0&&h.queries==13);
+     check(s.building_list->size()==2&&*s.building_list->at(0)==EventIntegers({0,7,0})&&*s.building_list->at(1)==EventIntegers({2,9,0}));
+     h.saved=99;h.writes=0;initialize_fresh_town(s,h);check(h.saved==99&&h.writes==0&&s.building_list->size()==2);
+     h.fail_read=true;fails([&]{initialize_fresh_town(s,h);});check(s.building_list->size()==2&&s.build_enable->at(2)==1);}
+    {FreshTown h;TownInitializationState s;s.building_list=std::make_shared<std::vector<EventInstruction>>();
+     h.records->at(1).reset();fails([&]{initialize_fresh_town(s,h);});check(h.reads==0&&s.build_enable->at(0)==1&&s.building_list->size()==1);}
+    {FreshTown h;TownInitializationState s;s.building_list=std::make_shared<std::vector<EventInstruction>>();
+     for(const auto row:{EventIntegers{4,1,0},EventIntegers{4,2,0},EventIntegers{4,3,0},EventIntegers{5,8,0}})s.building_list->push_back(std::make_shared<EventIntegers>(row));
+     set_town_building(s,4,9,5,true,h);check(s.building_list->size()==3&&*s.building_list->at(0)==EventIntegers({4,2,0})&&h.rebuilds==0);
+     set_town_building(s,5,8,0,false,h);check(h.rebuilds==1&&s.building_list->size()==3);
+     h.fail_rebuild=true;fails([&]{set_town_building(s,6,2,0,false,h);});check(h.rebuilds==2&&s.building_list->size()==4);}
+    {TownDefinition r;load_town_definition(r,"3\t8\t0\t-1\t5\textra",parse_event_decimal);auto open=r.open_term;
+     check(r.id==3&&r.first_build==8&&open&&open->empty()&&!r.rock_term&&r.flags==5);
+     load_town_definition(r,std::nullopt,parse_event_decimal);check(r.open_term==open);
+     fails([&]{load_town_definition(r,"4\t9\t1\t1\t77\tbad",parse_event_decimal);});
+     check(r.id==4&&r.first_build==9&&r.open_term!=open&&r.open_term->at(0)->at(0)==77&&r.flags==5);}
     {World w;EntitySubset* rotation=&w.group;initialize_rotation(rotation,&w);
      check(rotation==&w.group&&w.requests==std::vector<std::vector<std::int32_t>>{{12,1,2,7}});
      w.fail_subset=true;fails([&]{initialize_rotation(rotation,&w);});check(rotation==&w.group);

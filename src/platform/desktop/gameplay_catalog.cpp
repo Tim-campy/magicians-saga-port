@@ -2,7 +2,7 @@
 #include <stdexcept>
 
 namespace saga::desktop {
-GameplayCatalog load_gameplay_catalog(ResourceArchive& archive,bool normalize,const core::EventIntegerParser& parser,bool include_rewards,bool include_results,bool include_quests,bool include_areas){
+GameplayCatalog load_gameplay_catalog(ResourceArchive& archive,bool normalize,const core::EventIntegerParser& parser,bool include_rewards,bool include_results,bool include_quests,bool include_areas,bool include_towns){
     GameplayCatalog result;
     auto read=[&](const char* name){
         auto data=archive.data(name);if(!data)throw std::invalid_argument(std::string("missing gameplay table: ")+name);
@@ -19,6 +19,7 @@ GameplayCatalog load_gameplay_catalog(ResourceArchive& archive,bool normalize,co
     if(include_results)result.levels=core::load_level_table(read("Table.txt"),normalize,parser);
     if(include_quests)result.quests=core::load_quest_table(read("Quest.txt"),normalize,parser);
     if(include_areas)result.areas=std::make_shared<core::AreaTable>(core::load_area_table(read("Area.txt"),normalize,parser));
+    if(include_towns)result.towns=std::make_shared<core::TownTable>(core::load_town_table(read("Town.txt"),normalize,parser));
     return result;
 }
 } // namespace saga::desktop

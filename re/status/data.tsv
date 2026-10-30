@@ -1,2 +1,3 @@
 id	status	evidence	note
 game:0x0600101d	reimplemented	src/core/gameplay/quest_catalog.cpp	Ordered AreaData.Load fields, nullable arrays and partial mutation; test_quest_catalog.cpp and native Stage.Start host area binding.
+game:0x0600121d	reimplemented	src/core/gameplay/pass_initialization.cpp	TownData.Load ordered scalar/script fields, nullable arrays and retained partial mutation; fresh-world host loads real Town.txt.

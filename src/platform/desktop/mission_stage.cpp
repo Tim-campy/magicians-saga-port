@@ -97,7 +97,9 @@ DropCollectionHost& MissionStage::collection_host(){return owner_.collection_hos
 BossNotificationHost& MissionStage::movement_host(){return owner_;}
 bool MissionStage::key_pulse(std::int32_t mask){return (frame_pulse_.value_or(pulse_)&static_cast<std::uint32_t>(mask))!=0;}
 void MissionStage::pause_systems(bool value){if(!pause_)unavailable("stage pause/resume lifecycle");pause_(value);}
-bool MissionStage::execute_stage_event(std::int32_t){unavailable("stage event catalog dispatch");}
+bool MissionStage::execute_stage_event(std::int32_t id){
+    throw std::logic_error("mission service unbound: stage event catalog dispatch id="+std::to_string(id));
+}
 StageRecoveryHost& MissionStage::recovery_host(){unavailable("stage retry recovery");}
 StageBossHost& MissionStage::boss_host(){if(!enemy_entry_)unavailable("stage_boss inputs");return *this;}
 StagePlacementHost& MissionStage::boss_coordinates(){return static_cast<StagePlacementHost&>(owner_);}

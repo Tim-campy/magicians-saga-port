@@ -23,7 +23,7 @@ struct MissionSelection {
 // Shared strict scenario loader. An empty decoder decodes only images needed by Gauge22 logic.
 // Scenario state remains explicit; selecting a table row does not perform Stage.Start.
 class MissionProfile:private core::GaugeDrawingHost,private core::AuxiliaryInitializationWorld,private core::TownInitializationWorld,private core::SystemPauseManager,
-    private core::QuestFrameHost,private core::SelectPreludeHost {
+    private core::QuestFrameHost,private core::SelectPreludeHost,private core::FreshTownHost {
 public:
     MissionProfile(const std::filesystem::path&,bool native,ArchiveImageSet::Decoder = {},std::optional<MissionRuntimeConfig> = std::nullopt,std::optional<std::filesystem::path> replay =std::nullopt,MissionSelection = {});
     MissionProfile(const MissionProfile&)=delete;
@@ -110,7 +110,15 @@ private:
     void subscribe_menu_orientation(std::function<void()> f)override{menu_orientation_=std::move(f);}
     void subscribe_town_return(std::function<void(const core::TownReturnEvent&)> f)override{town_return_=std::move(f);}
     core::PlayerWorldState* current_town_world()override{return &entity_world->player_world();}
-    void initialize_fresh_town()override{throw std::logic_error("fresh Town Init requires the S2 building-state owner");}
+    void initialize_fresh_town()override;
+    std::shared_ptr<core::TownTable> town_records()override{return catalog->towns;}
+    std::int32_t saved_town_count()override{return saved_town_count_.value();}
+    void save_town_count(std::int32_t value)override{saved_town_count_=value;++town_count_writes_;}
+    void rebuild_town()override{throw std::logic_error("town entity rebuild is unbound; fresh Init defers it");}
+    core::TownInitializationState town_state_;
+    std::optional<std::int32_t> saved_town_count_;
+    std::uint64_t town_count_writes_=0;
+    bool fresh_town_initialized_=false,fresh_hero_=false;
     std::optional<std::uint8_t> initialized_loaded_;
     core::MemberBootstrapWorld initialization_world_;
     core::InitList initializers_;
