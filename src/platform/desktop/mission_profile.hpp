@@ -136,6 +136,11 @@ private:
     std::uint64_t town_count_writes_=0;
     bool fresh_town_initialized_=false,fresh_hero_=false;
     bool gear_new_game_=false;
+    std::optional<std::int32_t> character_shop_new_game_mask_;
+    // Retained reset outputs, separate from canonical live progression/result owners.
+    std::map<std::int32_t,core::CharacterNewGameState> initial_character_records_;
+    std::map<std::int32_t,core::ShopNewGameState> initial_shop_records_;
+    void reset_character_shop_records(MissionResultScenario&);
     std::array<std::array<std::int32_t,3>,3> new_game_gear_counts_{}; // Per weapon/cloth/hat: records, found, owned.
     std::optional<std::uint8_t> initialized_loaded_;
     core::MemberBootstrapWorld initialization_world_;

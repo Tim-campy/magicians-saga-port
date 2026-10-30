@@ -114,6 +114,20 @@ void MissionProfile::init_world_systems(){
     initialize_systems(initialization_,&initialization_world_);initialization_complete_=true;
     if(*initialized_loaded_==0)world_entry_order_.push_back("init_world");
 }
+void MissionProfile::reset_character_shop_records(MissionResultScenario& result){
+    result.recruit_records.emplace();
+    for(const auto& row:catalog->characters)if(row){
+        auto& state=initial_character_records_[row->id];reset_character_for_new_game(state,*row);
+        progress.characters.emplace(row->id,SavedCharacterProgression{state.level,state.experience});
+        progress.sortie_counts.emplace(row->id,state.sorties);
+        result.recruit_records->emplace(row->id,RecruitmentState{state.discovery_state,state.is_new,state.recruited});
+    }
+    // GetDataList calls Chara before MagicShop; the intervening Area reset is separate.
+    for(const auto& row:catalog->shop)if(row){
+        auto& state=initial_shop_records_[row->id];reset_shop_for_new_game(state,*row,*character_shop_new_game_mask_);
+        progress.shop_purchases.emplace(row->id,state.purchases);
+    }
+}
 void MissionProfile::initialize_fresh_town(){
     core::initialize_fresh_town(town_state_,*this);fresh_town_initialized_=true;
 }
@@ -502,6 +516,10 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             if(!native||human_scenario||!(row>>distance>>value.min_z_rate>>value.max_z_rate>>value.attribute>>value.button))throw std::invalid_argument("human_system requires distance min/max Z rates attribute button state");
             if(distance=="quest")quest_fields.insert(operation);else value.distance=parse_event_decimal(distance);
             human_scenario=value;
+        }else if(operation=="character_shop_new_game"){
+            std::int32_t mask=0;
+            if(!native||character_shop_new_game_mask_||!(row>>mask))throw std::invalid_argument("character_shop_new_game requires one explicit shop discovery mask");
+            character_shop_new_game_mask_=mask;
         }else if(operation=="gear_new_game"){
             if(!native||gear_new_game_)throw std::invalid_argument("gear_new_game requires native mode and one fresh-record reset request");
             gear_new_game_=true;
@@ -631,7 +649,9 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         throw std::invalid_argument("hero fresh requires system_init 0, system_construct, native stage entry, town_save19 and no other selected actors");
     if(!fresh_hero_&&((initialized_loaded_&&*initialized_loaded_==0)||saved_town_count_))
         throw std::invalid_argument("system_init 0 and town_save19 require hero fresh");
-    const bool result_requested=wallet||record||recruits||stocks[0]||stocks[1]||stocks[2]||gear_new_game_;
+    const bool result_requested=wallet||record||recruits||stocks[0]||stocks[1]||stocks[2]||gear_new_game_||character_shop_new_game_mask_.has_value();
+    if(character_shop_new_game_mask_&&(!fresh_hero_||!initialized_loaded_||*initialized_loaded_!=0||!construct_systems_||!progress.characters.empty()||!progress.shop_purchases.empty()||!progress.sortie_counts.empty()||recruits))
+        throw std::invalid_argument("character_shop_new_game requires fresh hero/system_init0/system_construct and excludes progress/purchase/sorties/result_recruits snapshots");
     if(gear_new_game_&&(!fresh_hero_||!initialized_loaded_||*initialized_loaded_!=0||!construct_systems_||!gear_defaults.empty()||stocks[0]||stocks[1]||stocks[2]))
         throw std::invalid_argument("gear_new_game requires fresh hero/system_init0/system_construct and excludes gear_levels/result_inventory snapshots");
     if(construct_systems_&&(!initialized_loaded_||!stage_entry||menu_snapshot||std::find(enabled_rows.begin(),enabled_rows.end(),true)!=enabled_rows.end()))
@@ -655,6 +675,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             if(field.first&&!quest_fields.count(field.second))throw std::invalid_argument("selected quest conflicts with explicit static scenario fields");
         if(enemy_pool)throw std::invalid_argument("selected quest supplies enemy_pool; remove explicit override");
         catalog=std::make_unique<GameplayCatalog>(load_gameplay_catalog(*tables,false,parse_event_decimal,rewards.has_value()||collection||drop_catalog,result_requested,true,stage_area_id.has_value(),fresh_hero_));
+        if(character_shop_new_game_mask_)reset_character_shop_records(result_state);
         if(fresh_hero_){
             const auto main=std::find_if(catalog->characters.begin(),catalog->characters.end(),[](const auto& r){return r&&(r->flags&2)!=0;});
             if(main==catalog->characters.end()||!progress.characters.count((*main)->id))throw std::invalid_argument("hero fresh requires saved progression for the first table main character");
@@ -696,7 +717,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     if(collisions&&!human_scenario)throw std::invalid_argument("collisions requires human_system event receivers");
     if(notifications&&!human_scenario)throw std::invalid_argument("stage_notifications requires human_system");
     if(collection&&(!notifications||!human_scenario))throw std::invalid_argument("collection fresh requires stage_notifications and human_system");
-    if(result_requested&&!(wallet&&record&&recruits&&(gear_new_game_||(stocks[0]&&stocks[1]&&stocks[2]))&&stage_loop&&collection))throw std::invalid_argument("results require wallet/record/all inventory kinds or gear_new_game/recruits, stage_loop and collection fresh");
+    if(result_requested&&!(wallet&&record&&(recruits||character_shop_new_game_mask_)&&(gear_new_game_||(stocks[0]&&stocks[1]&&stocks[2]))&&stage_loop&&collection))throw std::invalid_argument("results require wallet/record, inventory/recruit providers, stage_loop and collection fresh");
     if((stage_loop||stage_events||!stage_scenario.pulses.empty())&&!(stage_loop&&stage_events&&collection))throw std::invalid_argument("stage_loop requires explicit stage_events and collection fresh");
     if(stage_scenario.boss&&!(stage_loop&&enemy_requested))throw std::invalid_argument("stage_boss requires stage_loop and enemy system inputs");
     if(enemy_requested&&!(enemy_config&&enemy_population&&enemy_pool&&human_scenario))throw std::invalid_argument("enemy system requires enemy_system/enemy_population/enemy_pool and human_system");
@@ -858,6 +879,11 @@ void MissionProfile::write_combat_report(std::ostream& out){
     for(std::size_t i=0;i<world_entry_order_.size();++i){if(i)out<<',';out<<std::quoted(world_entry_order_[i]);}out<<']';
     out<<",\"gear_new_game\":"<<(gear_new_game_?"true":"false")<<",\"new_game_gear_counts\":[";
     for(std::size_t k=0;k<new_game_gear_counts_.size();++k){if(k)out<<',';const auto& n=new_game_gear_counts_[k];out<<'['<<n[0]<<','<<n[1]<<','<<n[2]<<']';}out<<']';
+    out<<",\"character_shop_new_game\":"<<(character_shop_new_game_mask_?"true":"false");
+    if(character_shop_new_game_mask_){
+        const auto found=[](const auto& rows){std::size_t count=0;for(const auto& entry:rows)if(entry.second.discovery_state==1)++count;return count;};
+        out<<",\"new_game_shop_find_mask\":"<<*character_shop_new_game_mask_<<",\"new_game_record_counts\":[["<<initial_character_records_.size()<<','<<found(initial_character_records_)<<"],["<<initial_shop_records_.size()<<','<<found(initial_shop_records_)<<"]]";
+    }
     if(fresh_town_initialized_){
         out<<",\"town_save19\":"<<*saved_town_count_<<",\"town_save19_writes\":"<<town_count_writes_<<",\"town_build_enable\":[";
         for(std::size_t i=0;i<town_state_.build_enable->size();++i){if(i)out<<',';out<<static_cast<int>(town_state_.build_enable->at(i));}out<<"],\"town_buildings\":[";

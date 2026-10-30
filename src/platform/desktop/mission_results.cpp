@@ -14,7 +14,8 @@ MissionResults::MissionResults(MissionHumans& owner,MissionResultScenario scenar
     const std::array<const EquipmentCombatTable*,3> tables{{&owner_.catalog_.equipment,&owner_.catalog_.cloth,&owner_.catalog_.hats}};
     for(std::size_t k=0;k<tables.size();++k)for(const auto& row:*tables[k])if(row)
         inventory_[k].emplace(row->id,state_.inventory_records?state_.inventory_records->at(k).at(row->id):state_.inventory[k]);
-    for(const auto& row:owner_.catalog_.characters)if(row)recruits_.emplace(row->id,state_.recruits);
+    for(const auto& row:owner_.catalog_.characters)if(row)
+        recruits_.emplace(row->id,state_.recruit_records?state_.recruit_records->at(row->id):state_.recruits);
     owner_.stage_.quest->rescued_prisoners=state_.rescued;
 }
 std::optional<QuestMemberId> MissionResults::next(Cursor& cursor){
@@ -103,7 +104,7 @@ void MissionResults::report(std::ostream& out){
     out<<",\"inventory_changes\":[";first=true;for(std::size_t k=0;k<inventory_.size();++k)for(const auto& e:inventory_[k]){
         const auto& initial=state_.inventory_records?state_.inventory_records->at(k).at(e.first):state_.inventory[k];const auto& v=e.second;if(v.discovery_state==initial.discovery_state&&v.is_new==initial.is_new&&v.stock==initial.stock)continue;
         if(!first)out<<',';first=false;out<<"{\"kind\":"<<k<<",\"id\":"<<e.first<<",\"found\":"<<v.discovery_state<<",\"is_new\":"<<(v.is_new?"true":"false")<<",\"stock\":"<<v.stock<<'}';}out<<']';
-    out<<",\"recruit_changes\":[";first=true;for(const auto& e:recruits_){const auto& v=e.second;const auto& a=state_.recruits;if(v.discovery_state==a.discovery_state&&v.is_new==a.is_new&&v.recruited==a.recruited)continue;
+    out<<",\"recruit_changes\":[";first=true;for(const auto& e:recruits_){const auto& v=e.second;const auto& a=state_.recruit_records?state_.recruit_records->at(e.first):state_.recruits;if(v.discovery_state==a.discovery_state&&v.is_new==a.is_new&&v.recruited==a.recruited)continue;
         if(!first)out<<',';first=false;out<<"{\"id\":"<<e.first<<",\"found\":"<<v.discovery_state<<",\"is_new\":"<<(v.is_new?"true":"false")<<",\"recruited\":"<<v.recruited<<'}';}out<<']';
     if(!result_)return;const auto& r=*result_;out<<",\"quest_result\":{\"experience\":"<<r.experience<<",\"money\":"<<r.money<<",\"crystals\":"<<r.crystals<<",\"prisoners\":"<<r.prisoners<<",\"members\":[";first=true;
     for(const auto& m:r.members){if(!first)out<<',';first=false;out<<"{\"handle\":"<<m.character<<",\"levels_gained\":"<<m.levels_gained<<",\"added_experience\":"<<m.added_experience<<",\"display_level\":"<<m.display_level<<",\"display_experience\":"<<m.display_experience<<'}';}out<<"]}";

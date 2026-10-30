@@ -6,6 +6,10 @@
 namespace saga::core {
 // Gameplay projections: all tokens are consumed; unrelated economy fields are not retained.
 struct MagicShopCombatRecord {std::int32_t id=0,category=0,value_per_purchase=0,flags=0;};
+struct ShopNewGameState {std::int32_t discovery_state=0,purchases=0;bool is_new=false;};
+// MagicShopData.NewGame 0x1172014; cctor initially stores mask1 at static+0.
+void reset_shop_for_new_game(ShopNewGameState&,const MagicShopCombatRecord&,std::int32_t find_mask,const std::function<void(bool)>& find);
+void reset_shop_for_new_game(ShopNewGameState&,const MagicShopCombatRecord&,std::int32_t find_mask);
 struct EquipmentCombatRecord {std::int32_t id=0,attribute=0,flags=0;EventScript parameters;std::int32_t range=0;
     std::int32_t distance=0,burst_count=0,use_mp=0; // EquipmentData +0x70/+0x74/+0x7c.
     std::int32_t type=0,bullet_id=-1,max_height=0,bullet_speed=0; // +0x3c/+0x54/+0x68/+0x6c.

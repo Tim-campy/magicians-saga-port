@@ -140,7 +140,7 @@ target_link_libraries(collation_index PUBLIC collation_tables)
 saga_library(experience_progression experience_progression.cpp)
 
 saga_library(progression_tables progression_tables.cpp)
-target_link_libraries(progression_tables PUBLIC event_catalog experience_progression)
+target_link_libraries(progression_tables PUBLIC event_catalog experience_progression stage_rewards)
 
 saga_library(quest_experience quest_experience.cpp)
 target_link_libraries(quest_experience PUBLIC experience_progression)

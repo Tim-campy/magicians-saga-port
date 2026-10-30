@@ -63,12 +63,13 @@ game:0x0600102a	traced	docs/subsystems/data.md	slot 11 from DeserializeData
 game:0x0600102c	traced	docs/subsystems/data.md	slot 13 from DeserializeData (share flag)
 game:0x06001012	traced	docs/subsystems/data.md	conditional Find(true); oldNewGame
 game:0x0600103a	traced	docs/subsystems/data.md	Find(true) under mask; +0x48->+0x20
-game:0x0600106d	traced	docs/subsystems/data.md	recreates arrays; [0,300,0]
+game:0x0600106d	reimplemented	src/core/gameplay/progression_tables.cpp	Alias name/parameters, fresh first-column status and witchExp[0,300,0], conditional virtual Find(true), then living=-1/recruit0/initLevel/EXP0; untouched sorties/cane and failure prefixes tested; fresh mission/result owner bound.
 game:0x060010a9	reimplemented	src/core/gameplay/combat_tables.cpp	Gear reset: conditional virtual Find(false), post-hook flags/initLevel, level and bit1 stock; Cloth initLevel retained; combat_tables_contract; fresh mission/result binding.
 game:0x060010ed	reimplemented	src/core/gameplay/combat_tables.cpp	Gear reset: conditional virtual Find(false), post-hook flags/initLevel, level and bit1 stock; Equipment initLevel retained; combat_tables_contract; fresh mission/result binding.
 game:0x06001176	reimplemented	src/core/gameplay/combat_tables.cpp	Gear reset: conditional virtual Find(false), post-hook flags/initLevel, level and bit1 stock; Hat initLevel retained; combat_tables_contract; fresh mission/result binding.
 game:0x0600118d	traced	docs/subsystems/data.md	zeroes byte +0x48
-game:0x0600119d	traced	docs/subsystems/data.md	Find(true) under mask; zero +0x40
+game:0x0600119d	reimplemented	src/core/gameplay/combat_tables.cpp	Explicit flags/mask32 gate, virtual Find(true), purchases0 only after success; alternate masks and callback failures tested; fresh mission purchase owner bound.
+game:0x060011a7	documented	docs/subsystems/data.md	MagicShopData cctor writes initial FLAG_INIT_FIND=1 at static+0 after metadata initialization; effective later overrides remain explicit.
 game:0x060011ee	traced	docs/subsystems/data.md	conditional Find; new QuestRecord at +0xa8
 game:0x06001014	traced	docs/subsystems/data.md	zeroed arrays at +0x20/+0x28/+0x38; writes +0x10
 game:0x06000661	documented	docs/subsystems/data.md	forwards to Object ctor

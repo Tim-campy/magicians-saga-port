@@ -211,7 +211,8 @@ For table-backed entity scenes, replace manual draw rows with tables, progress a
 | player | creation ordinal of the Human marked with native Player slot30; hero lookup retains the original subset/cache contract |
 | actor_state | creation ordinal, Human state, finite initial Z velocity; explicit diagnostic state input, not a keyboard mapping |
 | gear_levels | equipment/hat/cloth, saved level for every present row in that table; all three are required for Human total stats |
-| gear_new_game | no fields; run native Equipment/Hat/Cloth NewGame on fresh records; requires hero fresh, system_init0, system_construct and result providers; excludes gear_levels/result_inventory rows; character/shop/wallet/configuration remain explicit |
+| gear_new_game | no fields; run native Equipment/Hat/Cloth NewGame on fresh records; requires hero fresh, system_init0, system_construct and result providers; excludes gear_levels/result_inventory rows; other providers remain required |
+| character_shop_new_game | explicit int32 shop discovery mask (native cctor initial1); run Chara/MagicShop NewGame on fresh records; requires hero fresh/system_init0/system_construct; excludes progress/purchase/sorties/result_recruits rows; other scenario inputs remain required |
 | rewards | initial defeated count, remaining count, uniform saved defeat count (int32); requires human_system, Treasure.txt and AppData7 for reached drops; no collection or permanent grants |
 | enemy_system | Yugami int32, quest enemy maximum, total limit, spawn interval, base level; requires enemy_population/enemy_pool/human_system |
 | enemy_population | initial created, defeated, remaining, loop counter, boss-defeated0/1, uniform section limit, uniform section-created count; reward counters must agree if supplied |

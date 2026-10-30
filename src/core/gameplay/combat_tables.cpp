@@ -28,6 +28,13 @@ EquipmentCombatTable load_equipment_combat_table(std::string_view text,Equipment
         r.parameters=t.script();t.take();r.flags=t.integer();return r;
     });
 }
+void reset_shop_for_new_game(ShopNewGameState& state,const MagicShopCombatRecord& record,std::int32_t mask,const std::function<void(bool)>& find){
+    if((static_cast<std::uint32_t>(record.flags)&static_cast<std::uint32_t>(mask))!=0)find(true);
+    state.purchases=0;
+}
+void reset_shop_for_new_game(ShopNewGameState& state,const MagicShopCombatRecord& record,std::int32_t mask){
+    reset_shop_for_new_game(state,record,mask,[&state](bool fresh){find_data_record(state.discovery_state,state.is_new,fresh);});
+}
 void reset_equipment_for_new_game(EquipmentNewGameState& state,const EquipmentCombatRecord& record,const std::function<void(bool)>& find){
     if((static_cast<std::uint32_t>(record.flags)&1U)!=0)find(false);
     state.level=record.initial_level;

@@ -2,6 +2,7 @@
 #include "event_catalog.hpp"
 #include "experience_progression.hpp"
 #include <array>
+#include <string>
 
 namespace saga::core {
 struct LevelTableRecord {
@@ -15,7 +16,19 @@ struct CharacterProgressionRecord {
     std::int32_t weapon_id=0,initial_level=0,flags=0;
     EventScript parameters;
     std::int32_t image=0;
+    std::shared_ptr<const std::string> base_name; // UTF8 transport token; reset only copies its identity.
 };
+struct CharacterNewGameState {
+    std::shared_ptr<const std::string> name;
+    EventScript status_definition;
+    std::shared_ptr<EventIntegers> status,witch_experience;
+    std::int32_t discovery_state=0,level=0,experience=0,living_address=0,recruited=0;
+    std::int32_t sorties=0,equipped_cane=0; // NewGame leaves these two fields unchanged.
+    bool is_new=false;
+};
+// CharaData.NewGame 0x116d628: ordered alias/array copies, Find(true), then scalar reset.
+void reset_character_for_new_game(CharacterNewGameState&,const CharacterProgressionRecord&,const std::function<void(bool)>& find);
+void reset_character_for_new_game(CharacterNewGameState&,const CharacterProgressionRecord&);
 using LevelTable = std::vector<std::optional<LevelTableRecord>>;
 using CharacterProgressionTable = std::vector<std::optional<CharacterProgressionRecord>>;
 LevelTable load_level_table(std::string_view, bool normalize_crlf, const EventIntegerParser&);

@@ -3992,7 +3992,7 @@ game:0x06001069,game:0x06001069,data,,16,0x116abe8
 game:0x0600106a,game:0x0600106a,data,,16,0x116d59c
 game:0x0600106b,data.CharaData.get_level,data,documented,8,0x116d5ac
 game:0x0600106c,data.CharaData.set_level,data,reimplemented,116,0x116d5b4
-game:0x0600106d,data.CharaData.NewGame,data,traced,304,0x116d628
+game:0x0600106d,data.CharaData.NewGame,data,reimplemented,304,0x116d628
 game:0x0600106e,game:0x0600106e,data,,8,0x116d758
 game:0x0600106f,game:0x0600106f,data,,8,0x116d760
 game:0x06001070,game:0x06001070,data,,8,0x116d768
@@ -4291,7 +4291,7 @@ game:0x06001199,game:0x06001199,data,,8,0x1171f14
 game:0x0600119a,game:0x0600119a,data,,8,0x1171f1c
 game:0x0600119b,game:0x0600119b,data,,8,0x1171f24
 game:0x0600119c,data.MagicShopData.Load,data,documented,232,0x1171f2c
-game:0x0600119d,data.MagicShopData.NewGame,data,traced,128,0x1172014
+game:0x0600119d,data.MagicShopData.NewGame,data,reimplemented,128,0x1172014
 game:0x0600119e,game:0x0600119e,data,,544,0x1172094
 game:0x0600119f,game:0x0600119f,data,,44,0x1172538
 game:0x060011a0,data.MagicShopData.GetDataIdForParamKey,data,reimplemented,80,0x1172564
@@ -4301,7 +4301,7 @@ game:0x060011a3,data.MagicShopData.GetAddValue,data,reimplemented,16,0x11725c4
 game:0x060011a4,game:0x060011a4,data,,120,0x11725d4
 game:0x060011a5,game:0x060011a5,data,,120,0x117264c
 game:0x060011a6,game:0x060011a6,data,,108,0x11726c4
-game:0x060011a7,game:0x060011a7,data,,76,0x1172730
+game:0x060011a7,data.MagicShopData..cctor,data,documented,76,0x1172730
 game:0x060011a8,game:0x060011a8,data,,8,0x117277c
 game:0x060011a9,game:0x060011a9,data,,8,0x1172784
 game:0x060011aa,game:0x060011aa,data,,152,0x117278c

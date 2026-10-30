@@ -99,7 +99,19 @@ Arguments: descriptor table, `SecureProperty`, bool. Per descriptor: element 0 c
 
 - `Find` is slot 8 (`class+0x1b8`); 21 types use `BaseData.Find` (`0x116c790`, 20 bytes), QuestData overrides it (`0x1172f0c`, 28 bytes, ignores its argument). Find has side effects; it is not a lookup.
 - `AreaData.oldNewGame` (`0x116bf9c`, 576 bytes): allocates and zeroes 3×6 int32 at `+0x20`, 3×2 at `+0x38`, 6 int32 at `+0x28`; zero int `+0x30`; finally writes bit 0 of `+0x1c` into `+0x10` (overwriting what Find wrote).
-- Building/MagicShop masks and remaining field semantics are open. None of these resets touches the ECS world.
+- Building's mask and effective run-time overrides remain open; MagicShop's initial mask is1. None of these resets touches the ECS world.
+
+### Character and shop new-game state
+
+CharaData.NewGame (`0x116d628`,304 bytes) first aliases baseName+0x60 to name+0x30 and parameters+0xa0 to statusDefinition+0x38. A null parameters array faults after those stores. Allocate a fresh int32 status array at+0x58 with the outer parameter count; in index order copy each required row's first int32 into it. Null/empty rows fail with the allocated array and earlier cells retained. Empty outer arrays are valid. Next allocate witchExp+0x20 as `[0,300,0]`. Flag bit0 calls virtual Find(true). Only after it returns read initLevel+0x94 and set livingAddress+0x4c=-1, recruit+0x50=0, level+0x40=initLevel and exp+0x44=0. A throwing Find retains the prepared references/arrays and skips those final scalar stores. sortieCount+0x48 and equipCane+0x54 are untouched.
+
+The tail's64-bit MOVI word is0x2f00e5e0 (op1/cmode14/imm8=0x0f), representing0x00000000ffffffff. Its two little-endian int32 stores are therefore -1 and0. The [Arm instruction reference](https://documentation-service.arm.com/static/6245c734b059dc5ff9a8bdab) describes the scalar byte-mask immediate; installed Ghidra12.1.4 AARCH64instructions.sinc repl11101 and AARCH64neon.sinc scalar MOVI semantics confirm that expansion. It is not two -1 values. Chara's successful constructor leaves sorties/cane at CLR zero and explicitly clears inherited discovery/new fields. No CLR allocator or Unicode implementation is reconstructed.
+
+MagicShopData.NewGame (`0x1172014`,128 bytes) reads its flags and static FLAG_INIT_FIND at+0, invokes virtual Find(true) when their32-bit intersection is nonzero, then stores buyCount+0x40=0. A callback failure skips that store; an unmatched record retains discovery/new state but still resets purchases. MagicShopData..cctor (`0x1172730`,76 bytes) stores initial mask1; later overrides are not excluded. Its successful constructor clears discovery/new through the same inline BaseData stores. The mission mode receives the effective mask explicitly instead of guessing a live configuration.
+
+`progression_tables.cpp` retains the base-name UTF8 transport token and implements reset_character_for_new_game with shared-reference/array identities and ordered failure effects. Reset only copies the name reference; text decoding/rendering is outside this contract. `combat_tables.cpp` implements reset_shop_for_new_game; both use the existing BaseData.Find value kernel through a virtual-hook boundary. Tests cover aliases, fresh arrays, empty/null parameters and rows, partial copies, callback failure/mutation, untouched fields, negative initial levels and alternate shop masks. The character_shop_new_game host mode seeds canonical character level/EXP, sortie and purchase maps, retains the other reset outputs, and supplies per-record recruitment baselines to mission results. It does not implement all AppData.NewData/NewGame.
+
+Evidence: complete basedata-newgame/M38122_CharaData_NewGame.asm and M38426_MagicShopData_NewGame.asm; mission-char-shop/{CharaData_ctor,MagicShopData_ctor,MagicShopData_cctor}.asm (472/108/76 bytes, zero missing words). V31 field offsets at registered table0x277ece8, type4506/4517 arrays0x65d358/0x65d758, identify the fields above. Addresses subtract image base0x100000; confidence high for these static contracts, with no Android comparison.
 
 ### Equipment new-game state
 
@@ -159,7 +171,7 @@ Evidence: complete ignored bounded exports mission-cache-entry/BootForm_Load.asm
 
 ### Combat table projections
 
-The existing character reader now retains img, weaponId, initLevel, parameters and the inherited int32 flags as well as the experience rate. It still consumes the full CharaData schema once; it does not duplicate the parser. `bind_character_parameters(record,saved_level)` shares the parameter array, uses the explicitly supplied saved level, and exposes the low flags byte used by `get_isMain`. initLevel is not substituted for saved level.
+The character reader retains img, weaponId, initLevel, parameters, inherited int32 flags, experience rate and the base-name token. It still consumes the full CharaData schema once; it does not duplicate the parser. `bind_character_parameters(record,saved_level)` shares the parameter array, uses the explicitly supplied saved level, and exposes the low flags byte used by `get_isMain`. initLevel is not substituted for saved level.
 
 Additional loaders in `combat_tables.cpp` consume these schemas (int32 unless marked string or array):
 
@@ -272,7 +284,7 @@ The native `mission_resources "English.lproj" 1` scenario row requires `--data`,
 1. (blocking) Body of `<LoadData>b__74_0`: does it call `EventData.Load`/`<T>.Load` per line, and what happens with invalid/null lines and trailing CR?
 2. (blocking) Full list of the 21 table names and their `Data` fields/types (only Event.txt position 5 is resolved).
 3. Which container `Data.Load(arg)` receives and how language variants are chosen.
-4. Values of the static masks in BuildingData/MagicShopData `NewGame`; field meanings of the reset offsets.
+4. BuildingData NewGame mask and remaining reset fields; later overrides of MagicShop FLAG_INIT_FIND beyond its established cctor initial1.
 5. Exact semantics of stream slots 13 and 6 in `DeserializeData`.
 6. Who writes BaseData sections (`BaseData.Serialize` `game:0x06001028` presumably) and the per-type `Deserialize` bodies.
 7. Meaning of `AppData+0x238`, `+0x2e8` (10000) and their consumers.

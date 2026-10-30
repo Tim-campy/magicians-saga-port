@@ -15,6 +15,7 @@ struct MissionResultScenario {
     std::array<core::ItemStock,3> inventory;
     core::RecruitmentState recruits;
     std::optional<std::array<std::map<std::int32_t,core::ItemStock>,3>> inventory_records;
+    std::optional<std::map<std::int32_t,core::RecruitmentState>> recruit_records;
 };
 // Mutable decoded state. Original save encoding and town presentation remain host boundaries.
 class MissionResults final:private core::QuestRewardHost,private core::QuestExperienceHost,

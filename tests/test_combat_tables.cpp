@@ -46,6 +46,13 @@ int main(int argc,char** argv){
     auto c=bind_character_parameters(*chars[2],1000);check(c.level==1000&&c.flags==2&&c.values==chars[2]->parameters);
     auto shop=load_magic_shop_combat_table("0\tUpgrade\t5\t123\t7\tDescription\t2\n2\tGap\t6\t1\t9\tD\t0",false,parse_event_decimal);
     check(shop.size()==3&&!shop[1]&&shop[0]->category==5&&shop[0]->value_per_purchase==7);
+    {ShopNewGameState state{7,55,false};MagicShopCombatRecord record;record.flags=2;
+     reset_shop_for_new_game(state,record,1);check(state.discovery_state==7&&!state.is_new&&state.purchases==0);
+     state.purchases=55;reset_shop_for_new_game(state,record,2);check(state.discovery_state==1&&state.is_new&&state.purchases==0);
+     state.purchases=55;int calls=0;reset_shop_for_new_game(state,record,2,[&](bool fresh){check(fresh&&state.purchases==55);++calls;state.purchases=8;});
+     check(calls==1&&state.purchases==0);state.purchases=55;
+     try{reset_shop_for_new_game(state,record,2,[&](bool){state.discovery_state=9;throw std::runtime_error("shop find");});check(false);}catch(const std::runtime_error&){}
+     check(state.purchases==55&&state.discovery_state==9);}
     auto maxima=initial_parameter_maximum_levels();ShopParameterTable upgrades(3);upgrades[0]=bind_shop_upgrade(*shop[0],3);
     TableCharacterParameterHost host(maxima,upgrades);check(member_base_parameter(c,0,host)==1021);
     const std::string gear="3\tBlade\t1\t2\t3\t4\tRes\t5\t6\t2\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t"+endpoints()+"\tD\t4";

@@ -33,6 +33,33 @@ int main(int argc,char** argv){
     const std::string character="2\tName\t7\tres\t8\tres2\t1\t2\t3\t4\t5\t150\t1\t2\t11\t12\t6\t7\t8\t-1\t9\t10\r\n";
     auto characters=load_character_progression_table(character,false,parse_event_decimal);
     check(characters.size()==3&&!characters[1]&&characters[2]->required_experience_rate==150&&characters[2]->image==8);
+    check(characters[2]->base_name&&*characters[2]->base_name=="Name");
+    const auto fails=[](auto action){bool caught=false;try{action();}catch(const std::exception&){caught=true;}check(caught);};
+    {auto record=*characters[2];CharacterNewGameState state;state.discovery_state=7;state.is_new=true;
+     state.level=99;state.experience=8;state.living_address=6;state.recruited=5;state.sorties=12;state.equipped_cane=4;
+     reset_character_for_new_game(state,record);
+     check(state.name==record.base_name&&state.status_definition==record.parameters&&*state.status==EventIntegers{11});
+     check(*state.witch_experience==EventIntegers{0,300,0}&&state.level==4&&state.experience==0);
+     check(state.living_address==-1&&state.recruited==0&&state.sorties==12&&state.equipped_cane==4);
+     check(state.discovery_state==7&&state.is_new);const auto old=state.status,witch=state.witch_experience;
+     reset_character_for_new_game(state,record);check(state.status!=old&&state.witch_experience!=witch);
+     record.flags=1;state.level=99;state.living_address=6;state.recruited=5;int queries=0;
+     reset_character_for_new_game(state,record,[&](bool fresh){check(fresh);++queries;
+         check(state.level==99&&state.living_address==6&&state.recruited==5&&state.witch_experience->at(1)==300);
+         record.initial_level=-17;state.discovery_state=1;state.is_new=true;});
+     check(queries==1&&state.level==-17&&state.living_address==-1&&state.recruited==0&&state.is_new);
+     state.level=99;state.living_address=6;state.recruited=5;
+     fails([&]{reset_character_for_new_game(state,record,[&](bool){state.discovery_state=8;throw std::runtime_error("find");});});
+     check(state.level==99&&state.living_address==6&&state.recruited==5&&state.discovery_state==8&&state.witch_experience->at(1)==300);
+     const auto previous=state.status;record.parameters=nullptr;
+     fails([&]{reset_character_for_new_game(state,record);});check(!state.status_definition&&state.status==previous&&state.name==record.base_name);
+     record.parameters=std::make_shared<std::vector<EventInstruction>>();record.base_name=nullptr;
+     reset_character_for_new_game(state,record);check(!state.name&&state.status->empty()&&state.level==-17&&state.recruited==0);}
+    {CharacterProgressionRecord record;record.parameters=std::make_shared<std::vector<EventInstruction>>();
+     record.parameters->push_back(std::make_shared<EventIntegers>(EventIntegers{7,8}));record.parameters->push_back(std::make_shared<EventIntegers>());
+     CharacterNewGameState state;state.level=42;state.witch_experience=std::make_shared<EventIntegers>(EventIntegers{9});const auto old=state.witch_experience;
+     fails([&]{reset_character_for_new_game(state,record);});check(*state.status==EventIntegers({7,0})&&state.witch_experience==old&&state.level==42);
+     record.parameters->at(1)=nullptr;fails([&]{reset_character_for_new_game(state,record);});check(*state.status==EventIntegers({7,0})&&state.witch_experience==old);}
     std::int32_t id=2;TableExperienceHost host(levels,characters,id);
     check(host.next_experience(1)==15); // Uses id, not level_ (999).
     MemberExperience member{1,0};
