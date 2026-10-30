@@ -140,6 +140,8 @@ void MissionScene::advance_parameter_experience(std::int32_t pass,bool enabled){
 void MissionScene::advance_parameters(std::int32_t pass,bool enabled){if(gameplay_needs_update(14,enabled,pass)){update_parameters();++parameter_steps_;}}
 void MissionScene::advance_effects(std::int32_t pass,bool enabled){if(gameplay_needs_update(23,enabled,pass)){update_effects(effects_,*this);++effect_steps_;}}
 void MissionScene::write_pass_report(std::ostream& out){
+    out<<",\"emitter_entities\":"<<(emitters_.subset?emitters_.subset->size():0)
+       <<",\"garbage_entities\":"<<(garbage_entities_?garbage_entities_->size():0);
     out<<",\"button_receiver_order\":[";
     if(auxiliary_buttons_)for(std::size_t i=0;i<auxiliary_buttons_->size();++i){if(i)out<<',';out<<auxiliary_buttons_->at(i).factory;}out<<']';
     out<<",\"debug_path_visualize\":"<<(debug_path_.visualize?"true":"false")<<",\"debug_path_wait_ms\":"<<debug_path_.wait_milliseconds;

@@ -22,7 +22,7 @@ game:0x06000be1	documented	docs/subsystems/ecs.md
 game:0x06000c03	documented	docs/subsystems/ecs.md	
 game:0x06000c06	documented	docs/subsystems/ecs.md	
 game:0x06000c0a	documented	docs/subsystems/ecs.md	
-game:0x06000c19	documented	docs/subsystems/ecs.md	
+game:0x06000c19	documented	docs/subsystems/ecs.md	Entity then system restoration; loaded byte1 only after hooks; no production world reader, so diagnostic loaded snapshots do not establish Continue.
 game:0x06000db5	documented	docs/subsystems/ecs.md	
 game:0x06000db6	documented	docs/subsystems/ecs.md	
 game:0x06000c59	documented	docs/subsystems/ecs.md	

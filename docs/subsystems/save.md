@@ -107,7 +107,9 @@ When `AppData.FlagCheck(4)` is true (otherwise a dialog is prepared): updates so
 3. `AppData.InitWorld` (`0x1218af4`),
 4. new `SelectForm` stored at `AppData+0xa0`, `FormManagerBase.ChangeCurrentForm`.
 
-`LoadGame` alone is not a complete load; the port must reproduce this sequence. The [InitWorld entry kernel](ecs-lifecycle.md#initworld-entry) preserves the loaded-byte gate but the desktop selects its native path only for a fresh world; no restored Continue owner exists. Meaning of flag 4 is not recovered.
+`LoadGame` alone is not a complete load; the port must reproduce this sequence. The [InitWorld entry kernel](ecs-lifecycle.md#initworld-entry) preserves the loaded-byte gate but the desktop selects its native path only for a fresh world; no restored Continue owner exists. Meaning of flag4 is not recovered.
+
+S1 Continue is blocked on selector13 restoration even when its outer SecureProperty envelope is supplied already decoded: no EntityManager/SystemManager reader exists. Registration primitives, three animation payload codecs and ordered Init are available; they do not restore Human scripts/visual arrays, Member roster/formation or saved system payloads. The reader must register every entity header before loading components and resolving Extra references, construct/register systems before their Deserialize/DeserializeExtra/OnDeserialized hooks, and set the world loaded byte only after these hooks succeed. The current diagnostic system_init1 owner supplies initialized snapshots and cannot be promoted to Continue. Revisit the S1 binding after the component/system codecs and pre-load registry contract in [entity save](../formats/entity-save.md) and S3 are implemented; outer-envelope decoding alone does not satisfy it.
 
 ### NewGame (`0x1101d58`, 1420 bytes)
 

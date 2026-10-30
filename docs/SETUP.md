@@ -165,10 +165,10 @@ This illustrative projection is for a 32x16 target, near0/far1500100 and column-
 
 ```powershell
 build/viewer/queue_capture.exe scene.txt 32 16 new-native-output.bmp --native-depth
-build/viewer/test_combat_pixels.exe build/viewer/combat-contract
+python -I tests/test_mission_combat_pixels.py build/viewer/saga_mission.exe
 ```
 
-The GPU mode uses BitmapMeshFrame, the recovered group/array/quad kernels and native stream submission. Its pixel tests distinguish same-layer Z occlusion from next-layer depth clearing. test_combat_pixels exercises 240 frames of the shared combat scenario with synthetic catalogs; selected real archives can be supplied to queue_capture, but neither tool establishes original boot, complete mission resource selection or Android equivalence.
+The GPU mode uses BitmapMeshFrame, the recovered group/array/quad kernels and native stream submission. Its pixel tests distinguish same-layer Z occlusion from next-layer depth clearing. test_mission_combat_pixels drives the production saga_mission owner for 240 passes per ordinary/physical category, using synthetic archive/table bytes. It compares captured state against headless execution and checks live RGBA output. Real assets use the same entry. Captures of table-backed missions include a nested state object with the final actor/combat observations; existing image metadata stays at the top level. No Android equivalence is implied.
 
 For table-backed entity scenes, replace manual draw rows with tables, progress and entity rows. The same archive lookup reads Chara/Equipment/Cloth/Hat/MagicShop/Enemy/Bullet.txt, without requiring img.inf/seb.inf in that data archive. Use these additional row shapes (all inputs are explicit):
 

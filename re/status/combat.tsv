@@ -105,7 +105,7 @@ game:0x06000ecf	reimplemented	src/core/gameplay/human_impact.cpp	Cell Human stat
 game:0x06000e7c	reimplemented	src/core/gameplay/enemy_impact.cpp	Ordered bullet-parent checks emitter launches 12 RNG draws modification replacement and boss notification; host services explicit
 game:0x06000fb5	reimplemented	src/core/gameplay/boss_notification.cpp	Native boss/max-Z/victory/key-release order bound in mission host through live field references and late quest getter; presentation stubs explicit.
 game:0x06000e0d	reimplemented	src/core/gameplay/collision_check.cpp	Inclusive binary32 sphere distance with wrapping int32 radius square; gates overflow and impact integration tested
-game:0x06000e80	reimplemented	src/core/gameplay/impact_effect.cpp	Impact traversal effect and damage-area payloads cleanup and callbacks; composed with OnBulletHit; world factories explicit
+game:0x06000e80	reimplemented	src/core/gameplay/impact_effect.cpp	Impact traversal effect and damage-area payloads cleanup and callbacks; composed with OnBulletHit; production mission regression covers ordinary expiry and retained physical modifier through GPU/headless state parity.
 game:0x06000a76	documented	docs/subsystems/combat.md	Center-first unique list and signed range gate; bounded impact use ported, general range API not ported
 game:0x06000a77	documented	docs/subsystems/combat.md	Depth-first neighbor order coordinate wrap and duplicate recursion; bounded impact use ported
 game:0x06000fca	reimplemented	src/core/gameplay/boss_notification.cpp	Native key release order clears explicit host bitmap; selected-scene nullable controls absent, nonnull touch release still unbound.

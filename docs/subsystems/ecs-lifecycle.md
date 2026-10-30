@@ -1,6 +1,6 @@
 # ECS lifecycle
 
-The fixed32-system mission factory constructs every system before adding the array to SystemManager. Base construction captures the current static world's manager and enables the concrete type, including virtual enable hooks. The fresh desktop path runs AppData.InitWorld's construct/add/map/Init sequence; decoded configuration, NewGame resets and Continue restoration remain external. World, AppData and BaseSystem have distinct world slots whose initial aliasing is established below.
+The fixed32-system mission factory constructs every system before adding the array to SystemManager. Base construction captures the current static world's manager and enables the concrete type, including virtual enable hooks. The fresh desktop path runs AppData.InitWorld's construct/add/map/Init sequence; fresh NewGame record/seed projections are host-bound; effective platform configuration and Continue restoration remain external. World, AppData and BaseSystem have distinct world slots whose initial aliasing is established below.
 
 ## Overview
 
@@ -62,7 +62,7 @@ World.AddSystems (`0x11357b4`,40 bytes) requires the receiver's manager, forward
 
 Port `mission_map::initialize_mission_world` uses provider-owned world/system-batch identities and the existing map request. Its contract tests cover whole-byte gating, all three world queries, rebindings during factory/map callbacks, repeated entry without implicit reset, missing worlds and ordered failure prefixes. The fresh MissionProfile path (`system_init 0`, `system_construct empty_manager`, `hero fresh`) calls it directly. Existing C++ owners retain the shared ComponentFactory.map_ storage before entry, while the actual registered map entity is created only after construct/add and before all32 Init callbacks. Camera/hero/town initialization and Stage.Start follow that map creation through their existing kernels.
 
-Nonzero system_init profiles remain explicitly initialized diagnostic snapshots. Their selected systems are not a restored Continue world: the host does not silently skip construction and pretend a loaded byte supplied its systems/party. Selecting the native loaded entry requires actual restoration first. Reports distinguish original_world_entry and world_entry_order; full scene-free startup still needs native saved/configuration producers.
+Nonzero system_init profiles remain explicitly initialized diagnostic snapshots. Their selected systems are not a restored Continue world: the host does not silently skip construction and pretend a loaded byte supplied its systems/party. Selecting the native loaded entry requires actual restoration first. Reports distinguish original_world_entry and world_entry_order; scene-free fresh startup uses native record/seed providers and declared provisional platform context.
 
 ### Enable, pause and removal
 
@@ -108,7 +108,7 @@ Local research/exports/mission-construction.tsv and mission-construction/ contai
 
 ## Open questions
 
-- (blocking) Bind native NewGame resets and saved/configuration providers for scene-free fresh mission entry; the fresh InitWorld sequence itself is host-bound.
-- (blocking) Restore world/party/systems before selecting InitWorld's loaded branch; explicit nonzero system_init snapshots are not a Continue implementation.
+- Establish effective platform configuration from the original runtime; the scene-free fresh mission binds native record/seed providers with declared provisional context.
+- (blocking) Restore selector13 entities/components, saved Member roster and system payloads before selecting InitWorld's loaded branch; these readers are absent. Explicit nonzero system_init snapshots are not a Continue implementation. See [save prerequisites](save.md).
 - Bind non-deferred town entity rebuild and event31 consumers when S2 reaches them; the fresh Town list/permissions and slot19 Init branch are host-reachable.
 - Bind generic manager-list mutation, delegate-hash collision inputs and native FormManager timing only when the mission/town host requires them.

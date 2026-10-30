@@ -1,7 +1,7 @@
 """Synthetic table/archive profile shared by mission and GPU contracts."""
 from test_sprite_preview import jar, png, seb
 
-def make_table_scene(root, valid_png=True, human_frame=False, shoot=False, rewards=False, area=False, lethal_contact=False, treasure_flags=0, spell_attribute=3, boss_entry=False, alternate_quest=False, stage_entry=False, talk_events=False):
+def make_table_scene(root, valid_png=True, human_frame=False, shoot=False, rewards=False, area=False, lethal_contact=False, treasure_flags=0, spell_attribute=3, boss_entry=False, alternate_quest=False, stage_entry=False, talk_events=False, bullet_category=0):
     params = '13' + '\t2\t100\t1000' * 13
     tables = {
         'Quest.txt': ('2\tSynthetic quest\t0\tmap\t4\t0\t1\t2\t3\tunused\tunused\t7\t7\t10\t200\t25\t0\t10\t150\t'
@@ -21,7 +21,7 @@ def make_table_scene(root, valid_png=True, human_frame=False, shoot=False, rewar
         if area:
             weapon[17] = '2'
         tables['Equipment.txt'] = '\t'.join(weapon)
-        tables['Bullet.txt'] = f'0\t0\t{spell_attribute}\tbullet\t5\t6\teffect\t7\t0'
+        tables['Bullet.txt'] = f'0\t{bullet_category}\t{spell_attribute}\tbullet\t5\t6\teffect\t7\t0'
         enemy_params = '13' + ''.join('\t2\t100000\t100000' if i == 0 or (lethal_contact and i in (3, 7)) else '\t2\t0\t0' for i in range(13))
         tables['Enemy.txt'] = f'4\tEnemy\t0\t2\t10\t100\t0\t0\t0\tenemy-book\t7\t0\t0\t0\t{enemy_params}\t0'
     if rewards:
@@ -71,8 +71,8 @@ def make_table_scene(root, valid_png=True, human_frame=False, shoot=False, rewar
     return text
 
 
-def make_shoot_scene(root, rewards=False, area=False, lethal_contact=False, treasure_flags=0, spell_attribute=3, boss_entry=False, alternate_quest=False, stage_entry=False, talk_events=False):
-    text = make_table_scene(root, human_frame=True, shoot=True, rewards=rewards, area=area, lethal_contact=lethal_contact, treasure_flags=treasure_flags, spell_attribute=spell_attribute, boss_entry=boss_entry, alternate_quest=alternate_quest, stage_entry=stage_entry, talk_events=talk_events)
+def make_shoot_scene(root, rewards=False, area=False, lethal_contact=False, treasure_flags=0, spell_attribute=3, boss_entry=False, alternate_quest=False, stage_entry=False, talk_events=False, bullet_category=0):
+    text = make_table_scene(root, human_frame=True, shoot=True, rewards=rewards, area=area, lethal_contact=lethal_contact, treasure_flags=treasure_flags, spell_attribute=spell_attribute, boss_entry=boss_entry, alternate_quest=alternate_quest, stage_entry=stage_entry, talk_events=talk_events, bullet_category=bullet_category)
     for name, image, clips in [('bullet', 5, [0, 1]), ('effect', 7, [0, 100, 101])]:
         (root / f'{name}.bin').write_bytes(jar([
             ('img.inf', '\n'.join(f'{i}\ta.png,bin' for i in [image, 1, 2, 6, 24, 27]).encode()),
@@ -184,3 +184,14 @@ def make_data_entry_fixture(root, font_file):
     control+=f'talk_font "{font.as_posix()}" 100 100 100 0 0 0 0 0\n'
     control=control.replace('system_init 1','system_init 0').replace('runtime 25 0 system 42','runtime initial initial system 42')
     return control
+
+
+def make_combat_regression_scene(root, physical=False):
+    """Synthetic archive bytes read by the production catalogs, world and scheduler."""
+    text=with_mission_map(root,make_shoot_scene(root,rewards=True,spell_attribute=0,bullet_category=int(physical)))
+    text=text.replace('human 0 2 1 0 0 0 0 0 100','human 0 2 1 0 0 0 312 0 1000')
+    text=text.replace('enemy 0 4 7 2 0 0 70','enemy 0 4 7 2 312 0 940')
+    text=text.replace('human_system 10 0 100 3 1','human_system 10 0 100 0 1')
+    text='\n'.join(line for line in text.splitlines() if not line.startswith('material '))+'\n'
+    return text+('material_policy native\ntick_ms 1\ncollisions\n'
+                 'enemy_system 10000 3 10 2 7\nenemy_population 0 0 1 0 0 100 0\nenemy_pool 1 4 1\n')

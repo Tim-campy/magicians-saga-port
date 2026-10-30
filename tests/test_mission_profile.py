@@ -9,11 +9,42 @@ import unittest
 
 EXE = Path(sys.argv.pop(1)).resolve() if len(sys.argv) > 1 else None
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from mission_scene_fixture import make_table_scene, make_shoot_scene, with_mission_map, make_boss_scene, make_gauge_scene, make_native_entry_scene, make_data_entry_fixture
+from mission_scene_fixture import make_table_scene, make_shoot_scene, with_mission_map, make_boss_scene, make_gauge_scene, make_native_entry_scene, make_data_entry_fixture, make_combat_regression_scene
 
 
 @unittest.skipUnless(EXE, 'saga_mission supplied by CTest')
 class MissionProfileTests(unittest.TestCase):
+    def test_shared_catalog_combat_regression(self):
+        for physical in (False,True):
+            with self.subTest(physical=physical),tempfile.TemporaryDirectory() as directory:
+                root=Path(directory);scene=root/'combat.txt'
+                scene.write_text(make_combat_regression_scene(root,physical),encoding='utf8')
+                result=self.run_host(scene,frames=240)
+                self.assertEqual(result.returncode,0,result.stderr);state=json.loads(result.stdout)
+                self.assertTrue(state['positions'][1]['destroyed'])
+                self.assertEqual(state['shots'],1);self.assertEqual(state['defeated_enemies'],1)
+                self.assertEqual(state['saved_defeats'],[{'enemy_id':4,'count':5}])
+                self.assertEqual([(d['type'],d['value']) for d in state['pending_drops']],[(0,10),(3,0)])
+                self.assertEqual(state['projectiles'],[])
+                self.assertEqual((state['emitter_entities'],state['garbage_entities']),(0,0))
+                self.assertEqual(state['parameter_experience_pending'],0)
+                self.assertEqual(state['positions'][0]['human_experience'],0)
+                self.assertTrue(state['update_schedule_complete'] and state['collisions_enabled'])
+                self.assertEqual(state['last_update_order'],[2,3,4,5,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,30,31])
+                self.assertEqual(self.run_host(scene,frames=240).stdout,result.stdout)
+                early=self.run_host(scene,frames=20);self.assertEqual(early.returncode,0,early.stderr)
+                # Category1 retains the physical impact modifier; ordinary shots expire immediately.
+                self.assertEqual(json.loads(early.stdout)['render_commands'],17 if physical else 14)
+                landing=self.run_host(scene,frames=45);self.assertEqual(landing.returncode,0,landing.stderr)
+                landing=json.loads(landing.stdout)
+                self.assertEqual(landing['emitter_entities'],3)
+                self.assertGreater(landing['garbage_entities'],0)
+                # Landing at44 retains the corpse through53; native maxFrame10 destroys it at54.
+                for frames,emitters,destroyed in ((43,0,False),(44,3,False),(53,3,False),(54,3,True)):
+                    boundary=self.run_host(scene,frames=frames)
+                    self.assertEqual(boundary.returncode,0,boundary.stderr);boundary=json.loads(boundary.stdout)
+                    self.assertEqual((boundary['emitter_entities'],boundary['positions'][1]['destroyed']),(emitters,destroyed),frames)
+
     @unittest.skipUnless(os.environ.get('SAGA_TEST_FONT'), 'public font fixture supplied by CTest')
     def test_data_entry_has_no_scene_dependency_and_matches_native_control(self):
         with tempfile.TemporaryDirectory() as directory:

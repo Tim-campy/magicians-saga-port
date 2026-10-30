@@ -1,4 +1,5 @@
-#include "combat_scene_fixture.hpp"
+#include "emitter_fixture.hpp"
+#include <limits>
 
 int main()try{
     {HumanFixture t;Shooter s(t);EmitterServices h(s);auto old=h.state.expired;old->add(&t.hero());h.state.loop_counter=9;
@@ -56,5 +57,4 @@ int main()try{
     // Adding another emitter while iterating invalidates the live source group, preserving queued expiries.
     {HumanFixture t;Shooter s(t);EmitterServices h(s);h.emitter(1,1,0);h.emitter(1);bool added=false;
      h.on_effect_world=[&]{if(!added){added=true;h.emitter(2);}};fails([&]{h.update();});check(h.state.expired->size()==1&&h.destroyed.empty());}
-    for(const bool physical:{false,true})run_combat_scene(physical);
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

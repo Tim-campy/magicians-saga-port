@@ -28,8 +28,7 @@ Host: `saga_mission` (headless or SDL window; fresh --data/--quest entry or expl
 - [ ] A6. Every service the host fakes is listed in the stub table of integration.md.
 
 Tasks:
-- [ ] Bind Continue's decoded world/party/system restoration before selecting loaded InitWorld in `saga_mission` (A1).
-- [ ] Replace the synthetic catalogs/services of the 240-frame combat regression with the table-backed owner used by `saga_mission` (A3).
+- [ ] (blocked on S3 selector13 decoding) Bind Continue world/party/systems before selecting loaded InitWorld in `saga_mission` (A1).
 - [ ] Add complete reached-world state hashing and record local per-quest golden replays (A5).
 - [ ] Bind retry/defeat/victory form answers and modal form lifecycle to Stage Update without automatic crystal or ad choices (A4).
 - [ ] Bind remaining QuestForm touch/cursor widgets and gesture routing to SDL input events (A2).
@@ -64,6 +63,7 @@ Host: `saga` (the game executable). Acceptance: boots to the title from real dat
 - [ ] Find the origin and initial value of `SYSSAVEI_YUGAMI`, the `ITEM_STAMINA_UP` state and the money/crystal/stamina slots.
 - [ ] Establish the Continue/deserialization entry state (empty world before `World.Deserialize`; `World.Destroy` keeps groups/counter/loaded flag).
 - [ ] Build the slot index → component type table (`ComponentFactory.Create`) and the remaining component payloads and Extra hooks.
+- [ ] Implement selector13 EntityManager/SystemManager readers with saved Member roster and cross-entity references; preserve two-pass registration and commit the loaded byte only after system hooks (S1 Continue prerequisite).
 - [ ] Read `Main.OnResume/OnSuspend`, `FormManagerBase.OnDraw`, `IsIllegalPackage` and `GooglePlayLicenseCheck`: what must be stubbed.
 
 ### S4 — Dialogue, text on screen and audio

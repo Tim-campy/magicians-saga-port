@@ -31,7 +31,7 @@ A table-backed scene preview creates actual character/enemy entities from decode
 
 ## Tools
 
-The [GPU bitmap adapter](docs/subsystems/assets.md#gpu-bitmap-submission) now draws native-Z sprite commands through recovered quad insertion, mesh ordering and layer depth clears. The shared combat scenario feeds it for 240 frames (synthetic catalogs), and queue_capture --native-depth also accepts actual decoded archives with explicit projection/material inputs. Its OpenGL 3.3 tests cover overlap, alpha discard, blending and viewport state. The mission entry owns the ordinary material cache, indexed archives and following camera; extended drawing paths and runtime configuration remain open.
+The [GPU bitmap adapter](docs/subsystems/assets.md#gpu-bitmap-submission) now draws native-Z sprite commands through recovered quad insertion, mesh ordering and layer depth clears. The 240-frame ordinary/physical regression feeds it through the production mission owner and table loaders (synthetic input archives), and queue_capture --native-depth also accepts actual decoded archives with explicit projection/material inputs. Its OpenGL 3.3 tests cover overlap, alpha discard, blending and viewport state. The mission entry owns the ordinary material cache, indexed archives and following camera; extended drawing paths and runtime configuration remain open.
 
 Python 3 (standard library unless noted) and C++17 with CMake. Each tool has tests on synthetic data.
 
