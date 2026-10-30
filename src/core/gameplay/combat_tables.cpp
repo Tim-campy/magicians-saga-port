@@ -20,13 +20,21 @@ EquipmentCombatTable load_equipment_combat_table(std::string_view text,Equipment
             t.integer();t.integer();t.integer();r.max_height=t.integer();r.bullet_speed=t.integer();
             r.distance=t.integer();r.burst_count=t.integer();
             r.range=t.integer(); // EquipmentData.range +0x78, fixed token 17.
-            r.use_mp=t.integer();for(int i=0;i<2;++i)t.integer();
+            r.use_mp=t.integer();r.initial_level=t.integer();t.integer();
         } else {
             // ClothData.Load 0x116e704 and HatData.Load 0x1171734 share token framing.
-            t.integer();r.resource=t.take();r.image=t.integer();for(int i=0;i<4;++i)t.integer();
+            t.integer();r.resource=t.take();r.image=t.integer();t.integer();t.integer();r.initial_level=t.integer();t.integer();
         }
         r.parameters=t.script();t.take();r.flags=t.integer();return r;
     });
+}
+void reset_equipment_for_new_game(EquipmentNewGameState& state,const EquipmentCombatRecord& record,const std::function<void(bool)>& find){
+    if((static_cast<std::uint32_t>(record.flags)&1U)!=0)find(false);
+    state.level=record.initial_level;
+    state.inventory.stock=static_cast<std::int32_t>((static_cast<std::uint32_t>(record.flags)>>1)&1U);
+}
+void reset_equipment_for_new_game(EquipmentNewGameState& state,const EquipmentCombatRecord& record){
+    reset_equipment_for_new_game(state,record,[&state](bool fresh){find_item_stock(state.inventory,fresh);});
 }
 CharacterParameters bind_character_parameters(const CharacterProgressionRecord& record,std::int32_t level) {
     return {record.parameters,level,static_cast<std::uint8_t>(record.flags)};

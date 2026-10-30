@@ -57,16 +57,30 @@ int main(int argc,char** argv){
     const auto ranged_weapons=load_equipment_combat_table(ranged,EquipmentTableKind::weapon_or_shield,false,parse_event_decimal);
     check(ranged_weapons[3]->range==-7&&ranged_weapons[3]->parameters->at(12)->at(1)==1000);
     std::string firing=gear;
-    for(int token=18;token>=15;--token){std::size_t where=0;for(int i=0;i<token;++i)where=firing.find('\t',where)+1;
+    for(int token=19;token>=15;--token){std::size_t where=0;for(int i=0;i<token;++i)where=firing.find('\t',where)+1;
         firing.replace(where,firing.find('\t',where)-where,std::to_string(token));}
     const auto armed=load_equipment_combat_table(firing,EquipmentTableKind::weapon_or_shield,false,parse_event_decimal);
     check(armed[3]->distance==15&&armed[3]->burst_count==16&&armed[3]->range==17&&armed[3]->use_mp==18);
+    check(armed[3]->initial_level==19);
     check(weapons[3]->type==2&&weapons[3]->bullet_id==6&&weapons[3]->max_height==0&&weapons[3]->bullet_speed==0);
     check(weapons[3]->image==5&&weapons[3]->resource=="Res");
     const std::string clothing="1\tHat\t7\tRes\t8\t9\t10\t11\t12\t"+endpoints()+"\tD\t6";
     auto hats=load_equipment_combat_table(clothing,EquipmentTableKind::cloth_or_hat,false,parse_event_decimal);
     check(hats[1]->flags==6&&hats[1]->parameters->at(12)->at(0)==100);
     check(hats[1]->image==8&&hats[1]->resource=="Res");
+    check(hats[1]->initial_level==11);
+    for(const auto flags:{0,1,2,3,-1}){
+        EquipmentCombatRecord r;r.flags=flags;r.initial_level=-7;
+        EquipmentNewGameState state{99,{4,true,88}};reset_equipment_for_new_game(state,r);
+        check(state.level==-7&&state.inventory.stock==static_cast<std::int32_t>((static_cast<std::uint32_t>(flags)>>1)&1U));
+        check(state.inventory.discovery_state==((flags&1)?1:4)&&state.inventory.is_new==((flags&1)?false:true));
+    }
+    {EquipmentCombatRecord r;r.flags=1;r.initial_level=5;EquipmentNewGameState state{99,{4,true,88}};int calls=0;
+     reset_equipment_for_new_game(state,r,[&](bool fresh){check(!fresh);++calls;find_item_stock(state.inventory,fresh);r.flags=2;r.initial_level=17;});
+     check(calls==1&&state.level==17&&state.inventory.stock==1&&state.inventory.discovery_state==1&&!state.inventory.is_new);
+     r.flags=1;state.level=99;state.inventory.stock=88;
+     try{reset_equipment_for_new_game(state,r,[&](bool){find_item_stock(state.inventory,true);throw std::runtime_error("find");});check(false);}catch(const std::runtime_error&){}
+     check(state.level==99&&state.inventory.stock==88&&state.inventory.discovery_state==1&&state.inventory.is_new);}
     auto duplicate=load_magic_shop_combat_table("0\tA\t1\t2\t3\tD\t0\n0\tB\t4\t5\t6\tD\t1\textra",false,parse_event_decimal);
     check(duplicate[0]->value_per_purchase==6);
     auto nulls=load_equipment_combat_table("0\tHat\t0\tRes\t0\t0\t0\t0\t0\t-1\tD\t0",EquipmentTableKind::cloth_or_hat,false,parse_event_decimal);

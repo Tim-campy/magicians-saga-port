@@ -19,6 +19,8 @@ struct ItemStock {
     bool is_new;
     std::int32_t stock;
 };
+// BaseData.Find 0x116c790; stock is outside its discovery-state contract.
+void find_item_stock(ItemStock&,bool is_new) noexcept;
 // EquipmentData/ClothData/HatData.AddStock, including their resolved Find hook.
 void add_item_stock(ItemStock& item, std::int32_t amount);
 }

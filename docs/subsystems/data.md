@@ -99,7 +99,17 @@ Arguments: descriptor table, `SecureProperty`, bool. Per descriptor: element 0 c
 
 - `Find` is slot 8 (`class+0x1b8`); 21 types use `BaseData.Find` (`0x116c790`, 20 bytes), QuestData overrides it (`0x1172f0c`, 28 bytes, ignores its argument). Find has side effects; it is not a lookup.
 - `AreaData.oldNewGame` (`0x116bf9c`, 576 bytes): allocates and zeroes 3×6 int32 at `+0x20`, 3×2 at `+0x38`, 6 int32 at `+0x28`; zero int `+0x30`; finally writes bit 0 of `+0x1c` into `+0x10` (overwriting what Find wrote).
-- Mask values and field semantics are open. None of these resets touches the ECS world.
+- Building/MagicShop masks and remaining field semantics are open. None of these resets touches the ECS world.
+
+### Equipment new-game state
+
+EquipmentData.NewGame (`0x116f0c8`), ClothData.NewGame (`0x116e458`) and HatData.NewGame (`0x1171894`) share a60-byte contract: test flag bit0, call virtual Find(false) when set, re-read flags after that call, read initLevel, then store level and flag bit1 as stock0/1. Field pairs are Equipment+0x28/+0x2c from initLevel+0x80, Cloth+0x20/+0x24 from+0x4c and Hat+0x60/+0x64 from+0x44. No clamp, stock accumulation or unconditional discovery clear occurs. Find failure skips both final stores, retaining earlier callback effects. Callback changes to flags/initLevel affect the final values.
+
+BaseData.Find (`0x116c790`,20 bytes) unconditionally stores discovery state1 and the supplied low bool into new_. It does not alter stock. The fresh constructors explicitly clear state_ at+0x10 and bytes+0x13..+0x16, including new_ at+0x14. Equipment/Cloth/Hat inline the same base stores. A fresh loaded gear catalog therefore starts undiscovered/not-new; NewGame marks bit0 records found/not-new, sets each record's level from its initLevel, and gives one stock only for bit1. Other NewGame methods do not follow this exact contract and are not replaced by this kernel.
+
+The combat table loader retains initial_level from Equipment fixed token19 and Cloth/Hat token7 (zero-based), after consuming the unchanged schemas. `EquipmentNewGameState` and `reset_equipment_for_new_game` in combat_tables.cpp implement the three overrides through an injected virtual Find contract; the default adapter uses `find_item_stock` in stage_rewards.cpp. Tests cover signed flags, dirty prior state, callback mutations, failure prefixes and asymmetric table fields. The mission host's explicit gear_new_game mode runs these catalogs in GetDataList relative order (Equipment, Hat, Cloth), seeds canonical combat levels and per-record result inventory, and excludes saved gear snapshots. This is a projection of those resets, not complete AppData.NewData/NewGame.
+
+Evidence: complete basedata-newgame/{M38250_EquipmentData_NewGame,M38182_ClothData_NewGame,M38387_HatData_NewGame}.asm, basedata-reset-callees/M38052_BaseData_Find.asm, combat-loaders/{EquipmentLoad,ClothLoad,HatLoad}.asm and mission-new-gear/{BaseData_ctor,EquipmentData_ctor,ClothData_ctor,HatData_ctor}.asm. Constructor bounded sizes are40/444/108/108 bytes; coverage has zero missing words. Addresses subtract Ghidra image base0x100000; field names come from v31 metadata. Confidence high for the static contract; no original runtime comparison.
 
 ### Check-script groups
 
@@ -162,7 +172,7 @@ Additional loaders in `combat_tables.cpp` consume these schemas (int32 unless ma
 
 Each Load takes a line, mutates and returns its receiver, initially bypasses empty-string input, and stores immediately after each read. Its caller is the per-type data-loader route. Gameplay projections retain id, parameter endpoints, attribute where present, flags, shop category/upValue, resource/image references and the weapon timing/projectile fields described in combat.md; unrelated economy tokens are still parsed so malformed required numeric tokens fail. The fresh-record port does not reproduce observable partial mutation of a pre-existing receiver. Therefore these original Load methods remain documented, not fully reimplemented.
 
-Shop buyCount and equipment level are mutable state absent from these records. Binding functions require explicit values; they neither assign a new-game state nor fabricate save progress. The loaders reuse `TableTokens` and `load_table_records`, preserving null outer arrays, id gaps and last duplicate wins.
+Shop buyCount and equipment level are mutable state absent from these records. Binding functions require explicit values; they neither assign a new-game state nor fabricate save progress. The separate gear_new_game reset supplies native initial levels when selected; snapshot mode still needs saved values. The loaders reuse `TableTokens` and `load_table_records`, preserving null outer arrays, id gaps and last duplicate wins.
 
 Local shipped-table validation via `test_combat_tables` read both English and Japanese Chara/MagicShop/Equipment/Cloth/Hat files: each language has 67 populated character records, 8 shop records and 269 equipment records across the three equipment tables. Across selected levels and all 13 parameter indices, 17,467 numeric queries per language produced the same FNV-style hash 13925746254597776912. Shop arithmetic uses explicit synthetic purchase counts (0 for character queries, 3 for standalone shop queries), not recovered saves. This is data/contract integration, not original-runtime verification. Evidence: `research/exports/combat-loaders/` bounded exports and `game-progression-tables/F116dcc4.asm`; all game tables remain local.
 

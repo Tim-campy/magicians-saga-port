@@ -54,7 +54,7 @@ game:0x06000281	documented	docs/subsystems/data.md	fills int32 array; called wit
 kairo:0x060000cf	traced	docs/subsystems/data.md	recursive jagged array allocation
 kairo:0x06000175	documented	docs/subsystems/data.md	stores int at +0x10
 game:0x06001038	documented	docs/subsystems/data.md	slot 18 base RET
-game:0x06001027	documented	docs/subsystems/data.md	slot 8: +0x10=1, byte+0x14=arg&1
+game:0x06001027	reimplemented	src/core/gameplay/stage_rewards.cpp	BaseData.Find value contract in find_item_stock: unconditionally state1/new bool, stock untouched; combat_tables_contract and fresh mission gear binding.
 game:0x0600102d	documented	docs/subsystems/data.md	slot 14 returns 0
 game:0x0600102e	documented	docs/subsystems/data.md	slot 15 returns 0
 game:0x0600102f	documented	docs/subsystems/data.md	slot 16 returns 0
@@ -64,9 +64,9 @@ game:0x0600102c	traced	docs/subsystems/data.md	slot 13 from DeserializeData (sha
 game:0x06001012	traced	docs/subsystems/data.md	conditional Find(true); oldNewGame
 game:0x0600103a	traced	docs/subsystems/data.md	Find(true) under mask; +0x48->+0x20
 game:0x0600106d	traced	docs/subsystems/data.md	recreates arrays; [0,300,0]
-game:0x060010a9	traced	docs/subsystems/data.md	conditional Find(false); field copies
-game:0x060010ed	traced	docs/subsystems/data.md	conditional Find(false); field copies
-game:0x06001176	traced	docs/subsystems/data.md	conditional Find(false); field copies
+game:0x060010a9	reimplemented	src/core/gameplay/combat_tables.cpp	Gear reset: conditional virtual Find(false), post-hook flags/initLevel, level and bit1 stock; Cloth initLevel retained; combat_tables_contract; fresh mission/result binding.
+game:0x060010ed	reimplemented	src/core/gameplay/combat_tables.cpp	Gear reset: conditional virtual Find(false), post-hook flags/initLevel, level and bit1 stock; Equipment initLevel retained; combat_tables_contract; fresh mission/result binding.
+game:0x06001176	reimplemented	src/core/gameplay/combat_tables.cpp	Gear reset: conditional virtual Find(false), post-hook flags/initLevel, level and bit1 stock; Hat initLevel retained; combat_tables_contract; fresh mission/result binding.
 game:0x0600118d	traced	docs/subsystems/data.md	zeroes byte +0x48
 game:0x0600119d	traced	docs/subsystems/data.md	Find(true) under mask; zero +0x40
 game:0x060011ee	traced	docs/subsystems/data.md	conditional Find; new QuestRecord at +0xa8

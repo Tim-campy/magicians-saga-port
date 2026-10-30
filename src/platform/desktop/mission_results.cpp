@@ -12,7 +12,8 @@ template<class T>T& field(ComponentSlots& e,int slot){return required(dynamic_ca
 MissionResults::MissionResults(MissionHumans& owner,MissionResultScenario scenario):owner_(owner),state_(std::move(scenario)){
     if(!owner_.catalog_.levels||!owner_.catalog_.treasures)throw std::invalid_argument("results require Table/Treasure catalogs");
     const std::array<const EquipmentCombatTable*,3> tables{{&owner_.catalog_.equipment,&owner_.catalog_.cloth,&owner_.catalog_.hats}};
-    for(std::size_t k=0;k<tables.size();++k)for(const auto& row:*tables[k])if(row)inventory_[k].emplace(row->id,state_.inventory[k]);
+    for(std::size_t k=0;k<tables.size();++k)for(const auto& row:*tables[k])if(row)
+        inventory_[k].emplace(row->id,state_.inventory_records?state_.inventory_records->at(k).at(row->id):state_.inventory[k]);
     for(const auto& row:owner_.catalog_.characters)if(row)recruits_.emplace(row->id,state_.recruits);
     owner_.stage_.quest->rescued_prisoners=state_.rescued;
 }
@@ -100,7 +101,7 @@ void MissionResults::report(std::ostream& out){
            <<",\"hat\":"<<owner_.saved_.hat_levels.at(ids.at(static_cast<std::size_t>(EquipmentSlot::hat)))
            <<",\"cloth\":"<<owner_.saved_.cloth_levels.at(ids.at(static_cast<std::size_t>(EquipmentSlot::cloth)))<<'}';}
     out<<",\"inventory_changes\":[";first=true;for(std::size_t k=0;k<inventory_.size();++k)for(const auto& e:inventory_[k]){
-        const auto& initial=state_.inventory[k];const auto& v=e.second;if(v.discovery_state==initial.discovery_state&&v.is_new==initial.is_new&&v.stock==initial.stock)continue;
+        const auto& initial=state_.inventory_records?state_.inventory_records->at(k).at(e.first):state_.inventory[k];const auto& v=e.second;if(v.discovery_state==initial.discovery_state&&v.is_new==initial.is_new&&v.stock==initial.stock)continue;
         if(!first)out<<',';first=false;out<<"{\"kind\":"<<k<<",\"id\":"<<e.first<<",\"found\":"<<v.discovery_state<<",\"is_new\":"<<(v.is_new?"true":"false")<<",\"stock\":"<<v.stock<<'}';}out<<']';
     out<<",\"recruit_changes\":[";first=true;for(const auto& e:recruits_){const auto& v=e.second;const auto& a=state_.recruits;if(v.discovery_state==a.discovery_state&&v.is_new==a.is_new&&v.recruited==a.recruited)continue;
         if(!first)out<<',';first=false;out<<"{\"id\":"<<e.first<<",\"found\":"<<v.discovery_state<<",\"is_new\":"<<(v.is_new?"true":"false")<<",\"recruited\":"<<v.recruited<<'}';}out<<']';

@@ -18,6 +18,9 @@ void record_collected_drop(StageRewards& rewards, std::int32_t type,
     default: break;
     }
 }
+void find_item_stock(ItemStock& item,bool is_new) noexcept {
+    item.discovery_state=1;item.is_new=is_new;
+}
 void add_item_stock(ItemStock& item, std::int32_t amount) {
     if (item.discovery_state != 1) {
         item.discovery_state = 1;

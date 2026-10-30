@@ -502,6 +502,9 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             if(!native||human_scenario||!(row>>distance>>value.min_z_rate>>value.max_z_rate>>value.attribute>>value.button))throw std::invalid_argument("human_system requires distance min/max Z rates attribute button state");
             if(distance=="quest")quest_fields.insert(operation);else value.distance=parse_event_decimal(distance);
             human_scenario=value;
+        }else if(operation=="gear_new_game"){
+            if(!native||gear_new_game_)throw std::invalid_argument("gear_new_game requires native mode and one fresh-record reset request");
+            gear_new_game_=true;
         }else if(operation=="gear_levels"){
             std::string kind;std::int32_t level=0;
             if(!native||!(row>>kind>>level)||(kind!="equipment"&&kind!="hat"&&kind!="cloth")||!gear_defaults.emplace(kind,level).second)throw std::invalid_argument("gear_levels requires unique equipment/hat/cloth kind and explicit saved level");
@@ -628,7 +631,9 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         throw std::invalid_argument("hero fresh requires system_init 0, system_construct, native stage entry, town_save19 and no other selected actors");
     if(!fresh_hero_&&((initialized_loaded_&&*initialized_loaded_==0)||saved_town_count_))
         throw std::invalid_argument("system_init 0 and town_save19 require hero fresh");
-    const bool result_requested=wallet||record||recruits||stocks[0]||stocks[1]||stocks[2];
+    const bool result_requested=wallet||record||recruits||stocks[0]||stocks[1]||stocks[2]||gear_new_game_;
+    if(gear_new_game_&&(!fresh_hero_||!initialized_loaded_||*initialized_loaded_!=0||!construct_systems_||!gear_defaults.empty()||stocks[0]||stocks[1]||stocks[2]))
+        throw std::invalid_argument("gear_new_game requires fresh hero/system_init0/system_construct and excludes gear_levels/result_inventory snapshots");
     if(construct_systems_&&(!initialized_loaded_||!stage_entry||menu_snapshot||std::find(enabled_rows.begin(),enabled_rows.end(),true)!=enabled_rows.end()))
         throw std::invalid_argument("system_construct requires system_init and stage_start without system_enabled/menu_visible snapshot overrides");
     if(menu_snapshot&&!initialized_loaded_)throw std::invalid_argument("menu_visible snapshot requires system_init");
@@ -691,7 +696,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     if(collisions&&!human_scenario)throw std::invalid_argument("collisions requires human_system event receivers");
     if(notifications&&!human_scenario)throw std::invalid_argument("stage_notifications requires human_system");
     if(collection&&(!notifications||!human_scenario))throw std::invalid_argument("collection fresh requires stage_notifications and human_system");
-    if(result_requested&&!(wallet&&record&&recruits&&stocks[0]&&stocks[1]&&stocks[2]&&stage_loop&&collection))throw std::invalid_argument("results require wallet/record/all inventory kinds/recruits, stage_loop and collection fresh");
+    if(result_requested&&!(wallet&&record&&recruits&&(gear_new_game_||(stocks[0]&&stocks[1]&&stocks[2]))&&stage_loop&&collection))throw std::invalid_argument("results require wallet/record/all inventory kinds or gear_new_game/recruits, stage_loop and collection fresh");
     if((stage_loop||stage_events||!stage_scenario.pulses.empty())&&!(stage_loop&&stage_events&&collection))throw std::invalid_argument("stage_loop requires explicit stage_events and collection fresh");
     if(stage_scenario.boss&&!(stage_loop&&enemy_requested))throw std::invalid_argument("stage_boss requires stage_loop and enemy system inputs");
     if(enemy_requested&&!(enemy_config&&enemy_population&&enemy_pool&&human_scenario))throw std::invalid_argument("enemy system requires enemy_system/enemy_population/enemy_pool and human_system");
@@ -707,6 +712,19 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     if(!selected.empty()){
         if(!tables||!has_view||!has_slots||!has_animation||commands)throw std::invalid_argument("entity capture needs tables/view/slots/animate and no manual draw rows");
         if(!catalog)catalog=std::make_unique<GameplayCatalog>(load_gameplay_catalog(*tables,false,parse_event_decimal,rewards.has_value()||collection||drop_catalog,result_requested));
+        if(gear_new_game_){
+            result_state.inventory_records.emplace();
+            const std::array<const EquipmentCombatTable*,3> records{{&catalog->equipment,&catalog->cloth,&catalog->hats}};
+            const std::array<std::map<std::int32_t,std::int32_t>*,3> levels{{&progress.equipment_levels,&progress.cloth_levels,&progress.hat_levels}};
+            // GetDataList's relative order: Equipment, Event(RET), Hat, Cloth.
+            for(const std::size_t kind:{0U,2U,1U})for(const auto& row:*records[kind])if(row){
+                EquipmentNewGameState initial;reset_equipment_for_new_game(initial,*row);
+                levels[kind]->emplace(row->id,initial.level);
+                result_state.inventory_records->at(kind).emplace(row->id,initial.inventory);
+                auto& counts=new_game_gear_counts_[kind];++counts[0];
+                if(initial.inventory.discovery_state==1)++counts[1];if(initial.inventory.stock==1)++counts[2];
+            }
+        }
         for(const auto& entry:gear_defaults){
             const auto& data=entry.first=="equipment"?catalog->equipment:entry.first=="hat"?catalog->hats:catalog->cloth;
             auto& levels=entry.first=="equipment"?progress.equipment_levels:entry.first=="hat"?progress.hat_levels:progress.cloth_levels;
@@ -838,6 +856,8 @@ void MissionProfile::write_combat_report(std::ostream& out){
     out<<",\"fresh_hero_bootstrap\":"<<(fresh_hero_?"true":"false")<<",\"fresh_town_initialized\":"<<(fresh_town_initialized_?"true":"false");
     out<<",\"original_world_entry\":"<<(original_world_entry_?"true":"false")<<",\"world_entry_order\":[";
     for(std::size_t i=0;i<world_entry_order_.size();++i){if(i)out<<',';out<<std::quoted(world_entry_order_[i]);}out<<']';
+    out<<",\"gear_new_game\":"<<(gear_new_game_?"true":"false")<<",\"new_game_gear_counts\":[";
+    for(std::size_t k=0;k<new_game_gear_counts_.size();++k){if(k)out<<',';const auto& n=new_game_gear_counts_[k];out<<'['<<n[0]<<','<<n[1]<<','<<n[2]<<']';}out<<']';
     if(fresh_town_initialized_){
         out<<",\"town_save19\":"<<*saved_town_count_<<",\"town_save19_writes\":"<<town_count_writes_<<",\"town_build_enable\":[";
         for(std::size_t i=0;i<town_state_.build_enable->size();++i){if(i)out<<',';out<<static_cast<int>(town_state_.build_enable->at(i));}out<<"],\"town_buildings\":[";

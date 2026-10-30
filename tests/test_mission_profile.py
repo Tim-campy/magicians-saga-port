@@ -68,6 +68,23 @@ class MissionProfileTests(unittest.TestCase):
             for bad in (text.replace('talk_layout 4 2 100 100\n',''),text.replace('talk_layout 4 2 100 100','talk_layout 4 1 100'),text.replace('mission_events fresh null 0 0 0','mission_events fresh missing 0 0 0')):
                 scene.write_text(bad,encoding='utf-8');self.assertNotEqual(self.run_host(scene,frames=22).returncode,0)
 
+    def test_new_game_gear_uses_record_levels_and_individual_inventory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);scene=root/'scene.txt'
+            original=make_native_entry_scene(root).replace('stage_loop quest 0 20 hold','stage_loop quest 0 0 hold')+'system_construct empty_manager\nquest_frame 0 0\n'
+            fresh=original.replace('human 0 2 1 0 0 0 312 0 400\n','hero fresh\n').replace('player 0\n','').replace('system_init 1','system_init 0')+'town_save19 0\n'
+            text='\n'.join(line for line in fresh.splitlines() if not line.startswith(('gear_levels ','result_inventory ')))+'\ngear_new_game\n'
+            scene.write_text(text,encoding='utf-8');result=self.run_host(scene,frames=22)
+            self.assertEqual(result.returncode,0,result.stderr);report=json.loads(result.stdout)
+            self.assertTrue(report['gear_new_game'] and report['original_world_entry'])
+            self.assertEqual(report['new_game_gear_counts'],[[2,0,0],[1,0,0],[1,0,1]])
+            self.assertEqual(report['result_gear_levels'],{'weapon':0,'hat':0,'cloth':0})
+            # The initially owned hat belongs to its per-record baseline, not a fake reward change.
+            self.assertEqual(report['inventory_changes'],[])
+            self.assertEqual(self.run_host(scene,frames=22).stdout,result.stdout)
+            for bad in (text+'gear_levels hat 1\n',text+'result_inventory hat 0 0 0\n',text+'gear_new_game\n',text.replace('system_init 0','system_init 1')):
+                scene.write_text(bad,encoding='utf-8');self.assertNotEqual(self.run_host(scene,frames=22).returncode,0)
+
     def test_fresh_world_initializers_create_hero_and_town_from_tables(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);scene=root/'scene.txt'

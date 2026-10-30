@@ -135,6 +135,8 @@ private:
     std::optional<std::int32_t> saved_town_count_;
     std::uint64_t town_count_writes_=0;
     bool fresh_town_initialized_=false,fresh_hero_=false;
+    bool gear_new_game_=false;
+    std::array<std::array<std::int32_t,3>,3> new_game_gear_counts_{}; // Per weapon/cloth/hat: records, found, owned.
     std::optional<std::uint8_t> initialized_loaded_;
     core::MemberBootstrapWorld initialization_world_;
     core::InitList initializers_;

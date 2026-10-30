@@ -3922,7 +3922,7 @@ game:0x06001023,game:0x06001023,data,,8,0x116c774
 game:0x06001024,game:0x06001024,data,,12,0x116c77c
 game:0x06001025,game:0x06001025,data,,4,0x116c788
 game:0x06001026,game:0x06001026,data,,4,0x116c78c
-game:0x06001027,data.BaseData.Find,data,documented,20,0x116c790
+game:0x06001027,data.BaseData.Find,data,reimplemented,20,0x116c790
 game:0x06001028,game:0x06001028,data,,128,0x116c554
 game:0x06001029,data.BaseData.Deserialize,data,traced,132,0x116c64c
 game:0x0600102a,data.BaseData.Deserialized,data,traced,4,0x116c7a4
@@ -4052,7 +4052,7 @@ game:0x060010a5,game:0x060010a5,data,,8,0x116e430
 game:0x060010a6,game:0x060010a6,data,,16,0x116e438
 game:0x060010a7,game:0x060010a7,data,,8,0x116e448
 game:0x060010a8,game:0x060010a8,data,,8,0x116e450
-game:0x060010a9,data.ClothData.NewGame,data,traced,60,0x116e458
+game:0x060010a9,data.ClothData.NewGame,data,reimplemented,60,0x116e458
 game:0x060010aa,data.ClothData.AddStock,data,reimplemented,140,0x116e494
 game:0x060010ab,game:0x060010ab,data,,116,0x116e520
 game:0x060010ac,data.ClothData.GetParamValue,data,reimplemented,92,0x116e594
@@ -4120,7 +4120,7 @@ game:0x060010e9,game:0x060010e9,data,,16,0x116efb8
 game:0x060010ea,game:0x060010ea,data,,8,0x116efc8
 game:0x060010eb,game:0x060010eb,data,,8,0x116efd0
 game:0x060010ec,data.EquipmentData.get_bullet,data,reimplemented,140,0x116efd8
-game:0x060010ed,data.EquipmentData.NewGame,data,traced,60,0x116f0c8
+game:0x060010ed,data.EquipmentData.NewGame,data,reimplemented,60,0x116f0c8
 game:0x060010ee,data.EquipmentData.AddStock,data,reimplemented,140,0x116f104
 game:0x060010ef,game:0x060010ef,data,,116,0x116f190
 game:0x060010f0,data.EquipmentData.GetParamValue,data,reimplemented,92,0x116f204
@@ -4252,7 +4252,7 @@ game:0x06001172,game:0x06001172,data,,8,0x117186c
 game:0x06001173,game:0x06001173,data,,16,0x1171874
 game:0x06001174,game:0x06001174,data,,8,0x1171884
 game:0x06001175,game:0x06001175,data,,8,0x117188c
-game:0x06001176,data.HatData.NewGame,data,traced,60,0x1171894
+game:0x06001176,data.HatData.NewGame,data,reimplemented,60,0x1171894
 game:0x06001177,data.HatData.AddStock,data,reimplemented,140,0x11718d0
 game:0x06001178,game:0x06001178,data,,116,0x117195c
 game:0x06001179,data.HatData.GetParamValue,data,reimplemented,92,0x11719d0

@@ -5,6 +5,7 @@
 #include <array>
 #include <map>
 #include <ostream>
+#include <optional>
 
 namespace saga::desktop {
 class MissionHumans;
@@ -13,6 +14,7 @@ struct MissionResultScenario {
     core::QuestRecord record;
     std::array<core::ItemStock,3> inventory;
     core::RecruitmentState recruits;
+    std::optional<std::array<std::map<std::int32_t,core::ItemStock>,3>> inventory_records;
 };
 // Mutable decoded state. Original save encoding and town presentation remain host boundaries.
 class MissionResults final:private core::QuestRewardHost,private core::QuestExperienceHost,

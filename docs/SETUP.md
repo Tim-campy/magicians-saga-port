@@ -211,6 +211,7 @@ For table-backed entity scenes, replace manual draw rows with tables, progress a
 | player | creation ordinal of the Human marked with native Player slot30; hero lookup retains the original subset/cache contract |
 | actor_state | creation ordinal, Human state, finite initial Z velocity; explicit diagnostic state input, not a keyboard mapping |
 | gear_levels | equipment/hat/cloth, saved level for every present row in that table; all three are required for Human total stats |
+| gear_new_game | no fields; run native Equipment/Hat/Cloth NewGame on fresh records; requires hero fresh, system_init0, system_construct and result providers; excludes gear_levels/result_inventory rows; character/shop/wallet/configuration remain explicit |
 | rewards | initial defeated count, remaining count, uniform saved defeat count (int32); requires human_system, Treasure.txt and AppData7 for reached drops; no collection or permanent grants |
 | enemy_system | Yugami int32, quest enemy maximum, total limit, spawn interval, base level; requires enemy_population/enemy_pool/human_system |
 | enemy_population | initial created, defeated, remaining, loop counter, boss-defeated0/1, uniform section limit, uniform section-created count; reward counters must agree if supplied |
@@ -220,7 +221,7 @@ For table-backed entity scenes, replace manual draw rows with tables, progress a
 | collection | literal fresh; initialize zero stage rewards/empty collecting list/box-not-picked; run the Stage3 collection prefix (or full Update with stage_loop) before Human4; requires stage_notifications/human_system |
 | result_wallet | initial money/crystals int64, rescued int32; requires every result row, collection fresh and stage_loop |
 | result_record | seven int32 fields: best EXP, best money, challenges, clears, defeated, rescued, best damage |
-| result_inventory | equipment/cloth/hat, initial found int32, is-new0/1, stock int32; one row per kind, applied uniformly to present IDs |
+| result_inventory | equipment/cloth/hat, initial found int32, is-new0/1, stock int32; one row per kind, applied uniformly to present IDs; gear_new_game instead supplies per-record native initial state |
 | result_recruits | initial found int32, is-new0/1, recruited int32, applied uniformly to present character IDs |
 | stage_loop | remaining-time int32, boss-started0/1, fade-frame int32, literal hold; native Stage.Update with explicit deferred-transition hold policy |
 | stage_events | literal fresh, count0..1000, then event-ID/progress int32 pairs; consumed flags start zero; reached script dispatch fails |
