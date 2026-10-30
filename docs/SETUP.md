@@ -11,7 +11,7 @@ Everything game-derived stays local and gitignored. The maintainer supplies the 
 | `research/` | Local evidence: `il2cpp-metadata-inventory.json`, `il2cpp-code-map.json`, `functions-full.csv`, REA/JADX JSON, and `research/exports/` (Ghidra TSV exports, logs, scenario outputs). | no |
 | `ghidra/` | Ghidra projects: `wizard_il2cpp_fde` (libil2cpp.so with FDE-defined functions, the one to use), `wizard_il2cpp`, `wizard_bootstrap` (libmain.so). | no |
 | `external/` | Local tools: apktool 2.12.1, JADX headless MCP 0.7.1, Android platform tools (ADB), UnityPy 1.25.4 + Pillow (`unitypy-libs/`), pyelftools 0.32 (`python-libs/`). Versions and hashes in `external/installed-tools.json`. | no |
-| `build/` | CMake builds only (`build/desktop`, `build/viewer`). Safe to delete. | no |
+| `build/` | CMake builds (`build/desktop`, `build/viewer`) and downloaded public dependencies/test fixtures (`build/_deps`). Safe to delete; the next configure downloads missing dependencies. | no |
 
 ## Host tools (Windows, verified 2026-10-25)
 
@@ -27,6 +27,8 @@ Everything game-derived stays local and gitignored. The maintainer supplies the 
 | ADB | `external/` via `tools\with-tools.cmd adb ...` | No device or emulator is available yet. |
 
 `tools\setup-tools.ps1` reinstalls `external/` (official sources, hashes checked). `tools\with-tools.cmd <command>` runs a command with those tools on PATH without changing global settings.
+
+Desktop builds fetch FreeType2.13.3 from its public release archive, pinned by SHA256 in `cmake/FreeType.cmake`; this GPL-2.0 project uses FreeType's GPLv2 license option. Optional compressed-font/shaping dependencies are disabled. Tests download a pinned public NotoSans-Regular font (OFL1.1) into build/_deps and verify its hash; the revision/URL/hash live in tests/CMakeLists.txt. No original font or other game data is required by these tests. A first configure needs network access; subsequent builds reuse the local downloads.
 
 ## Regenerating local inputs
 
@@ -183,6 +185,7 @@ For table-backed entity scenes, replace manual draw rows with tables, progress a
 | animate | initial animation-pass count0..10000, automatic flag0/1, application-update flag0/1 |
 | mission_events | literal fresh, null or quoted UTF8 decoded normal-save string0, IsShortWords0/1, Config held-advance0/1, Config.PRINT0/1; requires quest_frame and tick_ms; fresh event execution counters, invariant translation service |
 | talk_layout | talk id, page count and that many nonnegative reveal lengths; provisional TextLayout provider outputs, never inferred from raw text; requires mission_events |
+| talk_font | quoted font path, requested-font-scale int32, application-ratio float, layout-scale float, localization-disabled0, Japanese0/1, Japanese-style0/1, FreeType load-flags int32, kerning-mode int32 (-1 disabled, 0..1 pixel units); requires mission_events and excludes every talk_layout row |
 | hero | literal fresh; replaces a selected human/player declaration; requires system_init0, system_construct, native stage entry, town_save19 and explicit saved progression for the first table main character |
 | town_save19 | decoded int32 normal-save town count; required with hero fresh; Town7 raises it to the number of flag1 Town.txt records only when larger |
 | system_init | loaded byte0..255; zero requires hero fresh, town_save19, system_construct and native stage entry; requires Human/Input/map providers; dispatches all32 concrete initializers; saved state stays explicit |

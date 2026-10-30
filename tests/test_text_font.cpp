@@ -9,6 +9,12 @@ void check(bool condition, const char* message) {
     if (!condition) { std::cerr << message << '\n'; std::exit(1); }
 }
 int main() {
+    check(text_gui_pixel_size(12,150)==18,"GUI font size uses scaled integer plus native bias");
+    check(text_gui_pixel_size(-12,150)==-17,"GUI font conversion truncates after adding positive bias");
+    check(text_gui_pixel_size(12,std::numeric_limits<float>::quiet_NaN())==0,"GUI size maps NaN to zero");
+    check(text_gui_pixel_size(12,std::numeric_limits<float>::infinity())==std::numeric_limits<std::int32_t>::min(),"GUI size retains explicit positive infinity quirk");
+    check(text_run_logical_width(13.5F,150)==9.0F,"logical run width multiplies then divides by captured ratio");
+    check(std::isinf(text_run_logical_width(1,0)),"native float division keeps zero-ratio infinity");
     const std::vector<std::int32_t> presets{8,12,16};
     TextFontState font{0,8,true,8,1,150};
     set_text_font_size(font,1,true,&presets);

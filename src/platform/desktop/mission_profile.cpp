@@ -317,6 +317,13 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             if(!(row>>short_words>>held>>print)||(short_words!=0&&short_words!=1)||(held!=0&&held!=1)||(print!=0&&print!=1))throw std::invalid_argument("mission_events requires explicit IsShortWords, held-advance and Config.PRINT bools");
             event_scenario.short_words=short_words!=0;event_scenario.held_advance=held!=0;event_scenario.print=print!=0;event_context=true;end(row);continue;
         }
+        if(operation=="talk_font"){
+            std::string path;MissionFontScenario font;std::int32_t localized=0,japanese=0,style=0;
+            if(event_scenario.font||!(row>>std::quoted(path)>>font.requested_scale>>font.application_ratio>>font.layout_scale>>localized>>japanese>>style>>font.load_flags>>font.kerning_mode)||
+               localized!=0||(japanese!=0&&japanese!=1)||(style!=0&&style!=1))throw std::invalid_argument("talk_font requires path, font/app/layout scales, localization-disabled0, Japanese0/1, Japanese-style0/1, load flags and kerning mode");
+            font.path=std::filesystem::u8path(path);if(font.path.is_relative())font.path=scene.parent_path()/font.path;
+            font.japanese=japanese!=0;font.japanese_style=style!=0;event_scenario.font=std::move(font);end(row);continue;
+        }
         if(operation=="talk_layout"){
             std::int32_t id=0,count=0;
             if(!(row>>id>>count)||id<0||count<1||count>10000||event_scenario.page_lengths.count(id))throw std::invalid_argument("talk_layout requires unique id, page count1..10000 and explicit layout-provider lengths");
@@ -592,6 +599,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     if(!has_world)throw std::invalid_argument("an explicit world matrix is required");
     if(event_context&&(!quest_frame_||!tick_ms))throw std::invalid_argument("mission_events requires quest_frame and an explicit tick_ms clock");
     if(!event_context&&!event_scenario.page_lengths.empty())throw std::invalid_argument("talk_layout requires mission_events");
+    if(event_scenario.font&&(!event_context||!event_scenario.page_lengths.empty()))throw std::invalid_argument("talk_font requires mission_events and excludes provisional talk_layout rows");
     if(fresh_hero_&&(!initialized_loaded_||*initialized_loaded_!=0||!construct_systems_||!stage_entry||!saved_town_count_||selected.size()!=1))
         throw std::invalid_argument("hero fresh requires system_init 0, system_construct, native stage entry, town_save19 and no other selected actors");
     if(!fresh_hero_&&((initialized_loaded_&&*initialized_loaded_==0)||saved_town_count_))

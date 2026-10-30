@@ -61,4 +61,16 @@ void adjust_text_font_size(TextFontState& state, float percentage) {
     volatile float biased = quotient + 0x1.47ae14p-7F; // bits 0x3c23d70a
     state.adjusted_size = adjusted_integer(biased);
 }
+std::int32_t text_gui_pixel_size(std::int32_t adjusted_size,float application_ratio){
+    // Font._stringWidthF 0x1b79b54..0x1b79b8c; bias bits0x3a83126f.
+    volatile float product=application_ratio*static_cast<float>(adjusted_size);
+    volatile float scaled=product/100.0F;
+    volatile float biased=scaled+0x1.0624dep-10F;
+    return adjusted_integer(biased);
+}
+float text_run_logical_width(float measured_width,float application_ratio){
+    // 0x1b79de4..0x1b79df4: multiply before divide, retaining binary32 steps.
+    volatile float product=measured_width*100.0F;
+    return product/application_ratio;
+}
 }

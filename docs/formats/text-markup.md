@@ -65,7 +65,8 @@ Letters searched in fixed order: horizontal `l`,`c`,`r` → bits 1/2/4; vertical
 ## Reading it
 
 - `tools/inspect_presentation_table.py talk|event <file> --output <json>`: parses the record layouts (ASCII-decimal Int32 subset, CR and extra tokens preserved, null vs empty distinct) and emits a **lexical** inventory of `<…>` candidates with counts and record ordinal/ID/fragment locations; flags `<digits>` as argument candidates. No translation, no tag semantics. Tests: `tests/test_presentation_table.py` (7).
-- Port: `src/core/gameplay/presentation_text.cpp` (TAB/`&`/`,` splits, `<n>` substitution), `src/core/gameplay/text_parameters.cpp` (`parse_text_tag_numbers`, `text_tag_argb`; host supplies decimal/hex parsing). No tag scanner or block builder exists yet.
+- Port: `src/core/gameplay/presentation_text.cpp` (TAB/`&`/`,` splits, `<n>` substitution), `src/core/gameplay/text_parameters.cpp` (`scan_text_markup`, `parse_text_tag_numbers`, `text_tag_argb`; host supplies comparisons and decimal/hex parsing), and `text_blocks.cpp` (fresh multiline ASCII blocks for `br`, `co`, `/co`). The scanner preserves UTF16 source positions, exact-before-prefix match order, unmatched short text and overlong opener skipping; exceptions retain earlier callback effects. Tests: `text_parameters_contract`, `text_blocks_contract`.
+- The block builder restores final source substrings after array assignment: an overlong skipped opener or internal CR can therefore remain in the revealed block string although excluded from width emission. Recognised unsupported tags and non-ASCII units fail explicitly. Scanner support for all19 tags does not establish their layout/draw effects.
 - Validation: both languages audited. English Talk (119 fragments): `br` 136, `co=4a86e8` 4, `/co` 4, `<0>`/`<1>` 1 each. Japanese Talk: `br` 182, `<0>`/`<1>` 1 each. English EventMsg (24): `br` 26, `po=cm` 23, `<0>` 2. Japanese EventMsg: `br` 27, `<0>` 2. Talk: 46 records/language, IDs 0–45, 40 with more than one fragment, none empty; EventMsg: 24 records, IDs 0–23; no duplicates, extra tokens or null arrays. Script opcode 8 (57 calls, 45 IDs) and opcode 12 (22 calls, 22 IDs) reference only existing IDs. Translation, argument values and code can introduce tags not seen in tables.
 
 ## Evidence
@@ -76,6 +77,5 @@ Letters searched in fixed order: horizontal `l`,`c`,`r` → bits 1/2/4; vertical
 ## Open questions
 
 1. (blocking) Semantics of `si`, `st`, `bl`, `pic`, `bo`, `btn`, `ff`, `kr`, `em`, `ruby` and their end tags.
-2. Port and test the established scanner fallback, including the overlong opener-drop quirk; preserve unmatched short markup.
 3. Culture of `CompareTo`/`StartsWith` and `Int32.Parse` (current NumberFormatInfo).
 4. Whether translated text introduces other tags (Hindi/Thai packs, `UnicodeToChanakya`).

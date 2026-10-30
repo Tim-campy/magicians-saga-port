@@ -1,6 +1,6 @@
 # Fonts
 
-`kairo.unity.ui.Font` wraps a Unity font + `GUIStyle` and keeps a numeric size/scale state; text width is measured either through Unity `GUIStyle.CalcSize` or, when `useFontTexture_` is set, through a Java `Paint` call on Android. The default Unity font is chosen per language code (`Fonts/default-<lang>-<region>` → `-<lang>` → `-ja` → `default`), and talk layouts get their fonts from the default `TextLayout` constructor. The numeric state is ported and tested. Fresh talk construction uses the GUIStyle route; the shipped default GameSkin supplies LegacyRuntime when English resource lookup misses. Equivalent desktop metrics remain unverified, and the port has no font backend yet. All static evidence; nothing observed at runtime.
+`kairo.unity.ui.Font` wraps a Unity font + `GUIStyle` and keeps a numeric size/scale state; text width is measured either through Unity `GUIStyle.CalcSize` or, when `useFontTexture_` is set, through a Java `Paint` call on Android. The default Unity font is chosen per language code (`Fonts/default-<lang>-<region>` → `-<lang>` → `-ja` → `default`), and talk layouts get their fonts from the default `TextLayout` constructor. The numeric state and measurement wrapper arithmetic are ported. Fresh talk construction uses the GUIStyle route; the shipped default GameSkin supplies LegacyRuntime when English resource lookup misses. The mission host binds this extracted font through public FreeType; equivalent GUIStyle metrics remain unverified. Original contracts have static evidence, without an Android runtime comparison.
 
 ## Overview
 
@@ -65,7 +65,15 @@ IApplication.GetScaleRatio (`0x1b7a270`,160 bytes; bool force) returns binary32 
 
 Font.GetGUIStyleId (`0x1b784ac`,520 bytes) traverses the shared style list in order, reads each style.font and tests Unity Object equality with the supplied font. It returns the first match. Otherwise construct a fresh GUIStyle, assign that font, append, then return the current count minus1. A null list/style fails; destroyed-object/null equality remains the external Unity object-lifetime contract. Font.GetGUIStyle (`0x1b7a310`,112 bytes) returns null for id=-1; otherwise delegates indexed access to the shared style provider. Public containers suffice for the list operations.
 
-Public [Unity2022.3 bindings](https://raw.githubusercontent.com/Unity-Technologies/UnityCsReference/2022.3/Modules/IMGUI/GUIStyle.bindings.cs) expose CalcSize as a native extern; the reference-only C# source does not implement its metrics and must not be copied into this GPL repository. [FreeType](https://freetype.org/license) is a public implementation candidate under its GPLv2 option, but identical font bytes do not establish matching hinting, kerning, bounds, scaling or rounding. Compare the desktop provider against original GUIStyle measurements before claiming equivalent line breaks; do not reconstruct Unity's native font engine.
+Public [Unity2022.3 bindings](https://raw.githubusercontent.com/Unity-Technologies/UnityCsReference/2022.3/Modules/IMGUI/GUIStyle.bindings.cs) expose CalcSize as a native extern; the reference-only C# source does not implement its metrics and must not be copied into this GPL repository. [FreeType](https://freetype.org/license) supplies the desktop implementation under its GPLv2 option, but identical font bytes do not establish matching hinting, kerning, bounds, scaling or rounding. Compare the desktop provider against original GUIStyle measurements before claiming equivalent line breaks; do not reconstruct Unity's native font engine.
+
+### Desktop measurement provider
+
+`DesktopTextFont` owns one FreeType2.13.3 face loaded from the explicitly selected local font bytes. `cmake/FreeType.cmake` pins the public archive and SHA256; downloaded source stays under ignored build/. The mission owner shares the face across talk layouts. UTF16 conversion uses the public C++17 codecvt facets; missing glyphs, invalid UTF16, unsupported pixel sizes or load flags fail explicitly.
+
+The provider selects a pixel size, loads glyphs with explicit flags, optionally adds legacy `kern` adjustments and sums horizontal advances in signed64 26.6 units before converting to binary32 width. See public [glyph retrieval](https://freetype.org/freetype2/docs/reference/ft2-glyph_retrieval.html) and [size/scale](https://freetype.org/freetype2/docs/reference/ft2-sizing_and_scaling.html) contracts. It does not implement GPOS shaping: the pinned public NotoSans test fixture has GPOS and no legacy kern table; the extracted LegacyRuntime has a kern table. No alternate font/fixed-width fallback is selected silently.
+
+`MissionTextLayout` wraps each whole-run request with the existing Font scale/update/adjust kernels, the native GUI pixel-size arithmetic, space-to-dot transformation and logical-width rescaling. Fresh `_setSize` reads static+0 = HEIGHT ({12,24,30}), established by font-selection-default/M17770.asm; face2 does not select WIDTH. Initial scale correction and auto-fit run through the existing `text_fit` code, and font restoration happens only after normal completion. Scenario inputs include the font path, requested/application/layout scales, disabled localization, separate Japanese and Japanese-style flags, load flags and kerning mode. The provider's advance policy and those effective inputs remain provisional until an original runtime measurement set is available. Glyph drawing is unbound.
 
 ### Who sets `useFontTexture_`
 
@@ -130,7 +138,7 @@ Stores to Font+0x48: `Font._set` (`0x1b78c3c`, copies from source font), `Font._
 ## Behaviour
 
 ### Size request (`Font._setSize` `0x1b78f84`)
-Stores `usedSize_`+0x1c, `size_`+0x10 and the preset flag +0x20 **before** loading the preset table; the table is null-checked at `0x1b78ff0..0x1b78ff8` before the `usePreset` decision (`0x1b79008`), so a missing table faults even with presets off, leaving +0x2c unchanged. With presets: negative request passes the signed length compare but fails the unsigned bound at `0x1b79030`; request ≥ length is used as a literal size; valid index → preset value. Effective size = `wrap32(value × fontScale_) / 100` (signed). Which table (`HEIGHT`/`WIDTH`) is used per call is in the method body, not restated in reports.
+Stores `usedSize_`+0x1c, `size_`+0x10 and the preset flag +0x20 **before** loading the preset table; the table is null-checked at `0x1b78ff0..0x1b78ff8` before the `usePreset` decision (`0x1b79008`), so a missing table faults even with presets off, leaving +0x2c unchanged. With presets: negative request passes the signed length compare but fails the unsigned bound at `0x1b79030`; request ≥ length is used as a literal size; valid index → preset value. Effective size = `wrap32(value × fontScale_) / 100` (signed). The reached setter reads HEIGHT at static+0; WIDTH at static+8 is a distinct array.
 
 ### Presets (`Font..cctor` `0x1b7c070`)
 Two 3-element int32 arrays via `RuntimeHelpers.InitializeArray` (`0x1b7c19c`, `0x1b7c1c4`) → `HEIGHT` (static +0) = {12, 24, 30}, `WIDTH` (static +8) = {6, 12, 15} (metadata data offsets `0x448428` / `0x448770`, `<PrivateImplementationDetails>` fields; SHA-256 of the 12 bytes matches the field names). Initial values only; later writers not excluded. cctor also sets `requestFontScale_` = 100; instance ctor copies it into `fontScale_`.
@@ -153,9 +161,10 @@ A measurement service returning float widths for a run of text at a given Font s
 
 ## Port
 
-- `src/core/gameplay/text_font.{hpp,cpp}`: `TextFontState` (requested_size +0x10, size +0x1c, use_preset +0x20, adjusted_size +0x2c, scale +0x40, font_scale +0x44); `set_text_font_size` (`_setSize`, preset table passed explicitly, `nullptr` = missing table), `update_text_font_scale` (`UpdateFontScale`), `adjust_text_font_size` (post-UpdateFontScale arithmetic of `_adjustFontSize`; caller owns dispatch). Strict binary32 intermediates; FCVTZS modelled without out-of-range casts. Test `text_font_contract` (`tests/test_text_font.cpp`): presets/literals, negative bounds, null table without presets, scale change, partial effects on exceptions, wrap32, ±0/∞/NaN, conversion limits. Last build 20/20 CTest on Windows.
+- `src/core/gameplay/text_font.{hpp,cpp}`: `TextFontState` (requested_size +0x10, size +0x1c, use_preset +0x20, adjusted_size +0x2c, scale +0x40, font_scale +0x44); `set_text_font_size` (`_setSize`, preset table passed explicitly, `nullptr` = missing table), `update_text_font_scale` (`UpdateFontScale`), `adjust_text_font_size` (post-UpdateFontScale arithmetic of `_adjustFontSize`; caller owns dispatch), `text_gui_pixel_size` and `text_run_logical_width` (GUIStyle wrapper arithmetic). Strict binary32 intermediates; FCVTZS modelled without out-of-range casts. Test `text_font_contract` covers presets/literals, negative bounds, null table without presets, scale change, partial effects on exceptions, wrap32, ±0/∞/NaN, conversion limits and wrapper operation order.
 - `src/core/gameplay/text_fit.{hpp,cpp}` (`prepare_text_font_size`, `fit_text_blocks`) uses a host font setter; see [text.md](text.md).
-- Missing: font resource selection, language code/pack state, localization predicate/scale/stack, GUIStyle or Paint measurement, Font copy/dispatch semantics, any glyph rendering backend.
+- `src/platform/desktop/text_font_backend.{hpp,cpp}` and `mission_text_layout.{hpp,cpp}` bind public FreeType measurements to the mission host; `text_font_backend_contract` uses a pinned public test font, and `mission_profile_contract` covers multi-page reveal/modal integration. No game font is part of the tests or repository.
+- Missing: automatic font resource selection, language code/pack state, localization predicate/scale/stack, equivalent GUIStyle or Paint measurements, full Font copy/dispatch semantics, any glyph rendering backend.
 
 ## Evidence
 
@@ -169,9 +178,8 @@ The current-slice font blocker uses complete ignored font-backend/M17759.asm, fo
 
 1. (blocking, runtime oracle) GUIStyle run widths/heights for the selected LegacyRuntime font and sizes/scales; compare any public desktop backend before claiming equivalent line breaks.
 2. Effective live skin/restored-font selection outside the established fresh/default-skin English projection.
-3. (blocking) Effective `requestFontScale_`, `Config.LOCALIZE_FONT_SCALE`, `Config.ASIA_FONT_SCALE`, application scale feeding `scaleRatio_`, and `Graphics`+0x5c at draw.
+3. Effective `requestFontScale_`, `Config.LOCALIZE_FONT_SCALE`, `Config.ASIA_FONT_SCALE`, application scale feeding `scaleRatio_`, and `Graphics`+0x5c at draw; S1 supplies explicit provisional inputs with localization disabled.
 4. Effective language at boot: `Language.Get`, PlayerPrefs value, guard on config +0x60, `LoadLanguagePack` rollback scope.
-5. `Font._setSize` preset table choice per caller; later writers of `HEIGHT`/`WIDTH`.
-6. `_stringWidthF` space→dot cache condition and the application division factor.
+5. Later writers of `HEIGHT`/`WIDTH` outside class initialization.
 7. Culture semantics of `ToLower`/`ToUpper`/`Trim`/`StartsWith(…,1)` used on language codes.
 8. `TextBlock.Draw` (`0x1bc1838`) glyph route per block.

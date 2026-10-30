@@ -1,5 +1,6 @@
 """Always-built headless host contracts on synthetic game records and SEBs."""
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -13,6 +14,28 @@ from mission_scene_fixture import make_table_scene, make_shoot_scene, with_missi
 
 @unittest.skipUnless(EXE, 'saga_mission supplied by CTest')
 class MissionProfileTests(unittest.TestCase):
+    @unittest.skipUnless(os.environ.get('SAGA_TEST_FONT'), 'public font fixture supplied by CTest')
+    def test_talk_uses_font_blocks_instead_of_provisional_lengths(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);scene=root/'scene.txt';replay=root/'talk.replay'
+            text=make_native_entry_scene(root,talk_events=True).replace('stage_loop quest 0 20 hold','stage_loop quest 0 0 hold')
+            text=text.replace('stage_notifications 1 0 0 quest 1 0 -1','stage_notifications 1 0 0 quest 0 0 -1')
+            font=Path(os.environ['SAGA_TEST_FONT']).resolve().as_posix()
+            text+=f'system_construct empty_manager\nquest_frame 0 0\ntick_ms 40\nmission_events fresh null 0 0 0\ntalk_font "{font}" 100 100 100 0 0 0 0 0\n'
+            def run(frames,script=None):
+                scene.write_text(text,encoding='utf-8');args=[]
+                if script is not None:replay.write_text(script,encoding='ascii');args=['--replay',str(replay)]
+                result=self.run_host(scene,*args,frames=frames);self.assertEqual(result.returncode,0,result.stderr);return json.loads(result.stdout)
+            opened=run(22);self.assertTrue(opened['talk_font_bound']);self.assertGreater(opened['talk_font_measurements'],0)
+            self.assertEqual(opened['talk_layout_samples'],[[4,0,11,28,2]])
+            self.assertEqual(opened['talk']['reveal_length'],11);self.assertIn('FreeType metrics unverified',opened['talk']['layout_provider'])
+            waiting=run(200);self.assertTrue(waiting['talk_pending']);self.assertEqual(waiting['world_update_calls'],22)
+            script='28 pulse 1048576\n29 pulse 1048576\n30 pulse 1048576\n31 pulse 1048576\n'
+            closed=run(39,script);self.assertFalse(closed['talk_pending']);self.assertEqual(closed['world_update_calls'],23)
+            self.assertEqual([sample[2] for sample in closed['talk_layout_samples']],[11,11]);self.assertEqual(run(39,script),closed)
+            for bad in (text+'talk_layout 4 2 100 100\n',text.replace('100 100 100 0 0 0 0 0','100 100 100 1 0 0 0 0')):
+                scene.write_text(bad,encoding='utf-8');self.assertNotEqual(self.run_host(scene,frames=22).returncode,0)
+
     def test_stage_event_talk_holds_world_and_requires_page_confirmation(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);scene=root/'scene.txt';replay=root/'talk.replay'

@@ -10397,7 +10397,7 @@ kairo:0x0600183a,kairo:0x0600183a,ui,,8,0x1bc0940
 kairo:0x0600183b,kairo.unity.ui.TextLayout._makeTextBlocks,ui,traced,10344,0x1bbd4c4
 kairo:0x0600183c,kairo.unity.ui.TextLayout._makeTextRubies,ui,traced,2904,0x1bbfde8
 kairo:0x0600183d,kairo:0x0600183d,ui,,1540,0x1bc0b18
-kairo:0x0600183e,kairo.unity.ui.TextLayout.GetHeight,ui,documented,188,0x1bbfd2c
+kairo:0x0600183e,kairo.unity.ui.TextLayout.GetHeight,ui,reimplemented,188,0x1bbfd2c
 kairo:0x0600183f,kairo:0x0600183f,ui,,344,0x1bc112c
 kairo:0x06001840,kairo:0x06001840,ui,,8,0x1bc1284
 kairo:0x06001841,kairo.unity.ui.TextLayout.Draw,ui,traced,1384,0x1bc128c

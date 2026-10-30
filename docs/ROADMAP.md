@@ -28,7 +28,6 @@ Host: `saga_mission` (headless or SDL window; explicit scenario state remains re
 - [ ] A6. Every service the host fakes is listed in the stub table of integration.md.
 
 Tasks:
-- [ ] (blocking) Build Quest1 TextLayout blocks with the documented GUIStyle/LegacyRuntime run-measurement contract; replace talk_layout only with a bound provider and retain metric-oracle limits (A1/A4).
 - [ ] Bind saved-state/configuration and original InitWorld fresh/loaded entry to `saga_mission --data/--quest` so a diagnostic `--scene` profile is no longer required (A1).
 - [ ] Replace the synthetic catalogs/services of the 240-frame combat regression with the table-backed owner used by `saga_mission` (A3).
 - [ ] Add complete reached-world state hashing and record local per-quest golden replays (A5).
@@ -70,9 +69,9 @@ Host: `saga` (the game executable). Acceptance: boots to the title from real dat
 
 Host: `saga`. Acceptance: talk and event forms show their text with the correct font, wrapping, reveal and page advance; music and sound effects play.
 
-- [ ] (blocking) Choose the desktop font backend: can `useFontTexture_` be true on talk fonts, which Unity font English loads; define a reference measurement set.
-- [ ] Reconstruct `_makeTextBlocks` for the tags the tables use (`br`, `co`, `/co`, `po`), including the scanner fallback.
-- [ ] Bind talk page advance to original layout/font providers; trace the type-4 event form and the producers of `nextIndex_`.
+- [ ] (blocking, runtime oracle) Compare the bound FreeType/LegacyRuntime provider with original GUIStyle run measurements; establish live font/scale/language inputs.
+- [ ] Extend the fresh ASCII block builder to the remaining reached tags/non-ASCII paths, including EventMsg `po`, and bind glyph drawing to the host.
+- [ ] Trace the type-4 event form and producers of `nextIndex_`; bind their layout/font/page-advance paths.
 - [ ] Port the font localization scope with its two cleanup scopes, plus the `Frame` blink and draw counters.
 - [ ] Close the translation path (`CallTranslateText` flags and fallback, `UnicodeToChanakya`), the boot language state and SanSanRemove.
 - [ ] Decide the audio path (FSB5 Vorbis from the extractor output, streaming policy for 74 MB of PCM) and play BGM/SE through SDL.

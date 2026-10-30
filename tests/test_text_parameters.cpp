@@ -30,7 +30,56 @@ struct Host : TextParameterHost {
         throw ManagedTextParseError("fixture hex failure");
     }
 };
+struct ScanPart {
+    std::int32_t begin,end,index;
+    std::u16string text,parameter;
+    bool has_parameter;
+};
+struct Scanner : TextMarkupHost {
+    std::vector<ScanPart> parts;
+    std::vector<std::u16string> comparisons;
+    bool fail_compare=false;
+    bool equal_tag(std::u16string_view expected,std::u16string_view candidate)override{
+        comparisons.push_back(u"E:"+std::u16string(expected));
+        if(fail_compare)throw std::logic_error("comparison provider");
+        return expected==candidate; // Explicit ordinal fixture, not product culture selection.
+    }
+    bool starts_with_tag(std::u16string_view candidate,std::u16string_view prefix)override{
+        comparisons.push_back(u"P:"+std::u16string(prefix));
+        return candidate.substr(0,prefix.size())==prefix;
+    }
+    void retain(const TextMarkupSpan& span){parts.push_back({span.source_begin,span.source_end,span.tag_index,std::u16string(span.text),std::u16string(span.parameter),span.has_parameter});}
+    void text(const TextMarkupSpan& span)override{retain(span);}
+    void tag(const TextMarkupSpan& span)override{retain(span);}
+    std::u16string ordinary()const{std::u16string result;for(const auto& p:parts)if(p.index<0)result+=p.text;return result;}
+};
+void scanner_contracts(){
+    {Scanner h;scan_text_markup(u"A\n<co=10>B</co>C",h);
+     check(h.parts.size()==5&&h.ordinary()==u"A\nBC","preprocessed LF is ordinary text; tags retain order");
+     check(h.parts[1].index==0&&h.parts[1].begin==2&&h.parts[1].end==9&&h.parts[1].parameter==u"10"&&h.parts[1].has_parameter,"parameter tag source span");
+     check(h.parts[3].index==1&&!h.parts[3].has_parameter&&h.parts[3].begin==10&&h.parts[3].end==15,"exact end tag source span");
+     check(h.comparisons[0]==u"E:<co=>"&&h.comparisons[1]==u"P:<co=","exact match precedes parameter-prefix query");}
+    {Scanner h;scan_text_markup(u"<bad<co=1>>",h);
+     check(h.parts.size()==3&&h.parts[0].text==u"<bad"&&h.parts[1].index==0&&h.parts[1].begin==4&&h.parts[2].text==u">","unknown opener is literal but does not swallow a nested recognized tag");}
+    {Scanner h;scan_text_markup(u"x<bad <tail",h);check(h.parts.size()==1&&h.ordinary()==u"x<bad <tail","unterminated markup remains literal");
+     Scanner br;scan_text_markup(u"a<br>b",br);check(br.ordinary()==u"a<br>b","literal br replacement belongs to pre-scan caller");}
+    {const auto source=u"a<"+std::u16string(32,u'x')+u">z";Scanner h;scan_text_markup(source,h);
+     check(h.parts.size()==2&&h.parts[0].begin==0&&h.parts[0].end==1&&h.parts[1].begin==2&&h.parts[1].end==36,"overlong opener creates source gap");
+     check(h.ordinary()==u"a"+std::u16string(32,u'x')+u">z","overlong candidate drops only opening unit");
+     Scanner edge;scan_text_markup(u"<co="+std::u16string(28,u'1')+u">",edge);check(edge.parts.size()==1&&edge.parts[0].index==0&&edge.parts[0].parameter.size()==28,"closing distance32 is accepted");
+     Scanner over;scan_text_markup(u"<co="+std::u16string(29,u'1')+u">",over);check(over.parts.size()==1&&over.parts[0].index==-1&&over.parts[0].begin==1,"closing distance33 drops opener before tag matching");}
+    {Scanner h;scan_text_markup(u"\U0001f642<co=>\u03a9</co>",h);
+     check(h.parts[0].end==2&&h.parts[1].begin==2&&h.parts[1].end==7&&h.parts[1].has_parameter&&h.parts[1].parameter.empty(),"UTF16 indices count surrogate units and retain empty parameter");
+     check(h.parts[2].begin==7&&h.parts[2].end==8,"non-ASCII ordinary units preserved");}
+    {Scanner h;scan_text_markup(u"<co=></co><si=1></si><st=1></st><bl=1></bl><po=cm><pic=1><bo=1></bo><btn=1><ff><kr=1><em></em><ruby=1></ruby>",h);
+     check(h.parts.size()==19,"all native tag templates recognized");for(std::size_t i=0;i<h.parts.size();++i)check(h.parts[i].index==static_cast<std::int32_t>(i),"native TAG index order");}
+    {Scanner h;h.fail_compare=true;bool failed=false;try{scan_text_markup(u"A<co=1>",h);}catch(const std::logic_error&){failed=true;}
+     check(failed&&h.parts.size()==1&&h.parts[0].text==u"A","comparison failure retains already emitted ordinary prefix");}
+    {struct NumericScanner final:Scanner{Host numeric;TextTagNumbers numbers{};void tag(const TextMarkupSpan& s)override{Scanner::tag(s);if(s.has_parameter)numbers=parse_text_tag_numbers(s.tag_index,std::u16string(s.parameter),numeric);}}h;
+     scan_text_markup(u"<co=10>",h);check(h.numbers.decimal==10&&h.numbers.color_bits==16&&h.numeric.calls.size()==2,"scanner composes existing independent numeric parses");}
+}
 int main() {
+    scanner_contracts();
     Host h;
     auto n = parse_text_tag_numbers(0,u"4a86e8",h);
     check(n.decimal == 0 && text_tag_argb(n.color_bits) == 0xff4a86e8U &&

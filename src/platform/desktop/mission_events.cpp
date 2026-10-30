@@ -24,6 +24,7 @@ MissionEvents::MissionEvents(ResourceArchive& archive,MissionEventScenario scena
     auto read=[&](const char* name){auto data=archive.data(name);if(!data)throw std::invalid_argument(std::string("missing mission event table: ")+name);return std::string(data->bytes.begin(),data->bytes.end());};
     execution_.catalog=std::make_shared<EventCatalog>(load_event_catalog(read("Event.txt"),false,parse_event_decimal));
     talks_=load_talk_table(read("Talk.txt"),false,parse_event_decimal,decode_mission_text);
+    if(scenario_.font)font_provider_=std::make_shared<DesktopTextFont>(scenario_.font->path);
     execution_.normal_save_present=true;
     execution_.normal_save_strings=std::make_shared<std::vector<EventObject>>(1);
     if(scenario_.save_string0)execution_.normal_save_strings->at(0)=std::make_shared<std::u16string>(*scenario_.save_string0);
@@ -93,6 +94,16 @@ bool MissionEvents::finish_talk(Talk& talk){
     lifecycle_.push_back("finish:"+std::to_string(talk.id));return true;
 }
 void MissionEvents::set_page(Talk& talk){
+    if(scenario_.font){
+        if(!talk.layout)talk.layout=std::make_unique<MissionTextLayout>(*scenario_.font,font_provider_);
+        restart_text_reveal_for_new_text(talk.reveal); // SetText resets timing before font/block preparation.
+        const auto before=talk.layout->measurements();
+        talk.layout->set_text(talk.prepared.texts.at(static_cast<std::size_t>(talk.prepared.text_index)));
+        layout_measurements_+=talk.layout->measurements()-before;
+        talk.reveal.length=talk.layout->length();
+        layout_samples_.push_back({talk.id,talk.prepared.text_index,talk.reveal.length,talk.layout->height(),talk.layout->blocks().blocks.size()});
+        return;
+    }
     const auto lengths=scenario_.page_lengths.find(talk.id);
     if(lengths==scenario_.page_lengths.end()||lengths->second.size()!=talk.prepared.texts.size())
         throw std::invalid_argument("talk_layout requires one explicit provider length per prepared page for talk "+std::to_string(talk.id));
@@ -125,6 +136,8 @@ std::string MissionEvents::title()const{
     return "Dialogue "+std::to_string(talk.prepared.text_index+1)+"/"+std::to_string(talk.prepared.texts.size())+" - Enter reveals or advances";
 }
 void MissionEvents::write_report(std::ostream& out)const{
+    out<<",\"talk_font_bound\":"<<(scenario_.font?"true":"false")<<",\"talk_font_measurements\":"<<layout_measurements_<<",\"talk_layout_samples\":[";
+    for(std::size_t i=0;i<layout_samples_.size();++i){if(i)out<<',';const auto& s=layout_samples_[i];out<<'['<<s.talk<<','<<s.page<<','<<s.length<<','<<s.height<<','<<s.blocks<<']';}out<<']';
     out<<",\"mission_events_bound\":true,\"talk_forms_opened\":"<<opened_<<",\"talk_forms_closed\":"<<closed_
        <<",\"talk_update_calls\":"<<ticks_<<",\"talk_flushes\":"<<flushes_<<",\"talk_page_changes\":"<<pages_<<",\"executed_stage_events\":[";
     for(std::size_t i=0;i<executed_.size();++i){if(i)out<<',';out<<executed_[i];}out<<"],\"talk_pending\":"<<(pending()?"true":"false");
@@ -132,7 +145,7 @@ void MissionEvents::write_report(std::ostream& out)const{
         const auto& t=*forms_.back();out<<",\"talk\":{\"id\":"<<t.id<<",\"character\":"<<t.prepared.character_index<<",\"page\":"<<t.prepared.text_index
             <<",\"pages\":"<<t.prepared.texts.size()<<",\"frame\":"<<t.frame<<",\"close_counter\":"<<t.finish_frame
             <<",\"form_state\":"<<t.state<<",\"reveal_length\":"<<t.reveal.length<<",\"reveal_position\":"<<t.reveal.position
-            <<",\"layout_provider\":\"provisional scenario\"}";
+            <<",\"layout_provider\":\""<<(scenario_.font?"native ASCII blocks; public FreeType metrics unverified":"provisional scenario")<<"\"}";
     }
     out<<",\"talk_lifecycle\":[";for(std::size_t i=0;i<lifecycle_.size();++i){if(i)out<<',';out<<'"'<<lifecycle_[i]<<'"';}out<<']';
     out<<",\"event_execution_counts\":[";bool first=true;

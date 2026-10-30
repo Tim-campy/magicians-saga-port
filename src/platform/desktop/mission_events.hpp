@@ -1,5 +1,6 @@
 #pragma once
 #include "resource_archive.hpp"
+#include "mission_text_layout.hpp"
 #include "core/gameplay/event_dispatch.hpp"
 #include "core/gameplay/event_execution.hpp"
 #include "core/gameplay/form_push.hpp"
@@ -14,6 +15,7 @@ struct MissionEventScenario {
     bool short_words=false,held_advance=false,print=false;
     // Provisional TextLayout provider outputs, not raw/source text lengths.
     std::map<std::int32_t,std::vector<std::int32_t>> page_lengths;
+    std::optional<MissionFontScenario> font;
 };
 std::u16string decode_mission_text(std::string_view);
 class MissionEvents final:private core::EventEffectsHost,private core::EventFlowHost,
@@ -31,6 +33,7 @@ private:
         std::int32_t id=0,state=0,frame=0,finish_frame=-1;
         core::PreparedTalkForm prepared;
         core::TextRevealState reveal{};
+        std::unique_ptr<MissionTextLayout> layout;
     };
     MissionEventScenario scenario_;
     core::TalkTable talks_;
@@ -47,6 +50,10 @@ private:
     std::vector<std::int32_t> executed_;
     std::vector<std::string> lifecycle_;
     std::function<void()> clear_input_;
+    std::shared_ptr<DesktopTextFont> font_provider_;
+    std::uint64_t layout_measurements_=0;
+    struct LayoutSample {std::int32_t talk,page,length,height;std::size_t blocks;};
+    std::vector<LayoutSample> layout_samples_;
     core::EventProgression& progression()override;
     std::int32_t stamina_limit()override;
     std::int64_t read_stamina()override;
