@@ -28,7 +28,7 @@ Host: `saga_mission` (headless or SDL window; explicit scenario state remains re
 - [ ] A6. Every service the host fakes is listed in the stub table of integration.md.
 
 Tasks:
-- [ ] Bind remaining application configuration, event/font context and presentation providers to `saga_mission --data/--quest`; remove diagnostic `--scene` for fresh mission entry (A1).
+- [ ] Build `saga_mission --data/--quest` entry from the bound initial-state providers; expose unresolved viewport/font/UI inputs explicitly and remove diagnostic `--scene` (A1).
 - [ ] Bind Continue's decoded world/party/system restoration before selecting loaded InitWorld in `saga_mission` (A1).
 - [ ] Replace the synthetic catalogs/services of the 240-frame combat regression with the table-backed owner used by `saga_mission` (A3).
 - [ ] Add complete reached-world state hashing and record local per-quest golden replays (A5).

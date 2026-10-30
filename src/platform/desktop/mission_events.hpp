@@ -13,6 +13,7 @@ namespace saga::desktop {
 struct MissionEventScenario {
     core::NullablePresentationText save_string0;
     bool short_words=false,held_advance=false,print=false;
+    bool new_game_context=false;
     // Provisional TextLayout provider outputs, not raw/source text lengths.
     std::map<std::int32_t,std::vector<std::int32_t>> page_lengths;
     std::optional<MissionFontScenario> font;

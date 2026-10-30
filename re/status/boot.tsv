@@ -5,7 +5,7 @@ game:0x0600026e	documented	docs/subsystems/boot.md	OnDraw: GetInstance then vtab
 game:0x06000272	traced	docs/subsystems/boot.md	SetJingle: SoundPlayer.SetVolume with 0 or SecureInt*51
 game:0x06000214	documented	docs/subsystems/boot.md	ResourceReDownload: 4-byte RET stub
 game:0x06000215	documented	docs/subsystems/boot.md	ResourceReDownload overload: 4-byte RET stub
-game:0x0600125a	traced	docs/subsystems/boot.md	MyConfig cctor: default FPS 30 at static +0x50
+game:0x0600125a	traced	docs/subsystems/boot.md	MyConfig cctor scalar projection: initial FPS30+0x50 and numeric DEBUG0+0x4 bound to mission initial runtime tokens; other fields/late overrides not ported
 kairo:0x06000271	traced	docs/subsystems/boot.md	Config cctor: +0x30=1,+0x63=0,+0xc2=0,+0xc4/+0xc5=1, +0..0xf=(2,0,100,30)
 kairo:0x0600144e	traced	docs/subsystems/boot.md	Awake: paths/Screen/Canvas, calls OnCreate slot 5; editor/replay fixed-seed gate recovered and ported (see rng doc)
 kairo:0x06001450	traced	docs/subsystems/boot.md	Start: fixedDeltaTime=1.0f

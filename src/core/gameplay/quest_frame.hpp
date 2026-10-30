@@ -3,6 +3,10 @@
 #include <cstdint>
 
 namespace saga::core {
+// cfg.MyConfig..cctor 0x1174274: scalar defaults at static+0x50/+0x4.
+// This projection does not include Config's independent controls/debug flags or later overrides.
+struct InitialGameFrameConfiguration {std::int32_t fps;bool damage_debug;};
+inline constexpr InitialGameFrameConfiguration initial_game_frame_configuration{30,false};
 struct QuestFrameState {
     std::int32_t loop_counter=0,frame=0,pinch_frame=0;
     bool pinching=false;

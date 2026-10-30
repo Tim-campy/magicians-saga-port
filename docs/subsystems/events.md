@@ -13,6 +13,12 @@ Pipeline (ELF VAs, load bias 0):
 5. **Continuation queue.** A pass over `AppData+0x200` inside `SelectForm.Update` (`0x11ec578`–`0x11ec6d8`) counts down `wait_` and resumes due entries via `GetDelayScript` + `ExecuteScript`. A second resumption path exists in `SubForm.Finish` through field `SubForm.delayEvent_` (+0x1d0), whose producer is unknown.
 6. **Unit dispatcher.** `ExecuteScript` (`0x110cc4c`) clones the row, substitutes argument sentinels, and switches on opcode into money/crystal, area/quest discovery, talk/event form creation + `AppData.Push`, and stamina effects.
 
+### Fresh execution counters and argument seed
+
+EventData..ctor (`game:0x06001130`, ELF0x116fc04,108 bytes) calls Object..ctor and initializes inherited discovery/new/id/flags without writing execNum_ int32+0x20. A newly allocated record therefore starts with execution_count0. EventData.NewGame inherits the BaseData RET: it does not reset a reused record's counter. The existing fresh catalog loader implements that allocation baseline; the mission new_game event context does not add a second reset.
+
+`mission_events new_game <IsShortWords> <held-advance> <PRINT>` uses the nonnull empty normal-save string0 from mission_initialization. The fresh alternative keeps its explicit null/quoted-string context. Reports distinguish new_game_event_context and event_save_string0_kind (null/empty/text). Locale and Config-derived gates remain explicit, including in initial mode. See [save initialization](save.md#initial-system-and-event-context) and [mission binding](integration.md#initial-system-and-event-context-s1). Evidence: complete local mission-configuration/EventData_ctor.asm and the AppData literal reference; confidence high, no original-runtime comparison.
+
 ## Key methods
 
 | Method | Registry id | Role | Confidence |

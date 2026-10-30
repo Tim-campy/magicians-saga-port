@@ -115,6 +115,12 @@ Key masks are kept numeric. 400/2 are code possibilities (debug-like), not obser
 
 Initial values: `MyConfig..cctor` stores **30** at static `+0x50` (`0x1174390`/`0x11743f4`); `FormManager..ctor` copies it to `manager+0xb0`. `Config..cctor`: `+0x30 = 1`, `+0x63 = 0` (32-bit zero at `+0x60`), `+0xc2 = 0`, `+0xc4 = +0xc5 = 1` (4-byte store of `0x01010101` at `+0xc3`); static `+0..+0xf` copied from ELF `0x625fb0` = int32 LE `(2, 0, 100, 30)`. These are post-initialiser values; writers elsewhere are not inventoried.
 
+### Shipped scalar frame defaults in the mission host
+
+MyConfig..cctor (`0x1174274`,548 bytes) writes FPS30 at static+0x50 and zero numeric-damage DEBUG at+0x4. The latter byte belongs to the64-bit store at+0 initialized with value2 (`0x117439c..0x11743a0`), which also sets APPLI_TYPE; no private strings or unrelated fields are copied into the port. Field offsets/type4527 and the complete local mission-configuration/MyConfig_cctor.asm establish this scalar projection. Numeric damage actually reads MyConfig.DEBUG, whereas QuestForm debug controls read Config.DEBUG at a different static+0x10.
+
+The existing quest_frame module exposes initial_game_frame_configuration for those two scalars. CLI --fps initial/--debug initial and the equivalent runtime-row tokens select them; explicit numeric overrides remain supported. The host does not infer RNG selection, seed, UI debug controls, Config.PRINT/DEBUG_CMD, the tick clock, locale or font scales from these values. Initial values are not proof of the Android game's effective timing or of later Config.Create/runtime overrides; the enclosing FormManager FPS/pass policy remains separate.
+
 ### Pause, focus, termination
 
 - **OnApplicationPause** (`0x1b8570c`): returns early if `I.static+0x40`; else `this+0x35 = arg & 1` (`0x1b857bc`). Pause: `NotifyManager.DoNotify`, `KairoPlugin.SetNotificationBackground(true)`, sends form code **4** (Suspend) to forms back-to-front, may deactivate FormManagerBase. Resume: `DoCancel`, `SetNotificationBackground(false)`, code **3** (Resume) to forms, paths to `KairoAccount.Resume`, `StartAsyncConnectThread`, `ClockTime.UpdateServerTime`, `GooglePlayLicenseCheck`, `AudioSettings.Reset`. Presence of calls ≠ network required.
@@ -128,7 +134,7 @@ Initial values: `MyConfig..cctor` stores **30** at static `+0x50` (`0x1174390`/`
 
 ## Port
 
-None. Needed: a `src/platform` host loop reproducing Update/OnGUI gate order, a TotalFrames counter separate from logic passes, the FPS request (default 30) and optional frame wait, pause/focus → form codes 4/3. Logic pass counting is in [ui.md](ui.md).
+The mission host binds the two shipped MyConfig scalar defaults through initial runtime tokens; the enclosing application boot/frame loop remains unported. Needed: a `src/platform` host loop reproducing Update/OnGUI gate order, a TotalFrames counter separate from logic passes, the FPS request (default 30) and optional frame wait, pause/focus → form codes 4/3. Logic pass counting is in [ui.md](ui.md).
 
 ### Replay RNG gate in Awake
 

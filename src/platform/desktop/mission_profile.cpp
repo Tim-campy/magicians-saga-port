@@ -298,6 +298,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     std::vector<SelectedGauge> gauges;
     std::set<std::string> quest_fields;
     bool native_mission_state=false;
+    bool initial_context_requested=false,initial_yugami=false,initial_orientation=false;
     std::int32_t native_yugami=0;
     std::uint32_t native_held_keys=0;
     std::int32_t rescued_prisoners=0;
@@ -352,10 +353,13 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         }
         if(operation=="mission_events"){
             std::string mode;std::int32_t short_words=0,held=0,print=0;
-            if(event_context||!(row>>mode)||mode!="fresh")throw std::invalid_argument("mission_events requires one explicit fresh event catalog state");
-            row>>std::ws;
-            if(row.peek()=='"'){std::string args;if(!(row>>std::quoted(args)))throw std::invalid_argument("invalid decoded event save string0");event_scenario.save_string0=decode_mission_text(args);}
-            else{std::string null;if(!(row>>null)||null!="null")throw std::invalid_argument("mission_events requires null or quoted decoded save string0");}
+            if(event_context||!(row>>mode)||(mode!="fresh"&&mode!="new_game"))throw std::invalid_argument("mission_events requires fresh or new_game event catalog state");
+            event_scenario.new_game_context=mode=="new_game";
+            if(!event_scenario.new_game_context){
+                row>>std::ws;
+                if(row.peek()=='"'){std::string args;if(!(row>>std::quoted(args)))throw std::invalid_argument("invalid decoded event save string0");event_scenario.save_string0=decode_mission_text(args);}
+                else{std::string null;if(!(row>>null)||null!="null")throw std::invalid_argument("mission_events requires null or quoted decoded save string0");}
+            }
             if(!(row>>short_words>>held>>print)||(short_words!=0&&short_words!=1)||(held!=0&&held!=1)||(print!=0&&print!=1))throw std::invalid_argument("mission_events requires explicit IsShortWords, held-advance and Config.PRINT bools");
             event_scenario.short_words=short_words!=0;event_scenario.held_advance=held!=0;event_scenario.print=print!=0;event_context=true;end(row);continue;
         }
@@ -387,8 +391,9 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             saved_town_count_=value;end(row);continue;
         }
         if(operation=="quest_frame"){
-            std::int32_t debug=0,orientation=0;
-            if(quest_frame_||!(row>>debug>>orientation)||(debug!=0&&debug!=1))throw std::invalid_argument("quest_frame requires Config debug0/1 and saved orientation int32");
+            std::int32_t debug=0,orientation=0;std::string source;
+            if(quest_frame_||!(row>>debug>>source)||(debug!=0&&debug!=1))throw std::invalid_argument("quest_frame requires Config debug0/1 and saved orientation int32 or initial");
+            initial_orientation=source=="initial";if(!initial_orientation)orientation=parse_event_decimal(source);
             end(row);quest_frame_=QuestFrameConfig{debug!=0,orientation};continue;
         }
         if(operation=="menu_visible"){
@@ -428,7 +433,10 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             if(!(row>>id>>count)||id<0||!progress.sortie_counts.emplace(id,count).second)throw std::invalid_argument("sorties requires unique character ID and saved int32 count");
             end(row);continue;
         }
-        if(operation=="new_game_save"){
+        if(operation=="mission_initialization"){
+            if(!native||initial_context_requested)throw std::invalid_argument("mission_initialization requires native mode and one request");
+            initial_context_requested=true;
+        }else if(operation=="new_game_save"){
             if(!native||new_game_save_)throw std::invalid_argument("new_game_save requires native mode and one reset request");
             new_game_save_=true;
         }else if(operation=="mission_selection"){
@@ -443,8 +451,11 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             if(!native||selected_quest||!(row>>id>>rescued_prisoners)||id<0)throw std::invalid_argument("quest requires one nonnegative ID and explicit saved rescued count");
             selected_quest=selection.quest.value_or(id);
         }else if(operation=="runtime"){
-            MissionRuntimeConfig value;std::int32_t debug=0;
-            if(!native||runtime_row||!(row>>value.fps>>debug>>value.backend>>value.seed)||value.fps<1||value.fps>1000||(debug!=0&&debug!=1)||value.backend!="system")throw std::invalid_argument("runtime requires FPS1..1000 DEBUG0/1 system seed-int32");
+            MissionRuntimeConfig value;std::int32_t debug=0;std::string fps_source,debug_source;
+            if(!native||runtime_row||!(row>>fps_source>>debug_source>>value.backend>>value.seed))throw std::invalid_argument("runtime requires FPS/DEBUG (numeric or initial), system and seed-int32");
+            value.fps=fps_source=="initial"?initial_game_frame_configuration.fps:parse_event_decimal(fps_source);
+            debug=debug_source=="initial"?static_cast<std::int32_t>(initial_game_frame_configuration.damage_debug):parse_event_decimal(debug_source);
+            if(value.fps<1||value.fps>1000||(debug!=0&&debug!=1)||value.backend!="system")throw std::invalid_argument("runtime requires FPS1..1000 DEBUG0/1 system seed-int32");
             value.debug=debug!=0;runtime_row=true;
             if(runtime&&(runtime->fps!=value.fps||runtime->debug!=value.debug||runtime->backend!=value.backend||runtime->seed!=value.seed))throw std::invalid_argument("scene runtime conflicts with CLI inputs");runtime=value;
         }else if(operation=="rewards"){
@@ -527,9 +538,10 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             }
             map_images=std::make_shared<EventIntegers>(std::move(values));
         }else if(operation=="mission_state"){
-            std::string mode;std::uint64_t keys=0;
-            if(!native||native_mission_state||!(row>>mode>>native_yugami>>keys)||mode!="new_game"||keys>0xffffffffULL)
+            std::string mode,yugami_source;std::uint64_t keys=0;
+            if(!native||native_mission_state||!(row>>mode>>yugami_source>>keys)||mode!="new_game"||keys>0xffffffffULL)
                 throw std::invalid_argument("mission_state requires new_game, explicit Yugami int32 and host-held keys uint32");
+            initial_yugami=yugami_source=="initial";if(!initial_yugami)native_yugami=parse_event_decimal(yugami_source);
             native_mission_state=true;native_held_keys=static_cast<std::uint32_t>(keys);
         }else if(operation=="human_system"){
             MissionHumanScenario value{};std::string distance;
@@ -660,6 +672,25 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         }else throw std::invalid_argument("unknown scene row type");
         end(row);
     }
+    if(initial_context_requested){
+        if(!selection.data_root||!new_game_save_||!fresh_hero_||!initialized_loaded_||*initialized_loaded_!=0||!construct_systems_)
+            throw std::invalid_argument("mission_initialization requires --data/new_game_save/fresh hero/system_init0/system_construct");
+        const auto path=*selection.data_root/"mission-initialization.tsv";
+        if(std::filesystem::file_size(path)>4096)throw std::length_error("mission initialization exceeds4KiB");
+        std::ifstream data(path);data.imbue(std::locale::classic());std::string signature,yugami_label,orientation_label,args_label,args;
+        std::int32_t version=0;InitialMissionContext context{};
+        if(!(data>>signature>>version>>yugami_label>>context.yugami>>orientation_label>>context.orientation>>args_label)||
+           signature!="mission_initialization"||version!=1||yugami_label!="yugami"||orientation_label!="orientation"||args_label!="event_arguments")
+            throw std::invalid_argument("invalid mission initialization header or fields");
+        data>>std::ws;if(data.peek()!='"'||!(data>>std::quoted(args)))throw std::invalid_argument("initial event arguments require quoted UTF-8 text");
+        data>>std::ws;if(!data.eof())throw std::invalid_argument("unexpected mission initialization fields");
+        context.event_arguments=decode_mission_text(args);initial_context_=std::move(context);
+    }
+    if((initial_yugami||initial_orientation||event_scenario.new_game_context)&&!initial_context_)
+        throw std::invalid_argument("initial Yugami/orientation/new-game event context requires mission_initialization");
+    if(initial_yugami)native_yugami=initial_context_->yugami;
+    if(initial_orientation)quest_frame_->orientation=initial_context_->orientation;
+    if(event_scenario.new_game_context)event_scenario.save_string0=initial_context_->event_arguments;
     if(native_mission_state){
         if(!new_game_save_||!fresh_hero_||!initialized_loaded_||*initialized_loaded_!=0||!construct_systems_||!quest_frame_||
            human_scenario||rewards||notifications||collection||input_scenario||enemy_config||enemy_population||enemy_pool||
@@ -934,6 +965,8 @@ void MissionProfile::write_actor_parameters(ComponentSlots& actor,std::ostream& 
 void MissionProfile::write_combat_report(std::ostream& out){
     out<<",\"replay_modal_ignored\":"<<replay_modal_ignored_;
     if(events_)events_->write_report(out);
+    out<<",\"mission_initialization\":"<<(initial_context_?"true":"false");
+    if(initial_context_)out<<",\"initial_system_yugami\":"<<initial_context_->yugami<<",\"initial_saved_orientation\":"<<initial_context_->orientation;
     out<<",\"fresh_hero_bootstrap\":"<<(fresh_hero_?"true":"false")<<",\"fresh_town_initialized\":"<<(fresh_town_initialized_?"true":"false");
     out<<",\"new_game_save\":"<<(new_game_save_?"true":"false");
     if(new_game_save_)out<<",\"new_game_quest_counts\":["<<new_game_quest_counts_[0]<<','<<new_game_quest_counts_[1]<<']';
@@ -957,6 +990,8 @@ void MissionProfile::write_combat_report(std::ostream& out){
     out<<",\"quest_frame_enabled\":"<<(quest_frame_?"true":"false")<<",\"world_update_calls\":"<<world_update_calls_<<",\"last_world_passes\":[";
     for(std::size_t i=0;i<last_world_passes_.size();++i){if(i)out<<',';out<<last_world_passes_[i];}out<<']';
     if(quest_frame_){
+        out<<",\"quest_saved_orientation\":"<<quest_frame_->orientation<<",\"application_orientation\":";
+        if(application_orientation_)out<<*application_orientation_;else out<<"null";
         out<<",\"quest_form_update\":"<<parent_update_counter_<<",\"quest_form_frame\":"<<quest_frame_state_.frame
            <<",\"quest_form_fade_frame\":"<<humans->quest_form().fade_frame<<",\"quest_form_fade_type\":"<<quest_frame_state_.fade_type
            <<",\"quest_form_pinch_frame\":"<<quest_frame_state_.pinch_frame<<",\"quest_form_result\":"<<(quest_frame_result_?"true":"false")

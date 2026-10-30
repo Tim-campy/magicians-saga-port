@@ -59,6 +59,44 @@ class NewGameSaveTests(unittest.TestCase):
                 self.assertEqual((root/'manifest.json').read_text(),manifest)
 
 
+class MissionInitializationTests(unittest.TestCase):
+    def metadata(self):
+        data=bytearray(608)
+        struct.pack_into('<II',data,0,0xfab11baf,31)
+        struct.pack_into('<IIII',data,8,300,8,308,0)
+        struct.pack_into('<IIII',data,64,256,12,512,96)
+        struct.pack_into('<iii',data,256,24300,77,0)
+        values=list(range(24));values[12]=-2;values[23]=-2147483648
+        struct.pack_into('<24i',data,512,*values)
+        return data
+
+    def test_system_slots_and_distinct_nonnull_empty_arguments(self):
+        self.assertEqual(extractor.mission_initialization_payload(self.metadata()),
+                         b'mission_initialization\t1\nyugami\t-2147483648\norientation\t-2\nevent_arguments\t""\n')
+
+    def test_initializer_and_empty_literal_bounds(self):
+        for offset,value in ((4,30),(8,1),(12,7),(16,999),(300,1),(304,1),(264,-1),(256,1)):
+            with self.subTest(offset=offset,value=value):
+                data=self.metadata();struct.pack_into('<i',data,offset,value)
+                with self.assertRaises(ValueError):extractor.mission_initialization_payload(data)
+
+    def test_synthetic_apk_and_collision_preserve_other_seeds(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);apk=root/'synthetic.apk';metadata=self.metadata()
+            with extractor.zipfile.ZipFile(apk,'w') as archive:archive.writestr(extractor.METADATA,metadata)
+            checksum=hashlib.sha256(apk.read_bytes()).hexdigest()
+            (root/'manifest.json').write_text(json.dumps({'schema':3,'apk_sha256':checksum}))
+            other=root/'new-game-save.tsv';other.write_bytes(b'keep normal save seed')
+            with patch.object(extractor,'APK_SHA',checksum):
+                output=extractor.write_mission_initialization(apk,root)
+                self.assertEqual(output.read_bytes(),extractor.mission_initialization_payload(metadata))
+                self.assertEqual(extractor.write_mission_initialization(apk,root),output)
+                output.write_bytes(b'keep user context')
+                with self.assertRaisesRegex(ValueError,'replace differing'):extractor.write_mission_initialization(apk,root)
+                self.assertEqual(output.read_bytes(),b'keep user context')
+            self.assertEqual(other.read_bytes(),b'keep normal save seed')
+
+
 class MissionIndexTests(unittest.TestCase):
     def test_manifest_names_paths_hashes_and_non_destructive_repeat(self):
         with tempfile.TemporaryDirectory() as directory:

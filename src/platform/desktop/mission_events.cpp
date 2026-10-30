@@ -136,6 +136,8 @@ std::string MissionEvents::title()const{
     return "Dialogue "+std::to_string(talk.prepared.text_index+1)+"/"+std::to_string(talk.prepared.texts.size())+" - Enter reveals or advances";
 }
 void MissionEvents::write_report(std::ostream& out)const{
+    out<<",\"new_game_event_context\":"<<(scenario_.new_game_context?"true":"false")
+       <<",\"event_save_string0_kind\":\""<<(!scenario_.save_string0?"null":scenario_.save_string0->empty()?"empty":"text")<<'"';
     out<<",\"talk_font_bound\":"<<(scenario_.font?"true":"false")<<",\"talk_font_measurements\":"<<layout_measurements_<<",\"talk_layout_samples\":[";
     for(std::size_t i=0;i<layout_samples_.size();++i){if(i)out<<',';const auto& s=layout_samples_[i];out<<'['<<s.talk<<','<<s.page<<','<<s.length<<','<<s.height<<','<<s.blocks<<']';}out<<']';
     out<<",\"mission_events_bound\":true,\"talk_forms_opened\":"<<opened_<<",\"talk_forms_closed\":"<<closed_

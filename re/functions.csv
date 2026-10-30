@@ -4187,7 +4187,7 @@ game:0x0600112c,game:0x0600112c,data,,8,0x116fa44
 game:0x0600112d,data.EventData.Load,data,reimplemented,200,0x116fa4c
 game:0x0600112e,game:0x0600112e,data,,120,0x116fb14
 game:0x0600112f,game:0x0600112f,data,,120,0x116fb8c
-game:0x06001130,game:0x06001130,data,,108,0x116fc04
+game:0x06001130,data.EventData..ctor,data,documented,108,0x116fc04
 game:0x06001131,game:0x06001131,data,,8,0x116fc70
 game:0x06001132,game:0x06001132,data,,8,0x116fc78
 game:0x06001133,game:0x06001133,data,,8,0x116fc80

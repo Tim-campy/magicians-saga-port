@@ -68,6 +68,40 @@ class MissionProfileTests(unittest.TestCase):
             for bad in (text.replace('talk_layout 4 2 100 100\n',''),text.replace('talk_layout 4 2 100 100','talk_layout 4 1 100'),text.replace('mission_events fresh null 0 0 0','mission_events fresh missing 0 0 0')):
                 scene.write_text(bad,encoding='utf-8');self.assertNotEqual(self.run_host(scene,frames=22).returncode,0)
 
+    def test_artifact_initial_context_and_runtime_defaults_reach_native_mission(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);scene=root/'scene.txt'
+            original=make_native_entry_scene(root,talk_events=True).replace('stage_loop quest 0 20 hold','stage_loop quest 0 0 hold')+'system_construct empty_manager\nquest_frame 0 initial\n'
+            fresh=original.replace('human 0 2 1 0 0 0 312 0 400\n','hero fresh\n').replace('player 0\n','').replace('system_init 1','system_init 0')
+            assets=root/'textassets';assets.mkdir()
+            for archive in root.glob('*.bin'):(assets/archive.name).write_bytes(archive.read_bytes())
+            (root/'new-game-save.tsv').write_text('new_game_save 1\nselection 5 2\ntown_capacity 1\nwallet 37 43\n',encoding='ascii')
+            context=root/'mission-initialization.tsv';payload='mission_initialization 1\nyugami 9999\norientation 2\nevent_arguments ""\n';context.write_text(payload,encoding='ascii')
+            snapshots=('human_system ','rewards ','enemy_system ','enemy_population ','enemy_pool ','stage_notifications ',
+                       'collection ','stage_loop ','stage_events ','input ','stage_boss ','party_formation ',
+                       'quest ','stage_start ','result_wallet ','result_record ')
+            text='\n'.join(line for line in fresh.splitlines() if not line.startswith(snapshots))+'\nnew_game_save\nmission_initialization\nmission_state new_game initial 0\nmission_events new_game 0 0 0\ntalk_layout 4 2 100 100\ntick_ms 40\n'
+            text=text.replace('runtime 25 0 system 42','runtime initial initial system 42')
+            def run(value,**kwargs):
+                scene.write_text(value,encoding='utf8');return self.run_host(scene,'--data',str(root),frames=22,**kwargs)
+            result=run(text,fps='initial',debug='initial');self.assertEqual(result.returncode,0,result.stderr);data=json.loads(result.stdout)
+            self.assertEqual(data['fps'],30);self.assertEqual(data['debug'],0)
+            self.assertTrue(data['mission_initialization'] and data['new_game_event_context'] and data['talk_pending'])
+            self.assertEqual(data['event_save_string0_kind'],'empty')
+            self.assertEqual(data['initial_system_yugami'],9999);self.assertEqual(data['quest_saved_orientation'],2)
+            self.assertIsNone(data['application_orientation']);self.assertEqual(data['event_execution_counts'],[[212,1]])
+            self.assertEqual(run(text,fps='initial',debug='initial').stdout,result.stdout)
+            control=text.replace('mission_initialization\n','').replace('new_game initial 0','new_game 9999 0').replace('quest_frame 0 initial','quest_frame 0 2')
+            control=control.replace('mission_events new_game 0 0 0','mission_events fresh "" 0 0 0').replace('runtime initial initial','runtime 30 0')
+            reference=run(control,fps=30);self.assertEqual(reference.returncode,0,reference.stderr);reference=json.loads(reference.stdout)
+            for key,value in reference.items():
+                if key not in {'mission_initialization','new_game_event_context'}:self.assertEqual(data[key],value,key)
+            for bad in (text.replace('mission_initialization\n',''),text+'mission_initialization\n',text.replace('new_game_save\n',''),text.replace('system_init 0','system_init 1')):
+                self.assertNotEqual(run(bad,fps='initial',debug='initial').returncode,0)
+            for bad in (payload+'extra\n',payload.replace('initialization 1','initialization 2'),payload.replace('yugami 9999','yugami 2147483648'),payload.replace('event_arguments ""','event_arguments null')):
+                context.write_text(bad,encoding='ascii');self.assertNotEqual(run(text,fps='initial',debug='initial').returncode,0)
+            context.unlink();self.assertNotEqual(run(text,fps='initial',debug='initial').returncode,0)
+
     def test_native_mission_state_uses_init_start_without_snapshot_overrides(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);scene=root/'scene.txt'
@@ -686,9 +720,9 @@ class MissionProfileTests(unittest.TestCase):
             for invalid in [text + 'enemy_gauges\n', text.replace('rewards 0 1 6\n', ''),
                             text.replace('resource 23 "gauges.bin" "English.lproj" 0\n', '').replace('global_alias 23 23\n', '')]:
                 scene.write_text(invalid, encoding='utf-8');self.assertNotEqual(self.run_host(scene, frames=1).returncode, 0)
-    def run_host(self, scene, *extra, fps=25, frames=12):
+    def run_host(self, scene, *extra, fps=25, debug=0, frames=12):
         return subprocess.run([str(EXE), '--scene', str(scene), '--frames', str(frames), '--headless',
-                               '--fps', str(fps), '--debug', '0', '--rng', 'system', '--seed', '42', *extra],
+                               '--fps', str(fps), '--debug', str(debug), '--rng', 'system', '--seed', '42', *extra],
                               capture_output=True, text=True, timeout=30)
 
     def test_relative_archives_headless_passes_and_repeatability(self):

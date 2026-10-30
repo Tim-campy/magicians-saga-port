@@ -27,7 +27,7 @@ int main(int argc,char** argv)try{
                    "--data resolves declared archive filenames below textassets/ without fallback.\n"
                    "--quest replaces the scenario quest ID; mission_selection also binds that ID to decoded slot9/stage.\n"
                    "--capture requires viewer mode and --frames N; steps the native world before capturing its prepared viewport.\n"
-                   "FPS/DEBUG/RNG and scenario state are explicit; deferred town transitions hold the old mission.\n"
+                   "FPS/DEBUG accept initial for shipped MyConfig defaults (30/0); RNG/seed and other context remain explicit.\n"
                    "Input-enabled scenes replay native movement/attack controls; quest bootstrap and full-state hashes remain open.\n";return 0;
     }
     const std::set<std::string> required{"--scene","--fps","--debug","--rng","--seed"};
@@ -41,7 +41,10 @@ int main(int argc,char** argv)try{
     if(std::any_of(required.begin(),required.end(),[&](const auto& key){return !options.count(key);})||(headless&&!options.count("--frames")))throw std::invalid_argument("explicit scene/fps/debug/rng/seed and headless frames required; see --help");
     const auto frames=options.count("--frames")?integer(options.at("--frames")):0;
     if(options.count("--capture")&&(headless||!options.count("--frames")))throw std::invalid_argument("capture requires viewer mode and --frames N");
-    const auto fps=integer(options.at("--fps")),debug=integer(options.at("--debug")),seed=integer(options.at("--seed"));
+    const auto defaults=saga::core::initial_game_frame_configuration;
+    const auto fps=options.at("--fps")=="initial"?defaults.fps:integer(options.at("--fps"));
+    const auto debug=options.at("--debug")=="initial"?static_cast<std::int32_t>(defaults.damage_debug):integer(options.at("--debug"));
+    const auto seed=integer(options.at("--seed"));
     if((options.count("--frames")&&(frames<1||frames>100000))||fps<1||fps>1000||(debug!=0&&debug!=1))throw std::invalid_argument("frames1..100000, fps1..1000 and debug0/1 required");
     if(options.at("--rng")!="system")throw std::invalid_argument("only the explicit-seed system backend is available; no backend substitution");
     const auto replay=options.count("--replay")?std::optional<std::filesystem::path>(std::filesystem::u8path(options.at("--replay"))):std::nullopt;

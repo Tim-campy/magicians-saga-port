@@ -71,6 +71,9 @@ private:
     std::optional<SavedMissionSelection> saved_mission_selection_;
     struct QuestFrameConfig {bool debug_controls;std::int32_t orientation;};
     std::optional<QuestFrameConfig> quest_frame_;
+    struct InitialMissionContext {std::int32_t yugami,orientation;std::u16string event_arguments;};
+    std::optional<InitialMissionContext> initial_context_;
+    std::optional<std::int32_t> application_orientation_; // Setter output, distinct from decoded system-save slot12.
     core::QuestFrameState quest_frame_state_; // SAGA_STUB(mission-form-fade-draw): timing is bound, fade overlay is not.
     std::int32_t parent_update_counter_=-1; // MyFormBase.Init +0xc8.
     std::shared_ptr<core::ImageAnimationValues> image_clocks_=std::make_shared<core::ImageAnimationValues>();
@@ -97,7 +100,7 @@ private:
     void change_state(std::int32_t)override{throw std::logic_error("mission native form layout transition is unbound");}
     std::int32_t saved_orientation()override{return quest_frame_->orientation;}
     bool enable_landscape()override{throw std::logic_error("mission saved landscape-unlock condition is unbound");}
-    void set_orientation(std::int32_t value)override{quest_frame_->orientation=value;}
+    void set_orientation(std::int32_t value)override{application_orientation_=value;}
     std::int32_t game_width()override{return view.width;}
     std::int32_t view_x()override{return view.margin_x;}
     std::shared_ptr<core::ImageAnimationValues> image_animation_values()override{return image_clocks_;}

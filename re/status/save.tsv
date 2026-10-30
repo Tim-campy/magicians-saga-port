@@ -2,7 +2,7 @@ id	status	evidence	note
 game:0x0600018d	traced	docs/subsystems/save.md	PackSave: selector 2 DelayEvent block, 13 World.Serialize
 game:0x06000197	traced	docs/subsystems/save.md	LoadGame order: LoadSystem, RecordStore, SecureProperty, DeserializeData, World, DelayEvent
 game:0x06000192	traced	docs/subsystems/save.md	LoadSystem reads record 0 into AppData+0x190
-game:0x06000158	traced	docs/subsystems/save.md	InitSystemSaveData builds system SecureProperty
+game:0x06000158	traced	docs/subsystems/save.md	InitSystemSaveData builds system SecureProperty Initial mission provider binds system int12/23 from the cctor array; other platform/config effects stay separate.
 game:0x0600015a	traced	docs/subsystems/save.md	NewGame: SaveSystem, new SecureProperty, InitSystemSaveData, NewData, check consumer
 game:0x06000159	reimplemented	src/core/gameplay/mission_map.cpp	Whole-byte loaded gate, captured factory/add receiver, separately queried map/Init worlds, native map request and failure prefixes; mission_map_contract; fresh mission host bound, Continue restoration external.
 game:0x06000916	traced	docs/subsystems/save.md	ContinueGame: NewGame, LoadGame(0), InitWorld, SelectForm
