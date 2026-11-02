@@ -16,6 +16,11 @@ struct FormTouchServices final:QuestFormTouchHost {
 };
 
 int main()try{
+    {const auto ordinary=quest_map_touch_region({20,30,460,690},false),captured=quest_map_touch_region({20,30,460,690},true);
+     check(ordinary.bounds.x==20&&ordinary.bounds.y==30&&ordinary.bounds.width==460&&ordinary.bounds.height==690);
+     check(ordinary.control.group==17&&ordinary.control.value==0&&ordinary.flags==0&&ordinary.drag_x==1.0F&&ordinary.drag_y==1.0F);
+     check(captured.bounds.x==-1000&&captured.bounds.y==-1000&&captured.bounds.width==2000&&captured.bounds.height==2000);
+     check(captured.flags==40&&captured.control.group==17&&captured.drag_x==1.0F&&captured.drag_y==1.0F);}
     {HumanFixture t;MapComponent map;CameraServices c(t,map);c.init();FormTouchServices h(c);QuestFrameState frame;
      c.form.x=100;c.form.y=200;InputControl control{17,0};QuestFormTouch event{{8,&control},20,-10,0};
      h.after_forward=[&]{control.group=2;event.input.type=0;};

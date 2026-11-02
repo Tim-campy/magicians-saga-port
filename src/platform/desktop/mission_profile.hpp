@@ -49,6 +49,10 @@ public:
     bool accepts_live_viewport()const{return resizable_viewport()&&!replay_bound_;}
     void resize_viewport(std::int32_t width,std::int32_t height);
     void camera_touch(std::int32_t type,std::int32_t dx,std::int32_t dy,std::int32_t pinch_delta);
+    core::QuestMapTouchRegion map_pointer_region()const;
+    bool map_pointer_hit(std::int32_t x,std::int32_t y)const;
+    bool map_pointer_touch(std::int32_t type,std::int32_t x,std::int32_t y,std::int32_t dx,std::int32_t dy,std::int32_t pinch_delta);
+    void cancel_map_pointer();
     core::OffscreenMatrix surface_projection(std::int32_t width,std::int32_t height)const;
     std::uint64_t logic_steps=0,movement_steps=0;
     void write_combat_report(std::ostream&); // Diagnostic JSON fragment; not a complete-state snapshot.
@@ -199,8 +203,11 @@ private:
     bool halted_=false;
     std::array<core::GameplaySystemState,32> system_states_;
     std::uint64_t pause_requests_=0;
-    enum class InputKind {keys,attack,pulse,cursor,click,touch,viewport,answer,camera};
-    struct InputAction {InputKind kind;std::uint32_t value=0;std::int32_t x=0,y=0,z=0;};
+    bool map_pointer_captured_=false;
+    std::int32_t map_pointer_x_=0,map_pointer_y_=0;
+    std::uint64_t map_pointer_events_=0,map_pointer_rejected_=0,map_pointer_cancellations_=0;
+    enum class InputKind {keys,attack,pulse,cursor,click,touch,viewport,answer,camera,pointer,pointer_cancel};
+    struct InputAction {InputKind kind;std::uint32_t value=0;std::int32_t x=0,y=0,z=0,dx=0,dy=0;};
     std::map<std::uint64_t,std::vector<InputAction>> replay_;
     bool replay_bound_=false;std::uint64_t replay_applied_=0;
     std::uint64_t replay_modal_ignored_=0;

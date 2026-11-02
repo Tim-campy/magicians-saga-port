@@ -22,6 +22,29 @@ def command(resource, clip, x, y, depth=0, texture=-1, image_resource=-1):
 
 @unittest.skipUnless(EXE and VIEWER, 'viewer executables supplied by CTest')
 class QueuePixels(unittest.TestCase):
+    def test_map_pointer_capture_zoom_cancel_and_resize_match_headless(self):
+        if not MISSION:self.skipTest('mission executable required')
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);scene=root/'pointer.txt';replay=root/'pointer.replay'
+            text=('mission_presentation 128 96 100 0 1 0 1500100 -1\nsystem_init 1\nmaterial_policy native\ntick_ms 1\n'+
+                  '\n'.join(line for line in make_boss_scene(root).splitlines() if not line.startswith(('world ','projection ','view ','slots ','animate ','simulate ','material ')))+'\n')
+            scene.write_text(text,encoding='utf8')
+            script=('1 pointer 12 128 0 0 0 40\n1 pointer 0 0 0 0 0 0\n1 pointer 8 -500 -500 12 -6 0\n'
+                    '1 pointer 12 -500 -500 0 0 40\n2 viewport 160 120\n2 pointer cancel\n3 pointer 8 1 1 1 1 0\n')
+            replay.write_text(script,encoding='ascii')
+            args=[str(MISSION),'--scene',str(scene),'--frames','3','--fps','25','--debug','0','--rng','system','--seed','42','--replay',str(replay)]
+            def run(extra):
+                r=subprocess.run([*args,*extra],capture_output=True,text=True,timeout=30)
+                self.assertEqual(r.returncode,0,r.stderr);return json.loads(r.stdout)
+            output=root/'pointer.bmp';capture=run(['--capture',str(output)])
+            self.assertEqual((capture['surface_width'],capture['surface_height']),(133,100));self.assertEqual(bmp_pixels(output.read_bytes())[:2],(160,120))
+            self.assertEqual(capture['state']['camera']['scale'],120)
+            pointer=capture['state']['map_pointer'];self.assertEqual((pointer['events'],pointer['rejected'],pointer['cancellations']),(3,2,1))
+            self.assertFalse(pointer['captured']);self.assertEqual(pointer['region'],[0,0,160,120])
+            headless=run(['--headless'])
+            for key,value in capture['state'].items():self.assertEqual(headless[key],value,key)
+            again=root/'again.bmp';self.assertEqual(run(['--capture',str(again)]),capture);self.assertEqual(again.read_bytes(),output.read_bytes())
+
     def test_quest_pinch_uses_native_offscreen_source_and_presented_capture(self):
         if not MISSION:self.skipTest('mission executable required')
         with tempfile.TemporaryDirectory() as directory:

@@ -10,6 +10,10 @@ std::int32_t add(std::int32_t a,std::int32_t b){const auto v=static_cast<std::ui
 bool dead(HumanRecordLink& h){return (static_cast<std::uint32_t>(h.state)&0xfffffffeU)==4U;}
 bool movement(const InputControl& c){return c.group==35&&(static_cast<std::uint32_t>(c.value)&0xffff0000U)==0x10000U&&((c.value&0xffff)|2)==19;}
 }
+bool input_hit_rectangle(const InputRectangle& r,std::int32_t x,std::int32_t y){
+    if(r.x>x||r.y>y)return false;
+    return add(r.x,r.width)>x&&add(r.y,r.height)>y;
+}
 void initialize_input(InputFrameState& s,InputInitializationWorld* world,InputFrameHost& host){
     s.subset=required(world).input_subset({28,0,1});s.last_down_frame=-1;
     world->subscribe_input_touch([&host](const InputTouch* e){input_touch(e,host);});

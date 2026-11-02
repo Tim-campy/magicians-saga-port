@@ -21,6 +21,11 @@ struct Inputs final:InputFrameHost,InputInitializationWorld {
     void update(){update_input(state,*this);}
 };
 int main()try{
+    {const InputRectangle r{-3,4,10,20};check(input_hit_rectangle(r,-3,4)&&input_hit_rectangle(r,6,23));
+     check(!input_hit_rectangle(r,-4,4)&&!input_hit_rectangle(r,7,4)&&!input_hit_rectangle(r,-3,24));
+     check(!input_hit_rectangle({0,0,0,4},0,0)&&!input_hit_rectangle({0,0,4,0},0,0));
+     check(!input_hit_rectangle({std::numeric_limits<std::int32_t>::max(),0,1,1},std::numeric_limits<std::int32_t>::max(),0));
+     check(input_hit_rectangle({std::numeric_limits<std::int32_t>::min()+2,0,-10,1},0,0));} // Native wrapping can make a negative width hit.
     {Inputs h;h.state.old_up=true;h.state.frame=42;h.state.last_down_frame=9;initialize_input(h.state,&h,h);
      check(h.state.old_up&&h.state.frame==42&&h.state.last_down_frame==-1);fails([&]{initialize_input(h.state,nullptr,h);});}
     {Inputs h;h.held_up=h.held_down=true;h.on_send=[&]{h.down_result=nullptr;};h.update();

@@ -1895,7 +1895,7 @@ game:0x06000791,form.QuestForm.Update,ui,reimplemented,1264,0x11daee4
 game:0x06000792,game:0x06000792,ui,,5776,0x11db3d4
 game:0x06000793,game:0x06000793,ui,,1012,0x11dd6b4
 game:0x06000794,game:0x06000794,ui,,268,0x11dca80
-game:0x06000795,game:0x06000795,ui,,4572,0x11ddd04
+game:0x06000795,form.QuestForm.Draw,ui,traced,4572,0x11ddd04
 game:0x06000796,form.QuestForm.DrawOffscreen,ui,reimplemented,208,0x11df004
 game:0x06000797,form.QuestForm.UpdateStaticRender,ui,reimplemented,12,0x11df46c
 game:0x06000798,game:0x06000798,ui,,148,0x11df478
@@ -6601,7 +6601,7 @@ kairo:0x0600092b,kairo:0x0600092b,ui,,104,0x1c49350
 kairo:0x0600092c,kairo:0x0600092c,ui,,92,0x1c493b8
 kairo:0x0600092d,kairo:0x0600092d,ui,,60,0x1c49414
 kairo:0x0600092e,kairo:0x0600092e,ui,,92,0x1c49468
-kairo:0x0600092f,kairo:0x0600092f,ui,,60,0x1c494c4
+kairo:0x0600092f,kairo.unity.surface.SurfaceBase.CheckFirstTouch,ui,documented,60,0x1c494c4
 kairo:0x06000930,kairo:0x06000930,ui,,192,0x1c48d8c
 kairo:0x06000931,kairo:0x06000931,ui,,320,0x1c49500
 kairo:0x06000932,kairo:0x06000932,ui,,24,0x1c45840
@@ -6638,7 +6638,7 @@ kairo:0x06000950,kairo:0x06000950,ui,,204,0x1c49e88
 kairo:0x06000951,kairo:0x06000951,ui,,424,0x1c49f54
 kairo:0x06000952,kairo:0x06000952,ui,,300,0x1c4a0fc
 kairo:0x06000953,kairo:0x06000953,ui,,120,0x1c4a228
-kairo:0x06000954,kairo:0x06000954,ui,,56,0x1c47c30
+kairo:0x06000954,kairo.unity.surface.SurfaceBase.CheckHitPointRect,ui,reimplemented,56,0x1c47c30
 kairo:0x06000955,kairo:0x06000955,ui,,300,0x1c4a2a0
 kairo:0x06000956,kairo:0x06000956,ui,,2348,0x1c47250
 kairo:0x06000957,kairo:0x06000957,ui,,176,0x1c4a98c
@@ -6761,12 +6761,12 @@ kairo:0x060009cc,kairo:0x060009cc,ui,,112,0x1c50238
 kairo:0x060009cd,kairo:0x060009cd,ui,,96,0x1c502a8
 kairo:0x060009ce,kairo:0x060009ce,ui,,104,0x1c50308
 kairo:0x060009cf,kairo:0x060009cf,ui,,104,0x1c503ec
-kairo:0x060009d0,kairo:0x060009d0,ui,,124,0x1c50370
+kairo:0x060009d0,kairo.unity.surface.TouchOption.Drag,ui,documented,124,0x1c50370
 kairo:0x060009d1,kairo:0x060009d1,ui,,116,0x1c50454
 kairo:0x060009d2,kairo:0x060009d2,ui,,152,0x1c504c8
 kairo:0x060009d3,kairo:0x060009d3,ui,,272,0x1c50560
 kairo:0x060009d4,kairo:0x060009d4,ui,,8,0x1c50670
-kairo:0x060009d5,kairo:0x060009d5,ui,,8,0x1c50678
+kairo:0x060009d5,kairo.unity.surface.TouchOption.Flag,ui,documented,8,0x1c50678
 kairo:0x060009d6,kairo:0x060009d6,ui,,8,0x1c50680
 kairo:0x060009d7,kairo:0x060009d7,ui,,176,0x1c50688
 kairo:0x060009d8,kairo:0x060009d8,ui,,16,0x1c50738

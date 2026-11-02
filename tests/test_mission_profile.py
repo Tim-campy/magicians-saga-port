@@ -16,6 +16,43 @@ from test_sprite_preview import jar,png,seb
 @unittest.skipUnless(EXE, 'saga_mission supplied by CTest')
 class MissionProfileTests(unittest.TestCase):
     @unittest.skipUnless(os.environ.get('SAGA_TEST_FONT'),'public font fixture supplied by CTest')
+    def test_map_pointer_regions_capture_release_cancel_and_modal(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);make_data_entry_fixture(root,os.environ['SAGA_TEST_FONT']);replay=root/'pointer.replay'
+            def run(script,frames=10):
+                replay.write_text(script,encoding='ascii')
+                return subprocess.run([str(EXE),'--data',str(root),'--quest','2','--headless','--frames',str(frames),'--replay',str(replay)],capture_output=True,text=True,timeout=30)
+            for x,y in ((-1,0),(600,0),(0,640)):
+                r=run(f'1 pointer 12 {x} {y} 0 0 40\n');self.assertEqual(r.returncode,0,r.stderr);state=json.loads(r.stdout)
+                self.assertEqual(state['camera']['scale'],100);self.assertEqual(state['quest_touch_events'],0)
+                self.assertEqual(state['map_pointer']['rejected'],1)
+            script=('1 pointer 0 -1 0 0 0 0\n1 pointer 8 10 10 3 4 0\n1 pointer 0 0 0 0 0 0\n'
+                    '1 pointer 8 700 700 5 -6 0\n1 pointer 12 700 700 0 0 40\n2 pointer 1 5000 5000 0 0 0\n3 pointer 8 0 0 1 1 0\n')
+            r=run(script);self.assertEqual(r.returncode,0,r.stderr);state=json.loads(r.stdout)
+            self.assertEqual(state['camera']['scale'],120);self.assertEqual(state['quest_touch_events'],5)
+            pointer=state['map_pointer'];self.assertEqual((pointer['events'],pointer['rejected'],pointer['cancellations']),(4,3,0))
+            self.assertFalse(pointer['captured']);self.assertEqual(pointer['region'],[0,0,600,640]);self.assertEqual(pointer['flags'],0)
+            self.assertEqual(run(script).stdout,r.stdout)
+            down='1 pointer 0 0 0 0 0 0\n'
+            held=run(down);self.assertEqual(held.returncode,0,held.stderr);held=json.loads(held.stdout)['map_pointer']
+            self.assertTrue(held['captured']);self.assertEqual(held['region'],[-1000,-1000,2000,2000]);self.assertEqual(held['flags'],40)
+            cancelled=run(down+'2 pointer cancel\n3 pointer 8 0 0 1 1 0\n4 pointer cancel\n')
+            self.assertEqual(cancelled.returncode,0,cancelled.stderr);cancelled=json.loads(cancelled.stdout)
+            self.assertEqual(cancelled['quest_touch_events'],2);self.assertFalse(cancelled['map_pointer']['captured'])
+            self.assertEqual((cancelled['map_pointer']['cancellations'],cancelled['map_pointer']['rejected']),(1,1))
+            wide=run('1 viewport 1600 1200\n1 pointer 0 1200 50 0 0 0\n2 pointer 8 1201 50 1 0 0\n2 pointer 12 1201 50 0 0 40\n3 pointer 1 5000 5000 0 0 0\n')
+            self.assertEqual(wide.returncode,0,wide.stderr);wide=json.loads(wide.stdout)
+            self.assertEqual((wide['map_pointer']['events'],wide['map_pointer']['rejected']),(2,2))
+            self.assertEqual(wide['camera']['scale'],100);self.assertFalse(wide['map_pointer']['captured'])
+            modal=run('21 pointer 0 0 0 0 0 0\n23 pointer 8 0 0 1 1 0\n',30)
+            self.assertEqual(modal.returncode,0,modal.stderr);modal=json.loads(modal.stdout)
+            self.assertTrue(modal['talk_pending']);self.assertFalse(modal['map_pointer']['captured'])
+            self.assertEqual(modal['map_pointer']['cancellations'],1);self.assertEqual(modal['replay_modal_ignored'],1)
+            for bad in ['0 pointer cancel\n','1 pointer 5 0 0 0 0 0\n','1 pointer 0 0 0 0 0\n',
+                        '1 pointer 0 2147483648 0 0 0 0\n','1 pointer cancel extra\n']:
+                self.assertNotEqual(run(bad).returncode,0)
+
+    @unittest.skipUnless(os.environ.get('SAGA_TEST_FONT'),'public font fixture supplied by CTest')
     def test_native_resource_image_clocks_use_raw_rows_and_form_frames(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);make_data_entry_fixture(root,os.environ['SAGA_TEST_FONT'])

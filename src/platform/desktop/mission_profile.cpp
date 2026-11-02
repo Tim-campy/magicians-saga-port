@@ -184,6 +184,27 @@ void MissionProfile::camera_touch(std::int32_t type,std::int32_t dx,std::int32_t
     InputControl control{17,0};QuestFormTouch event{{type,&control},dx,dy,delta};
     spatial->form_touch(quest_frame_state_,event);
 }
+QuestMapTouchRegion MissionProfile::map_pointer_region()const{
+    if(!offscreen_camera_||!spatial)throw std::logic_error("map pointer requires native mission presentation/map");
+    return quest_map_touch_region({0,0,view.width,view.height},map_pointer_captured_);
+}
+bool MissionProfile::map_pointer_hit(std::int32_t x,std::int32_t y)const{return input_hit_rectangle(map_pointer_region().bounds,x,y);}
+bool MissionProfile::map_pointer_touch(std::int32_t type,std::int32_t x,std::int32_t y,std::int32_t dx,std::int32_t dy,std::int32_t delta){
+    if(!humans||!humans->input_enabled())throw std::logic_error("map pointer requires native input");
+    if(type!=0&&type!=1&&type!=8&&type!=12)throw std::invalid_argument("unsupported map pointer type");
+    const auto region=map_pointer_region();map_pointer_x_=x;map_pointer_y_=y;
+    if((type==1||type==8)&&!map_pointer_captured_){++map_pointer_rejected_;return false;}
+    if(type!=1&&!input_hit_rectangle(region.bounds,x,y)){++map_pointer_rejected_;return false;}
+    camera_touch(type,dx,dy,delta);
+    if(type==0)map_pointer_captured_=true;
+    else if(type==1)map_pointer_captured_=false;
+    else if(type==12)camera_touch(1,0,0,0); // Desktop wheel policy: a momentary native pinch, preserving right-drag capture.
+    ++map_pointer_events_;return true;
+}
+void MissionProfile::cancel_map_pointer(){
+    if(!map_pointer_captured_)return;
+    camera_touch(1,0,0,0);map_pointer_captured_=false;++map_pointer_cancellations_;
+}
 void MissionProfile::bind_schedule(){
     const auto bind=[&](std::int32_t id,bool enabled,std::function<void(std::int32_t)> body){
         const auto index=static_cast<std::size_t>(id);configured_[index]=enabled;
@@ -240,6 +261,19 @@ void MissionProfile::load_replay(const std::filesystem::path& path){
     while(std::getline(file,line)){
         std::istringstream row(line);row.imbue(std::locale::classic());row>>std::ws;if(row.eof()||row.peek()=='#')continue;
         std::string frame,kind,value;if(!(row>>frame>>kind>>value))throw std::invalid_argument("replay requires step keys|attack|pulse value or step cursor x y");
+        if(kind=="pointer"){
+            std::uint64_t step=0;InputAction action{value=="cancel"?InputKind::pointer_cancel:InputKind::pointer};
+            const auto parsed=std::from_chars(frame.data(),frame.data()+frame.size(),step);
+            if(parsed.ec!=std::errc{}||parsed.ptr!=frame.data()+frame.size()||!step||step<previous)throw std::invalid_argument("pointer replay requires ordered positive step");
+            if(action.kind==InputKind::pointer){
+                std::int32_t type=0;const auto result=std::from_chars(value.data(),value.data()+value.size(),type);
+                if(result.ec!=std::errc{}||result.ptr!=value.data()+value.size()||(type!=0&&type!=1&&type!=8&&type!=12)||
+                   !(row>>action.x>>action.y>>action.dx>>action.dy>>action.z))throw std::invalid_argument("pointer replay requires type0/1/8/12, int32 x y dx dy pinch-delta, or cancel");
+                action.value=static_cast<std::uint32_t>(type);
+            }
+            end(row);if(++count>100000)throw std::length_error("too many replay actions");
+            replay_[step].push_back(action);previous=step;continue;
+        }
         if(kind=="camera"){
             std::uint64_t step=0;std::int32_t type=0;InputAction action{InputKind::camera};
             const auto a=std::from_chars(frame.data(),frame.data()+frame.size(),step),b=std::from_chars(value.data(),value.data()+value.size(),type);
@@ -988,6 +1022,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             if(action.kind==InputKind::viewport&&!offscreen_camera_)throw std::invalid_argument("viewport replay requires mission_presentation");
             else if(action.kind==InputKind::answer&&(!stage_loop||!initialized_loaded_))throw std::invalid_argument("answer replay requires stage_loop and system_init");
             else if(action.kind==InputKind::camera&&(!spatial||!input_scenario))throw std::invalid_argument("camera replay requires mission map/input");
+            else if((action.kind==InputKind::pointer||action.kind==InputKind::pointer_cancel)&&(!spatial||!input_scenario||!offscreen_camera_))throw std::invalid_argument("pointer replay requires native mission presentation/map/input");
             else if((action.kind==InputKind::cursor||action.kind==InputKind::click)&&!spatial)throw std::invalid_argument("cursor/click replay requires mission_map fresh");
         for(std::int32_t i=0;i<frames;++i)mission->advance_animations({automatic!=0,application_update!=0});
         if(spatial)spatial->advance_visibility();
@@ -1011,10 +1046,11 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
 }
 bool MissionProfile::step(){
     if(!mission)throw std::invalid_argument("selected logic requires a table-backed entity scene");
+    if(talk_pending()||(humans&&(humans->stage_modal_pending()||humans->transition_pending())))cancel_map_pointer();
     if(humans&&humans->transition_pending())return false;
     const auto input=replay_.find(logic_steps+1);
     if(input!=replay_.end())for(const auto& action:input->second){
-        if((talk_pending()||(humans&&humans->stage_modal_pending()))&&action.kind!=InputKind::keys&&action.kind!=InputKind::pulse&&action.kind!=InputKind::viewport&&
+        if((talk_pending()||(humans&&humans->stage_modal_pending()))&&action.kind!=InputKind::keys&&action.kind!=InputKind::pulse&&action.kind!=InputKind::viewport&&action.kind!=InputKind::pointer_cancel&&
            !(action.kind==InputKind::answer&&humans&&humans->stage_modal_pending())){++replay_modal_ignored_;continue;}
         if(action.kind==InputKind::keys)humans->set_input_keys(action.value);
         else if(action.kind==InputKind::attack)humans->select_input_attack(static_cast<std::int32_t>(action.value));
@@ -1022,6 +1058,8 @@ bool MissionProfile::step(){
         else if(action.kind==InputKind::answer)humans->answer_stage_dialog(action.x);
         else if(action.kind==InputKind::viewport)resize_viewport(action.x,action.y);
         else if(action.kind==InputKind::camera)camera_touch(static_cast<std::int32_t>(action.value),action.x,action.y,action.z);
+        else if(action.kind==InputKind::pointer)map_pointer_touch(static_cast<std::int32_t>(action.value),action.x,action.y,action.dx,action.dy,action.z);
+        else if(action.kind==InputKind::pointer_cancel)cancel_map_pointer();
         else if(action.kind==InputKind::cursor)spatial->touch_cursor(action.x,action.y);
         else if(action.kind==InputKind::click)spatial->click_cursor(action.x,action.y);
         else humans->send_logical_touch(action.x,action.y,action.z);
@@ -1038,6 +1076,7 @@ bool MissionProfile::step(){
         catch(...){humans->end_stage_frame();throw;}
         humans->end_stage_frame();
     }else update_world(0);
+    if(talk_pending()||(humans&&(humans->stage_modal_pending()||humans->transition_pending())))cancel_map_pointer();
     if(halted_)return false;
     ++logic_steps;return true;
 }
@@ -1111,6 +1150,10 @@ void MissionProfile::write_combat_report(std::ostream& out){
         out<<",\"viewport\":{\"width\":"<<view.width<<",\"height\":"<<view.height<<",\"changes\":"<<viewport_changes_<<",\"projection\":[";
         for(std::size_t i=0;i<projection.values.size();++i){if(i)out<<',';out<<projection.values[i];}out<<"]}";
     }
+    if(offscreen_camera_&&spatial){const auto region=map_pointer_region();const auto& b=region.bounds;
+        out<<",\"map_pointer\":{\"captured\":"<<(map_pointer_captured_?"true":"false")<<",\"events\":"<<map_pointer_events_
+           <<",\"rejected\":"<<map_pointer_rejected_<<",\"cancellations\":"<<map_pointer_cancellations_
+           <<",\"x\":"<<map_pointer_x_<<",\"y\":"<<map_pointer_y_<<",\"region\":["<<b.x<<','<<b.y<<','<<b.width<<','<<b.height<<"],\"flags\":"<<region.flags<<'}';}
     out<<",\"init_schedule_complete\":"<<(initialization_complete_?"true":"false")<<",\"init_world_loaded_byte\":";
     if(initialized_loaded_)out<<static_cast<unsigned>(entity_world->player_world().loaded);else out<<"null";
     out<<",\"init_order\":[";for(std::size_t i=0;i<initialized_order_.size();++i){if(i)out<<',';out<<initialized_order_[i];}out<<']';

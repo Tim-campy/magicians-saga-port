@@ -64,6 +64,7 @@ Manifest: portrait orientation (`1`), `hardwareAccelerated=false`, `resizeableAc
 | [rewards.md](rewards.md) | Defeat, drops, quest results, treasure, town return |
 | [events.md](events.md) | Event tables, opcodes, delays, progression |
 | [integration.md](integration.md) | Slice hosts, wiring state, stubs and provisional inputs |
+| [integration-input.md](integration-input.md) | Mission pointer capture, controls/replay, cursor, viewport, camera and visibility wiring |
 | [text.md](text.md) | Presentation text, talk, fonts, layout |
 
 ## Key methods

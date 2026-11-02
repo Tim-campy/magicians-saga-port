@@ -11,6 +11,7 @@
 #include <iomanip>
 #include <iostream>
 #include <limits>
+#include <optional>
 #include <set>
 #include <string_view>
 #include <tuple>
@@ -144,11 +145,25 @@ int run_native_mission(MissionProfile& profile,std::int32_t width,std::int32_t h
     };
     if(loop){bool running=true,paused=false;std::string current_title=title;float drag_x=0,drag_y=0,wheel_delta=0;
         const auto take_delta=[](float& pending,float delta){pending+=delta;const auto value=factory_cell_coordinate(pending,1);pending-=static_cast<float>(value);return value;};
+        struct PointerPosition {std::int32_t x,y;float window_width,window_height;};
+        const auto pointer_position=[&](float x,float y)->std::optional<PointerPosition>{
+            int w=0,h=0;require(SDL_GetWindowSize(window.get(),&w,&h),"SDL pointer window size");if(w<1||h<1)return std::nullopt;
+            return PointerPosition{factory_cell_coordinate(x*static_cast<float>(width)/static_cast<float>(w),1),
+                factory_cell_coordinate(y*static_cast<float>(height)/static_cast<float>(h),1),static_cast<float>(w),static_cast<float>(h)};
+        };
+        const auto send_pointer=[&](std::int32_t type,const PointerPosition& p,std::int32_t dx,std::int32_t dy,std::int32_t pinch){
+            if(profile.resizable_viewport())return profile.map_pointer_touch(type,p.x,p.y,dx,dy,pinch);
+            profile.camera_touch(type,dx,dy,pinch);if(type==12)profile.camera_touch(1,0,0,0);return true; // Retain legacy normalized diagnostics.
+        };
         while(running&&(!bounded||rendered<static_cast<std::uint64_t>(frame_limit))){const auto deadline=SDL_GetTicks()+static_cast<Uint64>(capture?0:*tick_ms);bool single_step=false;SDL_Event event;
+            if(!profile.accepts_live_gameplay_input())drag_x=drag_y=wheel_delta=0;
             while(SDL_PollEvent(&event)){
                 if(event.type==SDL_EVENT_QUIT)running=false;
                 else if(event.type==SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED&&event.window.windowID==SDL_GetWindowID(window.get())&&live_viewport){
                     int w=0,h=0;require(SDL_GetWindowSizeInPixels(window.get(),&w,&h),"SDL live pixel size");resize(w,h);
+                }
+                else if(interactive&&profile.accepts_live_input()&&event.type==SDL_EVENT_WINDOW_FOCUS_LOST&&event.window.windowID==SDL_GetWindowID(window.get())){
+                    profile.cancel_map_pointer();drag_x=drag_y=wheel_delta=0;
                 }
                 else if(event.type==SDL_EVENT_KEY_DOWN&&!event.key.repeat){
                     if(event.key.key==SDLK_ESCAPE)running=false;
@@ -182,16 +197,20 @@ int run_native_mission(MissionProfile& profile,std::int32_t width,std::int32_t h
                     profile.humans->select_input_attack(profile.humans->selected_attack());
                 else if(interactive&&profile.accepts_live_gameplay_input()&&profile.spatial){
                     // Desktop policy: right drag is QuestForm group17; a wheel unit supplies20 raw pinch units.
-                    if(event.type==SDL_EVENT_MOUSE_BUTTON_DOWN&&event.button.button==SDL_BUTTON_RIGHT){drag_x=drag_y=0;profile.camera_touch(0,0,0,0);}
-                    else if(event.type==SDL_EVENT_MOUSE_BUTTON_UP&&event.button.button==SDL_BUTTON_RIGHT){drag_x=drag_y=0;profile.camera_touch(1,0,0,0);}
+                    if(event.type==SDL_EVENT_MOUSE_BUTTON_DOWN&&event.button.button==SDL_BUTTON_RIGHT){
+                        drag_x=drag_y=0;if(const auto p=pointer_position(event.button.x,event.button.y))send_pointer(0,*p,0,0,0);
+                    }else if(event.type==SDL_EVENT_MOUSE_BUTTON_UP&&event.button.button==SDL_BUTTON_RIGHT){
+                        drag_x=drag_y=0;if(const auto p=pointer_position(event.button.x,event.button.y))send_pointer(1,*p,0,0,0);
+                    }
                     else if(event.type==SDL_EVENT_MOUSE_MOTION&&(event.motion.state&SDL_BUTTON_RMASK)!=0){
-                        int w=0,h=0;require(SDL_GetWindowSize(window.get(),&w,&h),"SDL pointer window size");
-                        if(w>0&&h>0){const auto dx=take_delta(drag_x,event.motion.xrel*static_cast<float>(width)/static_cast<float>(w));
-                            const auto dy=take_delta(drag_y,event.motion.yrel*static_cast<float>(height)/static_cast<float>(h));
-                            profile.camera_touch(8,dx,dy,0);}
+                        if(const auto p=pointer_position(event.motion.x,event.motion.y)){
+                            const auto dx=take_delta(drag_x,event.motion.xrel*static_cast<float>(width)/p->window_width);
+                            const auto dy=take_delta(drag_y,event.motion.yrel*static_cast<float>(height)/p->window_height);
+                            send_pointer(8,*p,dx,dy,0);}
                     }else if(event.type==SDL_EVENT_MOUSE_WHEEL){
-                        const auto delta=take_delta(wheel_delta,event.wheel.y*20.0F);
-                        if(delta){profile.camera_touch(12,0,0,delta);profile.camera_touch(1,0,0,0);}
+                        if(const auto p=pointer_position(event.wheel.mouse_x,event.wheel.mouse_y)){
+                            if(profile.resizable_viewport()&&!profile.map_pointer_hit(p->x,p->y))send_pointer(12,*p,0,0,0);
+                            else{const auto delta=take_delta(wheel_delta,event.wheel.y*20.0F);if(delta)send_pointer(12,*p,0,0,delta);}}
                     }
                 }
             }
@@ -215,6 +234,7 @@ int run_native_mission(MissionProfile& profile,std::int32_t width,std::int32_t h
             }
             submit();renderer.present();++rendered;const auto now=SDL_GetTicks();if(now<deadline)SDL_Delay(static_cast<Uint32>(deadline-now));
         }
+        if(interactive&&profile.accepts_live_input())profile.cancel_map_pointer();
         if(!capture){std::cout<<"{\"entities\":"<<profile.selected_count<<",\"render_frames\":"<<rendered<<",\"logic_steps\":"<<logic_steps
                  <<',';write_state();
         std::cout<<",\"profile\":\"selected mission systems; full application entry, save restoration and complete-state hashes unbound\"}\n";return 0;}
