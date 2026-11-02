@@ -122,7 +122,10 @@ class TownProfileTests(unittest.TestCase):
             self.assertEqual([row[5] for row in scene['clouds']],[row[5] for row in other['clouds']])
             self.assertNotEqual([row[1] for row in scene['clouds']],[row[1] for row in other['clouds']])
             self.assertTrue(any(row[0]==4 and row[1]==1 for row in scene['draws']))
-            self.assertIn('floor, buildings, residents',report['scope'])
+            self.assertEqual(scene['floor']['depth_layer'],10)
+            self.assertTrue(scene['floor']['strips']);self.assertTrue(all(row[0]==1 for row in scene['floor']['strips']))
+            self.assertEqual(scene['draws'][-1],[3,0,40,103,0,0,0])
+            self.assertIn('buildings, residents',report['scope'])
             self.assertNotEqual(self.run_host(root,'--background','--app-seed','42').returncode,0)
 
 

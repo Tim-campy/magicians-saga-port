@@ -184,6 +184,8 @@ int main()try{
     check(backend.quads().size()==1);
     auto* layered_payload=layered.resource().clips->at(0)->sprites;
     check(layered_payload->draw_offset->at(0)==0&&layered_payload->draw_offset->at(1)==0);
+    backend.clear_quads();backend.draw_seb_frame(&layer_resource,0,4,10.5F,10.25F,1);
+    check(backend.quads().size()==1&&box()[0]==10.5F); // Unanchored selected layer, frame modulo4.
     backend.clear_quads();backend.draw_seb_anchor_frame(&layer_resource,0,4,10,10,2);
     check(backend.quads().size()==2);
     backend.clear_quads();fails([&]{backend.draw_seb_anchor_frame(&layer_resource,0,0,10,10,2,2);});

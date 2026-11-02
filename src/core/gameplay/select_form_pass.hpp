@@ -7,6 +7,7 @@
 #include "select_touch_move.hpp"
 #include "select_triggers.hpp"
 #include "town_bubble.hpp"
+#include "render_draw.hpp"
 #include <array>
 namespace saga::core {
 struct SelectBackgroundState {
@@ -65,6 +66,19 @@ void draw_select_decorations(SelectSceneryState&,std::int32_t type,SelectBackgro
 // _Draw 0x11f0a80..0x11f0e10: two ground passes, then backward cloud drawing.
 // Caller runs DrawDecoObject(0) first; floor/buildings/residents are later layers.
 void draw_select_terrain(SelectSceneryState&,SelectBackgroundOrigin,SelectSceneryHost&);
+class SelectFloorHost:public SelectViewportHost {
+public:
+    virtual std::int32_t floor_view_height()=0;
+    virtual SebSpriteState* floor_sprite()=0; // Fresh resSelect.seb[RESSELECT_SEB_FLOOR].
+    virtual RenderImage* floor_image()=0; // Fresh resSelect.images[RESSELECT_IMG_SELECT_FLOOR].
+    virtual void floor_draw(SebSpriteState*,RenderImage*,std::int32_t frame,std::int32_t x,std::int32_t y)=0;
+    virtual void floor_depth_layer(std::int32_t)=0;
+    virtual SelectBackgroundResource gate_resource()=0;
+    virtual std::int32_t gate_clip()=0;
+    virtual void gate_draw(SelectBackgroundResource,std::int32_t clip,std::int32_t frame,std::int32_t layer,float x,float y)=0;
+};
+// _Draw 0x11f0e10..0x11f0fe0: floor ends, middle strips, layer10 and gate0/layer0.
+void draw_select_floor(const SelectSceneryState&,SelectBackgroundOrigin,SelectFloorHost&);
 struct SelectFormPassState {
     std::int32_t state;
     bool captured;

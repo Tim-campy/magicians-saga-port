@@ -21,12 +21,17 @@ def add_town_background(root,scenery=False):
     if scenery:
         def layers():
             return struct.pack('>hh',3,10)+b''.join(struct.pack('>hh10h',1,0,0,2,i*2,0,2,2,0,0,0,0) for i in range(3))
-        members[0]=('img.inf',b'0\tatlas.png,bin\n1\tground.png,bin\n2\tbirds.png,bin\n9\tbackground.png,bin\n')
-        members[1]=('seb.inf',b'0\tbackground.seb\n4\tground.seb\n14\tcloud.seb\n22\tbirds.seb\n23\tleaves.seb\n')
+        members[0]=('img.inf',b'0\tatlas.png,bin\n1\tground.png,bin\n2\tbirds.png,bin\n3\tfloor.png,bin\n4\tgate.png,bin\n9\tbackground.png,bin\n')
+        members[1]=('seb.inf',b'0\tbackground.seb\n2\tfloor.seb\n3\tgate.seb\n4\tground.seb\n14\tcloud.seb\n22\tbirds.seb\n23\tleaves.seb\n')
         members[2]=('background.seb',seb([(0,0,0,0,2,2,0,0,0,0),(1,0,2,0,2,2,0,0,0,0),(3,0,0,0,2,2,0,0,0,0)]))
         members.extend([
             ('ground.seb',seb([(0,1,0,0,40,8,0,0,0,0),(1,1,0,0,40,8,0,0,0,0)])),
             ('cloud.seb',seb([(0,0,0,0,2,2,0,0,0,0)])),
+            # TexId77 deliberately has no image slot; the floor helper must use Image3.
+            ('floor.seb',seb([(frame,77,frame*32,0,32,6,0,0,0,0) for frame in range(3)])),
+            ('floor.png',png(96,6,[c for _ in range(6) for color in [(120,0,0,255)]*32+[(0,100,200,255)]*32+[(0,120,0,255)]*32 for c in color])),
+            ('gate.seb',struct.pack('>hh',2,4)+struct.pack('>hh10h',1,0,0,4,0,0,3,2,5,7,0,0)+struct.pack('>hh10h',1,0,0,0,0,0,2,2,5,7,0,0)),
+            ('gate.png',png(3,2,[210,30,90,255]*6)),
             ('birds.seb',layers()),('leaves.seb',layers()),
             ('ground.png',png(40,8,[80,90,100,255]*(40*8))),
             ('birds.png',png(6,2,[channel for _ in range(2) for color in [(255,0,255,255)]*2+[(255,255,0,255)]*2+[(0,255,255,255)]*2 for channel in color]))])

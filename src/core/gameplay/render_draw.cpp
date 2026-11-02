@@ -89,6 +89,25 @@ void draw_render_queue(RenderDrawState& state,RenderGraphics* target,std::int32_
         index=add(index,1);
     }
 }
+void draw_fixed_image_seb(RenderGraphics* graphics,std::int32_t x,std::int32_t y,SebSpriteState* seb,RenderImage* image,std::int32_t frame,SebStaticWork& work){
+    if(!seb)throw std::invalid_argument("missing fixed-image SEB");
+    const auto rows=seb_sprites(*seb,work,frame);
+    const auto& list=required(rows.get());
+    const auto length=[&](){
+        if(list.size()>static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max()))throw std::length_error("fixed-image sprite count exceeds int32");
+        return static_cast<std::int32_t>(list.size());
+    };
+    for(std::int32_t i=0;i<length();i=add(i,1)){
+        const auto row=list.at(static_cast<std::size_t>(i));const auto& sprite=required(row.get());
+        if(sprite.at(1)<0)continue;
+        static_cast<void>(sprite.at(7));
+        if(!graphics)throw std::invalid_argument("missing fixed-image graphics");
+        RenderImageDraw draw;draw.image=image;
+        draw.x=static_cast<float>(add(x,sprite.at(6)));draw.y=static_cast<float>(add(y,sprite.at(7)));
+        draw.u=sprite.at(2);draw.v=sprite.at(3);draw.source_width=sprite.at(4);draw.source_height=sprite.at(5);
+        graphics->draw_image(draw);
+    }
+}
 std::int32_t draw_number_images(NumberImageHost& host,std::int32_t clip,const std::u16string* text,
         std::int32_t x,std::int32_t y,std::int32_t padding,std::int32_t anchor){
     const auto metric=host.number_sprite(clip,0,0);

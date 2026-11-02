@@ -19,7 +19,7 @@ struct TownBackgroundContext {
     bool scenery=false;
     std::int32_t app_seed=42,lib_seed=42; // Separate provisional streams at the cloud-init boundary.
 };
-class TownBackground final:private core::SelectBackgroundHost,private core::SelectActiveAreaHost,private core::SelectCameraHost,private core::SelectSceneryHost {
+class TownBackground final:private core::SelectBackgroundHost,private core::SelectActiveAreaHost,private core::SelectCameraHost,private core::SelectSceneryHost,private core::SelectFloorHost {
 public:
     TownBackground(ResourceArchive& tables,const GameArchiveEntry& selected,ResourceProfile,std::int32_t capacity,TownBackgroundContext);
     void draw(BitmapBackend&);
@@ -55,6 +55,10 @@ private:
     std::vector<Draw> draws_;
     struct SceneryDraw {std::int32_t clip,frame;float x,y;std::int32_t layer,anchor,reverse;};
     std::vector<SceneryDraw> scenery_draws_;
+    struct FloorDraw {std::int32_t frame,x,y;};
+    std::vector<FloorDraw> floor_draws_;
+    core::SebStaticWork floor_work_;
+    std::int32_t floor_layer_=0;
     std::size_t quads_=0;
     std::shared_ptr<core::EventIntegers> normal_save_integers()override{return save_integers_;}
     std::shared_ptr<core::CameraAreas> camera_areas()override{return camera_areas_;}
@@ -82,5 +86,13 @@ private:
     void scenery_reverse(std::int32_t value)override{backend_->graphics().reverse=value;}
     void scenery_draw(core::SelectBackgroundResource,std::int32_t,std::int32_t,float,float,std::int32_t)override;
     void scenery_draw_indexed(core::SelectBackgroundResource,std::int32_t,std::int32_t,float,float,std::int32_t,std::int32_t)override;
+    std::int32_t floor_view_height()override{return view_height();}
+    core::SebSpriteState* floor_sprite()override;
+    core::RenderImage* floor_image()override{return manager_.drawing().images->at(3);} // RESSELECT_IMG_SELECT_FLOOR.
+    void floor_draw(core::SebSpriteState*,core::RenderImage*,std::int32_t,std::int32_t,std::int32_t)override;
+    void floor_depth_layer(std::int32_t value)override{floor_layer_=value;backend_->set_depth_layer(value);}
+    core::SelectBackgroundResource gate_resource()override{return &manager_.drawing();}
+    std::int32_t gate_clip()override{return 3;} // RESSELECT_SEB_GATE, AppData static+0x170.
+    void gate_draw(core::SelectBackgroundResource,std::int32_t,std::int32_t,std::int32_t,float,float)override;
 };
 } // namespace saga::desktop

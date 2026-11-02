@@ -34,7 +34,7 @@ int main(int argc,char** argv)try{
     if(argc==2&&std::string_view(argv[1])=="--help"){
         std::cout<<"Usage: saga_town --data extracted-root [--language English.lproj] [--dpi 1]\n"
             "Background prefix: --background or --capture new.bmp (viewer build).\n"
-            "Add --scenery for native birds, ground and clouds; --app-seed 42 --lib-seed 42 are separate provisional entry streams.\n"
+            "Add --scenery for native birds, ground, clouds, floor and gate; --app-seed 42 --lib-seed 42 are separate provisional entry streams.\n"
             "Provisional desktop context: --width 600 --height 640 --view-x 0 --view-y 53; scales100.\n"
             "Camera requests: --camera-x 0 --camera-y -9999, clamped by native fresh Area/Town bounds.\n"
             "S2 data projection: fresh Town.Init, ResetBuildingList and GetBuildingList.\n"
@@ -119,6 +119,6 @@ int main(int argc,char** argv)try{
     std::cout<<"],\"source_buildings\":";write_rows(std::cout,town.state.building_list);
     std::cout<<",\"buildings\":";write_rows(std::cout,buildings);
     if(backdrop)backdrop->report(std::cout);
-    std::cout<<",\"scope\":\""<<(context.scenery?"Native cloud/decor initialization and drawing through ground/cloud prefix; floor, buildings, residents, quest selection and mission return unbound":backdrop?"Town data and native background prefix; decorations, buildings, residents, quest selection and mission return unbound":"Town data/cache projection; SelectForm drawing, residents, quest selection and mission return unbound")<<"\"}\n";
+    std::cout<<",\"scope\":\""<<(context.scenery?"Native cloud/decor initialization and drawing through floor/gate prefix; buildings, residents, quest selection and mission return unbound":backdrop?"Town data and native background prefix; decorations, buildings, residents, quest selection and mission return unbound":"Town data/cache projection; SelectForm drawing, residents, quest selection and mission return unbound")<<"\"}\n";
     return 0;
 }catch(const std::exception& error){std::cerr<<"saga_town: "<<error.what()<<'\n';return 1;}

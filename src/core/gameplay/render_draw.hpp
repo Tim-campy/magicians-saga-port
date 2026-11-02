@@ -61,6 +61,9 @@ public:
 // AppData.DrawZSortObjects 0x1115e54. Consumes current row/count references without clearing.
 // No implicit sort or exception cleanup; callback changes affect later reads/rows.
 void draw_render_queue(RenderDrawState&,RenderGraphics*,std::int32_t type,RenderDrawHost&);
+// AppData.DrawSeb 0x11041a4: instance sprite rows, raw frame, explicit image.
+// Negative TexIds skip drawing; no clocks, anchors, image lookup or sprite flags.
+void draw_fixed_image_seb(RenderGraphics*,std::int32_t x,std::int32_t y,SebSpriteState*,RenderImage*,std::int32_t frame,SebStaticWork&);
 class NumberImageHost {
 public:
     virtual ~NumberImageHost()=default;

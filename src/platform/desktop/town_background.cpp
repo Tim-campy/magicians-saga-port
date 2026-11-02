@@ -60,12 +60,13 @@ void TownBackground::draw_background(SelectBackgroundResource resource,std::int3
     draws_.push_back({clip,frame,x,y});backend_->draw_seb_frame(static_cast<RenderDrawResource*>(resource),clip,frame,x,y);
 }
 void TownBackground::draw(BitmapBackend& backend){
-    backend_=&backend;draws_.clear();scenery_draws_.clear();const auto before=backend.quads().size();
+    backend_=&backend;draws_.clear();scenery_draws_.clear();floor_draws_.clear();floor_layer_=0;const auto before=backend.quads().size();
     try{
         const auto origin=draw_select_background({camera_x_,camera_y_,camera_.left_extent,camera_.right_extent,context_.view_y,&context_.view_x},*this);
         if(context_.scenery){
             draw_select_decorations(scenery_,0,origin,*this);
             draw_select_terrain(scenery_,origin,*this);
+            draw_select_floor(scenery_,origin,*this);
         }
     }
     catch(...){backend_=nullptr;throw;}
@@ -90,6 +91,17 @@ void TownBackground::scenery_draw_indexed(SelectBackgroundResource resource,std:
     scenery_draws_.push_back({clip,frame,x,y,layer,anchor,backend_->graphics().reverse});
     backend_->draw_seb_anchor_frame(static_cast<RenderDrawResource*>(resource),clip,frame,x,y,anchor,layer);
 }
+SebSpriteState* TownBackground::floor_sprite(){
+    auto* clock=manager_.animations().clips->at(2);return clock?clock->sprites:nullptr; // RESSELECT_SEB_FLOOR.
+}
+void TownBackground::floor_draw(SebSpriteState* sprite,RenderImage* image,std::int32_t frame,std::int32_t x,std::int32_t y){
+    floor_draws_.push_back({frame,x,y});
+    draw_fixed_image_seb(&backend_->graphics(),x,y,sprite,image,frame,floor_work_);
+}
+void TownBackground::gate_draw(SelectBackgroundResource resource,std::int32_t clip,std::int32_t frame,std::int32_t layer,float x,float y){
+    scenery_draws_.push_back({clip,frame,x,y,layer,0,backend_->graphics().reverse});
+    backend_->draw_seb_frame(static_cast<RenderDrawResource*>(resource),clip,frame,x,y,layer);
+}
 void TownBackground::report(std::ostream& out)const{
     out<<std::setprecision(std::numeric_limits<float>::max_digits10)
        <<",\"background\":{\"resource\":11,\"image\":9,\"clip\":0,\"provisional_context\":true,\"viewport\":["<<context_.width<<','<<context_.height
@@ -110,7 +122,10 @@ void TownBackground::report(std::ostream& out)const{
         rows("clouds",scenery_.clouds);rows("birds",scenery_.birds);rows("leaves",scenery_.leaves);
         out<<",\"draws\":[";
         for(std::size_t i=0;i<scenery_draws_.size();++i){if(i)out<<',';const auto& d=scenery_draws_[i];
-            out<<'['<<d.clip<<','<<d.frame<<','<<d.x<<','<<d.y<<','<<d.layer<<','<<d.anchor<<','<<d.reverse<<']';}out<<"]}";
+            out<<'['<<d.clip<<','<<d.frame<<','<<d.x<<','<<d.y<<','<<d.layer<<','<<d.anchor<<','<<d.reverse<<']';}
+        out<<"],\"floor\":{\"depth_layer\":"<<floor_layer_<<",\"strips\":[";
+        for(std::size_t i=0;i<floor_draws_.size();++i){if(i)out<<',';const auto& d=floor_draws_[i];out<<'['<<d.frame<<','<<d.x<<','<<d.y<<']';}
+        out<<"]}}";
     }
     out<<'}';
 }

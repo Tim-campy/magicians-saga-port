@@ -325,8 +325,8 @@ void BitmapBackend::draw_line(PixelImage& solid,float x1,float y1,float x2,float
 void BitmapBackend::draw_seb(std::int32_t resource,std::int32_t clip,std::optional<std::int32_t> requested,std::int32_t x,std::int32_t y){
     draw_seb_from(impl_->resource(resource),clip,requested,static_cast<float>(x),static_cast<float>(y));
 }
-void BitmapBackend::draw_seb_frame(RenderDrawResource* manager,std::int32_t clip,std::int32_t frame,float x,float y){
-    draw_seb_from(manager,clip,frame,x,y);
+void BitmapBackend::draw_seb_frame(RenderDrawResource* manager,std::int32_t clip,std::int32_t frame,float x,float y,std::int32_t layer){
+    draw_seb_from(manager,clip,frame,x,y,layer);
 }
 void BitmapBackend::draw_bitmap(PixelImage& image,float x,float y,float width,float height){
     RenderImageDraw draw;draw.image=&image;draw.x=x;draw.y=y;draw.width=width;draw.height=height;draw.scaled=true;

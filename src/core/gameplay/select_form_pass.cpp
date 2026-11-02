@@ -147,6 +147,26 @@ void draw_select_terrain(SelectSceneryState& state,SelectBackgroundOrigin origin
         host.scenery_draw(resource,clip,frame,static_cast<float>(background_add(rx,origin.x/20)),static_cast<float>(background_add(ry,origin.y)),0);
     }
 }
+void draw_select_floor(const SelectSceneryState& state,SelectBackgroundOrigin origin,SelectFloorHost& host){
+    const auto start=background_add(state.left_extent,40);const auto end=background_add(state.right_extent,-72);
+    for(auto tile=start;tile<end;){
+        const auto x=background_add(origin.x,tile);const auto height=host.game_height();
+        const auto visible=check_select_view_area(x,background_add(height,-1),74,0,host);
+        const auto next=background_add(tile,32);
+        if(visible){
+            auto frame=tile>start?1:0;if(end<next)frame=2;
+            const auto raw_height=host.floor_view_height();
+            auto* sprite=host.floor_sprite();auto* image=host.floor_image();
+            host.floor_draw(sprite,image,frame,x,background_add(background_add(origin.y,-100),raw_height));
+        }
+        tile=next;
+    }
+    host.floor_depth_layer(10);
+    const auto height=host.floor_view_height();const auto resource=host.gate_resource();
+    if(!resource)throw std::invalid_argument("missing SelectForm gate resource");
+    const auto clip=host.gate_clip();
+    host.gate_draw(resource,clip,0,0,static_cast<float>(background_add(origin.x,40)),static_cast<float>(background_add(background_add(origin.y,-70),height)));
+}
 SelectUpdatePrefixResult update_select_form_prefix(SelectPreludeState& prelude,SelectPreludeHost& prelude_host,
     SelectFormPassState& state,SelectFormPassHost& host,SelectCloudHost& clouds,SelectMarkerHost& markers,
     EventDelayQueue& queue,EventExecutionHost& execution,EventConditionHost& conditions,

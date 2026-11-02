@@ -339,7 +339,7 @@ game:0x06000165,game:0x06000165,boot,,4,0x1103ce0
 game:0x06000166,game:0x06000166,boot,,428,0x1103ce4
 game:0x06000167,game:0x06000167,boot,,4,0x1103f28
 game:0x06000168,game:0x06000168,boot,,632,0x1103f2c
-game:0x06000169,game:0x06000169,boot,,224,0x11041a4
+game:0x06000169,main.AppData.DrawSeb,boot,reimplemented,224,0x11041a4
 game:0x0600016a,game:0x0600016a,boot,,228,0x1104284
 game:0x0600016b,game:0x0600016b,boot,,292,0x1104368
 game:0x0600016c,game:0x0600016c,boot,,196,0x110448c
@@ -10083,7 +10083,7 @@ kairo:0x060016f8,kairo:0x060016f8,ui,,312,0x1ba8798
 kairo:0x060016f9,kairo:0x060016f9,ui,,132,0x1ba8aa0
 kairo:0x060016fa,kairo:0x060016fa,ui,,136,0x1ba8b24
 kairo:0x060016fb,kairo:0x060016fb,ui,,84,0x1ba8c10
-kairo:0x060016fc,kairo:0x060016fc,ui,,84,0x1ba8694
+kairo:0x060016fc,kairo.unity.ui.ResourceManager.DrawSeb,ui,reimplemented,84,0x1ba8694
 kairo:0x060016fd,kairo.unity.ui.ResourceManager.DrawSebAnchor,ui,documented,464,0x1ba8c68
 kairo:0x060016fe,kairo.unity.ui.ResourceManager.DrawSebAnchor,ui,reimplemented,452,0x1ba8f78
 kairo:0x060016ff,kairo.unity.ui.ResourceManager.DrawSebAnchor,ui,reimplemented,464,0x1ba88d0

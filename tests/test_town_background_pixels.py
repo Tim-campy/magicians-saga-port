@@ -26,12 +26,22 @@ class TownBackgroundPixels(unittest.TestCase):
             width,height,pixels=bmp_pixels(first.read_bytes());self.assertEqual((width,height),(320,200))
             ground_y=200-8+53-80 # Raw height - SEB bounds height + viewY + clamped cameraY.
             for y in range(ground_y,ground_y+8):self.assertEqual(pixels[y*width:(y+1)*width],[(80,90,100,255)]*width)
+            # Floor uses Image3 despite absent TexId77; gate keeps its own offset and layer0 only.
+            for y in range(73,79):self.assertEqual(pixels[y*width:(y+1)*width],[(0,100,200,255)]*width)
+            for y in range(110,112):
+                for x in range(45,48):self.assertEqual(pixels[y*width+x],(210,30,90,255))
             second=root/'repeat.bmp';self.assertEqual(run('--capture',str(second)),report)
             self.assertEqual(first.read_bytes(),second.read_bytes())
             scene=report['background']['scenery']
             self.assertTrue(scene['provisional_rng']);self.assertEqual((scene['app_seed'],scene['lib_seed']),(42,42))
             self.assertGreater(scene['app_draws'],scene['lib_draws'])
             self.assertTrue(any(draw[0]==14 for draw in scene['draws']))
+            left=root/'left.bmp';left_report=run('--camera-x','449','--capture',str(left))
+            self.assertEqual(left_report['background']['camera'][0],449)
+            self.assertEqual(bmp_pixels(left.read_bytes())[2][73*width+40],(120,0,0,255))
+            right=root/'right.bmp';right_report=run('--camera-x','-270','--capture',str(right))
+            self.assertEqual(right_report['background']['camera'][0],-270)
+            self.assertEqual(bmp_pixels(right.read_bytes())[2][73*width+217],(0,120,0,255))
 
     def test_fill_tiles_parallax_repeat_and_headless_parity(self):
         with tempfile.TemporaryDirectory() as directory:
