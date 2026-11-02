@@ -1,5 +1,6 @@
 #include "render_draw.hpp"
 #include <algorithm>
+#include <limits>
 #include <stdexcept>
 
 namespace saga::core {
@@ -9,6 +10,11 @@ template<class T>T& at(const std::shared_ptr<std::vector<T>>& p,std::int32_t i){
 std::int32_t word(std::uint32_t v){return static_cast<std::int32_t>(v<0x80000000U?static_cast<std::int64_t>(v):static_cast<std::int64_t>(v)-0x100000000LL);}
 std::int32_t add(std::int32_t a,std::int32_t b){return word(static_cast<std::uint32_t>(a)+static_cast<std::uint32_t>(b));}
 std::int32_t negate(std::int32_t a){return word(0U-static_cast<std::uint32_t>(a));}
+std::int32_t number_length(const std::u16string* text){
+    const auto n=required(text).size();
+    if(n>static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max()))throw std::length_error("number image text exceeds int32");
+    return static_cast<std::int32_t>(n);
+}
 bool in_range(std::int32_t value,std::int32_t first,std::uint32_t last_offset){return static_cast<std::uint32_t>(value)-static_cast<std::uint32_t>(first)<=last_offset;}
 bool allows_texture_override(std::int32_t resource){return resource>=0&&resource<=23&&(0x00fc008eU&(1U<<static_cast<unsigned>(resource)))!=0;}
 std::int32_t dimension(const EventInstruction& row,const SpriteArray& sprite,std::int32_t field,std::int32_t fallback){
@@ -80,5 +86,27 @@ void draw_render_queue(RenderDrawState& state,RenderGraphics* target,std::int32_
         }
         index=add(index,1);
     }
+}
+std::int32_t draw_number_images(NumberImageHost& host,std::int32_t clip,const std::u16string* text,
+        std::int32_t x,std::int32_t y,std::int32_t padding,std::int32_t anchor){
+    const auto metric=host.number_sprite(clip,0,0);
+    const auto glyph_width=at(metric,4),glyph_height=at(metric,5);
+    const auto count=number_length(text),stride=add(glyph_width,padding);
+    const auto width=add(word(static_cast<std::uint32_t>(count)*static_cast<std::uint32_t>(stride)),negate(padding));
+    if((anchor&2)!=0)x=add(x,negate(width/2));else if((anchor&4)!=0)x=add(x,negate(width));
+    if((anchor&32)!=0)y=add(y,negate(glyph_height/2));else if((anchor&64)!=0)y=add(y,negate(glyph_height));
+    if(number_length(text)<1)return width;
+    const auto float_y=static_cast<float>(y);
+    std::int32_t index=0;
+    do{
+        const auto character=static_cast<std::uint16_t>(text->at(static_cast<std::size_t>(index)));
+        if(character!=0x20U){
+            const auto slash=character==0x2fU;
+            const auto frame=slash?10:add(static_cast<std::int32_t>(character),-0x30);
+            host.draw_number_frame(clip,frame,static_cast<float>(slash?add(x,1):x),float_y);
+        }
+        x=add(x,stride);index=add(index,1);
+    }while(index<number_length(text));
+    return width;
 }
 } // namespace saga::core

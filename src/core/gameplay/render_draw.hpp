@@ -3,6 +3,7 @@
 #include "animation_pass.hpp"
 #include "../animation/seb_sprite.hpp"
 #include <array>
+#include <string>
 
 namespace saga::core {
 class RenderImage {public:virtual ~RenderImage()=default;};
@@ -60,4 +61,17 @@ public:
 // AppData.DrawZSortObjects 0x1115e54. Consumes current row/count references without clearing.
 // No implicit sort or exception cleanup; callback changes affect later reads/rows.
 void draw_render_queue(RenderDrawState&,RenderGraphics*,std::int32_t type,RenderDrawHost&);
+class NumberImageHost {
+public:
+    virtual ~NumberImageHost()=default;
+    // Both operations resolve the captured AppData's current resCom (resource2),
+    // SEB slot and required arrays afresh; they do not use global AppData/resQuest.
+    virtual SpriteArray number_sprite(std::int32_t clip,std::int32_t frame,std::int32_t layer)=0;
+    // Seb.DrawFrame, all layers (-1), with the current resCom image array.
+    virtual void draw_number_frame(std::int32_t clip,std::int32_t frame,float x,float y)=0;
+};
+// AppData.DrawNumImage(string,padding,anchor) 0x1105ac8. The nullable UTF16 text is
+// required after the frame0/layer0 metric read; strings are not sanitized/formatted here.
+std::int32_t draw_number_images(NumberImageHost&,std::int32_t clip,const std::u16string* text,
+    std::int32_t x,std::int32_t y,std::int32_t padding,std::int32_t anchor);
 } // namespace saga::core
