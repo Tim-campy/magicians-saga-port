@@ -626,6 +626,8 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             if(!native||human_hud)throw std::invalid_argument("human_hud requires one native selection");human_hud=true;
         }else if(operation=="stage_mp_hud"){
             if(!native||stage_mp_hud)throw std::invalid_argument("stage_mp_hud requires one native selection");stage_mp_hud=true;
+        }else if(operation=="damage_labels"){
+            if(!native||damage_labels)throw std::invalid_argument("damage_labels requires one native selection");damage_labels=true;
         }else if(operation=="input"){
             std::string mode;std::uint64_t held=0;std::int32_t front=0;MissionInputScenario value;
             if(!native||input_scenario||!(row>>mode>>held>>value.last_active>>front)||mode!="fresh"||held>0xffffffffULL||(front!=0&&front!=1))throw std::invalid_argument("input requires fresh held-uint32 last-active front0/1 and three state/frame pairs");
@@ -798,6 +800,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         collisions=enemy_gauges=human_hud=true;initialized_loaded_=std::uint8_t{0};construct_systems_=true;
         // SAGA_STUB(mission-stage-mp-legacy): v1 omits resCom; v2 enables the native MP display.
         stage_mp_hud=get_application_resource(application,2)!=nullptr;
+        damage_labels=get_application_resource(application,2)!=nullptr;
         quest_frame_=QuestFrameConfig{b.debug_controls,0};initial_orientation=true;
         gear_new_game_=true;character_shop_new_game_mask_=b.shop_find_mask;new_game_save_=true;
         initial_context_requested=initial_yugami=true;native_mission_state=true; // Neutral host keys; SDL/replay supplies subsequent input.
@@ -939,6 +942,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     if(enemy_gauges&&(!rewards||!get_application_resource(application,23)))throw std::invalid_argument("enemy_gauges requires explicit rewards saved counts and resource23");
     if(human_hud&&(!human_scenario||!get_application_resource(application,20)||!get_application_resource(global,23)))throw std::invalid_argument("human_hud requires human system, effect20 and global gauge23");
     if(stage_mp_hud&&(!initialized_loaded_||!get_application_resource(application,2)||!get_application_resource(application,7)||!get_application_resource(global,23)))throw std::invalid_argument("stage_mp_hud requires system_init and common2/quest7/global gauge23");
+    if(damage_labels&&(!initialized_loaded_||!human_scenario||!get_application_resource(application,2)))throw std::invalid_argument("damage_labels requires system_init, human_system and common2");
     if(collisions&&!human_scenario)throw std::invalid_argument("collisions requires human_system event receivers");
     if(notifications&&!human_scenario)throw std::invalid_argument("stage_notifications requires human_system");
     if(collection&&(!notifications||!human_scenario))throw std::invalid_argument("collection fresh requires stage_notifications and human_system");
@@ -997,6 +1001,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             if(!runtime||!geometry||!simulate)throw std::invalid_argument("human_system requires runtime, geometry and simulate rows");
             humans=std::make_unique<MissionHumans>(*entity_world,*catalog,progress,live_map?static_cast<StageGeometry&>(*live_map):*geometry,*runtime,*human_scenario,initialized_loaded_.has_value(),mission->gauge_service());
             if(human_static_fps)humans->bind_human_static_fps(*human_static_fps);
+            if(damage_labels)humans->enable_damage_labels();
             if(rewards)humans->enable_rewards(*rewards);
             if(enemy_requested)humans->enable_enemies(std::move(enemy));
             if(notifications)humans->enable_notifications(*notifications);
@@ -1225,10 +1230,13 @@ void MissionProfile::write_combat_report(std::ostream& out){
     const auto requests=[&](const auto& list){bool first=true;for(const auto& r:list){if(!first)out<<',';first=false;
         out<<"{\"entity\":"<<entity_world->id(*r.entity)<<",\"x\":"<<r.x<<",\"y\":"<<r.y<<",\"image\":"<<r.image<<",\"parameter\":"<<r.parameter<<",\"anchor\":"<<r.anchor<<",\"force\":"<<(r.force?"true":"false")<<'}';}};
     requests(enemy_gauge_requests_);out<<"],\"human_hud_enabled\":"<<(human_hud?"true":"false")<<",\"human_gauge_requests\":[";
-    requests(human_gauge_requests_);out<<"],\"dynamic_draw_schedule_enabled\":"<<(initialization_complete_?"true":"false")<<",\"last_dynamic_draw_order\":[";
+    requests(human_gauge_requests_);out<<"],\"damage_labels_enabled\":"<<(damage_labels?"true":"false")<<",\"dynamic_draw_schedule_enabled\":"<<(initialization_complete_?"true":"false")<<",\"last_dynamic_draw_order\":[";
     for(std::size_t i=0;i<last_dynamic_bodies_.size();++i){if(i)out<<',';out<<last_dynamic_bodies_[i];}out<<"],\"effect_number_draws\":[";
     for(std::size_t i=0;i<effect_number_draws_.size();++i){if(i)out<<',';const auto& r=effect_number_draws_[i];
-        out<<"{\"clip\":"<<r.clip<<",\"value\":"<<r.value<<",\"x\":"<<r.x<<",\"y\":"<<r.y<<",\"anchor\":"<<r.anchor<<",\"scale\":"<<r.scale<<'}';}out<<"],\"unbound_effect_draw_types\":[";
+        out<<"{\"clip\":"<<r.clip<<",\"value\":"<<r.value<<",\"x\":"<<r.x<<",\"y\":"<<r.y<<",\"anchor\":"<<r.anchor<<",\"scale\":"<<r.scale<<",\"width\":"<<r.width<<",\"height\":"<<r.height<<'}';}out<<"],\"effect_sprite_draws\":[";
+    for(std::size_t i=0;i<effect_sprite_draws_.size();++i){if(i)out<<',';const auto& r=effect_sprite_draws_[i];
+        out<<"{\"clip\":"<<r.clip<<",\"frame\":"<<r.frame<<",\"x\":"<<r.x<<",\"y\":"<<r.y<<'}';}out<<"],\"effect_render_modes\":[";
+    for(std::size_t i=0;i<effect_render_modes_.size();++i){if(i)out<<',';const auto& r=effect_render_modes_[i];out<<'['<<r[0]<<','<<r[1]<<','<<r[2]<<']';}out<<"],\"unbound_effect_draw_types\":[";
     for(std::size_t i=0;i<unbound_effect_draws_.size();++i){if(i)out<<',';out<<unbound_effect_draws_[i];}out<<']';
     out<<",\"selected_quest\":";if(selected_quest)out<<*selected_quest;else out<<"null";
     if(selected_quest&&humans){const auto q=humans->quest();out<<",\"quest_distance\":"<<q->distance<<",\"quest_flags\":"<<q->flags<<",\"quest_money_rate\":"<<q->money_rate<<",\"quest_completion_byte\":"<<static_cast<int>(q->completed)<<",\"quest_rescued\":"<<q->rescued_prisoners;}
@@ -1277,18 +1285,28 @@ void MissionProfile::draw_dynamic_body(std::int32_t id){
     else if(id==5&&enemy_gauges)mission->draw_enemy_gauges([&](const ParameterGaugeRequest& r){
         enemy_gauge_requests_.push_back(r);if(dynamic_backend_)dynamic_backend_->draw_parameter_gauge(r,mission->gauge_camera_host(),&gauge_scratch_);});
     else if(id==16||id==22||id==23||id==26||id==30){
-        mission->draw_dynamic_scene(id,&application,[&](const MissionNumberDraw& r){
+        MissionEffectDrawing output;
+        output.number=[&](const MissionNumberDraw& r){
             effect_number_draws_.push_back(r);
             // SAGA_STUB(mission-dynamic-legacy-common): v1 profiles lack the common numeric atlas.
             if(!get_application_resource(application,2)){if(std::find(unbound_effect_draws_.begin(),unbound_effect_draws_.end(),3)==unbound_effect_draws_.end())unbound_effect_draws_.push_back(3);return;}
             if(r.application!=&application)throw std::invalid_argument("foreign effect numeric application");
             if(dynamic_backend_)dynamic_backend_->draw_number_value(application,r.clip,r.value,r.x,r.y,r.padding,r.anchor,r.scale,r.width,r.height);
-        },unbound_effect_draws_);
+        };
+        output.sprite=[&](const MissionEffectSpriteDraw& r){
+            effect_sprite_draws_.push_back(r);
+            if(dynamic_backend_)dynamic_backend_->draw_seb_frame(r.manager,r.clip,r.frame,r.x,r.y);
+        };
+        output.render_mode=[&](std::int32_t mode,std::int32_t source,std::int32_t destination){
+            effect_render_modes_.push_back({mode,source,destination});
+            if(dynamic_backend_)dynamic_backend_->set_render_mode(mode,source,destination);
+        };
+        mission->draw_dynamic_scene(id,&application,output,unbound_effect_draws_);
     }
     // Stage.DrawDynamic 0x1167fc0 and CursorRender.DrawDynamic 0x1147724 are RET bodies.
 }
 void MissionProfile::draw_dynamic_hud(BitmapBackend* backend){
-    last_dynamic_bodies_.clear();human_gauge_requests_.clear();enemy_gauge_requests_.clear();effect_number_draws_.clear();unbound_effect_draws_.clear();
+    last_dynamic_bodies_.clear();human_gauge_requests_.clear();enemy_gauge_requests_.clear();effect_number_draws_.clear();effect_sprite_draws_.clear();effect_render_modes_.clear();unbound_effect_draws_.clear();
     if(!mission)return;
     dynamic_backend_=backend;
     if(initialization_complete_){

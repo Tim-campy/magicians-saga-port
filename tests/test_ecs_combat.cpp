@@ -15,8 +15,12 @@ struct Draws final:RandomSource {
 struct Presentation final:EcsCombatPresentation {
     std::int32_t damage=0,total=0;int misses=0,events=0;
     std::function<void()> listener;
+    ComponentSlots* source=nullptr;std::int32_t attribute=-1;
     void miss(ComponentSlots&) override{++misses;}
     void effects(ComponentSlots&,const DamageNumbers& n) override{damage=n.amount;}
+    void effects_from(ComponentSlots& attacker,ComponentSlots& receiver,const DamageNumbers& n)override{
+        source=&attacker;attribute=n.attack_attribute;effects(receiver,n);
+    }
     void send_damage(ComponentSlots& receiver,std::int32_t n) override{++events;record_ecs_stage_damage(total,receiver,n);if(listener)listener();}
     void diagnostics(const DamageNumbers&) override{}
 };
@@ -86,7 +90,8 @@ int main(){
         check(f.enemy.state==4&&f.receiver.contains(27)&&host.saved_count==1&&host.counters.defeated_enemies==1&&host.counters.remaining_enemies==1);
         check(host.drops==std::vector<std::int32_t>{10,7}&&host.exp_depth.extra==-10&&host.treasure_depth.extra==-10&&host.random.cursor==7);
     }
-    {Fixture f;Draws r;check(!apply_combat_damage(100,0,r,f.host));check(f.hp.value==156&&f.presentation.total==44&&r.cursor==4);}
+    {Fixture f;Draws r;check(!apply_combat_damage(100,0,r,f.host));check(f.hp.value==156&&f.presentation.total==44&&r.cursor==4);
+        check(f.presentation.source==&f.attacker&&f.presentation.attribute==0);}
     {Fixture f;set_combat_equipment(f.attacker,EquipmentSlot::weapon,1);f.gear_levels[1]=100;
         Draws r;apply_combat_damage(100,0,r,f.host);check(f.presentation.damage==137); // Live gear ID and saved level, critical.
         f.gear_levels[1]=1;Draws next;apply_combat_damage(100,0,next,f.host);check(f.presentation.damage==44);}

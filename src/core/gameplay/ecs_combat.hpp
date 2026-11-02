@@ -16,6 +16,8 @@ public:
     virtual ~EcsCombatPresentation()=default;
     virtual void miss(ComponentSlots&)=0;
     virtual void effects(ComponentSlots&,const DamageNumbers&)=0;
+    // Label selection queries the original attacker's current Human component after HP subtraction.
+    virtual void effects_from(ComponentSlots&,ComponentSlots& receiver,const DamageNumbers& numbers){effects(receiver,numbers);}
     virtual void send_damage(ComponentSlots&,std::int32_t)=0;
     virtual void diagnostics(const DamageNumbers&)=0;
 };

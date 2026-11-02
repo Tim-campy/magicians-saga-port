@@ -16,8 +16,9 @@ struct Cursor final:RenderCursor {
     std::optional<ComponentSlots*> next()override{
         while(const auto entry=cursor.next()){
             const auto* effect=dynamic_cast<EffectComponent*>((*entry)->get(26));
-            if(effect&&effect->type==3)continue; // Numeric labels belong to Effect.DrawDynamic, not Render21.
-            if(effect&&effect->type==7)continue; // SAGA_STUB(mission-mp-notices): retain native no-Depth notice and lifetime; dedicated output is unbound.
+            // The diagnostic fallback group includes entities without native culling cells.
+            // CreateEffect adds Cell5/Depth4 only for depth=true; Nor4 belongs to DrawDynamic.
+            if(effect&&!(*entry)->contains(4))continue;
             return entry;
         }return std::nullopt;
     }
@@ -107,8 +108,8 @@ void MissionScene::draw_enemy_gauges(const std::function<void(const ParameterGau
 }
 struct MissionScene::DynamicHost final:GaugeDynamicDrawHost,BubbleDynamicDrawHost,EffectDrawingHost,EffectProjectionHost {
     MissionScene& scene;EffectNumberContext application;
-    const std::function<void(const MissionNumberDraw&)>& numbers;std::vector<std::int32_t>& missing;
-    DynamicHost(MissionScene& s,EffectNumberContext a,const std::function<void(const MissionNumberDraw&)>& n,std::vector<std::int32_t>& m):scene(s),application(a),numbers(n),missing(m){}
+    const MissionEffectDrawing& output;std::vector<std::int32_t>& missing;
+    DynamicHost(MissionScene& s,EffectNumberContext a,const MissionEffectDrawing& o,std::vector<std::int32_t>& m):scene(s),application(a),output(o),missing(m){}
     void require_dynamic_context()override{required(scene.gauge_camera_host().current_camera_form());}
     void project_dynamic_x(ContactPosition* p)override{auto& v=required(p);static_cast<void>(render_isometric_x(v.x,v.z));}
     void project_dynamic_y(ContactPosition* p)override{auto& v=required(p);static_cast<void>(render_isometric_y(v.x,v.z));}
@@ -125,19 +126,30 @@ struct MissionScene::DynamicHost final:GaugeDynamicDrawHost,BubbleDynamicDrawHos
     EffectNumberContext capture_effect_numbers()override{return application;}
     void effect_draw_number(EffectNumberContext app,std::int32_t clip,std::int64_t value,
         std::int32_t x,std::int32_t y,std::int32_t pad,std::int32_t anchor,std::int32_t scale,std::int32_t w,std::int32_t h)override{
-        numbers({app,clip,value,x,y,pad,anchor,scale,w,h});
+        output.number({app,clip,value,x,y,pad,anchor,scale,w,h});
     }
+    EffectResourceContext capture_effect_resource(EffectNumberContext app,std::int32_t resource)override{
+        if(app!=&scene.app_)throw std::invalid_argument("foreign effect sprite application");
+        return get_application_resource(scene.app_,resource);
+    }
+    void effect_draw_sprite(EffectResourceContext manager,std::int32_t clip,std::int32_t frame,float x,float y)override{
+        output.sprite({static_cast<RenderDrawResource*>(manager),clip,frame,x,y});
+    }
+    void effect_render_mode(std::int32_t mode,std::int32_t alpha)override{output.render_mode(mode,alpha,255-alpha);}
+    void effect_reset_render_mode()override{output.render_mode(0,255,0);}
+    // SAGA_STUB(mission-effect-discarded-time): public formatting result is discarded by DrawTimeEffect.
+    void effect_format_time(std::int32_t)override{}
     void omitted(std::int32_t type){if(std::find(missing.begin(),missing.end(),type)==missing.end())missing.push_back(type);}
-    // SAGA_STUB(mission-effect-special-draw): domain clocks/lifetimes remain active; these dedicated visual handlers are pending.
-    void effect_draw_normal(ComponentSlots&)override{omitted(0);}
-    void effect_draw_damage(ComponentSlots&)override{omitted(1);}
-    void effect_draw_time(ComponentSlots&)override{omitted(2);}
-    void effect_draw_jump(ComponentSlots&)override{omitted(5);}
+    void effect_draw_normal(ComponentSlots& e)override{draw_normal_effect(&e,*this);}
+    void effect_draw_damage(ComponentSlots& e)override{draw_damage_number_effect(&e,*this);}
+    void effect_draw_time(ComponentSlots& e)override{draw_time_effect(&e,*this);}
+    void effect_draw_jump(ComponentSlots& e)override{draw_jump_number_effect(&e,*this);}
+    // SAGA_STUB(mission-effect-special-draw): font/translation and StringBackground output remain unbound.
     void effect_draw_string_background(ComponentSlots&)override{omitted(7);}
 };
 void MissionScene::draw_dynamic_scene(std::int32_t id,EffectNumberContext app,
-        const std::function<void(const MissionNumberDraw&)>& numbers,std::vector<std::int32_t>& missing){
-    DynamicHost host(*this,app,numbers,missing);
+        const MissionEffectDrawing& output,std::vector<std::int32_t>& missing){
+    DynamicHost host(*this,app,output,missing);
     if(id==16)draw_dynamic_bubbles(bubbles_,host);
     else if(id==22)draw_dynamic_gauges(gauges_,host);
     else if(id==23)draw_effects(effects_,host);

@@ -23,6 +23,35 @@ def command(resource, clip, x, y, depth=0, texture=-1, image_resource=-1):
 
 @unittest.skipUnless(EXE and VIEWER, 'viewer executables supplied by CTest')
 class QueuePixels(unittest.TestCase):
+    def test_damage_labels_use_original_producer_and_dynamic_number_renderer(self):
+        if not MISSION:self.skipTest('mission executable required')
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);scene=root/'damage.txt'
+            text=with_common_resource(root,make_boss_scene(root))
+            text='mission_presentation 600 640 100 0 1 0 1500100 -1\nsystem_init 1\nmaterial_policy native\ndamage_labels\ncollisions\n'+\
+                '\n'.join(l for l in text.splitlines() if not l.startswith(('world ','projection ','view ','slots ','animate ','simulate ','material ')))+'\n'
+            scene.write_text(text,encoding='utf8')
+            args=[str(MISSION),'--scene',str(scene),'--frames','200','--fps','25','--debug','0','--rng','system','--seed','42']
+            def run(extra):
+                r=subprocess.run([*args,*extra],capture_output=True,text=True,timeout=30)
+                self.assertEqual(r.returncode,0,r.stderr);return json.loads(r.stdout)
+            headless=run(['--headless']);out=root/'damage.bmp';captured=run(['--capture',str(out)])
+            for key,value in captured['state'].items():self.assertEqual(headless[key],value,key)
+            self.assertTrue(headless['damage_labels_enabled'])
+            draws=[r for r in headless['effect_number_draws'] if r['clip'] in [35,38,80]]
+            self.assertTrue(draws,headless['effect_number_draws'])
+            width,height,pixels=bmp_pixels(out.read_bytes());self.assertEqual((width,height),(600,640))
+            draw=next(r for r in draws if r['clip']==80)
+            self.assertEqual((draw['value'],draw['scale'],draw['width'],draw['height']),(3,100,8,9))
+            sample=(draw['y']+1)*width+draw['x']-3
+            self.assertEqual(pixels[sample],(255,255,255,255))
+            scene.write_text(text.replace('damage_labels\n',''),encoding='utf8');disabled=run(['--headless'])
+            self.assertFalse(disabled['damage_labels_enabled'])
+            self.assertEqual(disabled['total_damage'],headless['total_damage']);self.assertEqual(disabled['rng_draws'],headless['rng_draws'])
+            self.assertEqual(disabled['effect_number_draws'],[])
+            other=root/'without-damage.bmp';run(['--capture',str(other)])
+            self.assertNotEqual(bmp_pixels(other.read_bytes())[2][sample],pixels[sample])
+
     def test_collected_reward_numbers_use_dynamic_schedule_and_common_atlas(self):
         if not MISSION:self.skipTest('mission executable required')
         with tempfile.TemporaryDirectory() as directory:

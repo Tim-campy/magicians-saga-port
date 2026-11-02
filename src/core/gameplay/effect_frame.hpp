@@ -29,6 +29,7 @@ void update_string_background_effect(ComponentSlots*); // 0x114a400.
 // EffectSystem.Update 0x1149e6c; scheduler owns enabled/pass/pause gates.
 void update_effects(EffectSystemState&,EffectFrameHost&);
 using EffectNumberContext=const void*; // Borrowed current AppData identity, captured before the fresh Seb lookup.
+using EffectResourceContext=void*; // Borrowed resource manager resolved from a captured AppData.
 class EffectDrawingHost {
 public:
     virtual ~EffectDrawingHost()=default;
@@ -42,6 +43,12 @@ public:
     virtual void effect_draw_number(EffectNumberContext,std::int32_t clip,std::int64_t value,
         std::int32_t x,std::int32_t y,std::int32_t padding,std::int32_t anchor,std::int32_t scale,
         std::int32_t width,std::int32_t height)=0;
+    virtual EffectResourceContext capture_effect_resource(EffectNumberContext,std::int32_t resource);
+    virtual void effect_draw_sprite(EffectResourceContext,std::int32_t clip,std::int32_t frame,float x,float y);
+    virtual void effect_render_mode(std::int32_t mode,std::int32_t alpha);
+    virtual void effect_reset_render_mode(); // Default mode/source/destination (0,255,0).
+    // Native duration formatting is discarded. Public formatting/culture services stay outside the core.
+    virtual void effect_format_time(std::int32_t){}
 };
 class EffectProjectionHost {
 public:
@@ -54,6 +61,10 @@ public:
 };
 GaugePoint& effect_to_screen_position(ContactPosition*,EffectProjectionHost&); // ToScreenPos 0x114b0fc.
 void draw_number_effect(ComponentSlots*,EffectDrawingHost&); // DrawNumberEffect 0x114ac34.
+void draw_normal_effect(ComponentSlots*,EffectDrawingHost&); // DrawNormalEffect 0x114a63c.
+void draw_damage_number_effect(ComponentSlots*,EffectDrawingHost&); // DrawDamageNumEffect 0x114a79c.
+void draw_time_effect(ComponentSlots*,EffectDrawingHost&); // DrawTimeEffect 0x114aad4; no pixel output.
+void draw_jump_number_effect(ComponentSlots*,EffectDrawingHost&); // DrawJumpNumEffect 0x114ad64; fade/projection only.
 // DrawDynamic 0x114a438. Types4/6 are native RET handlers; no enabled/parent/context gate here.
 void draw_effects(EffectSystemState&,EffectDrawingHost&);
 }

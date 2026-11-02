@@ -16,6 +16,7 @@ struct ReceiverDefence { std::int32_t parameter2=0,attribute=4,bonus=0; };
 struct DamageNumbers {
     std::int32_t amount=0,affinity=0;
     bool critical=false;
+    std::int32_t attack_attribute=0; // Preserve Damage's input for the later display-table selection.
 };
 // Entity bindings remain explicit. kind() must prefer human over enemy.
 // parameter() resolves MemberSystem totals / EnemyData / zero in that order.

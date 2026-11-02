@@ -58,7 +58,7 @@ bool apply_combat_damage(std::int32_t attack,std::int32_t attribute,
         auto& parameter=require_parameter(target);
         parameter.value=subtract_parameter(parameter.value,parameter.maximum,damage).value;
     }
-    host.after_damage({damage,affinity,critical});
+    host.after_damage({damage,affinity,critical,attribute});
     const auto& parameter=require_parameter(target);
     return add(parameter.value,parameter.extra)<1;
 }

@@ -53,6 +53,10 @@ struct Host final:DamageHost {
     }
 };
 int main() {
+    for(std::int32_t attribute=0;attribute<5;++attribute){
+        Host h;Draws r({0,5,99,0});apply_combat_damage(100,attribute,r,h);
+        check(h.result.attack_attribute==attribute,"damage retains its attack attribute for label selection");
+    }
     {
         Host h;Draws r({90});r.log=&h.log;
         check(!apply_combat_damage(100,0,r,h)&&h.miss,"miss returns false");

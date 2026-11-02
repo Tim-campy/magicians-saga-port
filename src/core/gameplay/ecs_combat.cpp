@@ -71,7 +71,7 @@ ReceiverDefence EcsDamageHost::receiver_defence() {
     return {};
 }
 void EcsDamageHost::after_damage(const DamageNumbers& numbers) {
-    presentation_.effects(receiver_,numbers);
+    presentation_.effects_from(attacker_,receiver_,numbers);
     presentation_.send_damage(receiver_,numbers.amount);
     if(config_.debug&&config_.damage_diagnostics)presentation_.diagnostics(numbers);
 }

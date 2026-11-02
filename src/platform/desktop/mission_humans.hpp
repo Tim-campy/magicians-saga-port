@@ -65,6 +65,7 @@ public:
     void enable_notifications(MissionNotificationScenario);
     void write_notification_report(std::ostream&);
     void enable_collection(); // Explicit fresh accumulator/list selection, not save restoration or full Stage.Start.
+    void enable_damage_labels(){damage_labels_enabled_=true;}
     void advance_collection(std::int32_t pass=0,bool enabled=true);
     void write_collection_report(std::ostream&);
     void enable_results(MissionResultScenario);
@@ -262,6 +263,7 @@ private:
     void impact(core::ComponentSlots& e,core::ComponentSlots* parent)override{core::create_impact_effect(&e,parent,records_,*this);}
     void miss(core::ComponentSlots&)override;
     void effects(core::ComponentSlots&,const core::DamageNumbers&)override;
+    void effects_from(core::ComponentSlots&,core::ComponentSlots&,const core::DamageNumbers&)override;
     void send_damage(core::ComponentSlots& e,std::int32_t amount)override{if(damage_receiver_)damage_receiver_(&e,amount);else core::record_ecs_stage_damage(stage_.total_damage,e,amount);}
     void diagnostics(const core::DamageNumbers&)override;
     void damage_labels(core::ComponentSlots&,const core::DamageNumbers&)override;
@@ -272,7 +274,7 @@ private:
     core::StageStartState stage_;core::AttackButtonState button_;core::MemberRoster members_;
     core::StageQuestForm quest_form_;
     core::EnemyCreationSystem enemies_;core::HumanFrameSystem system_;
-    bool deferred_init_=false,native_state_=false;core::EnemyGaugeService* gauge_service_=nullptr;
+    bool deferred_init_=false,native_state_=false,damage_labels_enabled_=false;core::EnemyGaugeService* gauge_service_=nullptr;
     std::unique_ptr<core::EnemyStageEntry> default_enemy_entry_;
     std::function<void(core::ComponentSlots*,std::int32_t)> damage_receiver_;
     core::HumanEventServices services_{records_,*this,*this};

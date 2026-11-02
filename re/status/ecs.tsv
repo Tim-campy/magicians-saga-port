@@ -265,6 +265,11 @@ game:0x06000fc2	reimplemented	src/core/gameplay/stage_controls.cpp	Stage player 
 game:0x06000cea	reimplemented	src/core/ecs/update_scheduler.cpp	Dynamic draw layer99, captured list/live Count, enabled callbacks, fresh stopwatch and identity lookup; host-bound
 game:0x06000eb3	reimplemented	src/core/gameplay/gauge_frame.cpp	Gauge dynamic context guard, flags mask1 and discarded live-position projections; no extra pixel output
 game:0x06000ea0	reimplemented	src/core/gameplay/bubble_frame.cpp	Bubble dynamic context/color/font scope and position projections; normal-only PopFont
-game:0x06000e49	reimplemented	src/core/gameplay/effect_frame.cpp	Live Effect dynamic dispatcher; Number bound and remaining specialized output explicit host services
+game:0x06000e49	reimplemented	src/core/gameplay/effect_frame.cpp	Live Effect dispatcher; Normal, Damage, Number and projection/style-only handlers bound; notice text service explicit
 game:0x06000e4d	reimplemented	src/core/gameplay/effect_frame.cpp	Captured Effect/Position, shared point, captured AppData and fresh SEB for int64 number output
 game:0x06000e54	reimplemented	src/core/gameplay/effect_frame.cpp	Effect screen projection with three shared point reads, partial writes, native float conversion and fresh camera offsets
+game:0x06000e4a	reimplemented	src/core/gameplay/effect_frame.cpp	Normal depth gate, captured AppData/resource manager, fresh SEB clip and explicit Effect frame; mission-bound
+game:0x06000e4b	reimplemented	src/core/gameplay/effect_frame.cpp	Damage bounce, fade, scaleX and clip metric overrides with captured remaining-time reset; real producer bound
+game:0x06000e4c	reimplemented	src/core/gameplay/effect_frame.cpp	Time formatting delegated as discarded public service followed by required live Position projection; no pixels
+game:0x06000e4f	reimplemented	src/core/gameplay/effect_frame.cpp	Jump captured remaining-time fade, projection and success-only render-mode reset; no glyph output
+game:0x06000e51	documented	docs/subsystems/animation.md	StringBackground displacement/alpha, original four frame indices, background/text/font/reset order; font/translation service unbound

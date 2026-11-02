@@ -6,6 +6,20 @@
 #include <array>
 
 namespace saga::core {
+struct DamageNumbers;
+enum class DamageNumberPalette:std::int32_t {normal,good,critical};
+struct DamageLabelRequest {
+    std::int32_t type=0,value=0,resource=0,clip=0,height=0,max_frame=0;
+};
+class DamageLabelHost {
+public:
+    virtual ~DamageLabelHost()=default;
+    virtual std::int32_t damage_number_clip(DamageNumberPalette,std::int32_t attribute)=0;
+    // Capture the current world and read receiver Position afresh for each request.
+    virtual void create_damage_label(const DamageLabelRequest&)=0;
+};
+// EnemySystem.Damage 0x114fc44, label suffix 0x1150440..0x115069c.
+void produce_damage_labels(ComponentSlots* attacker,std::int32_t attack_attribute,const DamageNumbers&,DamageLabelHost&);
 struct EffectComponent final:Component {
     std::int32_t type=0,value=0,frame=0,max_frame=0;bool depth=false;ComponentSlots* parent=nullptr;
 };

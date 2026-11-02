@@ -1,9 +1,12 @@
 #include "core/gameplay/effect_factory.hpp"
 #include "core/gameplay/animation_pass.hpp"
+#include "core/gameplay/combat_damage.hpp"
 #include "core/ecs/dynamic_subsets.hpp"
 #include <cstdlib>
 #include <limits>
 #include <stdexcept>
+#include <string>
+#include <utility>
 using namespace saga::core;
 void check(bool v){if(!v)std::abort();}
 struct Host final:EffectFactoryHost,ComponentObserver {
@@ -31,7 +34,61 @@ struct Host final:EffectFactoryHost,ComponentObserver {
 };
 EffectRequest request(){return {{-47.9F,2,48.9F},101,9,20,7,true,false,0,3,nullptr,4,true};}
 template<class F>void fails(F f){bool caught=false;try{f();}catch(const std::exception&){caught=true;}check(caught);}
+struct LabelHost final:DamageLabelHost {
+    std::array<std::array<std::int32_t,5>,3> palettes{{{{80,81,82,51,34}},{{35,36,37,51,34}},{{38,39,40,51,34}}}};
+    std::vector<std::string> calls;std::vector<std::array<std::int32_t,6>> labels;
+    std::vector<std::pair<DamageNumberPalette,std::int32_t>> lookups;
+    std::function<void(std::size_t)> callback;std::size_t fail_at=0;
+    void step(std::string name){calls.push_back(std::move(name));if(callback)callback(calls.size());if(calls.size()==fail_at)throw std::runtime_error("label callback");}
+    std::int32_t damage_number_clip(DamageNumberPalette palette,std::int32_t attribute)override{
+        lookups.emplace_back(palette,attribute);step(palette==DamageNumberPalette::normal?"normal":palette==DamageNumberPalette::good?"good":"critical");
+        return palettes.at(static_cast<std::size_t>(palette)).at(static_cast<std::size_t>(attribute));
+    }
+    void create_damage_label(const DamageLabelRequest& r)override{
+        step(r.type==1?"number":r.value==1?"guard":"critical label");labels.push_back({r.type,r.value,r.resource,r.clip,r.height,r.max_frame});
+    }
+};
+void label_contracts(){
+    for(bool human:{false,true})for(bool critical:{false,true})for(std::int32_t affinity=-1;affinity<=4;++affinity)for(std::int32_t attribute=0;attribute<5;++attribute){
+        ComponentSlots attacker(35);Component marker;if(human)attacker.add(14,&marker);LabelHost host;DamageNumbers numbers;
+        numbers.amount=17;numbers.affinity=affinity;numbers.critical=critical;produce_damage_labels(&attacker,attribute,numbers,host);
+        std::vector<std::string> expected{"normal"};std::vector<std::array<std::int32_t,6>> labels;
+        auto palette=DamageNumberPalette::normal;
+        if(human){
+            if(affinity==0){expected.push_back("good");palette=DamageNumberPalette::good;}
+            else if(affinity>=1&&affinity<=3){expected.push_back("normal");if(affinity==2){expected.push_back("guard");labels.push_back({7,1,0,0,30,20});}}
+            if(critical){expected.push_back("critical");expected.push_back("critical label");palette=DamageNumberPalette::critical;labels.push_back({7,2,0,0,42,20});}
+        }
+        expected.push_back("number");labels.push_back({1,17,2,host.palettes[static_cast<std::size_t>(palette)][static_cast<std::size_t>(attribute)],20,30});
+        check(host.calls==expected&&host.labels==labels);for(const auto& lookup:host.lookups)check(lookup.second==attribute);
+    }
+    const std::vector<std::string> complete{"normal","normal","guard","critical","critical label","number"};
+    for(std::size_t failure=1;failure<=complete.size();++failure){ComponentSlots attacker(35);Component marker;attacker.add(14,&marker);LabelHost host;DamageNumbers n;
+        n.amount=7;n.affinity=2;n.critical=true;host.fail_at=failure;fails([&]{produce_damage_labels(&attacker,0,n,host);});
+        check(host.calls==std::vector<std::string>(complete.begin(),complete.begin()+static_cast<std::ptrdiff_t>(failure)));
+        check(host.labels.size()==(failure<=3?0U:failure<=5?1U:2U));
+    }
+    for(bool initially_human:{false,true}){ComponentSlots attacker(35);Component marker;if(initially_human)attacker.add(14,&marker);LabelHost host;DamageNumbers n;
+        n.affinity=0;host.callback=[&](std::size_t call){if(call==1){if(initially_human)attacker.remove(14);else attacker.add(14,&marker);}};
+        produce_damage_labels(&attacker,1,n,host);check(host.calls==(initially_human?std::vector<std::string>{"normal","number"}:std::vector<std::string>{"normal","good","number"}));
+        check(host.labels.back()[3]==(initially_human?81:36));
+    }
+    // The native amount/affinity/critical locals and the Human branch survive later output callbacks.
+    {ComponentSlots attacker(35);Component marker;attacker.add(14,&marker);LabelHost host;DamageNumbers n;n.amount=-7;n.affinity=2;n.critical=true;
+     host.callback=[&](std::size_t call){if(call==3){attacker.remove(14);n.amount=999;n.affinity=0;n.critical=false;}};
+     produce_damage_labels(&attacker,2,n,host);check(host.calls==complete&&host.labels.back()==std::array<std::int32_t,6>{1,-7,2,40,20,30});}
+    // Each palette read is fresh, including the redundant normal lookup for neutral/guard affinities.
+    {ComponentSlots attacker(35);Component marker;attacker.add(14,&marker);LabelHost host;DamageNumbers n;n.affinity=1;
+     host.callback=[&](std::size_t call){if(call==2)host.palettes[0][0]=999;};produce_damage_labels(&attacker,0,n,host);check(host.labels.back()[3]==999);}
+    for(auto attribute:{-1,5,std::numeric_limits<std::int32_t>::max()}){LabelHost host;DamageNumbers n;
+     fails([&]{produce_damage_labels(nullptr,attribute,n,host);});check(host.calls==std::vector<std::string>{"normal"}&&host.labels.empty());}
+    {LabelHost host;DamageNumbers n;fails([&]{produce_damage_labels(nullptr,0,n,host);});check(host.calls==std::vector<std::string>{"normal"});}
+    for(auto amount:{std::numeric_limits<std::int32_t>::min(),0,std::numeric_limits<std::int32_t>::max()}){
+     ComponentSlots attacker(35);LabelHost host;DamageNumbers n;n.amount=amount;n.affinity=std::numeric_limits<std::int32_t>::min();n.critical=true;
+     produce_damage_labels(&attacker,4,n,host);check(host.labels==std::vector<std::array<std::int32_t,6>>{{1,amount,2,34,20,30}}&&host.calls==std::vector<std::string>{"normal","number"});}
+}
 int main(){
+    label_contracts();
     {Host h;EntityIdState ids;auto filter=std::make_shared<ComponentGroupFilter>(std::vector<std::int32_t>{26,0,1});auto& group=h.groups.get(filter);
         auto& cells=h.groups.get(std::make_shared<ComponentGroupFilter>(std::vector<std::int32_t>{5}));
         auto& animated_images=h.groups.get(std::make_shared<ComponentGroupFilter>(std::vector<std::int32_t>{7,10}));

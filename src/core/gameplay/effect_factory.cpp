@@ -1,11 +1,33 @@
 #include "effect_factory.hpp"
+#include "combat_damage.hpp"
 #include <cmath>
 #include <limits>
+#include <stdexcept>
 
 namespace saga::core {
 namespace {
 std::int32_t bits(std::uint32_t v){return static_cast<std::int32_t>(v<=0x7fffffffU?static_cast<std::int64_t>(v):static_cast<std::int64_t>(v)-0x100000000LL);}
 
+}
+void produce_damage_labels(ComponentSlots* attacker,std::int32_t attribute,const DamageNumbers& numbers,DamageLabelHost& host){
+    const auto amount=numbers.amount,affinity=numbers.affinity;const auto critical=numbers.critical;
+    auto clip=host.damage_number_clip(DamageNumberPalette::normal,attribute);
+    if(!attacker)throw std::invalid_argument("missing damage label attacker");
+    if(attacker->contains(14)){
+        switch(affinity){
+        case 0:clip=host.damage_number_clip(DamageNumberPalette::good,attribute);break;
+        case 1:case 3:clip=host.damage_number_clip(DamageNumberPalette::normal,attribute);break;
+        case 2:
+            clip=host.damage_number_clip(DamageNumberPalette::normal,attribute);
+            host.create_damage_label({7,1,0,0,30,20});break;
+        default:break;
+        }
+        if(critical){
+            clip=host.damage_number_clip(DamageNumberPalette::critical,attribute);
+            host.create_damage_label({7,2,0,0,42,20});
+        }
+    }
+    host.create_damage_label({1,amount,2,clip,20,30});
 }
 ComponentSlots& create_effect(EffectRequest r,EntityIdState& ids,EffectFactoryHost& host){
     auto max_frame=r.max_frame;

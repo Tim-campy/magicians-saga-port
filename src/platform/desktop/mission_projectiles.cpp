@@ -7,6 +7,22 @@ using namespace core;
 namespace {
 template<class T>T& required(T* p){if(!p)throw std::invalid_argument("missing mission projectile input");return *p;}
 [[noreturn]]void unbound(const char* service){throw std::logic_error(std::string("mission service unbound: ")+service);}
+struct DamageLabels final:DamageLabelHost {
+    MissionEntities& world;ComponentSlots& receiver;
+    DamageLabels(MissionEntities& w,ComponentSlots& r):world(w),receiver(r){}
+    std::int32_t damage_number_clip(DamageNumberPalette palette,std::int32_t attribute)override{
+        // AppData..cctor 0x111a07c..0x111a0f0, three native int32[5] initializers.
+        static constexpr std::array<std::array<std::int32_t,5>,3> clips{{
+            {{80,81,82,51,34}},{{35,36,37,51,34}},{{38,39,40,51,34}}}};
+        return clips.at(static_cast<std::size_t>(palette)).at(static_cast<std::size_t>(attribute));
+    }
+    void create_damage_label(const DamageLabelRequest& r)override{
+        auto& binding=world.effect_world(); // Capture World before the separate Position reads.
+        const auto position=[&]()->ContactPosition&{return required(dynamic_cast<ContactPosition*>(receiver.get(0)));};
+        const float x=position().x,y=position().y+static_cast<float>(r.height),z=position().z;
+        create_effect({{x,y,z},r.type,r.value,r.resource,r.clip,false,false,r.max_frame,0,nullptr,-1,true},binding.ids,binding.factory);
+    }
+};
 }
 void MissionHumans::advance_projectiles(std::int32_t pass,bool enabled){
     if(gameplay_needs_update(10,enabled,pass))projectiles_.pass.value().update(required(projectiles_.subset),*this);
@@ -55,8 +71,15 @@ void MissionHumans::write_reward_report(std::ostream& out){
         if(!first)out<<',';first=false;out<<"{\"enemy_id\":"<<entry.first<<",\"count\":"<<entry.second<<'}';}
     out<<']';
 }
-void MissionHumans::miss(ComponentSlots&){} // SAGA_STUB(mission-damage-labels): floating miss label only.
+void MissionHumans::miss(ComponentSlots& receiver){
+    // SAGA_STUB(mission-damage-labels-legacy): partial diagnostic profiles omit the common atlas.
+    if(damage_labels_enabled_){DamageLabels host(world_,receiver);host.create_damage_label({7,0,0,0,50,20});}
+}
 void MissionHumans::effects(ComponentSlots& receiver,const DamageNumbers& numbers){present_combat_damage(receiver,numbers,*this);}
-void MissionHumans::damage_labels(ComponentSlots&,const DamageNumbers&){++damage_presentations_;} // SAGA_STUB(mission-damage-labels): floating numeric/critical labels only; stateful shake/impact are executed by present_combat_damage.
+void MissionHumans::effects_from(ComponentSlots& attacker,ComponentSlots& receiver,const DamageNumbers& numbers){
+    if(damage_labels_enabled_){DamageLabels host(world_,receiver);produce_damage_labels(&attacker,numbers.attack_attribute,numbers,host);}
+    effects(receiver,numbers);
+}
+void MissionHumans::damage_labels(ComponentSlots&,const DamageNumbers&){++damage_presentations_;} // Producer runs at effects_from before the existing shake/impact suffix.
 void MissionHumans::diagnostics(const DamageNumbers&){} // SAGA_STUB(mission-damage-diagnostics): optional diagnostic output.
 } // namespace saga::desktop

@@ -12,7 +12,7 @@ void check(bool value){if(!value)std::abort();}
 template<class F>void fails(F f){bool caught=false;try{f();}catch(const std::exception&){caught=true;}check(caught);}
 struct Actor {
     ComponentSlots entity{35};EffectComponent effect;ContactPosition position;EntitySprite sprite;
-    Actor(){entity.add(26,&effect);entity.add(0,&position);entity.add(2,&sprite);}
+    Actor(){sprite.animation={20,52,0};entity.add(26,&effect);entity.add(0,&position);entity.add(2,&sprite);}
 };
 struct Host final:EffectInitializationWorld,EffectFrameHost {
     EffectSystemState state;EntitySubset group{[](ComponentSlots* e){return e&&e->contains(26)&&!e->contains(4);},[](const ComponentSlots&){return 0;}};
@@ -29,6 +29,9 @@ struct Drawing final:EffectDrawingHost {
     std::vector<std::string> calls;std::vector<ComponentSlots*> actors;std::function<void(const std::string&)> callback;
     std::string fail;GaugePoint point{40,50};ContactPosition* projected=nullptr;
     EffectNumberContext context=this,captured=nullptr;std::optional<std::array<std::int64_t,9>> number;
+    EffectResourceContext manager=this,drawn_manager=nullptr;EffectNumberContext resource_application=nullptr;
+    std::int32_t resource_id=0,sprite_clip=0,sprite_frame=0,formatted_time=0;float sprite_x=0,sprite_y=0;bool mode=false;
+    std::vector<std::array<std::int32_t,2>> modes;
     void step(const std::string& name){calls.push_back(name);if(callback)callback(name);if(fail==name)throw std::runtime_error(name);}
     void handler(const std::string& name,ComponentSlots& e){actors.push_back(&e);step(name);}
     void effect_draw_normal(ComponentSlots& e)override{handler("normal",e);}
@@ -42,6 +45,15 @@ struct Drawing final:EffectDrawingHost {
         std::int32_t pad,std::int32_t anchor,std::int32_t scale,std::int32_t width,std::int32_t height)override{
         captured=app;number=std::array<std::int64_t,9>{clip,value,x,y,pad,anchor,scale,width,height};step("number");
     }
+    EffectResourceContext capture_effect_resource(EffectNumberContext app,std::int32_t resource)override{
+        resource_application=app;resource_id=resource;step("resource");return manager;
+    }
+    void effect_draw_sprite(EffectResourceContext resource,std::int32_t clip,std::int32_t frame,float x,float y)override{
+        drawn_manager=resource;sprite_clip=clip;sprite_frame=frame;sprite_x=x;sprite_y=y;step("sprite");
+    }
+    void effect_render_mode(std::int32_t kind,std::int32_t alpha)override{modes.push_back({kind,alpha});step("mode");mode=true;}
+    void effect_reset_render_mode()override{step("reset");mode=false;}
+    void effect_format_time(std::int32_t value)override{formatted_time=value;step("format");}
 };
 struct Projection final:EffectProjectionHost {
     GaugePoint work{},camera{};std::array<GaugePoint*,3> points{{&work,&work,&work}};
@@ -106,9 +118,80 @@ void drawing_contracts(){
      auto& result=effect_to_screen_position(&position,p);check(result.x==-1&&result.y==std::numeric_limits<std::int32_t>::max());}
     {Projection p;ContactPosition position;position.y=-1;p.y=16777216.0F;effect_to_screen_position(&position,p);check(p.work.y==16777216);}
 }
+void visual_handler_contracts(){
+    const auto low=std::numeric_limits<std::int32_t>::min(),high=std::numeric_limits<std::int32_t>::max();
+    {Actor a;Drawing d;a.effect.depth=true;a.entity.remove(0);a.entity.remove(2);draw_normal_effect(&a.entity,d);check(d.calls.empty());}
+    {Actor a;Drawing d;a.sprite.animation={20,4,99};a.effect.frame=-3;draw_normal_effect(&a.entity,d);
+     check(d.calls==std::vector<std::string>{"screen","capture","resource","sprite"}&&d.resource_id==20&&d.resource_application==&d);
+     check(d.drawn_manager==&d&&d.sprite_clip==4&&d.sprite_frame==-3&&d.sprite_x==40&&d.sprite_y==50);}
+    {Actor a;Drawing d;EntitySprite first,second;EffectComponent replacement;int context=0,new_context=0,manager=0;
+     first.animation={7,3,0};second.animation={20,44,0};replacement.frame=9;d.context=&context;d.manager=&manager;
+     d.callback=[&](const std::string& name){if(name=="capture")a.entity.change(2,&first);
+         if(name=="resource"){d.context=&new_context;a.entity.change(2,&second);a.entity.change(26,&replacement);d.point={1,2};}};
+     draw_normal_effect(&a.entity,d);check(d.resource_application==&context&&d.resource_id==7&&d.drawn_manager==&manager);
+     check(d.sprite_clip==44&&d.sprite_frame==9&&d.sprite_x==1&&d.sprite_y==2);}
+    {Actor a;Drawing d;d.point={high,low};draw_normal_effect(&a.entity,d);check(d.sprite_x==2147483648.0F&&d.sprite_y==-2147483648.0F);}
+    for(const auto& failure:std::vector<std::string>{"screen","capture","resource","sprite"}){
+     Actor a;Drawing d;d.fail=failure;fails([&]{draw_normal_effect(&a.entity,d);});check(d.calls.back()==failure);}
+    {Actor a;Drawing d;d.manager=nullptr;fails([&]{draw_normal_effect(&a.entity,d);});check(d.calls==std::vector<std::string>{"screen","capture","resource"});}
+    {Actor a;Drawing d;d.context=nullptr;fails([&]{draw_normal_effect(&a.entity,d);});check(d.calls==std::vector<std::string>{"screen","capture"});}
+    for(auto slot:{2,26}){Actor a;Drawing d;a.entity.remove(slot);fails([&]{draw_normal_effect(&a.entity,d);});
+     check(d.calls==(slot==26?std::vector<std::string>{}:std::vector<std::string>{"screen","capture"}));}
+    const std::array<std::int32_t,10> scales{{50,141,191,200,165,135,115,105,100,100}};
+    const std::array<std::int32_t,10> bounce{{-12,10,-8,6,-4,2,0,0,0,0}};
+    for(std::int32_t frame=0;frame<10;++frame){Actor a;Drawing d;a.effect.frame=frame;a.effect.max_frame=100;a.effect.value=-12;a.sprite.animation.clip=52;
+     draw_damage_number_effect(&a.entity,d);check(d.calls==std::vector<std::string>{"screen","capture","number"});
+     check(*d.number==std::array<std::int64_t,9>{52,-12,40,50+bounce[static_cast<std::size_t>(frame)],0,2,scales[static_cast<std::size_t>(frame)],-1,-1});}
+    for(const auto row:std::array<std::array<std::int32_t,3>,3>{{{{-1,9,64}},{{low,-2147483638,38}},{{high,-2147483639,50}}}}){
+     Actor a;Drawing d;a.effect.frame=row[0];a.effect.max_frame=row[1];draw_damage_number_effect(&a.entity,d);
+     check(d.calls==std::vector<std::string>{"screen","capture","number"}&&d.number->at(3)==row[2]&&d.number->at(6)==(row[0]<3?50:100));}
+    for(const auto row:std::array<std::array<std::int32_t,3>,12>{{{{-1,-1,-1}},{{34,-1,-1}},{{35,10,12}},{{37,10,12}},{{38,15,17}},{{40,15,17}},
+        {{41,-1,-1}},{{79,-1,-1}},{{80,8,9}},{{82,8,9}},{{83,-1,-1}},{{high,-1,-1}}}}){
+     Actor a;Drawing d;a.effect.max_frame=100;a.sprite.animation.clip=row[0];draw_damage_number_effect(&a.entity,d);
+     check(d.number->at(7)==row[1]&&d.number->at(8)==row[2]);}
+    for(const auto row:std::array<std::array<std::int32_t,2>,4>{{{{18,-1}},{{17,204}},{{8,0}},{{7,0}}}}){Actor a;Drawing d;a.effect.frame=8;a.effect.max_frame=row[0];
+     draw_damage_number_effect(&a.entity,d);check(d.mode==false);
+     if(row[1]<0)check(d.modes.empty()&&d.calls==std::vector<std::string>{"screen","capture","number"});
+     else check(d.modes==std::vector<std::array<std::int32_t,2>>{{1,row[1]}}&&d.calls==std::vector<std::string>{"screen","mode","capture","number","reset"});}
+    for(const auto row:std::array<std::array<std::int32_t,2>,2>{{{{high,low}},{{low,high}}}}){Actor a;Drawing d;a.effect.frame=row[0];a.effect.max_frame=row[1];
+     draw_damage_number_effect(&a.entity,d);check(d.modes==std::vector<std::array<std::int32_t,2>>{{1,0}}&&d.calls.back()=="reset");}
+    {Actor a;Drawing d;EffectComponent replacement;replacement.max_frame=100;replacement.value=999;EntitySprite sprite;sprite.animation={2,80,0};
+     ProjectileModification modification;modification.scale_x=0.5F;a.entity.add(15,&modification);a.effect.frame=0;a.effect.max_frame=9;a.sprite.animation.clip=35;
+     d.callback=[&](const std::string& name){if(name=="mode"){a.effect.frame=3;a.entity.change(26,&replacement);d.point={99,88};}
+         if(name=="capture"){a.entity.change(2,&sprite);a.effect.value=-77;}};
+     draw_damage_number_effect(&a.entity,d);check(*d.number==std::array<std::int64_t,9>{80,-77,40,38,0,2,100,10,12}&&d.calls.back()=="reset");}
+    const std::array<float,5> factors{{0.5F,-0.5F,std::numeric_limits<float>::infinity(),-std::numeric_limits<float>::infinity(),std::numeric_limits<float>::quiet_NaN()}};
+    const std::array<std::int32_t,5> modified{{25,-25,low,low,0}};
+    for(std::size_t i=0;i<factors.size();++i){Actor a;Drawing d;ProjectileModification m;m.scale_x=factors[i];a.entity.add(15,&m);a.effect.max_frame=100;
+     draw_damage_number_effect(&a.entity,d);check(d.number->at(6)==modified[i]);}
+    {Actor a;Drawing d;d.point={high,low};a.effect.max_frame=100;draw_damage_number_effect(&a.entity,d);check(d.number->at(2)==high&&d.number->at(3)==2147483636);}
+    for(const auto& failure:std::vector<std::string>{"screen","mode","capture","number","reset"}){Actor a;Drawing d;a.effect.max_frame=9;d.fail=failure;
+     fails([&]{draw_damage_number_effect(&a.entity,d);});check(d.calls.back()==failure);
+     check(d.mode==(failure=="capture"||failure=="number"||failure=="reset"));}
+    {Actor a;Drawing d;a.effect.max_frame=9;a.entity.remove(2);fails([&]{draw_damage_number_effect(&a.entity,d);});
+     check(d.calls==std::vector<std::string>{"screen","mode"}&&d.mode);}
+    {Actor a;Drawing d;a.entity.remove(26);fails([&]{draw_damage_number_effect(&a.entity,d);});check(d.calls==std::vector<std::string>{"screen"});}
+    {Actor a;Drawing d;a.effect.max_frame=9;d.context=nullptr;fails([&]{draw_damage_number_effect(&a.entity,d);});
+     check(d.calls==std::vector<std::string>{"screen","mode","capture"}&&d.mode);}
+    // Dead-output handlers retain their formatting/projection/style order without inventing glyphs.
+    {Actor a;Drawing d;ContactPosition replacement;a.effect.value=low;a.entity.remove(2);
+     d.callback=[&](const std::string& name){if(name=="format")a.entity.change(0,&replacement);};draw_time_effect(&a.entity,d);
+     check(d.formatted_time==low&&d.projected==&replacement&&d.calls==std::vector<std::string>{"format","screen"}&&!d.number);}
+    for(const auto& failure:std::vector<std::string>{"format","screen"}){Actor a;Drawing d;d.fail=failure;fails([&]{draw_time_effect(&a.entity,d);});check(d.calls.back()==failure);}
+    for(auto remaining:{-1,0,9,10}){Actor a;Drawing d;a.effect.frame=8;a.effect.max_frame=8+remaining;a.entity.remove(2);
+     draw_jump_number_effect(&a.entity,d);check(!d.number&&!d.mode);
+     check(d.calls==(remaining<=9?std::vector<std::string>{"mode","screen","reset"}:std::vector<std::string>{"screen"}));}
+    {Actor a;Drawing d;a.effect.max_frame=9;d.callback=[&](const std::string& name){if(name=="mode")a.effect.max_frame=100;};
+     draw_jump_number_effect(&a.entity,d);check(d.calls.back()=="reset");}
+    {Actor a;Drawing d;a.effect.max_frame=9;d.fail="screen";fails([&]{draw_jump_number_effect(&a.entity,d);});
+     check(d.calls==std::vector<std::string>{"mode","screen"}&&d.mode);}
+    {Drawing d;fails([&]{d.EffectDrawingHost::capture_effect_resource(&d,20);});fails([&]{d.EffectDrawingHost::effect_draw_sprite(&d,0,0,0,0);});
+     fails([&]{d.EffectDrawingHost::effect_render_mode(1,255);});fails([&]{d.EffectDrawingHost::effect_reset_render_mode();});d.EffectDrawingHost::effect_format_time(42);}
+}
 }
 int main(){
     drawing_contracts();
+    visual_handler_contracts();
     const auto low=std::numeric_limits<std::int32_t>::min(),high=std::numeric_limits<std::int32_t>::max();
     {Host h;auto old=h.state.expired;h.state.expired->add(nullptr);initialize_effects(h.state,&h);check(h.state.expired!=old&&h.state.expired->size()==0);
      old=h.state.expired;h.fail_subset=true;fails([&]{initialize_effects(h.state,&h);});check(h.state.expired==old&&h.state.subset==&h.group);

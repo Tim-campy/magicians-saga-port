@@ -147,7 +147,7 @@ def make_gauge_scene(root, defeats=6):
 
 def with_common_resource(root, text):
     """Synthetic resCom dependency of the original movement hint."""
-    (root/'common.bin').write_bytes(jar([('img.inf',b'4\tfinger.png,bin\n52\tnumbers.png,bin'),('seb.inf',b'4\tfinger.seb\n52\tnumbers.seb\n58\tnumbers.seb'),
+    (root/'common.bin').write_bytes(jar([('img.inf',b'4\tfinger.png,bin\n52\tnumbers.png,bin'),('seb.inf',('4\tfinger.seb\n'+''.join(f'{i}\tnumbers.seb\n' for i in [34,35,36,37,38,39,40,51,52,58,80,81,82])).encode()),
         ('numbers.seb',seb([(i,52,6*i,0,6,8,0,0,0,0) for i in range(11)])),
         ('numbers.png',png(66,8,[255,255,255,255]*528)),
         ('finger.seb',seb([(0,4,0,0,2,2,0,0,0,0)])),('finger.png',png(2,2,[255,255,255,255]*4))]))
@@ -197,7 +197,7 @@ def make_data_entry_fixture(root, font_file, quest_time_limit=None):
              'quest ','stage_start ','result_wallet ','result_record ','result_inventory ','result_recruits ','gear_levels ')
     control='mission_presentation 600 640 100 0 1 0 1500100 -1\nmission_resources "English.lproj" 1\nmaterial_policy native\ngpu_depth 24 1\n'
     control+='\n'.join(line for line in text.splitlines() if not line.startswith(removed))+'\n'
-    control+='human_static_fps 30\nhero fresh\ntick_ms 40\nsystem_construct empty_manager\nquest_frame 0 initial\ngear_new_game\ncharacter_shop_new_game 1\nnew_game_save\nmission_initialization\nmission_state new_game initial 0\nmission_events new_game 0 0 0\nenemy_gauges\nhuman_hud\nstage_mp_hud\ncollisions\n'
+    control+='human_static_fps 30\nhero fresh\ntick_ms 40\nsystem_construct empty_manager\nquest_frame 0 initial\ngear_new_game\ncharacter_shop_new_game 1\nnew_game_save\nmission_initialization\nmission_state new_game initial 0\nmission_events new_game 0 0 0\nenemy_gauges\nhuman_hud\nstage_mp_hud\ndamage_labels\ncollisions\n'
     control+=f'talk_font "{font.as_posix()}" 100 100 100 0 0 0 0 0\n'
     control=control.replace('system_init 1','system_init 0').replace('runtime 25 0 system 42','runtime initial initial system 42')
     return control

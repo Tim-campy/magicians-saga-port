@@ -86,6 +86,7 @@ public:
     bool enemy_gauges=false; // Explicit selected dynamic-draw binding; full World.DynamicDraw is separate.
     bool human_hud=false;
     bool stage_mp_hud=false; // Real-data v2 or explicit diagnostic selection; legacy v1 lacks resCom.
+    bool damage_labels=false; // Real-data v2 or explicit diagnostic selection with the common atlas.
     std::vector<core::ComponentSlots*> created;
     std::map<std::string,std::int32_t> resource_names;
     std::unique_ptr<MissionEntities> entity_world;std::unique_ptr<MissionScene> mission;
@@ -219,6 +220,8 @@ private:
     std::vector<std::int32_t> last_dynamic_bodies_;
     std::vector<core::ParameterGaugeRequest> human_gauge_requests_,enemy_gauge_requests_;
     std::vector<MissionNumberDraw> effect_number_draws_;
+    std::vector<MissionEffectSpriteDraw> effect_sprite_draws_;
+    std::vector<std::array<std::int32_t,3>> effect_render_modes_;
     std::vector<std::int32_t> unbound_effect_draws_;
     void bind_dynamic_draw_schedule();
     void draw_dynamic_body(std::int32_t);

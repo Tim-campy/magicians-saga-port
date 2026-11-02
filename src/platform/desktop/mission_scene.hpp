@@ -24,6 +24,14 @@ struct MissionNumberDraw {
     core::EffectNumberContext application=nullptr;std::int32_t clip=0;std::int64_t value=0;
     std::int32_t x=0,y=0,padding=0,anchor=0,scale=0,width=0,height=0;
 };
+struct MissionEffectSpriteDraw {
+    core::RenderDrawResource* manager=nullptr;std::int32_t clip=0,frame=0;float x=0,y=0;
+};
+struct MissionEffectDrawing {
+    std::function<void(const MissionNumberDraw&)> number;
+    std::function<void(const MissionEffectSpriteDraw&)> sprite;
+    std::function<void(std::int32_t mode,std::int32_t source,std::int32_t destination)> render_mode;
+};
 struct MissionPopupScenario {std::int32_t id,category,type,priority;bool single;std::int32_t height,duration;};
 struct MissionSlideScenario {std::int32_t id,width,height,duration;};
 // Selected entity group and fixed supplied view. Full mission culling/camera/input remain host bindings.
@@ -79,7 +87,7 @@ public:
     core::GaugePoint gauge_screen_position(const core::ContactPosition*);
     void draw_enemy_gauges(const std::function<void(const core::ParameterGaugeRequest&)>&);
     void draw_dynamic_scene(std::int32_t,core::EffectNumberContext,
-        const std::function<void(const MissionNumberDraw&)>&,std::vector<std::int32_t>& unbound_effects);
+        const MissionEffectDrawing&,std::vector<std::int32_t>& unbound_effects);
     std::uint64_t collision_events()const{return collision_events_;}
     std::uint64_t area_collision_events()const{return area_collision_events_;}
     core::RenderQueue& render();

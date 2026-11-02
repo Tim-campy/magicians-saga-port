@@ -69,7 +69,7 @@ int main()try{
     enemy->remove(32);scene.advance_collisions(0);check(pairs==1); // The initialized live group observes removal.
     auto& effects=world.effect_world();auto& number=create_effect({{0,20,0},3,9,2,58,false,false,30,0,nullptr,-1,false},effects.ids,effects.factory);
     check(number.contains(26)&&!number.contains(4)&&!number.contains(5));
-    scene.render();check(scene.faults().empty()&&queue.counts->at(0)==2); // Explicit numeric-label presentation stub; no invented Depth.
+    scene.render();check(scene.faults().empty()&&queue.counts->at(0)==2); // Numeric output belongs to DrawDynamic; no invented Depth.
     for(int i=0;i<30;++i)scene.advance_garbage(0);
     check(world.destroyed(number)&&!world.registry().contains(world.id(number)));
     auto& notice=create_effect({{0,50,0},7,3,0,0,false,false,30,0,nullptr,-1,true},effects.ids,effects.factory);
@@ -83,6 +83,27 @@ int main()try{
     scene.advance_effects();check(child_effect.frame==0);child.remove(4);scene.advance_effects();check(child_effect.frame==1);
     world.destroy(parent);scene.advance_effects();check(world.destroyed(child)&&!world.registry().contains(world.id(child)));
     for(int i=0;i<30;++i)scene.advance_garbage(0);check(world.destroyed(notice));
+    {
+        // Native no-Depth effects bypass Render21 and use the initialized Effect23 host.
+        app.common=&resource;
+        create_effect({{10,0,4},0,0,20,0,false,false,6,0,nullptr,-1,false},effects.ids,effects.factory);
+        create_effect({{10,0,4},1,17,2,35,false,false,6,0,nullptr,-1,false},effects.ids,effects.factory);
+        create_effect({{10,0,4},2,1200,2,0,false,false,6,0,nullptr,-1,false},effects.ids,effects.factory);
+        create_effect({{10,0,4},5,17,2,0,false,false,6,0,nullptr,-1,false},effects.ids,effects.factory);
+        scene.render();check(scene.faults().empty()&&queue.counts->at(0)==2);
+        std::vector<MissionNumberDraw> numbers;std::vector<MissionEffectSpriteDraw> sprites;
+        std::vector<std::array<std::int32_t,3>> modes;std::vector<std::int32_t> missing;
+        MissionEffectDrawing output;
+        output.number=[&](const MissionNumberDraw& r){numbers.push_back(r);};
+        output.sprite=[&](const MissionEffectSpriteDraw& r){sprites.push_back(r);};
+        output.render_mode=[&](auto mode,auto source,auto destination){modes.push_back({mode,source,destination});};
+        scene.draw_dynamic_scene(23,&app,output,missing);
+        check(missing.empty()&&sprites.size()==1&&numbers.size()==1&&modes.size()==4);
+        check(sprites[0].manager==&resource&&sprites[0].clip==0&&sprites[0].frame==0&&sprites[0].x==26&&sprites[0].y==37);
+        const auto& n=numbers[0];check(n.application==&app&&n.clip==35&&n.value==17&&n.x==26&&n.y==25&&n.scale==50&&n.width==10&&n.height==12);
+        check(modes[0][0]==1&&modes[0][1]+modes[0][2]==255&&modes[2]==modes[0]);
+        check(modes[1]==std::array<std::int32_t,3>{0,255,0}&&modes[3]==modes[1]);
+    }
     {
         MissionEntities mapped(data,saved,35,nullptr,[&](std::int32_t){return &animations.resource();},[](std::string_view){return 3;});
         auto& map=mapped.create_initial_map();check(map.width==3&&map.height==8&&map.step_z==312);
