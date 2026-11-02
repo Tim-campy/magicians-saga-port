@@ -20,6 +20,10 @@ struct MissionView {
     std::int32_t width,height,scale,camera_x,camera_y,margin_x,margin_y,extra_depth_rate;
 };
 struct MissionRenderFault {std::int32_t entity;std::string message;};
+struct MissionNumberDraw {
+    core::EffectNumberContext application=nullptr;std::int32_t clip=0;std::int64_t value=0;
+    std::int32_t x=0,y=0,padding=0,anchor=0,scale=0,width=0,height=0;
+};
 struct MissionPopupScenario {std::int32_t id,category,type,priority;bool single;std::int32_t height,duration;};
 struct MissionSlideScenario {std::int32_t id,width,height,duration;};
 // Selected entity group and fixed supplied view. Full mission culling/camera/input remain host bindings.
@@ -74,11 +78,17 @@ public:
     core::QuestCameraHost& gauge_camera_host();
     core::GaugePoint gauge_screen_position(const core::ContactPosition*);
     void draw_enemy_gauges(const std::function<void(const core::ParameterGaugeRequest&)>&);
+    void draw_dynamic_scene(std::int32_t,core::EffectNumberContext,
+        const std::function<void(const MissionNumberDraw&)>&,std::vector<std::int32_t>& unbound_effects);
     std::uint64_t collision_events()const{return collision_events_;}
     std::uint64_t area_collision_events()const{return area_collision_events_;}
     core::RenderQueue& render();
     const std::vector<MissionRenderFault>& faults()const{return faults_;}
 private:
+    struct DynamicHost;
+    core::GaugePoint effect_screen_work_;
+    std::optional<std::array<std::int32_t,3>> dynamic_text_color_;
+    std::vector<std::int32_t> dynamic_font_scopes_;
     core::EntitySubset* gauge_subset(const core::EventIntegers& slots)override{return world_.subset(slots);}
     bool gauge_parent_destroyed(core::ComponentSlots& e)override{return world_.destroyed(e);}
     void destroy_gauge(core::ComponentSlots& e,bool remove)override{world_.destroy(e,remove);++gauge_destroy_calls_;}

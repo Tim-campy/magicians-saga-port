@@ -36,4 +36,15 @@ public:
 void initialize_bubbles(BubbleFrameState&,BubbleInitializationWorld*); // 0x11523d4.
 void update_bubbles(BubbleFrameState&,BubbleFrameHost&); // 0x1152470.
 void update_bubble_display(ComponentSlots*); // 0x1152c54: world XYZ and Cell, not font output.
+class BubbleDynamicDrawHost {
+public:
+    virtual ~BubbleDynamicDrawHost()=default;
+    virtual void require_dynamic_context()=0;
+    virtual void dynamic_color(std::int32_t r,std::int32_t g,std::int32_t b)=0;
+    virtual void push_dynamic_font(std::int32_t)=0;
+    virtual void pop_dynamic_font()=0;
+    virtual void project_dynamic_x(ContactPosition*)=0;
+    virtual void project_dynamic_y(ContactPosition*)=0;
+};
+void draw_dynamic_bubbles(BubbleFrameState&,BubbleDynamicDrawHost&); // FukidashiSystem.DrawDynamic 0x1152e5c.
 }

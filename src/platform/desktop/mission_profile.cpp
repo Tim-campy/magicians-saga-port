@@ -1134,6 +1134,7 @@ struct HumanHud final:HumanDrawingHost {
 };
 }
 void MissionProfile::write_combat_report(std::ostream& out){
+    draw_dynamic_hud();
     const auto mp=draw_stage_hud();out<<",\"stage_mp_hud_enabled\":"<<(stage_mp_hud?"true":"false")<<",\"stage_mp_hud\":";
     if(mp){std::string ascii;for(const auto c:mp->text)ascii.push_back(static_cast<char>(c));
         out<<"{\"text\":"<<std::quoted(ascii)<<",\"width\":"<<mp->width<<",\"icon\":["<<mp->icon[0]<<','<<mp->icon[1]<<"],\"gauge_entity\":"<<entity_world->id(*mp->gauge.entity)<<",\"gauge_position\":["<<mp->gauge.x<<','<<mp->gauge.y<<"],\"gauge_image\":"<<mp->gauge.image<<'}';
@@ -1221,12 +1222,14 @@ void MissionProfile::write_combat_report(std::ostream& out){
     out<<",\"pause_requests\":"<<pause_requests_<<",\"system_enabled\":[";
     for(std::size_t i=0;i<system_states_.size();++i){if(i)out<<',';out<<(system_states_[i].enabled?"true":"false");}out<<']';
     out<<",\"enemy_gauges_enabled\":"<<(enemy_gauges?"true":"false")<<",\"enemy_gauge_requests\":[";
-    if(enemy_gauges&&system_states_[5].enabled){bool first=true;mission->draw_enemy_gauges([&](const ParameterGaugeRequest& r){if(!first)out<<',';first=false;
-        out<<"{\"entity\":"<<entity_world->id(*r.entity)<<",\"x\":"<<r.x<<",\"y\":"<<r.y<<",\"image\":"<<r.image<<",\"parameter\":"<<r.parameter<<",\"anchor\":"<<r.anchor<<",\"force\":"<<(r.force?"true":"false")<<'}';});}out<<']';
-    out<<",\"human_hud_enabled\":"<<(human_hud?"true":"false")<<",\"human_gauge_requests\":[";
-    if(human_hud&&system_states_[4].enabled){bool first=true;HumanHud host(*this,nullptr,[&](const ParameterGaugeRequest& r){
-        if(!first)out<<',';first=false;out<<"{\"entity\":"<<entity_world->id(*r.entity)<<",\"x\":"<<r.x<<",\"y\":"<<r.y<<",\"image\":"<<r.image<<",\"parameter\":"<<r.parameter<<",\"anchor\":"<<r.anchor<<",\"force\":"<<(r.force?"true":"false")<<'}';});humans->draw_dynamic_hud(host);
-    }out<<']';
+    const auto requests=[&](const auto& list){bool first=true;for(const auto& r:list){if(!first)out<<',';first=false;
+        out<<"{\"entity\":"<<entity_world->id(*r.entity)<<",\"x\":"<<r.x<<",\"y\":"<<r.y<<",\"image\":"<<r.image<<",\"parameter\":"<<r.parameter<<",\"anchor\":"<<r.anchor<<",\"force\":"<<(r.force?"true":"false")<<'}';}};
+    requests(enemy_gauge_requests_);out<<"],\"human_hud_enabled\":"<<(human_hud?"true":"false")<<",\"human_gauge_requests\":[";
+    requests(human_gauge_requests_);out<<"],\"dynamic_draw_schedule_enabled\":"<<(initialization_complete_?"true":"false")<<",\"last_dynamic_draw_order\":[";
+    for(std::size_t i=0;i<last_dynamic_bodies_.size();++i){if(i)out<<',';out<<last_dynamic_bodies_[i];}out<<"],\"effect_number_draws\":[";
+    for(std::size_t i=0;i<effect_number_draws_.size();++i){if(i)out<<',';const auto& r=effect_number_draws_[i];
+        out<<"{\"clip\":"<<r.clip<<",\"value\":"<<r.value<<",\"x\":"<<r.x<<",\"y\":"<<r.y<<",\"anchor\":"<<r.anchor<<",\"scale\":"<<r.scale<<'}';}out<<"],\"unbound_effect_draw_types\":[";
+    for(std::size_t i=0;i<unbound_effect_draws_.size();++i){if(i)out<<',';out<<unbound_effect_draws_[i];}out<<']';
     out<<",\"selected_quest\":";if(selected_quest)out<<*selected_quest;else out<<"null";
     if(selected_quest&&humans){const auto q=humans->quest();out<<",\"quest_distance\":"<<q->distance<<",\"quest_flags\":"<<q->flags<<",\"quest_money_rate\":"<<q->money_rate<<",\"quest_completion_byte\":"<<static_cast<int>(q->completed)<<",\"quest_rescued\":"<<q->rescued_prisoners;}
     const auto write_indices=[&](const char* name,const auto& indices){out<<",\""<<name<<"\":[";bool first=true;for(const auto id:indices){if(!first)out<<',';first=false;out<<id;}out<<']';};
@@ -1257,14 +1260,47 @@ void MissionProfile::write_combat_report(std::ostream& out){
         if(!first)out<<',';first=false;out<<"{\"id\":"<<entity_world->id(**e)<<",\"type\":"<<drop->type<<",\"value\":"<<drop->value<<",\"x\":"<<p->x<<",\"z\":"<<p->z<<'}';
     }}out<<']';
 }
-void MissionProfile::draw_dynamic_hud(BitmapBackend& backend){
-    if(!enemy_gauges&&!human_hud)return;
-    // SystemManager.DynamicDraw 0x113ca88: layer99 once; selected factory4 then5.
-    // SAGA_STUB(mission-dynamic-draw): other dynamic-system bodies remain unbound.
-    backend.set_depth_layer(99);
-    const auto gauge=[&](const ParameterGaugeRequest& r){backend.draw_parameter_gauge(r,mission->gauge_camera_host(),&gauge_scratch_);};
-    if(human_hud&&system_states_[4].enabled){HumanHud host(*this,&backend,gauge);humans->draw_dynamic_hud(host);}
-    if(enemy_gauges&&system_states_[5].enabled)mission->draw_enemy_gauges(gauge);
+void MissionProfile::bind_dynamic_draw_schedule(){
+    if(!dynamic_draw_list_.empty())return;
+    for(auto& state:system_states_)system_identities_.push_back(&state);
+    std::array<DynamicDrawSystem*,32> factory{};
+    for(const auto id:gameplay_dynamic_draw_order){
+        dynamic_drawers_[id]=std::make_unique<GameplayDynamicDraw>(system_states_[id].enabled,[this,id]{draw_dynamic_body(id);},&system_states_[id]);
+        factory[id]=dynamic_drawers_[id].get();
+    }
+    dynamic_draw_list_=make_gameplay_dynamic_draw_list(factory);
+}
+void MissionProfile::draw_dynamic_body(std::int32_t id){
+    last_dynamic_bodies_.push_back(id);
+    if(id==4&&human_hud){HumanHud host(*this,dynamic_backend_,[&](const ParameterGaugeRequest& r){
+        human_gauge_requests_.push_back(r);if(dynamic_backend_)dynamic_backend_->draw_parameter_gauge(r,mission->gauge_camera_host(),&gauge_scratch_);});humans->draw_dynamic_hud(host);}
+    else if(id==5&&enemy_gauges)mission->draw_enemy_gauges([&](const ParameterGaugeRequest& r){
+        enemy_gauge_requests_.push_back(r);if(dynamic_backend_)dynamic_backend_->draw_parameter_gauge(r,mission->gauge_camera_host(),&gauge_scratch_);});
+    else if(id==16||id==22||id==23||id==26||id==30){
+        mission->draw_dynamic_scene(id,&application,[&](const MissionNumberDraw& r){
+            effect_number_draws_.push_back(r);
+            // SAGA_STUB(mission-dynamic-legacy-common): v1 profiles lack the common numeric atlas.
+            if(!get_application_resource(application,2)){if(std::find(unbound_effect_draws_.begin(),unbound_effect_draws_.end(),3)==unbound_effect_draws_.end())unbound_effect_draws_.push_back(3);return;}
+            if(r.application!=&application)throw std::invalid_argument("foreign effect numeric application");
+            if(dynamic_backend_)dynamic_backend_->draw_number_value(application,r.clip,r.value,r.x,r.y,r.padding,r.anchor,r.scale,r.width,r.height);
+        },unbound_effect_draws_);
+    }
+    // Stage.DrawDynamic 0x1167fc0 and CursorRender.DrawDynamic 0x1147724 are RET bodies.
+}
+void MissionProfile::draw_dynamic_hud(BitmapBackend* backend){
+    last_dynamic_bodies_.clear();human_gauge_requests_.clear();enemy_gauge_requests_.clear();effect_number_draws_.clear();unbound_effect_draws_.clear();
+    if(!mission)return;
+    dynamic_backend_=backend;
+    if(initialization_complete_){
+        bind_dynamic_draw_schedule();DynamicDrawSchedule schedule{&dynamic_draw_list_,&system_identities_,&timer_};
+        try{draw_dynamic_systems(schedule,this);}catch(...){dynamic_backend_=nullptr;throw;}
+    }else if(enemy_gauges||human_hud){
+        // SAGA_STUB(mission-dynamic-legacy-context): selected snapshots do not own the complete initialized system context.
+        set_dynamic_depth_layer(99);
+        if(human_hud&&system_states_[4].enabled)draw_dynamic_body(4);
+        if(enemy_gauges&&system_states_[5].enabled)draw_dynamic_body(5);
+    }
+    dynamic_backend_=nullptr;
 }
 PixelImage* MissionProfile::gauge_image(std::int32_t id){
     auto* resource=get_application_resource(global,23);

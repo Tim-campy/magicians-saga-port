@@ -49,4 +49,12 @@ public:
 void initialize_gauges(GaugeFrameState&,GaugeInitializationWorld*); // GaugeSystem.Init 0x11535ac.
 void update_gauge_display(ComponentSlots*,GaugeDrawState&,GaugeDrawingHost&); // 0x1153a64.
 void update_gauges(GaugeFrameState&,GaugeDrawState&,GaugeFrameHost&,GaugeDrawingHost&); // 0x1153698.
+class GaugeDynamicDrawHost {
+public:
+    virtual ~GaugeDynamicDrawHost()=default;
+    virtual void require_dynamic_context()=0; // Current AppData/frmQuest, even for an empty group.
+    virtual void project_dynamic_x(ContactPosition*)=0; // Native result is discarded.
+    virtual void project_dynamic_y(ContactPosition*)=0;
+};
+void draw_dynamic_gauges(GaugeFrameState&,GaugeDynamicDrawHost&); // GaugeSystem.DrawDynamic 0x1154808.
 } // namespace saga::core

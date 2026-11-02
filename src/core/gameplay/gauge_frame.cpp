@@ -133,4 +133,11 @@ void update_gauges(GaugeFrameState& state,GaugeDrawState& scratch,GaugeFrameHost
         current.erase(current.begin());
     }
 }
+void draw_dynamic_gauges(GaugeFrameState& s,GaugeDynamicDrawHost& host){
+    host.require_dynamic_context();auto cursor=required(s.subset).cursor();
+    while(const auto entry=cursor.next()){
+        auto& e=required(*entry);if((gauge(e).flags&1)==0)continue;
+        auto* p=component<ContactPosition>(e,0);host.project_dynamic_x(p);host.project_dynamic_y(p);
+    }
+}
 } // namespace saga::core

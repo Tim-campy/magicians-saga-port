@@ -42,7 +42,7 @@ struct MissionBootstrapOptions {
 // An empty decoder decodes only images needed by Gauge22 logic.
 class MissionProfile:private core::GaugeDrawingHost,private core::AuxiliaryInitializationWorld,private core::TownInitializationWorld,private core::SystemPauseManager,
     private core::QuestFrameHost,private core::SelectPreludeHost,private core::FreshTownHost,
-    private core::MissionWorldEntryHost,private core::MissionWorldEntryTarget {
+    private core::MissionWorldEntryHost,private core::MissionWorldEntryTarget,private core::DynamicDrawDepthHost {
 public:
     MissionProfile(const std::filesystem::path&,bool native,ArchiveImageSet::Decoder = {},std::optional<MissionRuntimeConfig> = std::nullopt,std::optional<std::filesystem::path> replay =std::nullopt,MissionSelection = {});
     MissionProfile(const MissionBootstrapOptions&,ArchiveImageSet::Decoder,MissionRuntimeConfig,std::optional<std::filesystem::path> replay=std::nullopt);
@@ -60,7 +60,7 @@ public:
     core::OffscreenMatrix surface_projection(std::int32_t width,std::int32_t height)const;
     std::uint64_t logic_steps=0,movement_steps=0;
     void write_combat_report(std::ostream&); // Diagnostic JSON fragment; not a complete-state snapshot.
-    void draw_dynamic_hud(BitmapBackend&);
+    void draw_dynamic_hud(BitmapBackend* backend=nullptr);
     std::optional<StageMpHud> draw_stage_hud(BitmapBackend* backend=nullptr);
     bool attack_widgets_enabled()const{return native_stage_controls()&&resizable_viewport();}
     bool movement_widgets_enabled()const{return attack_widgets_enabled()&&core::get_application_resource(application,2);}
@@ -212,6 +212,17 @@ private:
     std::array<bool,32> configured_{},enabled_{};
     std::array<std::unique_ptr<core::GameplayUpdate>,32> updates_;
     std::vector<core::UpdateSystem*> update_list_;
+    std::array<std::unique_ptr<core::GameplayDynamicDraw>,32> dynamic_drawers_;
+    std::vector<core::DynamicDrawSystem*> dynamic_draw_list_;
+    std::vector<const void*> system_identities_;
+    BitmapBackend* dynamic_backend_=nullptr;
+    std::vector<std::int32_t> last_dynamic_bodies_;
+    std::vector<core::ParameterGaugeRequest> human_gauge_requests_,enemy_gauge_requests_;
+    std::vector<MissionNumberDraw> effect_number_draws_;
+    std::vector<std::int32_t> unbound_effect_draws_;
+    void bind_dynamic_draw_schedule();
+    void draw_dynamic_body(std::int32_t);
+    void set_dynamic_depth_layer(std::int32_t layer)override{if(dynamic_backend_)dynamic_backend_->set_depth_layer(layer);}
     std::vector<std::int32_t> last_updates_;
     bool halted_=false;
     std::array<core::GameplaySystemState,32> system_states_;

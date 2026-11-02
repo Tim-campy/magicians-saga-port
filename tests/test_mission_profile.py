@@ -60,6 +60,8 @@ class MissionProfileTests(unittest.TestCase):
             self.assertEqual(baseline.returncode,0,baseline.stderr);self.assertEqual(held.returncode,0,held.stderr)
             a,b=json.loads(baseline.stdout),json.loads(held.stdout)
             self.assertEqual(b['stage_state'],0);self.assertEqual(b['movement_widgets'],[])
+            self.assertTrue(b['dynamic_draw_schedule_enabled'])
+            self.assertEqual(b['last_dynamic_draw_order'],[i for i in [3,4,5,16,22,23,24,26,30] if b['system_enabled'][i]])
             self.assertTrue(b['stage_mp_hud_enabled']);mp=b['stage_mp_hud']
             self.assertEqual(int(mp['text'].split('/')[0]),b['positions'][0]['mp'])
             self.assertEqual(mp['width'],len(mp['text'])*6);self.assertEqual(mp['gauge_image'],4)

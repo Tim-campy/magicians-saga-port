@@ -154,3 +154,4 @@ game:0x060000bb	documented	docs/subsystems/ui.md	Required control; nonempty opti
 game:0x0600017b	reimplemented	src/core/gameplay/render_draw.cpp	Common-resource numeric string glyph drawing, UTF16 spacing, anchors and failure prefixes; Stage MP host-bound
 kairo:0x06001700	documented	docs/subsystems/ui.md	Signed bounding rectangle and float anchor position; value adapter in seb_sprite omits shared float result alias
 kairo:0x060016fd	documented	docs/subsystems/ui.md	Current-frame anchor offset, draw and normal/exceptional ClearOffset; automatic registration remains external
+game:0x06000178	reimplemented	src/core/gameplay/render_draw.cpp	Int64 numeric glyph layout/header/footer, uint32 to uint64 extent, local scale, INT64_MIN and minus fallback; host-bound

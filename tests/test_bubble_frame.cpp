@@ -41,6 +41,18 @@ struct Host final:BubbleFrameHost,BubbleInitializationWorld,BubblePool,DebugInit
     ContactPosition& pos(ComponentSlots& e){return *dynamic_cast<ContactPosition*>(e.get(0));}
 };
 int main()try{
+    {struct Draw:BubbleDynamicDrawHost {
+        std::vector<int> calls;bool fail_context=false;
+        void require_dynamic_context()override{calls.push_back(0);if(fail_context)throw std::runtime_error("context");}
+        void dynamic_color(std::int32_t r,std::int32_t g,std::int32_t b)override{check(r==50&&g==150&&b==240);calls.push_back(1);}
+        void push_dynamic_font(std::int32_t font)override{check(font==10);calls.push_back(2);}
+        void pop_dynamic_font()override{calls.push_back(5);}
+        void project_dynamic_x(ContactPosition* p)override{calls.push_back(3);if(!p)throw std::runtime_error("position");p->x=42;}
+        void project_dynamic_y(ContactPosition* p)override{check(p&&p->x==42);calls.push_back(4);}
+     } draw;Host h;draw_dynamic_bubbles(h.frame,draw);check(draw.calls==std::vector<int>({0,1,2,5}));
+     auto& e=h.make(nullptr);draw.calls.clear();draw_dynamic_bubbles(h.frame,draw);check(draw.calls==std::vector<int>({0,1,2,3,4,5}));
+     e.remove(0);draw.calls.clear();fails([&]{draw_dynamic_bubbles(h.frame,draw);});check(draw.calls==std::vector<int>({0,1,2,3}));
+     draw.fail_context=true;draw.calls.clear();fails([&]{draw_dynamic_bubbles(h.frame,draw);});check(draw.calls==std::vector<int>{0});}
     {Host h;auto& parent=h.node();auto& e=h.make(&parent);update_bubbles(h.frame,h);
      check(h.data(e).frame==1&&h.pos(e).x==64&&h.pos(e).y==-10&&h.pos(e).z==20);
      auto& c=*dynamic_cast<CellComponent*>(e.get(5));check(c.xi==7&&c.yi==-8&&h.destroyed.empty());

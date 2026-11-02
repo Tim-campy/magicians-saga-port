@@ -24,7 +24,7 @@ OffscreenMatrix bitmap_projection(std::int32_t width,std::int32_t height,BitmapC
     return result;
 }
 namespace {
-[[noreturn]] void unbound(){throw std::runtime_error("bitmap backend requires an unbound graphics service");}
+[[noreturn]] void unbound(const char* service){throw std::runtime_error(std::string("bitmap backend requires unbound service: ")+service);}
 std::int32_t word(std::uint32_t v){return static_cast<std::int32_t>(v<=0x7fffffffU?static_cast<std::int64_t>(v):static_cast<std::int64_t>(v)-0x100000000LL);}
 std::int32_t add(std::int32_t a,std::int32_t b){return word(static_cast<std::uint32_t>(a)+static_cast<std::uint32_t>(b));}
 std::int32_t sub(std::int32_t a,std::int32_t b){return word(static_cast<std::uint32_t>(a)-static_cast<std::uint32_t>(b));}
@@ -98,8 +98,8 @@ struct BitmapBackend::Impl final:RenderDrawHost,RenderGraphics,RenderDepth,Image
         if(value){std::array<std::int32_t,12> copy;std::copy_n(value->begin(),12,copy.begin());last=copy;}
         return value;
     }
-    void invalid_image_override(std::int32_t,std::int32_t,std::int32_t,std::int32_t)override{unbound();}
-    void missing_image(std::int32_t,std::int32_t)override{unbound();}
+    void invalid_image_override(std::int32_t,std::int32_t,std::int32_t,std::int32_t)override{unbound(__func__);}
+    void missing_image(std::int32_t,std::int32_t)override{unbound(__func__);}
     float transform_tangent(float angle)override{return degree_tangent(angle);}
     RenderDepth* mesh_manager()override{return this;}
     void set_depth(std::int32_t index,std::int32_t relative)override{
@@ -110,27 +110,27 @@ struct BitmapBackend::Impl final:RenderDrawHost,RenderGraphics,RenderDepth,Image
         if(depth_host)depth_host->emit_quad(quad);
         output.push_back(quad);
     }
-    void push_render_mode(std::int32_t m,std::int32_t a,std::int32_t b)override{if(raw_rgba)unbound();core::push_render_mode(colors,m,a,b);}
-    void pop_render_mode()override{if(raw_rgba)unbound();core::pop_render_mode(colors);}
-    void push_blend_mode(std::int32_t m,std::int32_t c)override{if(raw_rgba)unbound();core::push_blend_mode(colors,m,c);}
-    void pop_blend_mode()override{if(raw_rgba)unbound();core::pop_blend_mode(colors);}
+    void push_render_mode(std::int32_t m,std::int32_t a,std::int32_t b)override{if(raw_rgba)unbound(__func__);core::push_render_mode(colors,m,a,b);}
+    void pop_render_mode()override{if(raw_rgba)unbound(__func__);core::pop_render_mode(colors);}
+    void push_blend_mode(std::int32_t m,std::int32_t c)override{if(raw_rgba)unbound(__func__);core::push_blend_mode(colors,m,c);}
+    void pop_blend_mode()override{if(raw_rgba)unbound(__func__);core::pop_blend_mode(colors);}
     void sync_matrix(){image_state.local_matrix_index=transform.local_index;image_state.local_coordinate_count=transform.local_coordinate_count;}
     void push_matrix(RenderMatrix& matrix)override{
-        auto* selected=dynamic_cast<BitmapMatrix*>(&matrix);if(!selected)unbound();
+        auto* selected=dynamic_cast<BitmapMatrix*>(&matrix);if(!selected)unbound(__func__);
         push_graphics_matrix(transform,&selected->value);sync_matrix();
     }
     void pop_matrix()override{pop_graphics_matrix(transform,*this);sync_matrix();}
     void draw_image(const RenderImageDraw& d)override{
-        auto* image=dynamic_cast<PixelImage*>(d.image);if(d.image&&!image)unbound();image_state.flip=reverse;
+        auto* image=dynamic_cast<PixelImage*>(d.image);if(d.image&&!image)unbound(__func__);image_state.flip=reverse;
         if(d.scaled)draw_scaled_image_rect(image_state,image,d.x,d.y,d.width,d.height,d.u,d.v,d.source_width,d.source_height,*this);
         else draw_image_rect(image_state,image,d.x,d.y,d.u,d.v,d.source_width,d.source_height,*this);
     }
-    bool culling_overlap(const ImageCullRect&,const ImageRect&)override{unbound();}
-    void null_image_debug()override{unbound();}
+    bool culling_overlap(const ImageCullRect&,const ImageRect&)override{unbound(__func__);}
+    void null_image_debug()override{unbound(__func__);}
     bool begin_sample()override{return false;}
     void end_sample(bool)override{}
     void check_use(PixelImage&)override{} // Inputs were read completely before this synchronous preview.
-    void clipping_unavailable()override{unbound();}
+    void clipping_unavailable()override{unbound(__func__);}
     void push_rotation(float angle,float x,float y)override{set_rotate_matrix(temporary_matrix,angle,x,y);push_graphics_matrix(transform,&temporary_matrix);sync_matrix();}
     void push_scale(float x,float y,float cx,float cy)override{set_scale_matrix(temporary_matrix,x,y,cx,cy);push_graphics_matrix(transform,&temporary_matrix);sync_matrix();}
     void push_translation(float x,float y)override{set_translate_matrix(temporary_matrix,x,y);push_graphics_matrix(transform,&temporary_matrix);sync_matrix();}
@@ -152,7 +152,7 @@ struct BitmapBackend::Impl final:RenderDrawHost,RenderGraphics,RenderDepth,Image
                     for(const auto& pass:*passes){
                         auto value=begin_render_pass(*pass,*this);
                         try{
-                            if(pass->material||colors.blend_mode==3)unbound(); // Grayscale generation is a separate bitmap path.
+                            if(pass->material||colors.blend_mode==3)unbound(__func__); // Grayscale generation is a separate bitmap path.
                             const auto shader=sprite_shader_state(colors,true,current.alpha_type,value->at(0).a,value,pass->alpha_test,false);
                             quad.shader_key=sprite_shader_key(shader);quad.pipeline=sprite_pixel_pipeline(quad.shader_key);
                             struct QueueHost final:MaterialQueueHost {
@@ -173,30 +173,30 @@ struct BitmapBackend::Impl final:RenderDrawHost,RenderGraphics,RenderDepth,Image
         if(image.render_queue!=0)pop_graphics_queue(queues);
     }
     SpriteArray piece(PixelImage& image,std::int32_t column,std::int32_t row,std::int32_t pass)override{
-        auto* prepared=dynamic_cast<PreparedOptImage*>(&image);if(!prepared)unbound();return prepared->piece(column,row,pass,opt_work);
+        auto* prepared=dynamic_cast<PreparedOptImage*>(&image);if(!prepared)unbound(__func__);return prepared->piece(column,row,pass,opt_work);
     }
-    SpriteArray frame_piece(PixelImage&,std::int32_t,std::int32_t)override{unbound();}
-    void use_frame(PixelImage&,std::int32_t)override{unbound();}
+    SpriteArray frame_piece(PixelImage&,std::int32_t,std::int32_t)override{unbound(__func__);}
+    void use_frame(PixelImage&,std::int32_t)override{unbound(__func__);}
     std::int32_t width()override{return current.width;}
     std::int32_t height()override{return current.height;}
     std::int32_t alpha_type(PixelImage& image)override{return raw_rgba?0:textures.at(textures.key(image)).alpha_type;}
-    void set_alpha_type(PixelImage&,std::int32_t)override{unbound();}
-    bool render_target_alive()override{unbound();}
-    std::int32_t render_target_height()override{unbound();}
-    std::int32_t screen_height()override{unbound();}
+    void set_alpha_type(PixelImage&,std::int32_t)override{unbound(__func__);}
+    bool render_target_alive()override{unbound(__func__);}
+    std::int32_t render_target_height()override{unbound(__func__);}
+    std::int32_t screen_height()override{unbound(__func__);}
     void screen_transform(float& x,float& y)override{map_matrix_point(*transform.screen,x,y);}
-    std::optional<std::array<float,2>> fill_point(float,float)override{unbound();}
-    void add_fill_point(float,float,float,float)override{unbound();}
-    void matrix_underflow()override{unbound();}
-    void begin_local_coordinates(float,float)override{unbound();}
-    void end_local_coordinates()override{unbound();}
+    std::optional<std::array<float,2>> fill_point(float,float)override{unbound(__func__);}
+    void add_fill_point(float,float,float,float)override{unbound(__func__);}
+    void matrix_underflow()override{unbound(__func__);}
+    void begin_local_coordinates(float,float)override{unbound(__func__);}
+    void end_local_coordinates()override{unbound(__func__);}
     std::int32_t image_alpha_type()override{return current.alpha_type;}
     bool render_gui_mode(RenderColorState&)override{return false;} // Explicit mesh/desktop profile.
-    void push_gui_matrix()override{unbound();}
-    void load_gui_pixel_matrix()override{unbound();}
-    std::int32_t screen_width()override{unbound();}
-    void gui_viewport(float,float,float,float)override{unbound();}
-    void pop_gui_matrix()override{unbound();}
+    void push_gui_matrix()override{unbound(__func__);}
+    void load_gui_pixel_matrix()override{unbound(__func__);}
+    std::int32_t screen_width()override{unbound(__func__);}
+    void gui_viewport(float,float,float,float)override{unbound(__func__);}
+    void pop_gui_matrix()override{unbound(__func__);}
 };
 
 std::size_t BitmapTextures::bind(PixelImage& image,std::int32_t width,std::int32_t height,std::int32_t alpha){
@@ -306,6 +306,26 @@ void BitmapBackend::draw_seb(std::int32_t resource,std::int32_t clip,std::option
 }
 void BitmapBackend::draw_seb_frame(RenderDrawResource* manager,std::int32_t clip,std::int32_t frame,float x,float y){
     draw_seb_from(manager,clip,frame,x,y);
+}
+std::int64_t BitmapBackend::draw_number_value(const BitmapApplication& app,std::int32_t clip,std::int64_t value,
+        std::int32_t x,std::int32_t y,std::int32_t padding,std::int32_t anchor,std::int32_t scale,std::int32_t width,std::int32_t height){
+    struct Host final:NumberValueImageHost {
+        BitmapBackend& backend;Impl& state;const BitmapApplication& app;
+        Host(BitmapBackend& b,Impl& s,const BitmapApplication& a):backend(b),state(s),app(a){}
+        RenderDrawResource* resource(){auto* r=get_application_resource(app,2);
+            if(!r||!r->animations||!r->animations->clips)throw std::invalid_argument("missing numeric common resource");return r;}
+        SharedAnimationClip& clock(std::int32_t clip){auto* c=resource()->animations->clips->at(static_cast<std::size_t>(clip));
+            if(!c||!c->sprites)throw std::invalid_argument("missing numeric SEB");return *c;}
+        SpriteArray number_sprite(std::int32_t clip,std::int32_t frame,std::int32_t layer)override{return seb_sprite(*clock(clip).sprites,state.seb_work,frame,layer);}
+        void draw_number_frame(std::int32_t clip,std::int32_t frame,float x,float y)override{backend.draw_seb_frame(resource(),clip,frame,x,y);}
+        std::int32_t number_max_frame(std::int32_t clip)override{return clock(clip).max_frame;}
+        void push_number_scale(float scale)override{state.push_scale(scale,scale,0,0);}
+        void pop_number_scale()override{pop_graphics_matrix(state.transform,state);state.sync_matrix();}
+        void number_color(std::int32_t,std::int32_t,std::int32_t)override{} // SAGA_STUB(mission-number-minus-text): primitive font output is separate from bitmap glyphs.
+        void number_minus_text(float,float)override{throw std::logic_error("numeric minus font fallback is unbound");}
+    } host(*this,*impl_,app);
+    const std::u16string empty;
+    return draw_number_value_images(host,clip,&empty,value,&empty,x,y,padding,anchor,scale,width,height);
 }
 void BitmapBackend::draw_seb_anchor(std::int32_t resource,std::int32_t clip,float x,float y,std::int32_t anchor,bool automatic){
     // ResourceManager.DrawSebAnchor 0x1ba8c68. Its normal and exceptional cleanup

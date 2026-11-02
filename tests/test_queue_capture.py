@@ -23,6 +23,29 @@ def command(resource, clip, x, y, depth=0, texture=-1, image_resource=-1):
 
 @unittest.skipUnless(EXE and VIEWER, 'viewer executables supplied by CTest')
 class QueuePixels(unittest.TestCase):
+    def test_collected_reward_numbers_use_dynamic_schedule_and_common_atlas(self):
+        if not MISSION:self.skipTest('mission executable required')
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);scene=root/'numbers.txt'
+            text=with_common_resource(root,make_boss_scene(root))
+            text='mission_presentation 600 640 100 0 1 0 1500100 -1\nsystem_init 1\nmaterial_policy native\n'+\
+                '\n'.join(l for l in text.splitlines() if not l.startswith(('world ','projection ','view ','slots ','animate ','simulate ','material ')))+'\ndrop 1 7 25 312 0 400\n'
+            scene.write_text(text,encoding='utf8')
+            args=[str(MISSION),'--scene',str(scene),'--frames','32','--fps','25','--debug','0','--rng','system','--seed','42']
+            def run(extra):
+                r=subprocess.run([*args,*extra],capture_output=True,text=True,timeout=30)
+                self.assertEqual(r.returncode,0,r.stderr);return json.loads(r.stdout)
+            headless=run(['--headless']);out=root/'numbers.bmp';captured=run(['--capture',str(out)])
+            for key,value in captured['state'].items():self.assertEqual(headless[key],value,key)
+            self.assertEqual(headless['last_dynamic_draw_order'],[3,4,5,16,22,23,24,26,30])
+            draw=next(r for r in headless['effect_number_draws'] if r['value']==7)
+            self.assertEqual((draw['clip'],draw['anchor'],draw['scale']),(58,2,100))
+            width,height,pixels=bmp_pixels(out.read_bytes());self.assertEqual((width,height),(600,640))
+            self.assertEqual(pixels[(draw['y']+2)*width+draw['x']-2],(255,255,255,255))
+            scene.write_text(text+'system_enabled 23 0\n',encoding='utf8');disabled=run(['--headless'])
+            self.assertEqual(disabled['effect_number_draws'],[]);self.assertNotIn(23,disabled['last_dynamic_draw_order'])
+            self.assertEqual(disabled['rng_draws'],headless['rng_draws'])
+
     def test_stage_mp_numbers_icon_and_gauge_reach_both_window_profiles(self):
         if not MISSION:self.skipTest('mission executable required')
         for physical in (False,True):

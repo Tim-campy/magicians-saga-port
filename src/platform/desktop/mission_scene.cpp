@@ -16,7 +16,7 @@ struct Cursor final:RenderCursor {
     std::optional<ComponentSlots*> next()override{
         while(const auto entry=cursor.next()){
             const auto* effect=dynamic_cast<EffectComponent*>((*entry)->get(26));
-            if(effect&&effect->type==3)continue; // SAGA_STUB(mission-collection-labels): retain native effect/lifetime; numeric glyph rendering is unbound.
+            if(effect&&effect->type==3)continue; // Numeric labels belong to Effect.DrawDynamic, not Render21.
             if(effect&&effect->type==7)continue; // SAGA_STUB(mission-mp-notices): retain native no-Depth notice and lifetime; dedicated output is unbound.
             return entry;
         }return std::nullopt;
@@ -104,6 +104,45 @@ GaugePoint MissionScene::gauge_screen_position(const ContactPosition* position){
 }
 void MissionScene::draw_enemy_gauges(const std::function<void(const ParameterGaugeRequest&)>& draw){
     EnemyGaugeHost host(world_,gauge_camera_host(),draw);core::draw_enemy_gauges(required(world_.subset({24})),host);
+}
+struct MissionScene::DynamicHost final:GaugeDynamicDrawHost,BubbleDynamicDrawHost,EffectDrawingHost,EffectProjectionHost {
+    MissionScene& scene;EffectNumberContext application;
+    const std::function<void(const MissionNumberDraw&)>& numbers;std::vector<std::int32_t>& missing;
+    DynamicHost(MissionScene& s,EffectNumberContext a,const std::function<void(const MissionNumberDraw&)>& n,std::vector<std::int32_t>& m):scene(s),application(a),numbers(n),missing(m){}
+    void require_dynamic_context()override{required(scene.gauge_camera_host().current_camera_form());}
+    void project_dynamic_x(ContactPosition* p)override{auto& v=required(p);static_cast<void>(render_isometric_x(v.x,v.z));}
+    void project_dynamic_y(ContactPosition* p)override{auto& v=required(p);static_cast<void>(render_isometric_y(v.x,v.z));}
+    // SAGA_STUB(mission-dynamic-font-style): retain style scope/arguments; glyph output uses the separate font provider.
+    void dynamic_color(std::int32_t r,std::int32_t g,std::int32_t b)override{scene.dynamic_text_color_=std::array<std::int32_t,3>{r,g,b};}
+    void push_dynamic_font(std::int32_t font)override{scene.dynamic_font_scopes_.push_back(font);}
+    void pop_dynamic_font()override{if(scene.dynamic_font_scopes_.empty())throw std::logic_error("empty dynamic font scope");scene.dynamic_font_scopes_.pop_back();}
+    GaugePoint* effect_screen_work()override{return &scene.effect_screen_work_;}
+    float effect_projection_x(float x,float z)override{return render_isometric_x(x,z);}
+    float effect_projection_y(float x,float z)override{return render_isometric_y(x,z);}
+    void validate_effect_draw_context()override{require_dynamic_context();}
+    GaugePoint effect_camera_offset()override{const auto& f=required(scene.gauge_camera_host().current_camera_form());return {f.x,f.y};}
+    GaugePoint& effect_screen_position(ContactPosition* p)override{return effect_to_screen_position(p,*this);}
+    EffectNumberContext capture_effect_numbers()override{return application;}
+    void effect_draw_number(EffectNumberContext app,std::int32_t clip,std::int64_t value,
+        std::int32_t x,std::int32_t y,std::int32_t pad,std::int32_t anchor,std::int32_t scale,std::int32_t w,std::int32_t h)override{
+        numbers({app,clip,value,x,y,pad,anchor,scale,w,h});
+    }
+    void omitted(std::int32_t type){if(std::find(missing.begin(),missing.end(),type)==missing.end())missing.push_back(type);}
+    // SAGA_STUB(mission-effect-special-draw): domain clocks/lifetimes remain active; these dedicated visual handlers are pending.
+    void effect_draw_normal(ComponentSlots&)override{omitted(0);}
+    void effect_draw_damage(ComponentSlots&)override{omitted(1);}
+    void effect_draw_time(ComponentSlots&)override{omitted(2);}
+    void effect_draw_jump(ComponentSlots&)override{omitted(5);}
+    void effect_draw_string_background(ComponentSlots&)override{omitted(7);}
+};
+void MissionScene::draw_dynamic_scene(std::int32_t id,EffectNumberContext app,
+        const std::function<void(const MissionNumberDraw&)>& numbers,std::vector<std::int32_t>& missing){
+    DynamicHost host(*this,app,numbers,missing);
+    if(id==16)draw_dynamic_bubbles(bubbles_,host);
+    else if(id==22)draw_dynamic_gauges(gauges_,host);
+    else if(id==23)draw_effects(effects_,host);
+    // SAGA_STUB(mission-button-debug-draw): dedicated Button/Debug output is independent of the sprite queues.
+    else if(id!=26&&id!=30)throw std::invalid_argument("unsupported dynamic scene factory");
 }
 void MissionScene::subscribe_dropoff(EntityEvents::Single receiver,std::optional<EventHashes> hashes){world_.events().subscribe(16,std::move(receiver),hashes);}
 void MissionScene::subscribe_parameter_experience(ParameterExperienceInitializationWorld::Receiver receiver,std::optional<EventHashes> hashes){

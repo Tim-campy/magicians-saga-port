@@ -77,7 +77,7 @@ def make_shoot_scene(root, rewards=False, area=False, lethal_contact=False, trea
     text = make_table_scene(root, human_frame=True, shoot=True, rewards=rewards, area=area, lethal_contact=lethal_contact, treasure_flags=treasure_flags, spell_attribute=spell_attribute, boss_entry=boss_entry, alternate_quest=alternate_quest, stage_entry=stage_entry, talk_events=talk_events, bullet_category=bullet_category, quest_time_limit=quest_time_limit)
     for name, image, clips in [('bullet', 5, [0, 1]), ('effect', 7, [0, 100, 101, 102, 103, 104])]:
         (root / f'{name}.bin').write_bytes(jar([
-            ('img.inf', '\n'.join(f'{i}\ta.png,bin' for i in [image, 1, 2, 3, 4, 6, 8, 9, 24, 27]).encode()),
+            ('img.inf', '\n'.join(f'{i}\ta.png,bin' for i in [image, 1, 2, 3, 4, 6, 8, 9, 24, 25, 27]).encode()),
             ('seb.inf', '\n'.join(f'{clip}\ta.seb' for clip in clips).encode()),
             ('a.seb', seb([(0, image, 0, 0, 2, 2, 0, 0, 0, 0), (3, image, 0, 0, 2, 2, 0, 0, 0, 0)])),
             ('a.png', png(2, 2, [0, 255, 0, 255] * 4))]))
@@ -147,7 +147,7 @@ def make_gauge_scene(root, defeats=6):
 
 def with_common_resource(root, text):
     """Synthetic resCom dependency of the original movement hint."""
-    (root/'common.bin').write_bytes(jar([('img.inf',b'4\tfinger.png,bin\n52\tnumbers.png,bin'),('seb.inf',b'4\tfinger.seb\n52\tnumbers.seb'),
+    (root/'common.bin').write_bytes(jar([('img.inf',b'4\tfinger.png,bin\n52\tnumbers.png,bin'),('seb.inf',b'4\tfinger.seb\n52\tnumbers.seb\n58\tnumbers.seb'),
         ('numbers.seb',seb([(i,52,6*i,0,6,8,0,0,0,0) for i in range(11)])),
         ('numbers.png',png(66,8,[255,255,255,255]*528)),
         ('finger.seb',seb([(0,4,0,0,2,2,0,0,0,0)])),('finger.png',png(2,2,[255,255,255,255]*4))]))

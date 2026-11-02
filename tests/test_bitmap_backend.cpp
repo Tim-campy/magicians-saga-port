@@ -175,5 +175,16 @@ int main()try{
     const auto saved_images=ar.images;ar.images.reset();
     fails([&]{backend.draw_seb_anchor(1,3,10,10,68,false);});ar.images=saved_images;
     check(payload->draw_offset->at(0)==0&&payload->draw_offset->at(1)==0);
+    // The int64 path uses common-resource digit frames with a local scale scope,
+    // independently of the string route used by the Stage MP display.
+    auto digits=file(2);digits.header_value=11;digits.groups[0].record_count=11;
+    const auto digit=digits.records[0];digits.records.clear();
+    for(int i=0;i<11;++i){auto r=digit;r.values[0]=static_cast<std::int16_t>(i);digits.records.push_back(r);}
+    PreparedAnimationResource numeric({&digits});RenderDrawResource nr{&numeric.resource(),ia};app.common=&nr;
+    backend.clear_quads();check(backend.draw_number_value(app,0,123,10,10,0,2,100,-1,-1)==6);
+    check(backend.quads().size()==3&&box()[0]==7);
+    check(backend.quads()[1].points[0].x==backend.quads()[0].points[0].x+2);
+    check(backend.quads()[2].points[0].x==backend.quads()[1].points[0].x+2);
+    backend.clear_quads();fails([&]{backend.draw_number_value(app,0,-1,10,10,0,2,100,-1,-1);});check(backend.quads().empty());
     std::cout<<"bitmap backend contract ok\n";return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

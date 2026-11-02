@@ -262,3 +262,9 @@ game:0x06000cc4	reimplemented	src/core/ecs/update_scheduler.cpp	Base constructor
 game:0x06000cc7	documented	docs/subsystems/ecs-lifecycle.md	SetWorld assigns only the nullable BaseSystem static world; World/AppData roots and captured managers stay unchanged.
 game:0x06000ecd	reimplemented	src/core/gameplay/human_frame.cpp	Human DrawDynamic live projection/HP/state gates, attack indicators and forced HP/MP gauges; host-bound
 game:0x06000fc2	reimplemented	src/core/gameplay/stage_controls.cpp	Stage player MP total value/max formatting through provider, common numbers, anchored quest icon and fresh player/gauge suffix
+game:0x06000cea	reimplemented	src/core/ecs/update_scheduler.cpp	Dynamic draw layer99, captured list/live Count, enabled callbacks, fresh stopwatch and identity lookup; host-bound
+game:0x06000eb3	reimplemented	src/core/gameplay/gauge_frame.cpp	Gauge dynamic context guard, flags mask1 and discarded live-position projections; no extra pixel output
+game:0x06000ea0	reimplemented	src/core/gameplay/bubble_frame.cpp	Bubble dynamic context/color/font scope and position projections; normal-only PopFont
+game:0x06000e49	reimplemented	src/core/gameplay/effect_frame.cpp	Live Effect dynamic dispatcher; Number bound and remaining specialized output explicit host services
+game:0x06000e4d	reimplemented	src/core/gameplay/effect_frame.cpp	Captured Effect/Position, shared point, captured AppData and fresh SEB for int64 number output
+game:0x06000e54	reimplemented	src/core/gameplay/effect_frame.cpp	Effect screen projection with three shared point reads, partial writes, native float conversion and fresh camera offsets

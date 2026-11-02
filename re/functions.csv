@@ -354,7 +354,7 @@ game:0x06000174,game:0x06000174,boot,,188,0x11058a4
 game:0x06000175,game:0x06000175,boot,,212,0x1105960
 game:0x06000176,game:0x06000176,boot,,56,0x1105a34
 game:0x06000177,game:0x06000177,boot,,60,0x1105a6c
-game:0x06000178,game:0x06000178,boot,,1404,0x1105328
+game:0x06000178,main.AppData.DrawNumImage,boot,reimplemented,1404,0x1105328
 game:0x06000179,game:0x06000179,boot,,32,0x1105aa8
 game:0x0600017a,game:0x0600017a,boot,,28,0x1105c9c
 game:0x0600017b,main.AppData.DrawNumImage,boot,reimplemented,468,0x1105ac8
@@ -3097,7 +3097,7 @@ game:0x06000ce6,kairo.unity.ecs.SystemManager.RemoveAllSystems,ecs,documented,94
 game:0x06000ce7,kairo.unity.ecs.SystemManager.Init,ecs,reimplemented,444,0x113c614
 game:0x06000ce8,kairo.unity.ecs.SystemManager.Update,ecs,reimplemented,460,0x113c7d0
 game:0x06000ce9,game:0x06000ce9,ecs,,228,0x113c99c
-game:0x06000cea,game:0x06000cea,ecs,,260,0x113ca88
+game:0x06000cea,kairo.unity.ecs.SystemManager.DynamicDraw,ecs,reimplemented,260,0x113ca88
 game:0x06000cec,game:0x06000cec,ecs,,132,0x113cb94
 game:0x06000cee,kairo.unity.ecs.SystemManager.EnableSystem,ecs,documented,188,0x113cc18
 game:0x06000cf0,kairo.unity.ecs.SystemManager.DisableSystem,ecs,documented,172,0x113c568
@@ -3444,18 +3444,18 @@ game:0x06000e45,ecs.EffectSystem.UpdateJumpNumEffect,ecs,reimplemented,48,0x114a
 game:0x06000e46,ecs.EffectSystem.UpdateWarehouseBalloonEffect,ecs,reimplemented,48,0x114a3d0
 game:0x06000e47,ecs.EffectSystem.UpdateStrWithBgEffect,ecs,reimplemented,48,0x114a400
 game:0x06000e48,game:0x06000e48,ecs,,8,0x114a430
-game:0x06000e49,game:0x06000e49,ecs,,516,0x114a438
+game:0x06000e49,ecs.EffectSystem.DrawDynamic,ecs,reimplemented,516,0x114a438
 game:0x06000e4a,game:0x06000e4a,ecs,,352,0x114a63c
 game:0x06000e4b,game:0x06000e4b,ecs,,824,0x114a79c
 game:0x06000e4c,game:0x06000e4c,ecs,,352,0x114aad4
-game:0x06000e4d,game:0x06000e4d,ecs,,300,0x114ac34
+game:0x06000e4d,ecs.EffectSystem.DrawNumberEffect,ecs,reimplemented,300,0x114ac34
 game:0x06000e4e,game:0x06000e4e,ecs,,4,0x114ad60
 game:0x06000e4f,game:0x06000e4f,ecs,,252,0x114ad64
 game:0x06000e50,game:0x06000e50,ecs,,4,0x114ae60
 game:0x06000e51,game:0x06000e51,ecs,,664,0x114ae64
 game:0x06000e52,game:0x06000e52,ecs,,248,0x114b268
 game:0x06000e53,game:0x06000e53,ecs,,824,0x114b368
-game:0x06000e54,game:0x06000e54,ecs,,364,0x114b0fc
+game:0x06000e54,ecs.EffectSystem.ToScreenPos,ecs,reimplemented,364,0x114b0fc
 game:0x06000e55,game:0x06000e55,ecs,,348,0x114b6a0
 game:0x06000e56,game:0x06000e56,ecs,,52,0x114b7fc
 game:0x06000e57,game:0x06000e57,ecs,,4,0x114b830
@@ -3531,7 +3531,7 @@ game:0x06000e9c,ecs.FukidashiSystem.NeedsUpdate,ecs,reimplemented,8,0x1152468
 game:0x06000e9d,ecs.FukidashiSystem.Update,ecs,reimplemented,2020,0x1152470
 game:0x06000e9e,ecs.FukidashiSystem.updateDispInfo,ecs,reimplemented,512,0x1152c54
 game:0x06000e9f,game:0x06000e9f,ecs,,8,0x1152e54
-game:0x06000ea0,game:0x06000ea0,ecs,,588,0x1152e5c
+game:0x06000ea0,ecs.FukidashiSystem.DrawDynamic,ecs,reimplemented,588,0x1152e5c
 game:0x06000ea1,game:0x06000ea1,ecs,,8,0x11530a8
 game:0x06000ea2,game:0x06000ea2,ecs,,8,0x11530b0
 game:0x06000ea3,ecs.GarbageSystem.Init,ecs,reimplemented,148,0x11530b8
@@ -3550,7 +3550,7 @@ game:0x06000eaf,ecs.GaugeSystem.DrawGauge,ecs,reimplemented,564,0x1154350
 game:0x06000eb0,ecs.GaugeSystem.GetImageOffsetX,ecs,reimplemented,320,0x1154210
 game:0x06000eb1,game:0x06000eb1,ecs,,636,0x1154584
 game:0x06000eb2,game:0x06000eb2,ecs,,8,0x1154800
-game:0x06000eb3,game:0x06000eb3,ecs,,576,0x1154808
+game:0x06000eb3,ecs.GaugeSystem.DrawDynamic,ecs,reimplemented,576,0x1154808
 game:0x06000eb4,ecs.GaugeSystem.DrawParamGauge,ecs,reimplemented,696,0x1154a48
 game:0x06000eb5,ecs.GaugeSystem.AnchorPos,ecs,reimplemented,316,0x1154d00
 game:0x06000eb6,game:0x06000eb6,ecs,,8,0x1154e3c

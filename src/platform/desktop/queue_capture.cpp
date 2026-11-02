@@ -66,7 +66,7 @@ int main(int argc,char** argv)try{
     auto& commands=profile.commands;
     BitmapBackend backend(application,global,textures,height,world);sort_render_queue(queue);
     if(inspect){
-        RenderDrawState drawing{&queue,0,&backend.matrix()};draw_render_queue(drawing,&backend.graphics(),0,backend.resources());profile.draw_dynamic_hud(backend);draw_render_queue(drawing,&backend.graphics(),1,backend.resources());
+        RenderDrawState drawing{&queue,0,&backend.matrix()};draw_render_queue(drawing,&backend.graphics(),0,backend.resources());profile.draw_dynamic_hud(&backend);draw_render_queue(drawing,&backend.graphics(),1,backend.resources());
         std::set<std::tuple<std::size_t,std::uint32_t,std::int32_t>> inputs;for(const auto& q:backend.quads())inputs.emplace(q.texture,q.shader_key,q.render_queue);
         std::cout<<"{\"material_inputs\":[";bool first=true;
         for(const auto& key:inputs){if(!first)std::cout<<',';first=false;std::cout<<"{\"texture\":"<<std::get<0>(key)<<",\"shader\":"<<std::get<1>(key)<<",\"queue\":"<<std::get<2>(key)<<'}';}

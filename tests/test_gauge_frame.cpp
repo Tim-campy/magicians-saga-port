@@ -79,6 +79,16 @@ struct Factory final:GaugeFactoryHost,ComponentObserver {
     EntityImage& acquire_image()override{return image;}
 };
 int main()try{
+    {struct Draw:GaugeDynamicDrawHost {
+        std::vector<int> calls;bool fail_context=false;
+        void require_dynamic_context()override{calls.push_back(0);if(fail_context)throw std::runtime_error("context");}
+        void project_dynamic_x(ContactPosition* p)override{calls.push_back(1);if(!p)throw std::runtime_error("position");p->x=42;}
+        void project_dynamic_y(ContactPosition* p)override{check(p&&p->x==42);calls.push_back(2);}
+     } draw;Host h;draw_dynamic_gauges(h.state,draw);check(draw.calls==std::vector<int>{0});
+     auto& e=h.make(nullptr);draw.calls.clear();draw_dynamic_gauges(h.state,draw);check(draw.calls==std::vector<int>{0});
+     h.data(e).flags=1;draw.calls.clear();draw_dynamic_gauges(h.state,draw);check(draw.calls==std::vector<int>({0,1,2}));
+     e.remove(0);draw.calls.clear();fails([&]{draw_dynamic_gauges(h.state,draw);});check(draw.calls==std::vector<int>({0,1}));
+     draw.fail_context=true;draw.calls.clear();fails([&]{draw_dynamic_gauges(h.state,draw);});check(draw.calls==std::vector<int>{0});}
     {Factory f;Host images;EntityIdState ids;GaugeCreation args;args.parent=&f.parent;args.image=8;args.frame_max=-1;args.flags=1;
      f.after_add=[&](int slot){if(slot==0)check(f.position.x==50&&f.position.y==0&&f.position.z==50);};
      auto& e=create_gauge(args,ids,f,images.scratch,images);

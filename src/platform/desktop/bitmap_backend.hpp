@@ -80,6 +80,9 @@ public:
     void draw_seb(std::int32_t resource,std::int32_t clip,std::optional<std::int32_t> frame,std::int32_t x,std::int32_t y);
     // Seb.DrawFrame: caller supplies the freshly resolved manager and explicit frame.
     void draw_seb_frame(core::RenderDrawResource*,std::int32_t clip,std::int32_t frame,float x,float y);
+    std::int64_t draw_number_value(const BitmapApplication&,std::int32_t clip,std::int64_t value,
+        std::int32_t x,std::int32_t y,std::int32_t padding,std::int32_t anchor,
+        std::int32_t scale,std::int32_t width,std::int32_t height);
     void draw_seb_anchor(std::int32_t resource,std::int32_t clip,float x,float y,std::int32_t anchor,bool automatic_images);
     // DrawSebImg positive-image path, including registered image motion. No queue mutation.
     void draw_seb_image(std::int32_t resource,std::int32_t clip,std::int32_t frame,std::int32_t x,std::int32_t y,

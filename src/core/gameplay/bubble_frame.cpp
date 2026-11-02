@@ -63,4 +63,11 @@ void update_bubbles(BubbleFrameState& state,BubbleFrameHost& host){
         current.erase(current.begin());
     }
 }
+void draw_dynamic_bubbles(BubbleFrameState& s,BubbleDynamicDrawHost& host){
+    host.require_dynamic_context();host.dynamic_color(50,150,240);host.push_dynamic_font(10);
+    auto cursor=required(s.subset).cursor();while(const auto entry=cursor.next()){
+        auto* p=position(required(*entry));host.project_dynamic_x(p);host.project_dynamic_y(p);
+    }
+    host.pop_dynamic_font(); // No exceptional cleanup in the native body.
+}
 }
