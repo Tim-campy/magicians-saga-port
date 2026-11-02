@@ -151,3 +151,6 @@ kairo:0x06001766	reimplemented	src/core/animation/seb_sprite.cpp	Compact/extende
 kairo:0x0600176e	reimplemented	src/core/animation/seb_sprite.cpp	Retained instance list distinct from matrix; GetSprite/null/cache aliases; reached by movement DrawSebEx adapter
 game:0x0600009c	traced	docs/subsystems/ui.md	Type2 Canvas keydown and release keyup after world9; selected movement route bound, type5 animation remains external
 game:0x060000bb	documented	docs/subsystems/ui.md	Required control; nonempty option.keys first element else fallback; used by declared movement Keys masks
+game:0x0600017b	reimplemented	src/core/gameplay/render_draw.cpp	Common-resource numeric string glyph drawing, UTF16 spacing, anchors and failure prefixes; Stage MP host-bound
+kairo:0x06001700	documented	docs/subsystems/ui.md	Signed bounding rectangle and float anchor position; value adapter in seb_sprite omits shared float result alias
+kairo:0x060016fd	documented	docs/subsystems/ui.md	Current-frame anchor offset, draw and normal/exceptional ClearOffset; automatic registration remains external

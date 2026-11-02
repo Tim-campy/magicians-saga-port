@@ -302,9 +302,34 @@ void BitmapBackend::draw_scaled_seb(std::int32_t resource,std::int32_t clip,std:
     }
 }
 void BitmapBackend::draw_seb(std::int32_t resource,std::int32_t clip,std::optional<std::int32_t> requested,std::int32_t x,std::int32_t y){
+    draw_seb_from(impl_->resource(resource),clip,requested,static_cast<float>(x),static_cast<float>(y));
+}
+void BitmapBackend::draw_seb_frame(RenderDrawResource* manager,std::int32_t clip,std::int32_t frame,float x,float y){
+    draw_seb_from(manager,clip,frame,x,y);
+}
+void BitmapBackend::draw_seb_anchor(std::int32_t resource,std::int32_t clip,float x,float y,std::int32_t anchor,bool automatic){
+    // ResourceManager.DrawSebAnchor 0x1ba8c68. Its normal and exceptional cleanup
+    // both reread the captured manager's current SEB slot and clear its offset.
+    auto* manager=impl_->resource(resource);
+    const auto current=[&]()->SharedAnimationClip&{
+        if(!manager||!manager->animations||!manager->animations->clips)throw std::invalid_argument("missing anchored SEB resource");
+        auto* clock=manager->animations->clips->at(static_cast<std::size_t>(clip));
+        if(!clock||!clock->sprites)throw std::invalid_argument("missing anchored SEB clip");return *clock;
+    };
+    auto& before=current();const auto offset=seb_anchor_position(*before.sprites,before.frame,0,0,anchor);
+    set_seb_draw_offset(*current().sprites,offset[0],offset[1]);
+    try{
+        // SAGA_STUB(mission-auto-render-registration): automatic=true requires
+        // the unbound ThisFrameRender collection; false is the native no-op.
+        if(automatic)throw std::logic_error("automatic SEB render registration is unbound");
+        draw_seb_from(manager,clip,std::nullopt,x,y);
+    }catch(...){clear_seb_draw_offset(*current().sprites);throw;}
+    clear_seb_draw_offset(*current().sprites);
+}
+void BitmapBackend::draw_seb_from(RenderDrawResource* manager,std::int32_t clip,std::optional<std::int32_t> requested,float x,float y){
     // ResourceManager.DrawSeb 0x1ba8c10 -> Seb._draw 0x1bb4140 ->
     // Seb.Draw 0x1bb740c. Fresh prepared SEBs have zero +0x98 draw offsets.
-    auto& s=*impl_;auto* manager=s.resource(resource);
+    auto& s=*impl_;
     if(!manager||!manager->animations||!manager->animations->clips||!manager->images)throw std::invalid_argument("missing direct SEB resource");
     auto* clock=manager->animations->clips->at(static_cast<std::size_t>(clip));
     if(!clock||!clock->sprites)throw std::invalid_argument("missing direct SEB clip");
@@ -317,8 +342,9 @@ void BitmapBackend::draw_seb(std::int32_t resource,std::int32_t clip,std::option
     for(std::size_t layer=0;layer<payload->groups->size();++layer){
         auto sprite=sprites->at(layer);if(!sprite)continue;
         const auto texture=sprite->at(1),blend=sprite->at(10);
-        const float px=(0.0F+static_cast<float>(sprite->at(6)))+static_cast<float>(x);
-        const float py=(0.0F+static_cast<float>(sprite->at(7)))+static_cast<float>(y);
+        if(!payload->draw_offset)throw std::invalid_argument("missing direct SEB draw offset");
+        const float px=(payload->draw_offset->at(0)+static_cast<float>(sprite->at(6)))+x;
+        const float py=(payload->draw_offset->at(1)+static_cast<float>(sprite->at(7)))+y;
         if(blend!=0){
             auto alpha=static_cast<std::int32_t>(static_cast<std::uint32_t>(sprite->at(11))>>24U);
             if(s.colors.mode==0&&s.colors.source!=255)alpha=std::min(s.colors.source*alpha/255,255);

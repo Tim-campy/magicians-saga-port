@@ -162,5 +162,18 @@ int main()try{
     RenderDrawResource negative_resource{&negative_clip.resource(),ia};app.characters=&negative_resource;
     backend.clear_quads();backend.draw_scaled_seb(1,0,0,10,10,100);check(backend.quads().empty());
     fails([&]{backend.draw_seb_image(1,0,0,10,10,100,17,nullptr);});check(backend.quads().empty());app.characters=&ar;
+    // Anchored current-frame drawing applies the load-time bounding offset and
+    // clears it (rather than restoring the old value), including on failure.
+    auto* payload=first.resource().clips->at(3)->sprites;
+    backend.clear_quads();backend.draw_seb_frame(&ar,3,0,10.5F,10.25F);const auto fractional=box();
+    check(fractional[0]==10.5F);set_seb_draw_offset(*payload,77,88);
+    backend.clear_quads();backend.draw_seb_anchor(1,3,10.5F,10.25F,68,false);const auto anchored=box();
+    check(anchored[0]==fractional[0]-2&&anchored[3]==fractional[3]+2);
+    check(payload->draw_offset->at(0)==0&&payload->draw_offset->at(1)==0);
+    backend.clear_quads();fails([&]{backend.draw_seb_anchor(1,3,10,10,68,true);});check(backend.quads().empty());
+    check(payload->draw_offset->at(0)==0&&payload->draw_offset->at(1)==0);
+    const auto saved_images=ar.images;ar.images.reset();
+    fails([&]{backend.draw_seb_anchor(1,3,10,10,68,false);});ar.images=saved_images;
+    check(payload->draw_offset->at(0)==0&&payload->draw_offset->at(1)==0);
     std::cout<<"bitmap backend contract ok\n";return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

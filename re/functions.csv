@@ -357,7 +357,7 @@ game:0x06000177,game:0x06000177,boot,,60,0x1105a6c
 game:0x06000178,game:0x06000178,boot,,1404,0x1105328
 game:0x06000179,game:0x06000179,boot,,32,0x1105aa8
 game:0x0600017a,game:0x0600017a,boot,,28,0x1105c9c
-game:0x0600017b,game:0x0600017b,boot,,468,0x1105ac8
+game:0x0600017b,main.AppData.DrawNumImage,boot,reimplemented,468,0x1105ac8
 game:0x0600017c,game:0x0600017c,boot,,304,0x1105cb8
 game:0x0600017d,game:0x0600017d,boot,,8,0x1105de8
 game:0x0600017e,game:0x0600017e,boot,,408,0x1105df0
@@ -3821,7 +3821,7 @@ game:0x06000fbe,game:0x06000fbe,ecs,,8,0x1167fb8
 game:0x06000fbf,game:0x06000fbf,ecs,,4,0x1167fc0
 game:0x06000fc0,game:0x06000fc0,ecs,,468,0x1166c78
 game:0x06000fc1,game:0x06000fc1,ecs,,1412,0x1166e4c
-game:0x06000fc2,game:0x06000fc2,ecs,,564,0x11673d0
+game:0x06000fc2,ecs.StageSystem.DrawPlayerMpGauge,ecs,reimplemented,564,0x11673d0
 game:0x06000fc3,ecs.StageSystem.DrawAttackButton,ecs,reimplemented,784,0x1167604
 game:0x06000fc4,ecs.StageSystem.DrawMoveButton,ecs,reimplemented,424,0x1167a00
 game:0x06000fc5,game:0x06000fc5,ecs,,260,0x1167eb4
@@ -10084,10 +10084,10 @@ kairo:0x060016f9,kairo:0x060016f9,ui,,132,0x1ba8aa0
 kairo:0x060016fa,kairo:0x060016fa,ui,,136,0x1ba8b24
 kairo:0x060016fb,kairo:0x060016fb,ui,,84,0x1ba8c10
 kairo:0x060016fc,kairo:0x060016fc,ui,,84,0x1ba8694
-kairo:0x060016fd,kairo:0x060016fd,ui,,464,0x1ba8c68
+kairo:0x060016fd,kairo.unity.ui.ResourceManager.DrawSebAnchor,ui,documented,464,0x1ba8c68
 kairo:0x060016fe,kairo:0x060016fe,ui,,452,0x1ba8f78
 kairo:0x060016ff,kairo:0x060016ff,ui,,464,0x1ba88d0
-kairo:0x06001700,kairo:0x06001700,ui,,268,0x1ba8e38
+kairo:0x06001700,kairo.unity.ui.ResourceManager.GetSebAnchorPosition,ui,documented,268,0x1ba8e38
 kairo:0x06001701,kairo:0x06001701,ui,,268,0x1ba9204
 kairo:0x06001702,kairo:0x06001702,ui,,380,0x1ba9310
 kairo:0x06001703,kairo:0x06001703,ui,,8,0x1ba948c
@@ -10265,8 +10265,8 @@ kairo:0x060017b2,kairo:0x060017b2,ui,,92,0x1bb797c
 kairo:0x060017b3,kairo:0x060017b3,ui,,124,0x1bb32e4
 kairo:0x060017b4,kairo:0x060017b4,ui,,8,0x1ba868c
 kairo:0x060017b5,kairo:0x060017b5,ui,,1608,0x1bb79d8
-kairo:0x060017b6,kairo:0x060017b6,ui,,52,0x1ba8f44
-kairo:0x060017b7,kairo:0x060017b7,ui,,52,0x1bb8020
+kairo:0x060017b6,kairo.unity.ui.Seb.SetOffset,ui,reimplemented,52,0x1ba8f44
+kairo:0x060017b7,kairo.unity.ui.Seb.ClearOffset,ui,reimplemented,52,0x1bb8020
 kairo:0x060017b8,kairo:0x060017b8,ui,,268,0x1bb8054
 kairo:0x060017b9,kairo:0x060017b9,ui,,16,0x1bb10e0
 kairo:0x060017ba,kairo:0x060017ba,ui,,36,0x1bb10bc

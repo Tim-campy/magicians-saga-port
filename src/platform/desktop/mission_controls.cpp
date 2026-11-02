@@ -1,8 +1,53 @@
 #include "mission_profile.hpp"
 #include <functional>
+#include <charconv>
 
 namespace saga::desktop {
 namespace {
+struct MissionNumbers final:core::NumberImageHost {
+    const BitmapApplication* application;BitmapBackend* backend;core::SebStaticWork& work;
+    MissionNumbers(const BitmapApplication* a,BitmapBackend* b,core::SebStaticWork& w):application(a),backend(b),work(w){}
+    core::RenderDrawResource* manager(){
+        if(!application)throw std::invalid_argument("missing captured MP AppData");
+        auto* r=core::get_application_resource(*application,2);
+        if(!r||!r->animations||!r->animations->clips)throw std::invalid_argument("missing common number resource");return r;
+    }
+    core::SpriteArray number_sprite(std::int32_t clip,std::int32_t frame,std::int32_t layer)override{
+        auto* r=manager();auto* c=r->animations->clips->at(static_cast<std::size_t>(clip));
+        if(!c||!c->sprites)throw std::invalid_argument("missing common number SEB");
+        return core::seb_sprite(*c->sprites,work,frame,layer);
+    }
+    void draw_number_frame(std::int32_t clip,std::int32_t frame,float x,float y)override{
+        auto* r=manager();if(!r->images)throw std::invalid_argument("missing common number images");
+        if(backend)backend->draw_seb_frame(r,clip,frame,x,y);
+    }
+};
+struct MissionMp final:core::StageMpDrawingHost {
+    MissionProfile& profile;BitmapBackend* backend;core::SebStaticWork& work;core::GaugeDrawState& gauges;StageMpHud result;
+    MissionMp(MissionProfile& p,BitmapBackend* b,core::SebStaticWork& w,core::GaugeDrawState& g):profile(p),backend(b),work(w),gauges(g){}
+    std::int32_t mp_width()override{return profile.view.width;}
+    std::int32_t mp_height()override{return profile.view.height;}
+    core::ComponentSlots* mp_player()override{return core::world_player_entity(profile.entity_world->player_world());}
+    core::MpNumberContext capture_mp_numbers()override{return &profile.application;}
+    std::u16string format_mp(std::int32_t value,std::int32_t maximum)override{
+        // SAGA_STUB(mission-mp-number-format): invariant decimal provider;
+        // locale-specific Int32.ToString signs/digits remain external.
+        std::array<char,25> buffer;auto first=std::to_chars(buffer.data(),buffer.data()+buffer.size(),value);
+        *first.ptr='/';auto last=std::to_chars(first.ptr+1,buffer.data()+buffer.size(),maximum);
+        return std::u16string(buffer.data(),last.ptr);
+    }
+    std::int32_t draw_mp_numbers(core::MpNumberContext captured,const std::u16string& text,std::int32_t x,std::int32_t y,std::int32_t padding,std::int32_t anchor)override{
+        if(captured!=&profile.application)throw std::invalid_argument("foreign MP AppData context");
+        MissionNumbers numbers(static_cast<const BitmapApplication*>(captured),backend,work);
+        result.text=text;result.width=core::draw_number_images(numbers,52,&text,x,y,padding,anchor);return result.width;
+    }
+    void draw_mp_icon(float x,float y,std::int32_t anchor)override{
+        result.icon={x,y};if(backend)backend->draw_seb_anchor(7,40,x,y,anchor,profile.automatic!=0);
+    }
+    void mp_parameter_gauge(const core::ParameterGaugeRequest& r)override{
+        result.gauge=r;if(backend)backend->draw_parameter_gauge(r,profile.mission->gauge_camera_host(),&gauges);
+    }
+};
 struct MissionControls final:core::StageControlsHost {
     MissionProfile& profile;std::int32_t width,height;BitmapBackend* backend;
     std::function<void(core::InputRectangle,std::int32_t)> add;
@@ -39,6 +84,10 @@ struct MissionControls final:core::StageControlsHost {
         move(core::input_screen_rectangle({add_word(x,bounds[0]),add_word(y,bounds[1]),bounds[2],bounds[3]},margins,width,height),control,static_cast<std::uint32_t>(key),frame);
     }
 };
+}
+std::optional<StageMpHud> MissionProfile::draw_stage_hud(BitmapBackend* backend){
+    if(!stage_mp_hud||!native_stage_controls()||!system_states_[3].enabled)return std::nullopt;
+    MissionMp host(*this,backend,hud_sprite_work_,gauge_scratch_);core::draw_stage_player_mp_gauge(host);return std::move(host.result);
 }
 void MissionProfile::draw_stage_controls(BitmapBackend* backend){
     attack_regions_.clear();move_regions_.clear();

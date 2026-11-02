@@ -19,6 +19,7 @@ struct SebSpriteState {
     SpriteCache cache; // +0x48: age columns -> layers -> twelve-cell sprites.
     std::shared_ptr<std::vector<std::uint8_t>> bounds; // +0x58, four signed bytes per frame; X=-128 marks extended.
     std::shared_ptr<std::vector<std::int16_t>> extended_bounds; // +0x60, four signed shorts; byte-sized entry indices.
+    std::shared_ptr<std::vector<float>> draw_offset=std::make_shared<std::vector<float>>(2,0.0F); // +0x98, SetOffset/ClearOffset.
     std::shared_ptr<SebInstanceWork> work=std::make_shared<SebInstanceWork>(); // +0xa8.
     bool flip=false; // +0xb0, final ReverseU toggle; does not invalidate cache.
 };
@@ -49,4 +50,9 @@ void prepare_seb_bounds(SebSpriteState&,SebStaticWork&,std::int32_t max_frame);
 // GetBRect 0x1bb0d04 + GetBoundingRect 0x1ba913c; returns the four narrowed values by value,
 // without reproducing the native thread-static short-array result alias.
 std::array<std::int32_t,4> seb_bounding_rect(const SebSpriteState&,std::int32_t frame);
+// ResourceManager.GetSebAnchorPosition 0x1ba8e38, value-returning adapter of the
+// shared float scratch. Bounding coordinates/dimensions are signed int16.
+std::array<float,2> seb_anchor_position(const SebSpriteState&,std::int32_t frame,float x,float y,std::int32_t anchor);
+void set_seb_draw_offset(SebSpriteState&,float x,float y); // Seb.SetOffset 0x1ba8f44.
+void clear_seb_draw_offset(SebSpriteState&); // Seb.ClearOffset 0x1bb8020.
 } // namespace saga::core

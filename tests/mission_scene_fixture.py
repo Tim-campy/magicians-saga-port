@@ -84,7 +84,7 @@ def make_shoot_scene(root, rewards=False, area=False, lethal_contact=False, trea
     if rewards:
         (root / 'quest.bin').write_bytes(jar([
             ('img.inf', b'77\ta.png,bin\n98\ta.png,bin\n99\ta.png,bin\n105\ta.png,bin\n91\tmove.png,bin'),
-            ('seb.inf', ('\n'.join(f'{i}\ta.seb' for i in ([0, 41, 42, 43, 44] if boss_entry else [0, 41, 42, 43]))+'\n36\tfront.seb\n37\tback.seb').encode()),
+            ('seb.inf', ('\n'.join(f'{i}\ta.seb' for i in ([0, 40, 41, 42, 43, 44] if boss_entry else [0, 40, 41, 42, 43]))+'\n36\tfront.seb\n37\tback.seb').encode()),
             ('front.seb',seb([(0,91,0,0,80,50,-5,-3,0,0),(1,91,80,0,80,50,-5,-3,0,0)])),
             ('back.seb',seb([(0,91,0,50,80,50,-5,-3,0,0),(1,91,80,50,80,50,-5,-3,0,0)])),
             ('move.png',png(160,100,[c for y in range(100) for x in range(160) for c in
@@ -140,14 +140,16 @@ def make_gauge_scene(root, defeats=6):
         for x in range(12):
             colors.extend([0, 0, 255, 255] if y < 4 else [255, 0, 255, 255 if 2 <= x < 10 else 0])
     (root / 'gauges.bin').write_bytes(jar([
-        ('img.inf', b'1\tbar.png,bin\n3\tbar.png,bin\n7\tbar.png,bin\n8\tbar.png,bin\n9\tbar.png,bin'), ('seb.inf', b'0\tbar.seb'),
+        ('img.inf', b'1\tbar.png,bin\n3\tbar.png,bin\n4\tbar.png,bin\n7\tbar.png,bin\n8\tbar.png,bin\n9\tbar.png,bin'), ('seb.inf', b'0\tbar.seb'),
         ('bar.seb', seb([(0, 1, 0, 0, 12, 8, 0, 0, 0, 0)])), ('bar.png', png(12, 8, colors))]))
     return text + 'resource 23 "gauges.bin" "English.lproj" 0\nglobal_alias 23 23\nruntime 25 0 system 42\nenemy_gauges\n'
 
 
 def with_common_resource(root, text):
     """Synthetic resCom dependency of the original movement hint."""
-    (root/'common.bin').write_bytes(jar([('img.inf',b'4\tfinger.png,bin'),('seb.inf',b'4\tfinger.seb'),
+    (root/'common.bin').write_bytes(jar([('img.inf',b'4\tfinger.png,bin\n52\tnumbers.png,bin'),('seb.inf',b'4\tfinger.seb\n52\tnumbers.seb'),
+        ('numbers.seb',seb([(i,52,6*i,0,6,8,0,0,0,0) for i in range(11)])),
+        ('numbers.png',png(66,8,[255,255,255,255]*528)),
         ('finger.seb',seb([(0,4,0,0,2,2,0,0,0,0)])),('finger.png',png(2,2,[255,255,255,255]*4))]))
     return text+'resource 2 "common.bin" "English.lproj" 0\nglobal_alias 2 2\n'
 
@@ -175,7 +177,7 @@ def make_data_entry_fixture(root, font_file, quest_time_limit=None):
     """Native bootstrap data and an equivalent diagnostic control; only synthetic/public bytes."""
     from pathlib import Path
     text=with_common_resource(root,make_native_entry_scene(root,talk_events=True,quest_time_limit=quest_time_limit))
-    (root/'gauges.bin').write_bytes(jar([('img.inf',b'1\tbar.png,bin\n3\tbar.png,bin\n7\tbar.png,bin\n8\tbar.png,bin\n9\tbar.png,bin'),
+    (root/'gauges.bin').write_bytes(jar([('img.inf',b'1\tbar.png,bin\n3\tbar.png,bin\n4\tbar.png,bin\n7\tbar.png,bin\n8\tbar.png,bin\n9\tbar.png,bin'),
         ('seb.inf',b'0\tbar.seb'),('bar.seb',seb([(0,1,0,0,12,8,0,0,0,0)])),('bar.png',png(12,8,[0,255,0,255]*96))]))
     assets=root/'textassets';assets.mkdir()
     for archive in root.glob('*.bin'):(assets/archive.name).write_bytes(archive.read_bytes())
@@ -195,7 +197,7 @@ def make_data_entry_fixture(root, font_file, quest_time_limit=None):
              'quest ','stage_start ','result_wallet ','result_record ','result_inventory ','result_recruits ','gear_levels ')
     control='mission_presentation 600 640 100 0 1 0 1500100 -1\nmission_resources "English.lproj" 1\nmaterial_policy native\ngpu_depth 24 1\n'
     control+='\n'.join(line for line in text.splitlines() if not line.startswith(removed))+'\n'
-    control+='human_static_fps 30\nhero fresh\ntick_ms 40\nsystem_construct empty_manager\nquest_frame 0 initial\ngear_new_game\ncharacter_shop_new_game 1\nnew_game_save\nmission_initialization\nmission_state new_game initial 0\nmission_events new_game 0 0 0\nenemy_gauges\nhuman_hud\ncollisions\n'
+    control+='human_static_fps 30\nhero fresh\ntick_ms 40\nsystem_construct empty_manager\nquest_frame 0 initial\ngear_new_game\ncharacter_shop_new_game 1\nnew_game_save\nmission_initialization\nmission_state new_game initial 0\nmission_events new_game 0 0 0\nenemy_gauges\nhuman_hud\nstage_mp_hud\ncollisions\n'
     control+=f'talk_font "{font.as_posix()}" 100 100 100 0 0 0 0 0\n'
     control=control.replace('system_init 1','system_init 0').replace('runtime 25 0 system 42','runtime initial initial system 42')
     return control

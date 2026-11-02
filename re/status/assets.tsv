@@ -192,3 +192,5 @@ game:0x06000ac0	reimplemented	src/core/gameplay/animation_resources.cpp	Public P
 game:0x06000027	traced	docs/subsystems/assets.md	DrawSebImg consumes image-motion work; selected positive-image path bound in BitmapBackend
 game:0x0600002d	documented	docs/subsystems/assets.md	DrawScaledSeb forwards x/y/clip/frame/scale with layer -1
 game:0x0600002e	documented	docs/subsystems/assets.md	DrawScaledSeb uses absolute frame remainder, layer filter, negative-texture skip and wrapped dimension/offset scaling
+kairo:0x060017b6	reimplemented	src/core/animation/seb_sprite.cpp	SetOffset writes X then Y in retained float array; partial short-array prefix tested
+kairo:0x060017b7	reimplemented	src/core/animation/seb_sprite.cpp	ClearOffset zeroes X then Y; null/short-array ordering tested

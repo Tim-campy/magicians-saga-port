@@ -624,6 +624,8 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             if(!native||enemy_gauges)throw std::invalid_argument("enemy_gauges requires one native selection");enemy_gauges=true;
         }else if(operation=="human_hud"){
             if(!native||human_hud)throw std::invalid_argument("human_hud requires one native selection");human_hud=true;
+        }else if(operation=="stage_mp_hud"){
+            if(!native||stage_mp_hud)throw std::invalid_argument("stage_mp_hud requires one native selection");stage_mp_hud=true;
         }else if(operation=="input"){
             std::string mode;std::uint64_t held=0;std::int32_t front=0;MissionInputScenario value;
             if(!native||input_scenario||!(row>>mode>>held>>value.last_active>>front)||mode!="fresh"||held>0xffffffffULL||(front!=0&&front!=1))throw std::invalid_argument("input requires fresh held-uint32 last-active front0/1 and three state/frame pairs");
@@ -794,6 +796,8 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         const auto map=initial_mission_map_creation();geometry=StageGeometry{map.step_x,map.step_z,0};
         quest_fields.insert("geometry");map_images=std::make_shared<EventIntegers>(4,0);quest_fields.insert("mission_map");
         collisions=enemy_gauges=human_hud=true;initialized_loaded_=std::uint8_t{0};construct_systems_=true;
+        // SAGA_STUB(mission-stage-mp-legacy): v1 omits resCom; v2 enables the native MP display.
+        stage_mp_hud=get_application_resource(application,2)!=nullptr;
         quest_frame_=QuestFrameConfig{b.debug_controls,0};initial_orientation=true;
         gear_new_game_=true;character_shop_new_game_mask_=b.shop_find_mask;new_game_save_=true;
         initial_context_requested=initial_yugami=true;native_mission_state=true; // Neutral host keys; SDL/replay supplies subsequent input.
@@ -934,6 +938,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     }
     if(enemy_gauges&&(!rewards||!get_application_resource(application,23)))throw std::invalid_argument("enemy_gauges requires explicit rewards saved counts and resource23");
     if(human_hud&&(!human_scenario||!get_application_resource(application,20)||!get_application_resource(global,23)))throw std::invalid_argument("human_hud requires human system, effect20 and global gauge23");
+    if(stage_mp_hud&&(!initialized_loaded_||!get_application_resource(application,2)||!get_application_resource(application,7)||!get_application_resource(global,23)))throw std::invalid_argument("stage_mp_hud requires system_init and common2/quest7/global gauge23");
     if(collisions&&!human_scenario)throw std::invalid_argument("collisions requires human_system event receivers");
     if(notifications&&!human_scenario)throw std::invalid_argument("stage_notifications requires human_system");
     if(collection&&(!notifications||!human_scenario))throw std::invalid_argument("collection fresh requires stage_notifications and human_system");
@@ -1129,6 +1134,10 @@ struct HumanHud final:HumanDrawingHost {
 };
 }
 void MissionProfile::write_combat_report(std::ostream& out){
+    const auto mp=draw_stage_hud();out<<",\"stage_mp_hud_enabled\":"<<(stage_mp_hud?"true":"false")<<",\"stage_mp_hud\":";
+    if(mp){std::string ascii;for(const auto c:mp->text)ascii.push_back(static_cast<char>(c));
+        out<<"{\"text\":"<<std::quoted(ascii)<<",\"width\":"<<mp->width<<",\"icon\":["<<mp->icon[0]<<','<<mp->icon[1]<<"],\"gauge_entity\":"<<entity_world->id(*mp->gauge.entity)<<",\"gauge_position\":["<<mp->gauge.x<<','<<mp->gauge.y<<"],\"gauge_image\":"<<mp->gauge.image<<'}';
+    }else out<<"null";
     if(attack_widgets_enabled()){
         draw_stage_controls();out<<",\"attack_widgets\":[";bool first=true;
         for(const auto& r:attack_regions_){if(!first)out<<',';first=false;

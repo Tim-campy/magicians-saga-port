@@ -23,6 +23,38 @@ def command(resource, clip, x, y, depth=0, texture=-1, image_resource=-1):
 
 @unittest.skipUnless(EXE and VIEWER, 'viewer executables supplied by CTest')
 class QueuePixels(unittest.TestCase):
+    def test_stage_mp_numbers_icon_and_gauge_reach_both_window_profiles(self):
+        if not MISSION:self.skipTest('mission executable required')
+        for physical in (False,True):
+            with self.subTest(physical=physical),tempfile.TemporaryDirectory() as directory:
+                root=Path(directory);scene=root/'mp.txt'
+                make_gauge_scene(root) # Supplies the synthetic two-half resource23.
+                text=with_common_resource(root,make_boss_scene(root))
+                text+='resource 23 "gauges.bin" "English.lproj" 0\nglobal_alias 23 23\nsystem_init 1\nstage_mp_hud\n'
+                width,height=128,96
+                if physical:
+                    width,height=600,640
+                    text='mission_presentation 600 640 100 0 1 0 1500100 -1\n'+\
+                        '\n'.join(l for l in text.splitlines() if not l.startswith(('world ','projection ','view ','slots ','animate ','simulate ','material ')))+'\n'
+                text='\n'.join(l for l in text.splitlines() if not l.startswith('material '))+'\nmaterial_policy native\n'
+                scene.write_text(text,encoding='utf8')
+                args=[str(MISSION),'--scene',str(scene),'--frames','1','--fps','25','--debug','0','--rng','system','--seed','42']
+                def run(extra):
+                    r=subprocess.run([*args,*extra],capture_output=True,text=True,timeout=30)
+                    self.assertEqual(r.returncode,0,r.stderr);return json.loads(r.stdout)
+                headless=run(['--headless']);out=root/'mp.bmp';capture=run(['--capture',str(out)])
+                for key,value in capture['state'].items():self.assertEqual(headless[key],value,key)
+                mp=headless['stage_mp_hud'];self.assertTrue(headless['stage_mp_hud_enabled'])
+                self.assertEqual(mp['width'],len(mp['text'])*6)
+                self.assertEqual(mp['icon'],[width-mp['width']-95,height-2])
+                self.assertEqual(mp['gauge_position'],[width,height]);self.assertEqual(mp['gauge_image'],4)
+                w,h,pixels=bmp_pixels(out.read_bytes());self.assertEqual((w,h),(width,height))
+                self.assertEqual(pixels[(height-8)*w+width-83-mp['width']+1],(255,255,255,255))
+                icon_sample=width-mp['width']-96
+                if 0<=icon_sample<w:self.assertEqual(pixels[(height-3)*w+icon_sample],(255,255,0,255))
+                else:self.assertLessEqual(mp['icon'][0],0) # Narrow diagnostic view clips the label; no repositioning.
+                self.assertIn(pixels[(height-2)*w+width-12],[(0,0,255,255),(255,0,255,255)])
+
     def test_movement_widgets_use_original_crop_and_held_frame_at_zoom(self):
         if not MISSION:self.skipTest('mission executable required')
         with tempfile.TemporaryDirectory() as directory:

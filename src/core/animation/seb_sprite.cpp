@@ -263,4 +263,17 @@ std::array<std::int32_t,4> seb_bounding_rect(const SebSpriteState& s,std::int32_
     for(auto& value:rect)value=short_value(value);
     return rect;
 }
+std::array<float,2> seb_anchor_position(const SebSpriteState& s,std::int32_t frame,float x,float y,std::int32_t anchor){
+    const auto bounds=seb_bounding_rect(s,frame);
+    x=x-static_cast<float>(bounds[0]);y=y-static_cast<float>(bounds[1]);
+    if(anchor&2)x=x-static_cast<float>(bounds[2]/2);else if(anchor&4)x=x-static_cast<float>(bounds[2]);
+    if(anchor&32)y=y-static_cast<float>(bounds[3]/2);else if(anchor&64)y=y-static_cast<float>(bounds[3]);
+    return {x,y};
+}
+void set_seb_draw_offset(SebSpriteState& s,float x,float y){
+    auto& offset=required(s.draw_offset.get());offset.at(0)=x;offset.at(1)=y;
+}
+void clear_seb_draw_offset(SebSpriteState& s){
+    auto& offset=required(s.draw_offset.get());offset.at(0)=0.0F;offset.at(1)=0.0F;
+}
 } // namespace saga::core

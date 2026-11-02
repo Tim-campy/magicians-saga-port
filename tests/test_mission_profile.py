@@ -60,6 +60,9 @@ class MissionProfileTests(unittest.TestCase):
             self.assertEqual(baseline.returncode,0,baseline.stderr);self.assertEqual(held.returncode,0,held.stderr)
             a,b=json.loads(baseline.stdout),json.loads(held.stdout)
             self.assertEqual(b['stage_state'],0);self.assertEqual(b['movement_widgets'],[])
+            self.assertTrue(b['stage_mp_hud_enabled']);mp=b['stage_mp_hud']
+            self.assertEqual(int(mp['text'].split('/')[0]),b['positions'][0]['mp'])
+            self.assertEqual(mp['width'],len(mp['text'])*6);self.assertEqual(mp['gauge_image'],4)
             self.assertEqual(a['positions'],b['positions']);self.assertEqual(b['last_down_frame'],-1)
 
     def test_native_attack_widget_hits_use_clipped_partitioned_regions(self):

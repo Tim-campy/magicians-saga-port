@@ -132,13 +132,14 @@ int run_native_mission(MissionProfile& profile,std::int32_t width,std::int32_t h
         s.cursors->at(0)=0;s.lengths->at(0)=frame.records().active_count;
         renderer.begin_frame(GlBitmapClear::color_and_depth,{0,0,0,0},surface_projection);submit_mesh_streams(s,1,host);
         account();
-        if(profile.attack_widgets_enabled()){
+        if(profile.attack_widgets_enabled()||(profile.stage_mp_hud&&profile.native_stage_controls())){
             // QuestForm.Draw calls World.Draw after DrawOffscreen: HUD stays in GameView pixels.
             renderer.compose_target(width,height);backend.resize_surface(height);backend.set_matrix(nullptr);
             frame.begin_frame();auto* mesh=backend.graphics().mesh_manager();mesh->group=0;mesh->set_depth(0,0);
-            profile.draw_stage_controls(&backend);frame.finish();bind_bitmap_mesh_frame(bindings,frame);
+            profile.draw_stage_hud(&backend);profile.draw_stage_controls(&backend);frame.finish();bind_bitmap_mesh_frame(bindings,frame);
             s.cursors->at(0)=0;s.lengths->at(0)=frame.records().active_count;
-            renderer.begin_frame(GlBitmapClear::depth,{0,0,0,0},profile.surface_projection(width,height));submit_mesh_streams(s,1,host);account();
+            const auto hud_projection=profile.resizable_viewport()?profile.surface_projection(width,height):projection;
+            renderer.begin_frame(GlBitmapClear::depth,{0,0,0,0},hud_projection);submit_mesh_streams(s,1,host);account();
             backend.set_matrix(&world);
         }
     };

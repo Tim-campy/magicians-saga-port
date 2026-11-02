@@ -22,6 +22,14 @@ bool rect(const SebSpriteState& s,std::int32_t frame,std::array<std::int32_t,4> 
 SpriteArray buffer(){return std::make_shared<SpriteValues>(12,0);}
 }
 int main(){
+    {SebSpriteState s;s.bounds=std::make_shared<std::vector<std::uint8_t>>(std::initializer_list<std::uint8_t>{251,253,80,50});
+     check((seb_anchor_position(s,0,0,0,68)==std::array<float,2>{-75,-47}));
+     check((seb_anchor_position(s,0,10.5F,20.5F,2|4|32|64)==std::array<float,2>{-24.5F,-1.5F}));
+     set_seb_draw_offset(s,2.5F,-3.25F);check(s.draw_offset->at(0)==2.5F&&s.draw_offset->at(1)==-3.25F);
+     auto copy=clone_seb_sprites(s);check(copy.draw_offset!=s.draw_offset&&copy.draw_offset->at(0)==0);
+     clear_seb_draw_offset(s);check(s.draw_offset->at(0)==0&&s.draw_offset->at(1)==0);
+     s.draw_offset->resize(1);fails([&]{set_seb_draw_offset(s,7,8);});check(s.draw_offset->at(0)==7);
+     fails([&]{clear_seb_draw_offset(s);});check(s.draw_offset->at(0)==0);s.draw_offset.reset();fails([&]{clear_seb_draw_offset(s);});}
     {auto s=prepare_seb_sprites(file({record(0,2,-41,17)}));auto out=buffer();out->at(11)=123;
      check(*s.groups==std::vector<std::int32_t>{0}&&s.packed->size()==8&&s.extended->empty());
      convert_seb_sprite(s,0,out,0);check(*out==SpriteValues({0,2,3,4,5,7,-41,17,0,0,0,123}));
