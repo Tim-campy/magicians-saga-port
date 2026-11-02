@@ -5,8 +5,23 @@
 #include "core/gameplay/quest_catalog.hpp"
 #include "core/gameplay/pass_initialization.hpp"
 #include <map>
+#include <filesystem>
 
 namespace saga::desktop {
+struct GameArchiveEntry {
+    std::string kind,name;
+    std::int32_t id;
+    std::filesystem::path path;
+};
+struct GameResourceIndex {std::int32_t version;std::vector<GameArchiveEntry> entries;};
+struct NewGameSaveDefaults {
+    std::int32_t area8,quest9,town_capacity;
+    std::int64_t money,crystals;
+};
+// Shared extracted-data inputs for mission and town hosts; no implicit game values.
+std::vector<std::uint8_t> read_game_archive(const std::filesystem::path&);
+GameResourceIndex read_game_resource_index(const std::filesystem::path& root);
+NewGameSaveDefaults read_new_game_save_defaults(const std::filesystem::path& root);
 // Selected synchronous table set, not the complete native Data.Load/bootstrap.
 // Loaded records/arrays outlive their entity factories; saved progression is supplied separately.
 struct GameplayCatalog {

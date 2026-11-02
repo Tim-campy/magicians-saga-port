@@ -62,6 +62,7 @@ Manifest: portrait orientation (`1`), `hardwareAccelerated=false`, `resizeableAc
 | [combat.md](combat.md) | Combat entry, hit, damage, easing |
 | [combat-enemies.md](combat-enemies.md) | Enemy creation, target selection, population and live frame |
 | [rewards.md](rewards.md) | Defeat, drops, quest results, treasure, town return |
+| [town.md](town.md) | SelectForm town ownership, building cache, resident data and S2 host |
 | [events.md](events.md) | Event tables, opcodes, delays, progression |
 | [integration.md](integration.md) | Slice hosts, wiring state, stubs and provisional inputs |
 | [integration-input.md](integration-input.md) | Mission pointer capture, controls/replay, cursor, viewport, camera and visibility wiring |
@@ -83,7 +84,7 @@ Manifest: portrait orientation (`1`), `hardwareAccelerated=false`, `resizeableAc
 
 ## Port
 
-Layout: `src/core` (rules; `gameplay`, `animation`, `ecs`, `persistence`), `src/assets` (readers: JAR archive, OPT grid, SEB), `src/platform/desktop` (SDL3 technical viewer/tools, stb_image), `src/platform/n3ds` (empty). C++17/CMake, builds and CTest pass on Windows via `tools/build-desktop.cmd`. No boot, loop or platform layer yet. Windows/Linux and 3DS feasibility are not demonstrated. The final product must not depend on an Android runtime.
+Layout: `src/core` (portable rules), `src/assets` (JAR/OPT/SEB readers), `src/platform/desktop` (native hosts and SDL3/OpenGL adapters), `src/platform/n3ds` (reserved). C++17/CMake builds and CTest run on Windows and Linux. S1's selected fresh mission acceptance is complete with real extracted data and declared service boundaries; S2 has a [town data/cache host](town.md), with drawing and the town/mission loop still open. Full boot/save restoration, original-runtime verification and 3DS feasibility remain unproven. The native port does not require an Android runtime.
 
 ## Evidence
 

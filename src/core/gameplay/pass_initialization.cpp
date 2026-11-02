@@ -46,6 +46,43 @@ void initialize_fresh_town(TownInitializationState& state,FreshTownHost& host){
     }
     if(first_count>host.saved_town_count())host.save_town_count(first_count);
 }
+namespace {
+EventScript allocate_town_projection(FreshTownHost& host){
+    const auto count=host.saved_town_count();
+    if(count<0)throw std::length_error("negative town capacity");
+    return std::make_shared<std::vector<EventInstruction>>(static_cast<std::size_t>(count));
+}
+void copy_town_buildings(TownInitializationState& state,const EventScript& projection){
+    auto list=state.building_list;
+    for(std::size_t i=0;i<town_required(list).size();++i){
+        auto row=town_required(list).at(i);
+        const auto slot=town_required(row).at(0);
+        auto copy=std::make_shared<EventIntegers>(3);
+        copy->at(0)=town_required(row).at(0);
+        copy->at(1)=town_required(row).at(1);
+        copy->at(2)=town_required(row).at(2);
+        town_required(projection).at(static_cast<std::size_t>(slot))=std::move(copy);
+        list=state.building_list;
+    }
+}
+}
+EventScript get_town_buildings(TownInitializationState& state,EventScript& cache,FreshTownHost& host){
+    // TownSystem.GetBuildingList 0x1169c44: repeated calls return the same cache.
+    if(cache)return cache;
+    cache=allocate_town_projection(host);
+    copy_town_buildings(state,cache);
+    return cache;
+}
+void reset_town_buildings(TownInitializationState& state,EventScript& cache,FreshTownHost& host){
+    // TownSystem.ResetBuildingList 0x1169e08: the temporary projection is never published.
+    cache.reset();
+    const auto projection=allocate_town_projection(host);
+    copy_town_buildings(state,projection);
+    for(std::size_t i=0;i<projection->size();++i)if(!projection->at(i)){
+        const auto building=town_record(host.town_records(),i).first_build;
+        set_town_building(state,static_cast<std::int32_t>(i),building,0,true,host);
+    }
+}
 void initialize_town_entry(TownInitializationWorld* world,std::function<void(const TownReturnEvent&)> receiver){
     if(!world)throw std::invalid_argument("missing town initialization world");
     world->subscribe_town_return(std::move(receiver));

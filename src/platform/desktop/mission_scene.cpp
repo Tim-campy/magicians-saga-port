@@ -185,7 +185,7 @@ void MissionScene::advance_gauges(GaugeDrawState& scratch,GaugeDrawingHost& imag
 }
 void MissionScene::advance_debug(bool application_debug,std::int32_t pass,bool enabled){
     if(gameplay_needs_update(30,enabled,pass)){update_debug_visualization(debug_visualization_,application_debug);++debug_steps_;}
-} // SAGA_STUB(mission-debug-draw): native Update is inert; diagnostic overlays/path drawing remain unbound.
+} // Native Update is inert; the dynamic drawing list runs the separate diagnostic handlers.
 void MissionScene::advance_buttons(std::int32_t pass,bool enabled){if(gameplay_needs_update(26,enabled,pass)){update_buttons(buttons_,*this);++button_steps_;}}
 void MissionScene::deliver_button_touch(const InputTouch* touch){required(button_touch_receiver_?&button_touch_receiver_:nullptr)(touch);}
 void MissionScene::send_button_event(const InputTouch* touch,ComponentSlots* target){

@@ -79,7 +79,7 @@ std::int32_t MissionHumans::debug_equipment_level(ComponentSlots& e,EquipmentSlo
 bool MissionHumans::playing_cut_in(ComponentSlots& e){return field<EntityPlayback>(e,10).state.return_clip!=-1;}
 void MissionHumans::change_animation(ComponentSlots& e,std::int32_t clip,bool reset){core::change_animation(live_animation(e),clip,reset);}
 std::int32_t MissionHumans::celebration_frame_period(){return world_.clip_max_frame(1,0);}
-void MissionHumans::remove_human_modification(ComponentSlots& e){e.remove(15);} // Detached objects remain owned; pool reuse is unbound.
+void MissionHumans::remove_human_modification(ComponentSlots& e){e.remove(15);} // SAGA_STUB(mission-component-pooling): detached objects remain owned.
 void MissionHumans::subscribe_human_impact(EntityEvents::Single receiver,std::optional<EventHashes> hash){world_.events().subscribe(23,std::move(receiver),hash,"ecs.HumanSystem.OnImpact");}
 void MissionHumans::subscribe_human_contact(EntityEvents::Pair receiver,std::optional<EventHashes> hash){world_.events().subscribe(29,std::move(receiver),hash,"ecs.HumanSystem.OnCollide");}
 ComponentSlots& MissionHumans::hero(){return required(member_hero(human_world()));}

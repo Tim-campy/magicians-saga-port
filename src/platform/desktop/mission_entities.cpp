@@ -6,6 +6,7 @@ namespace saga::desktop {
 using namespace core;
 namespace {
 template<class T>T& required(T* p){if(!p)throw std::invalid_argument("missing mission entity input");return *p;}
+// SAGA_STUB(mission-component-pooling): retain owned objects; native reuse is not bound.
 template<class T>T& acquire(std::deque<T>& pool){pool.emplace_back();return pool.back();}
 }
 MissionEntities::MissionEntities(const GameplayCatalog& data,MissionProgress& saved,std::int32_t slots,StageGeometry* map,Resources resources,ResourceIds names)

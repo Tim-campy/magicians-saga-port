@@ -9,35 +9,29 @@ The plan in one page. Work happens in **vertical slices**: each ends in somethin
 | M0 | APK inventory, architecture, subsystem map | Done: [overview](subsystems/overview.md). |
 | M1 | Asset extraction and technical rendering | Partial: archives, OPT, SEB, Unity media verified; sprites render through GL; public font metrics/direct glyph output are provisional, audio remains unbound. |
 | M2 | Boot, forms/menus and input | Static research; SelectForm passes ported in isolation (slice S2/S3). |
-| M3 | First playable gameplay loop | **Current = slice S1.** Fresh mission entry runs combat, population, collisions, collection and native clear/death/timeout/retreat through result grants, cleanup and decoded member writeback. Window termination and structured exit/results are bound; Continue restoration, town return and original runtime comparison remain open. |
+| M3 | First playable gameplay loop | S1 selected fresh mission acceptance complete; **current = S2 town ↔ mission loop**. Combat, collection and four endings run with real data and explicit service boundaries. Original-runtime verification and Continue/save restoration remain separate. |
 | M4 | Save/load, progression, economy, content | Slice S3; save envelope not decoded. |
 | M5 | Windows/Linux release candidate | Windows builds and CTest; Linux builds in CI. |
 | M6 | 3DS feasibility benchmark | Not started; nothing is claimed. |
 
 ## Slices
 
-### S1 — Playable mission (current)
+### S1 — Playable mission (complete)
 
 Host: `saga_mission` (headless or SDL window; fresh --data/--quest entry or explicit diagnostic scenario). Acceptance, checked by running it on the maintainer's extracted data:
 
 - [x] A1. `saga_mission --data extracted --quest <id>` opens a window with the quest's map, party and enemies from the real tables.
 - [x] A2. Mouse/keyboard moves the hero and triggers attacks through the ported Human/Shoot/Projectile passes.
-- [ ] A3. The full system schedule runs each frame: enemies act, collisions, damage, defeat, drops, EXP.
+- [x] A3. The full system schedule runs each frame: enemies act, collisions, damage, defeat, drops, EXP.
 - [x] A4. The stage ends (clear, game over, retreat) and prints the quest result (EXP, money, treasures, levels).
 - [x] A5. `--replay <inputs> --frames N` prints a state hash; the same inputs give the same hash; one local golden run per quest is recorded in integration.md.
-- [ ] A6. Every service the host fakes is listed in the stub table of integration.md.
+- [x] A6. Every service the host fakes is listed in the stub table of integration.md.
 
-Tasks:
-- [ ] (blocked on S3 selector13 decoding) Bind Continue world/party/systems before selecting loaded InitWorld in `saga_mission` (A1).
-- [ ] (blocked on original runtime reference) Validate notice font geometry, alpha and Graphics/text-task routing against the original (A3).
-- [ ] (deferred pending producer evidence) Locate indirect Cursor event2/4 or StartCatch producers before binding screen points; use an original runtime trace if static references remain absent (A2).
-- [ ] Group `src/core/gameplay/` (138 files) into subdirectories by subsystem (`combat/`, `mission/`, `town/`, `render/`, `events/`, `text/`, `runtime/`) without behaviour changes; CMake targets and tests keep their names.
-
-### S2 — Town ↔ mission loop
+### S2 — Town ↔ mission loop (current)
 
 Host: `saga_town`. Acceptance: SelectForm town runs with the real map and residents; choosing a quest starts S1's mission; the result returns to town and progression (EXP, money, levels, stock, quest record) is applied in memory; event scripts fire on return (event 31, 1133).
 
-- [ ] (blocking) Find the owner and data of the town map/residents that SelectForm draws, and the quest-selection path into QuestForm.
+- [ ] (blocking) Bind SelectForm town drawing/residents from Town cache, Chara/Building/Voice records and real resources; preserve Init RNG order and connect native quest selection.
 - [ ] Bind Area/Building/KingReward NewGame state to the town rebuild/menus and return path before those consumers become reachable.
 - [ ] Bind `update_select_form` to a desktop host with orientation/image-dictionary storage, camera dimensions and form factories.
 - [ ] Port decor/town/capture callbacks needed by the town host.
@@ -67,7 +61,7 @@ Host: `saga` (the game executable). Acceptance: boots to the title from real dat
 
 Host: `saga`. Acceptance: talk and event forms show their text with the correct font, wrapping, reveal and page advance; music and sound effects play.
 
-- [ ] (blocking, runtime oracle) Compare the bound FreeType/LegacyRuntime provider with original GUIStyle run measurements; establish live font/scale/language inputs.
+- [ ] (blocking, runtime oracle) Compare FreeType/LegacyRuntime and notice geometry/alpha/Graphics routing with original GUIStyle; establish live font/scale/language inputs.
 - [ ] Extend the fresh ASCII block builder to the remaining reached tags/non-ASCII paths, including EventMsg `po`, and bind glyph drawing to the host.
 - [ ] Trace the type-4 event form and producers of `nextIndex_`; bind their layout/font/page-advance paths.
 - [ ] Port the font localization scope with its two cleanup scopes, plus the `Frame` blink and draw counters.
@@ -76,6 +70,8 @@ Host: `saga`. Acceptance: talk and event forms show their text with the correct 
 
 ## Backlog (pull into a slice only when it is on its critical path)
 
+- [ ] (deferred pending producer evidence) Locate indirect Cursor event2/4 or StartCatch producers before binding screen points; use an original runtime trace if static references remain absent (A2).
+- [ ] Group `src/core/gameplay/` (138 files) into subdirectories by subsystem (`combat/`, `mission/`, `town/`, `render/`, `events/`, `text/`, `runtime/`) without behaviour changes; CMake targets and tests keep their names.
 - [ ] Close the chain TexId → `img.inf` id → ResourceManager → Image/OPT, including `Image.GetOptimizeSeb`.
 - [ ] Bind the SEB evaluator to the pixel consumer, including negative TexId commands and automatic drawing clocks.
 - [ ] Decide whether the PC/3DS builds read the Python extractor output or port the XOR decode and Unity media extraction to C++.

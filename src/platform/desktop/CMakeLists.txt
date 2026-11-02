@@ -50,6 +50,9 @@ target_link_libraries(mission_profile PUBLIC mission_scene bitmap_mesh_frame dec
 add_executable(saga_mission saga_mission.cpp)
 target_link_libraries(saga_mission PRIVATE mission_profile game_random)
 project_warnings(saga_mission)
+add_executable(saga_town saga_town.cpp)
+target_link_libraries(saga_town PRIVATE gameplay_catalog)
+project_warnings(saga_town)
 
 set(STB_DIR "${CMAKE_SOURCE_DIR}/build/_deps/stb")
 set(STB_SHA256 594c2fe35d49488b4382dbfaec8f98366defca819d916ac95becf3e75f4200b3)

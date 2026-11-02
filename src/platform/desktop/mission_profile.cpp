@@ -14,12 +14,6 @@
 namespace saga::desktop {
 using namespace core;
 namespace {
-std::vector<std::uint8_t> read(const std::filesystem::path& path){
-    std::ifstream in(path,std::ios::binary|std::ios::ate);if(!in)throw std::runtime_error("cannot open decoded archive");
-    const auto size=in.tellg();if(size<8||size>static_cast<std::streamoff>(saga::assets::JarLimits{}.max_bytes))throw std::length_error("decoded archive size outside limits");
-    std::vector<std::uint8_t> bytes(static_cast<std::size_t>(size));in.seekg(0);in.read(reinterpret_cast<char*>(bytes.data()),size);
-    if(!in)throw std::runtime_error("incomplete archive read");return bytes;
-}
 void end(std::istringstream& row){row>>std::ws;if(!row.eof())throw std::invalid_argument("unexpected scene row fields");}
 struct SelectedBullet {std::int32_t id,damage,attribute,parent;ProjectilePoint position;};
 struct SelectedEffect {std::int32_t clip,image;bool loop;ProjectilePoint position;};
@@ -45,7 +39,7 @@ std::filesystem::path mission_font_path(const std::filesystem::path& root){
 }
 }
 SceneResource::SceneResource(const std::filesystem::path& path,ResourceProfile profile,ArchiveImageSet::Decoder decoder)
-    :archive(read(path),std::move(profile)),manager(archive),image_clocks(archive.image_animation_infos()){
+    :archive(read_game_archive(path),std::move(profile)),manager(archive),image_clocks(archive.image_animation_infos()){
     if(decoder)images=std::make_unique<ArchiveImageSet>(manager,std::move(decoder));
 }
 void MissionProfile::subscribe_auxiliary_button(std::int32_t factory,AuxiliaryInitializationWorld::Button receiver){
@@ -360,27 +354,17 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     const auto load_resources=[&](const std::string& language,std::int32_t dpi){
         if(!native||!selection.data_root||tables||!owners.empty()||!resource_names.empty())
             throw std::invalid_argument("mission resources require --data and no previous bindings");
-        const auto v2=*selection.data_root/"mission-resources-v2.tsv";
-        const auto index=std::filesystem::exists(v2)?v2:*selection.data_root/"mission-resources.tsv";
-        if(std::filesystem::file_size(index)>16384)throw std::length_error("mission resource index exceeds16KiB");
-        std::ifstream list(index);std::string signature;std::int32_t version=0;
-        if(!(list>>signature>>version)||signature!="mission_resources"||(version!=1&&version!=2))throw std::invalid_argument("invalid mission resource index header");
+        const auto index=read_game_resource_index(*selection.data_root);
         std::set<std::int32_t> remaining{1,3,7,18,19,20,21,22,23};
-        if(version==2)remaining.insert(2);
-        for(std::string line;std::getline(list,line);){
-            std::istringstream entry(line);std::string kind,path,name;std::int32_t id=0;
-            entry>>std::ws;if(entry.eof())continue;
-            if(!(entry>>kind>>id>>std::quoted(path)>>std::quoted(name)))throw std::invalid_argument("invalid mission resource index row");end(entry);
-            const auto relative=std::filesystem::u8path(path);
-            if(relative.is_absolute()||relative.parent_path()!=std::filesystem::path("textassets")||relative.filename().empty())throw std::invalid_argument("mission resource path must be a direct textassets child");
-            const auto resolved=*selection.data_root/relative;
-            if(kind=="tables"&&id==-1&&name=="xls"&&!tables)
-                tables=std::make_unique<ResourceArchive>(read(resolved),ResourceProfile{language,dpi},ArchiveContents::data_only);
-            else if(kind=="resource"&&remaining.erase(id)&&!name.empty()&&resource_names.emplace(name,id).second)
-                load_resource(id,resolved,language,dpi);
+        if(index.version==2)remaining.insert(2);
+        for(const auto& row:index.entries){
+            if(row.kind=="tables"&&row.id==-1&&row.name=="xls"&&!tables)
+                tables=std::make_unique<ResourceArchive>(read_game_archive(row.path),ResourceProfile{language,dpi},ArchiveContents::data_only);
+            else if(row.kind=="resource"&&remaining.erase(row.id)&&!row.name.empty()&&resource_names.emplace(row.name,row.id).second)
+                load_resource(row.id,row.path,language,dpi);
             else throw std::invalid_argument("duplicate or unexpected mission resource index entry");
         }
-        if(!list.eof()||!tables||!remaining.empty())throw std::invalid_argument("incomplete mission resource index");
+        if(!tables||!remaining.empty())throw std::invalid_argument("incomplete mission resource index");
     };
     const auto presentation=[&](std::int32_t width,std::int32_t height,std::int32_t scale,std::int32_t auto_flag,std::int32_t update_flag,BitmapCamera camera){
         if(!native||has_world||has_projection||has_view||has_slots||has_animation||simulate||scale<1||
@@ -701,7 +685,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             std::string path,language;std::int32_t dpi=0;
             if(!native||tables||!(row>>std::quoted(path)>>std::quoted(language)>>dpi))throw std::invalid_argument("tables requires native mode and one quoted archive/language/DPI profile");
             auto resolved=archive_path(path);
-            tables=std::make_unique<ResourceArchive>(read(resolved),ResourceProfile{language,dpi},ArchiveContents::data_only);
+            tables=std::make_unique<ResourceArchive>(read_game_archive(resolved),ResourceProfile{language,dpi},ArchiveContents::data_only);
         }else if(operation=="progress"){
             std::int32_t id=0;SavedCharacterProgression saved;
             if(!native||!(row>>id>>saved.level>>saved.experience)||!progress.characters.emplace(id,saved).second)throw std::invalid_argument("progress requires unique character ID, saved level and EXP");
@@ -858,16 +842,10 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         if(!selection.data_root||selected_quest||stage_entry||saved_town_count_||wallet||record||!quest_completion_new_game||
            !fresh_hero_||!initialized_loaded_||*initialized_loaded_!=0||!construct_systems_)
             throw std::invalid_argument("new_game_save requires --data, fresh hero/system_init0/system_construct and completion new_game; excludes quest/mission_selection/stage_start/town_save19/result_wallet/result_record snapshots");
-        const auto path=*selection.data_root/"new-game-save.tsv";
-        if(std::filesystem::file_size(path)>1024)throw std::length_error("new-game defaults exceed1KiB");
-        std::ifstream seeds(path);seeds.imbue(std::locale::classic());std::string signature,selection_label,town_label,wallet_label;
-        std::int32_t version=0,town=0;SavedMissionSelection saved{};
-        if(!(seeds>>signature>>version>>selection_label>>saved.area8>>saved.quest9>>town_label>>town>>wallet_label>>result_state.money>>result_state.crystals)||
-           signature!="new_game_save"||version!=1||selection_label!="selection"||town_label!="town_capacity"||wallet_label!="wallet")
-            throw std::invalid_argument("invalid new-game save defaults");
-        seeds>>std::ws;if(!seeds.eof())throw std::invalid_argument("unexpected new-game default fields");
-        saved_mission_selection_=saved;saved_town_count_=town;
-        selected_quest=selection.quest.value_or(saved.quest9);stage_entry=*selected_quest;stage_area_id=saved.area8;
+        const auto defaults=read_new_game_save_defaults(*selection.data_root);
+        saved_mission_selection_=SavedMissionSelection{defaults.area8,defaults.quest9};saved_town_count_=defaults.town_capacity;
+        result_state.money=defaults.money;result_state.crystals=defaults.crystals;
+        selected_quest=selection.quest.value_or(defaults.quest9);stage_entry=*selected_quest;stage_area_id=defaults.area8;
         native_stage_entry_=true;wallet=record=true;
     }else if(quest_completion_new_game)throw std::invalid_argument("completion new_game requires new_game_save");
     if(selection.quest&&!selected_quest)throw std::invalid_argument("--quest requires a scenario quest row, mission_selection or new_game_save provider");
@@ -1043,7 +1021,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         for(auto& selected_button:buttons){
             auto& b=selected_button.second;const auto parent=selected_button.first;
             if(parent>=0)b.properties.parent=created.at(static_cast<std::size_t>(parent));
-            // SAGA_STUB(mission-entity-button-draw): retain native entities/Update/touch; dedicated image/text/widget output is unbound.
+            // SAGA_STUB(mission-entity-button-draw): general widget producers use explicit diagnostic rows; native drawing is bound.
             entity_world->button(b);
         }
         for(const auto& s:info_popups)mission->add_info_popup(s);

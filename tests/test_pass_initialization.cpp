@@ -1,5 +1,6 @@
 #include "core/gameplay/pass_initialization.hpp"
 #include <cstdlib>
+#include <functional>
 #include <stdexcept>
 using namespace saga::core;
 void check(bool v){if(!v)std::abort();}
@@ -30,12 +31,119 @@ template<class F>void fails(F f){bool caught=false;try{f();}catch(const std::exc
 struct FreshTown final:FreshTownHost {
     std::shared_ptr<TownTable> records=std::make_shared<TownTable>(load_town_table("0\t7\t0\t-1\t1\n1\t8\t1\t1\t99\t0\t0\n2\t9\t-1\t0\t1",false,parse_event_decimal));
     std::int32_t saved=-5;int reads=0,writes=0,rebuilds=0,queries=0;bool fail_read=false,fail_rebuild=false;
-    std::shared_ptr<TownTable> town_records()override{++queries;return records;}
-    std::int32_t saved_town_count()override{++reads;if(fail_read)throw std::runtime_error("save");return saved;}
+    std::function<void()> on_query,on_read;
+    std::shared_ptr<TownTable> town_records()override{++queries;if(on_query)on_query();return records;}
+    std::int32_t saved_town_count()override{++reads;if(on_read)on_read();if(fail_read)throw std::runtime_error("save");return saved;}
     void save_town_count(std::int32_t n)override{++writes;saved=n;}
     void rebuild_town()override{++rebuilds;if(fail_rebuild)throw std::runtime_error("rebuild");}
 };
+template<class Exception,class F>void fails_with(F f){bool caught=false;try{f();}catch(const Exception&){caught=true;}check(caught);}
+EventInstruction building_row(EventIntegers values){return std::make_shared<EventIntegers>(std::move(values));}
+TownInitializationState town_state(EventScript source){
+    TownInitializationState state;state.building_list=std::move(source);
+    state.build_enable=std::make_shared<std::vector<std::uint8_t>>(std::initializer_list<std::uint8_t>{0,1});return state;
+}
+void test_town_building_cache(){
+    {FreshTown h;h.saved=4;
+     auto first=building_row({2,8,3,99}),zero=building_row({0,4,5}),last=building_row({2,9,6});
+     auto source=std::make_shared<std::vector<EventInstruction>>(std::initializer_list<EventInstruction>{first,zero,last});
+     auto s=town_state(source);const auto enabled=s.build_enable;EventScript cache;
+     const auto result=get_town_buildings(s,cache,h);
+     check(result==cache&&cache->size()==4&&!cache->at(1)&&!cache->at(3));
+     check(cache->at(0)!=zero&&cache->at(2)!=first&&cache->at(2)!=last);
+     check(*cache->at(0)==EventIntegers({0,4,5})&&*cache->at(2)==EventIntegers({2,9,6}));
+     first->at(1)=80;last->at(2)=60;cache->at(0)->at(1)=40;
+     check(cache->at(2)->at(2)==6&&zero->at(1)==4);
+     source->push_back(building_row({1,10,11}));h.fail_read=true;h.records.reset();
+     check(get_town_buildings(s,cache,h)==result&&!cache->at(1));
+     check(h.reads==1&&h.queries==0&&h.writes==0&&h.rebuilds==0);
+     check(s.building_list==source&&s.build_enable==enabled&&*enabled==std::vector<std::uint8_t>({0,1}));}
+    // A failed late row leaves the already published cache usable, without retrying its source.
+    for(const auto bad:std::vector<EventInstruction>{nullptr,building_row({}),building_row({0}),building_row({0,7}),
+                                                  building_row({-1,7,8}),building_row({3,7,8})}){
+        FreshTown h;h.saved=3;auto prefix=building_row({1,4,5});
+        auto source=std::make_shared<std::vector<EventInstruction>>(std::initializer_list<EventInstruction>{prefix,bad});
+        auto s=town_state(source);EventScript cache;
+        fails([&]{get_town_buildings(s,cache,h);});
+        check(cache&&cache->size()==3&&!cache->at(0)&&!cache->at(2));
+        check(cache->at(1)!=prefix&&*cache->at(1)==EventIntegers({1,4,5}));
+        check(s.building_list==source&&source->size()==2&&source->at(1)==bad);
+        h.fail_read=true;check(get_town_buildings(s,cache,h)==cache);
+        check(h.reads==1&&h.queries==0&&h.writes==0&&h.rebuilds==0);
+    }
+    {FreshTown h;h.saved=-1;auto s=town_state(std::make_shared<std::vector<EventInstruction>>());EventScript cache;
+     fails_with<std::length_error>([&]{get_town_buildings(s,cache,h);});check(!cache&&h.reads==1&&h.queries==0);
+     h.saved=1;h.fail_read=true;fails_with<std::runtime_error>([&]{get_town_buildings(s,cache,h);});check(!cache&&h.reads==2);}
+    {FreshTown h;h.saved=0;auto s=town_state(nullptr);EventScript cache;
+     fails_with<std::invalid_argument>([&]{get_town_buildings(s,cache,h);});check(cache&&cache->empty()&&h.reads==1);}
+    {FreshTown h;h.saved=0;auto source=std::make_shared<std::vector<EventInstruction>>();auto s=town_state(source);EventScript cache;
+     const auto empty=get_town_buildings(s,cache,h);check(empty==cache&&cache&&cache->empty()&&h.reads==1);
+     cache.reset();source->push_back(building_row({0,1,2}));
+     fails_with<std::out_of_range>([&]{get_town_buildings(s,cache,h);});check(cache&&cache->empty()&&h.reads==2);}
+    {FreshTown h;h.saved=4;TownDefinition extra;extra.id=3;extra.first_build=42;h.records->push_back(extra);
+     auto zero=building_row({0,70,5,999}),two=building_row({2,90,7}),last=building_row({2,91,8});
+     auto source=std::make_shared<std::vector<EventInstruction>>(std::initializer_list<EventInstruction>{zero,two,last});
+     auto s=town_state(source);const auto enabled=s.build_enable;
+     EventScript cache=std::make_shared<std::vector<EventInstruction>>(1,building_row({9,9,9}));const auto old=cache;
+     h.on_read=[&]{check(!cache);};
+     h.on_query=[&]{check(!cache&&source->size()==static_cast<std::size_t>(h.queries+2));};
+     reset_town_buildings(s,cache,h);
+     check(!cache&&old->size()==1&&*old->at(0)==EventIntegers({9,9,9}));
+     check(s.building_list==source&&source->size()==5&&source->at(0)==zero&&source->at(1)==two&&source->at(2)==last);
+     check(*zero==EventIntegers({0,70,5,999})&&*two==EventIntegers({2,90,7})&&*last==EventIntegers({2,91,8}));
+     check(*source->at(3)==EventIntegers({1,8,0})&&*source->at(4)==EventIntegers({3,42,0}));
+     check(s.build_enable==enabled&&*enabled==std::vector<std::uint8_t>({0,1}));
+     check(h.reads==1&&h.queries==2&&h.writes==0&&h.rebuilds==0);
+     h.on_read={};h.on_query={};const auto projection=get_town_buildings(s,cache,h);
+     check(projection->size()==4&&*projection->at(2)==EventIntegers({2,91,8}));
+     check(projection->at(0)!=zero&&projection->at(0)->size()==3);
+     h.on_read=[&]{check(!cache);};const auto before=*source;
+     reset_town_buildings(s,cache,h);
+     check(!cache&&*source==before&&h.reads==3&&h.queries==2&&h.writes==0&&h.rebuilds==0);}
+    // Reset invalidates the old cache even if reading capacity or allocating the local view fails.
+    for(const bool fail_read:{false,true}){
+        FreshTown h;h.saved=-1;h.fail_read=fail_read;
+        auto source=std::make_shared<std::vector<EventInstruction>>(1,building_row({0,7,8}));auto s=town_state(source);
+        EventScript cache=std::make_shared<std::vector<EventInstruction>>(1,source->at(0));const auto old=cache;
+        h.on_read=[&]{check(!cache);};fails([&]{reset_town_buildings(s,cache,h);});
+        check(!cache&&old->at(0)==source->at(0)&&source->size()==1);
+        check(h.reads==1&&h.queries==0&&h.writes==0&&h.rebuilds==0);
+    }
+    // All source rows are copied before Reset starts filling gaps; copy failure cannot repair any gap.
+    for(const auto bad:std::vector<EventInstruction>{nullptr,building_row({}),building_row({0}),building_row({0,7}),
+                                                  building_row({-1,7,8}),building_row({3,7,8})}){
+        FreshTown h;h.saved=3;auto prefix=building_row({1,4,5});
+        auto source=std::make_shared<std::vector<EventInstruction>>(std::initializer_list<EventInstruction>{prefix,bad});
+        auto s=town_state(source);EventScript cache=std::make_shared<std::vector<EventInstruction>>(1,prefix);const auto old=cache;
+        fails([&]{reset_town_buildings(s,cache,h);});
+        check(!cache&&old->at(0)==prefix&&source->size()==2&&source->at(0)==prefix&&source->at(1)==bad);
+        check(h.reads==1&&h.queries==0&&h.writes==0&&h.rebuilds==0);
+    }
+    {FreshTown h;h.saved=3;h.records->at(1).reset();
+     auto existing=building_row({2,90,7});auto source=std::make_shared<std::vector<EventInstruction>>(1,existing);
+     auto s=town_state(source);const auto enabled=s.build_enable;EventScript cache=std::make_shared<std::vector<EventInstruction>>(1,existing);
+     h.on_query=[&]{check(!cache);};fails_with<std::invalid_argument>([&]{reset_town_buildings(s,cache,h);});
+     check(!cache&&source->size()==2&&source->at(0)==existing&&*source->at(1)==EventIntegers({0,7,0}));
+     check(s.build_enable==enabled&&*enabled==std::vector<std::uint8_t>({0,1}));
+     check(h.reads==1&&h.queries==2&&h.writes==0&&h.rebuilds==0);}
+    {FreshTown h;h.saved=1;h.records.reset();auto source=std::make_shared<std::vector<EventInstruction>>();auto s=town_state(source);EventScript cache;
+     fails_with<std::invalid_argument>([&]{reset_town_buildings(s,cache,h);});
+     check(!cache&&source->empty()&&h.reads==1&&h.queries==1&&h.writes==0&&h.rebuilds==0);}
+    {FreshTown h;h.saved=4;auto existing=building_row({2,90,7});
+     auto source=std::make_shared<std::vector<EventInstruction>>(1,existing);auto s=town_state(source);EventScript cache;
+     fails_with<std::out_of_range>([&]{reset_town_buildings(s,cache,h);});
+     check(!cache&&source->size()==3&&source->at(0)==existing);
+     check(*source->at(1)==EventIntegers({0,7,0})&&*source->at(2)==EventIntegers({1,8,0}));
+     check(h.reads==1&&h.queries==3&&h.writes==0&&h.rebuilds==0);}
+    {FreshTown h;h.saved=0;auto s=town_state(std::make_shared<std::vector<EventInstruction>>());
+     EventScript cache=std::make_shared<std::vector<EventInstruction>>();reset_town_buildings(s,cache,h);
+     check(!cache&&h.reads==1&&h.queries==0&&h.writes==0&&h.rebuilds==0);}
+    {FreshTown h;h.saved=0;auto s=town_state(nullptr);EventScript cache=std::make_shared<std::vector<EventInstruction>>();
+     fails_with<std::invalid_argument>([&]{reset_town_buildings(s,cache,h);});
+     check(!cache&&h.reads==1&&h.queries==0&&h.writes==0&&h.rebuilds==0);}
+}
 int main(){
+    test_town_building_cache();
     {FreshTown h;TownInitializationState s;s.building_list=std::make_shared<std::vector<EventInstruction>>();
      initialize_fresh_town(s,h);check(*s.build_enable==std::vector<std::uint8_t>({1,0,1}));
      check(h.saved==2&&h.writes==1&&h.reads==1&&h.rebuilds==0&&h.queries==13);

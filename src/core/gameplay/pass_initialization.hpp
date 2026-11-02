@@ -27,10 +27,14 @@ public:
     virtual std::shared_ptr<TownTable> town_records()=0;
     virtual std::int32_t saved_town_count()=0; // Normal-save integer slot19, decoded.
     virtual void save_town_count(std::int32_t)=0;
-    virtual void rebuild_town()=0; // SetBuildingList's deferred=false path; fresh Init passes true.
+    virtual void rebuild_town()=0; // ResetBuildingList data-cache callback; fresh Init defers it.
 };
 void set_town_building(TownInitializationState&,std::int32_t town,std::int32_t building,std::int32_t value,bool deferred,FreshTownHost&);
 void initialize_fresh_town(TownInitializationState&,FreshTownHost&);
+// TownSystem +0x30 is separate from Init's +0x20 list. Get publishes its cache
+// before filling it; Reset invalidates it and repairs missing source rows only.
+EventScript get_town_buildings(TownInitializationState&,EventScript& cache,FreshTownHost&);
+void reset_town_buildings(TownInitializationState&,EventScript& cache,FreshTownHost&);
 class TownInitializationWorld {
 public:
     virtual ~TownInitializationWorld()=default;
