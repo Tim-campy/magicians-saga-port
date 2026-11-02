@@ -1,5 +1,6 @@
 #pragma once
 #include "enemy_frame.hpp"
+#include "gauge_drawing.hpp"
 
 namespace saga::core {
 struct HumanFrameSystem:StageHumanStart {
@@ -24,6 +25,19 @@ public:
     // live catalogs/worlds/audio. No fallback success or projectile is supplied.
     virtual bool shoot_human(ComponentSlots& actor,ComponentSlots& target)=0;
 };
+class HumanDrawingHost {
+public:
+    virtual ~HumanDrawingHost()=default;
+    virtual GaugePoint gauge_screen_position(const ContactPosition*)=0; // AppData.ToScreenPos(position,true).
+    virtual void set_render_mode(std::int32_t mode,std::int32_t source,std::int32_t destination)=0;
+    virtual void reset_render_mode()=0;
+    // Resolve the live AppData resource before drawing; frame is the captured system loop counter.
+    virtual void draw_scaled_seb(std::int32_t resource,std::int32_t clip,std::int32_t frame,
+                                 std::int32_t x,std::int32_t y,std::int32_t scale)=0;
+    virtual void parameter_gauge(const ParameterGaugeRequest&)=0;
+};
+// HumanSystem.DrawDynamic 0x1157518: attack icon, then forced HP/MP gauges in live subset order.
+void draw_human_gauges(HumanFrameSystem&,HumanFrameHost&,HumanDrawingHost&);
 bool stage_attack_active(const StageStartState&); // StageSystem.get_isAttackActive 0x115651c.
 void accelerate_humans(HumanFrameSystem&); // HumanSystem.AccelerateSpeed 0x1158eec.
 void reset_human_speeds(HumanFrameSystem&); // HumanSystem.ResetSpeed 0x11590bc; dash only.

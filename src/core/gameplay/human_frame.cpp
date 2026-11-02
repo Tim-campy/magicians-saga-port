@@ -1,4 +1,5 @@
 #include "human_frame.hpp"
+#include "entity_visual.hpp"
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -85,6 +86,35 @@ std::int32_t human_attack_interval(HumanFrameSystem& s,ComponentSlots* e,HumanFr
 }
 std::int32_t human_burst_wait(HumanFrameSystem& s,ComponentSlots* e,HumanFrameHost& host){
     const auto fps=host.human_frames_per_second();return std::max(divide(multiply(fps,10),human_attack_speed(s,e,host)),2);
+}
+void draw_human_gauges(HumanFrameSystem& s,HumanFrameHost& host,HumanDrawingHost& drawing){
+    auto cursor=required(s.subset).cursor();
+    while(const auto entry=cursor.next()){
+        auto& e=required(*entry);
+        const auto point=drawing.gauge_screen_position(pointer<ContactPosition>(e,0));
+        if(total(required(resolve_combat_parameter(e,0)))<1)continue;
+        if(human(e).state==6)continue;
+        const auto interval=human_attack_interval(s,&e,host);
+        human_burst_wait(s,&e,host); // Native call is observable even though its result is unused.
+        std::int32_t clip,scale;
+        if(human(e).attack_frame<interval){
+            scale=easing(100,25,interval,human(e).attack_frame,100);clip=103;
+        }else{
+            const auto angle=static_cast<float>(multiply(s.loop_counter,40));
+            const float wave=sine_degrees(angle)*5.0F;
+            scale=add(factory_cell_coordinate(wave,1),15);clip=104;
+        }
+        const auto offset=component<ContactDirection>(e,12).direction==2?-8:8;
+        drawing.set_render_mode(1,255,255);
+        const auto frame=s.loop_counter;
+        drawing.draw_scaled_seb(20,clip,frame,add(point.x,offset),add(point.y,-17),scale);
+        drawing.reset_render_mode(); // A failed draw leaves the render mode set, as in the original.
+        constexpr std::array<std::int32_t,5> palette{{7,8,9,0,0}}; // HumanSystem..cctor 0x1159288.
+        const auto attribute=human_attack_attribute(s,data(e,host),host);
+        const auto image=palette.at(static_cast<std::size_t>(attribute));
+        drawing.parameter_gauge({&e,point.x,point.y,image,0,2,true});
+        drawing.parameter_gauge({&e,point.x,add(point.y,3),3,1,2,true});
+    }
 }
 float human_move_speed(HumanFrameSystem& s,ComponentSlots* e,HumanFrameHost& host){
     const auto p=add(parameter(s,required(e),5,host),100)/2;const float scaled=static_cast<float>(p)*2.23F;return scaled/100.0F;

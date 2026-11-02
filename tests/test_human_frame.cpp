@@ -1,7 +1,101 @@
 #include "human_frame_fixture.hpp"
 #include <cmath>
 
+namespace {
+struct HumanDrawRecorder final:HumanDrawingHost {
+    struct Icon {std::int32_t resource,clip,frame,x,y,scale;};
+    std::vector<std::string> calls;std::vector<Icon> icons;std::vector<ParameterGaugeRequest> gauges;
+    GaugePoint point{40,50};const ContactPosition* projected=nullptr;
+    std::function<void(const std::string&)> on_call;std::string fail;bool mode=false;
+    void step(const std::string& name){calls.push_back(name);if(on_call)on_call(name);if(fail==name)throw std::runtime_error(name);}
+    GaugePoint gauge_screen_position(const ContactPosition* p)override{projected=p;step("project");return point;}
+    void set_render_mode(std::int32_t kind,std::int32_t src,std::int32_t dst)override{
+        check(kind==1&&src==255&&dst==255);step("mode");mode=true;
+    }
+    void reset_render_mode()override{step("reset");mode=false;}
+    void draw_scaled_seb(std::int32_t resource,std::int32_t clip,std::int32_t frame,
+                         std::int32_t x,std::int32_t y,std::int32_t scale)override{
+        check(mode);step("icon");icons.push_back({resource,clip,frame,x,y,scale});
+    }
+    void parameter_gauge(const ParameterGaugeRequest& request)override{
+        check(!mode);step(request.parameter==0?"hp":"mp");gauges.push_back(request);
+    }
+};
+struct HumanDrawFixture:HumanFixture {
+    EntitySubset selected{[](ComponentSlots*){return true;},[](const ComponentSlots&){return 0;}};
+    HumanDrawRecorder drawing;
+    HumanDrawFixture(){selected.add(&hero());host.system.subset=&selected;flat_parameters(100);f.fps=10;
+        f.state.attack_attribute=0;resolve_combat_parameter(hero(),0)->value=10;resolve_combat_parameter(hero(),0)->extra=0;}
+    void draw(){draw_human_gauges(host.system,host,drawing);}
+};
+void drawing_contracts(){
+    // Projection precedes all actor gates; the two speed queries precede the icon and both gauges.
+    {HumanDrawFixture t;auto& e=t.hero();auto& h=field<HumanRecordLink>(e,14);h.attack_frame=0;h.frame=8;
+     t.host.on_fps=[&]{t.drawing.calls.push_back("fps");};
+     t.host.parameters=[&](ComponentSlots& actor,std::int32_t key){check(&actor==&e&&key==6);t.drawing.calls.push_back("speed");return 100;};
+     t.draw();check(t.drawing.calls==std::vector<std::string>{"project","fps","speed","fps","speed","mode","icon","reset","hp","mp"});
+     check(t.drawing.projected==&field<ContactPosition>(e,0)&&t.host.fps_queries==2);
+     const auto& icon=t.drawing.icons.at(0);check(icon.resource==20&&icon.clip==103&&icon.frame==0&&icon.x==48&&icon.y==33&&icon.scale==100);
+     const auto& hp=t.drawing.gauges.at(0);check(hp.entity==&e&&hp.x==40&&hp.y==50&&hp.image==7&&hp.parameter==0&&hp.anchor==2&&hp.force);
+     const auto& mp=t.drawing.gauges.at(1);check(mp.entity==&e&&mp.x==40&&mp.y==53&&mp.image==3&&mp.parameter==1&&mp.anchor==2&&mp.force);
+     check(!t.drawing.mode&&h.attack_frame==0&&h.frame==8&&t.host.system.loop_counter==0);}
+    for(auto state:{0,1,2,3,4,5,77}){HumanDrawFixture t;auto& e=t.hero();field<HumanRecordLink>(e,14).state=state;
+     t.f.node(e).lifetime.destroyed=true;t.draw();check(t.drawing.icons.size()==1&&t.drawing.gauges.size()==2);}
+    for(auto value:{0,-1,std::numeric_limits<std::int32_t>::min()}){HumanDrawFixture t;auto& e=t.hero();
+     resolve_combat_parameter(e,0)->value=value;e.remove(14);t.draw();check(t.drawing.calls==std::vector<std::string>{"project"}&&t.host.fps_queries==0);}
+    {HumanDrawFixture t;auto& hp=*resolve_combat_parameter(t.hero(),0);hp.value=std::numeric_limits<std::int32_t>::max();hp.extra=1;
+     t.draw();check(t.drawing.calls==std::vector<std::string>{"project"});}
+    {HumanDrawFixture t;auto& hp=*resolve_combat_parameter(t.hero(),0);hp.value=0;hp.extra=1;t.draw();check(t.drawing.icons.size()==1);}
+    {HumanDrawFixture t;field<HumanRecordLink>(t.hero(),14).state=6;t.draw();check(t.drawing.calls==std::vector<std::string>{"project"}&&t.host.fps_queries==0);}
+    {HumanDrawFixture t;t.hero().remove(0);t.draw();check(!t.drawing.projected&&t.drawing.icons.size()==1);}
+    {HumanDrawFixture t;t.hero().remove(23);fails([&]{t.draw();});check(t.drawing.calls==std::vector<std::string>{"project"});}
+    {HumanDrawFixture t;t.selected.clear_entities();t.host.system.members=nullptr;t.draw();check(t.drawing.calls.empty());
+     t.host.system.subset=nullptr;fails([&]{t.draw();});check(t.drawing.calls.empty());}
+    // Both charge boundaries and signed wrapping loop angles retain native int32/binary32 behavior.
+    for(const auto pair:std::array<std::array<std::int32_t,2>,4>{{{{-1,100}},{{0,100}},{{5,38}},{{9,25}}}}){
+     HumanDrawFixture t;field<HumanRecordLink>(t.hero(),14).attack_frame=pair[0];t.draw();
+     check(t.drawing.icons.at(0).clip==103&&t.drawing.icons[0].scale==pair[1]);}
+    const std::array<std::int32_t,10> ready_scale{{15,18,19,19,16,14,11,11,12,15}};
+    for(std::int32_t loop=0;loop<10;++loop){HumanDrawFixture t;field<HumanRecordLink>(t.hero(),14).attack_frame=10;t.host.system.loop_counter=loop;t.draw();
+     check(t.drawing.icons.at(0).clip==104&&t.drawing.icons[0].scale==ready_scale.at(static_cast<std::size_t>(loop))&&t.drawing.icons[0].frame==loop);}
+    for(const auto pair:std::array<std::array<std::int32_t,2>,3>{{{{-1,12}},{{std::numeric_limits<std::int32_t>::min(),15}},{{std::numeric_limits<std::int32_t>::max(),12}}}}){
+     HumanDrawFixture t;field<HumanRecordLink>(t.hero(),14).attack_frame=std::numeric_limits<std::int32_t>::max();t.host.system.loop_counter=pair[0];t.draw();
+     check(t.drawing.icons.at(0).clip==104&&t.drawing.icons[0].scale==pair[1]);}
+    for(auto direction:{-1,0,1,2,3,4}){HumanDrawFixture t;field<ContactDirection>(t.hero(),12).direction=direction;
+     t.draw();check(t.drawing.icons.at(0).x==(direction==2?32:48));}
+    {HumanDrawFixture t;t.drawing.point={std::numeric_limits<std::int32_t>::max(),std::numeric_limits<std::int32_t>::min()};t.draw();
+     check(t.drawing.icons.at(0).x==std::numeric_limits<std::int32_t>::min()+7&&t.drawing.icons[0].y==std::numeric_limits<std::int32_t>::max()-16);
+     check(t.drawing.gauges.at(1).y==std::numeric_limits<std::int32_t>::min()+3);}
+    // Providers may replace components or mutate clocks; later native reads remain fresh.
+    {HumanDrawFixture t;auto& e=t.hero();HumanRecordLink replacement;replacement.character_id=0;replacement.attack_frame=10;
+     t.host.on_fps=[&]{if(t.host.fps_queries==2){t.f.fps=20;e.change(14,&replacement);}};
+     t.drawing.on_call=[&](const std::string& name){if(name=="mode")t.host.system.loop_counter=27;if(name=="icon")t.drawing.point={99,99};};
+     t.draw();check(t.drawing.icons.at(0).clip==104&&t.drawing.icons[0].frame==27&&t.drawing.gauges[0].x==40&&t.drawing.gauges[0].y==50);}
+    {HumanDrawFixture t;t.drawing.on_call=[&](const std::string& name){if(name=="reset")t.f.state.attack_attribute=2;};t.draw();check(t.drawing.gauges.at(0).image==9);}
+    for(std::int32_t attribute=0;attribute<5;++attribute){HumanDrawFixture t;t.f.state.attack_attribute=attribute;t.draw();
+     check(t.drawing.gauges.at(0).image==std::array<std::int32_t,5>{{7,8,9,0,0}}.at(static_cast<std::size_t>(attribute)));}
+    {HumanDrawFixture t;auto& e=t.hero();t.host.characters[0]->flags=0;t.host.characters[0]->weapon_id=3;t.host.gear[3]->attribute=1;t.f.state.attack_attribute=4;
+     t.draw();check(t.drawing.gauges.at(0).image==8);}
+    // Failure preserves the completed prefix; the icon has no finally-style render-mode reset.
+    {HumanDrawFixture t;t.host.on_fps=[&]{if(t.host.fps_queries==2)throw std::runtime_error("burst");};
+     fails([&]{t.draw();});check(t.host.fps_queries==2&&t.drawing.calls==std::vector<std::string>{"project"});}
+    {HumanDrawFixture t;t.hero().remove(12);fails([&]{t.draw();});check(t.host.fps_queries==2&&t.drawing.calls==std::vector<std::string>{"project"});}
+    for(const auto& stop:std::vector<std::string>{"mode","icon","reset","hp","mp"}){HumanDrawFixture t;t.drawing.fail=stop;fails([&]{t.draw();});
+     check(t.drawing.calls.back()==stop&&t.drawing.mode==(stop=="icon"||stop=="reset"));
+     check(t.drawing.icons.size()==(stop=="mode"||stop=="icon"?0U:1U)&&t.drawing.gauges.size()==(stop=="mp"?1U:0U));}
+    for(auto attribute:{-1,5,std::numeric_limits<std::int32_t>::max()}){HumanDrawFixture t;t.f.state.attack_attribute=attribute;
+     fails([&]{t.draw();});check(t.drawing.icons.size()==1&&!t.drawing.mode&&t.drawing.gauges.empty()&&t.drawing.calls.back()=="reset");}
+    {HumanDrawFixture t;t.drawing.on_call=[&](const std::string& name){if(name=="reset")t.hero().remove(14);};
+     fails([&]{t.draw();});check(t.drawing.icons.size()==1&&!t.drawing.mode&&t.drawing.gauges.empty());}
+    // Live enumeration preserves insertion order and faults only after the current actor's suffix.
+    {HumanDrawFixture t;auto& second=t.sub();t.selected.add(&second);t.draw();
+     check(t.drawing.gauges.size()==4&&t.drawing.gauges[0].entity==&t.hero()&&t.drawing.gauges[2].entity==&second);}
+    {HumanDrawFixture t;auto& second=t.sub();t.drawing.on_call=[&](const std::string& name){if(name=="hp")t.selected.add(&second);};
+     fails([&]{t.draw();});check(t.drawing.gauges.size()==2&&t.drawing.calls.back()=="mp");}
+}
+}
 int main()try{
+    drawing_contracts();
     // Concrete Init uses the supplied world, stores nullable results and does not reset counters.
     {UpdateFixture f;FrameServices host(f);HumanWorld world(f,host);host.system.loop_counter=9;f.no_world=true;world.init();
      check(world.calls==std::vector<std::string>{"subset","map","stage","enemies","members","subscribe23","subscribe29"});
