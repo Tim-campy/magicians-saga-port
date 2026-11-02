@@ -75,9 +75,9 @@ def make_table_scene(root, valid_png=True, human_frame=False, shoot=False, rewar
 
 def make_shoot_scene(root, rewards=False, area=False, lethal_contact=False, treasure_flags=0, spell_attribute=3, boss_entry=False, alternate_quest=False, stage_entry=False, talk_events=False, bullet_category=0, quest_time_limit=None):
     text = make_table_scene(root, human_frame=True, shoot=True, rewards=rewards, area=area, lethal_contact=lethal_contact, treasure_flags=treasure_flags, spell_attribute=spell_attribute, boss_entry=boss_entry, alternate_quest=alternate_quest, stage_entry=stage_entry, talk_events=talk_events, bullet_category=bullet_category, quest_time_limit=quest_time_limit)
-    for name, image, clips in [('bullet', 5, [0, 1]), ('effect', 7, [0, 100, 101, 102])]:
+    for name, image, clips in [('bullet', 5, [0, 1]), ('effect', 7, [0, 100, 101, 102, 103, 104])]:
         (root / f'{name}.bin').write_bytes(jar([
-            ('img.inf', '\n'.join(f'{i}\ta.png,bin' for i in [image, 1, 2, 6, 24, 27]).encode()),
+            ('img.inf', '\n'.join(f'{i}\ta.png,bin' for i in [image, 1, 2, 3, 4, 6, 8, 9, 24, 27]).encode()),
             ('seb.inf', '\n'.join(f'{clip}\ta.seb' for clip in clips).encode()),
             ('a.seb', seb([(0, image, 0, 0, 2, 2, 0, 0, 0, 0), (3, image, 0, 0, 2, 2, 0, 0, 0, 0)])),
             ('a.png', png(2, 2, [0, 255, 0, 255] * 4))]))
@@ -140,7 +140,7 @@ def make_gauge_scene(root, defeats=6):
         for x in range(12):
             colors.extend([0, 0, 255, 255] if y < 4 else [255, 0, 255, 255 if 2 <= x < 10 else 0])
     (root / 'gauges.bin').write_bytes(jar([
-        ('img.inf', b'1\tbar.png,bin'), ('seb.inf', b'0\tbar.seb'),
+        ('img.inf', b'1\tbar.png,bin\n3\tbar.png,bin\n7\tbar.png,bin\n8\tbar.png,bin\n9\tbar.png,bin'), ('seb.inf', b'0\tbar.seb'),
         ('bar.seb', seb([(0, 1, 0, 0, 12, 8, 0, 0, 0, 0)])), ('bar.png', png(12, 8, colors))]))
     return text + 'resource 23 "gauges.bin" "English.lproj" 0\nglobal_alias 23 23\nruntime 25 0 system 42\nenemy_gauges\n'
 
@@ -175,11 +175,13 @@ def make_data_entry_fixture(root, font_file, quest_time_limit=None):
     """Native bootstrap data and an equivalent diagnostic control; only synthetic/public bytes."""
     from pathlib import Path
     text=with_common_resource(root,make_native_entry_scene(root,talk_events=True,quest_time_limit=quest_time_limit))
+    (root/'gauges.bin').write_bytes(jar([('img.inf',b'1\tbar.png,bin\n3\tbar.png,bin\n7\tbar.png,bin\n8\tbar.png,bin\n9\tbar.png,bin'),
+        ('seb.inf',b'0\tbar.seb'),('bar.seb',seb([(0,1,0,0,12,8,0,0,0,0)])),('bar.png',png(12,8,[0,255,0,255]*96))]))
     assets=root/'textassets';assets.mkdir()
     for archive in root.glob('*.bin'):(assets/archive.name).write_bytes(archive.read_bytes())
     entries=[(-1,'tables','xls'),(1,'hero','chara'),(2,'common','com'),(3,'enemy','enemy-book'),(7,'quest','quest'),
              (18,'map','chip'),(19,'bullet','bullet'),(20,'effect','effect'),(21,'hero','hat'),
-             (22,'hero','weapon'),(23,'effect','gauge')]
+             (22,'hero','weapon'),(23,'gauges','gauge')]
     (root/'mission-resources-v2.tsv').write_text('mission_resources 2\n'+''.join(
         f'{"tables" if i==-1 else "resource"} {i} "textassets/{file}.bin" "{name}"\n' for i,file,name in entries),encoding='utf8')
     (root/'new-game-save.tsv').write_text('new_game_save 1\nselection 5 2\ntown_capacity 1\nwallet 37 43\n',encoding='ascii')
@@ -193,7 +195,7 @@ def make_data_entry_fixture(root, font_file, quest_time_limit=None):
              'quest ','stage_start ','result_wallet ','result_record ','result_inventory ','result_recruits ','gear_levels ')
     control='mission_presentation 600 640 100 0 1 0 1500100 -1\nmission_resources "English.lproj" 1\nmaterial_policy native\ngpu_depth 24 1\n'
     control+='\n'.join(line for line in text.splitlines() if not line.startswith(removed))+'\n'
-    control+='human_static_fps 30\nhero fresh\ntick_ms 40\nsystem_construct empty_manager\nquest_frame 0 initial\ngear_new_game\ncharacter_shop_new_game 1\nnew_game_save\nmission_initialization\nmission_state new_game initial 0\nmission_events new_game 0 0 0\nenemy_gauges\ncollisions\n'
+    control+='human_static_fps 30\nhero fresh\ntick_ms 40\nsystem_construct empty_manager\nquest_frame 0 initial\ngear_new_game\ncharacter_shop_new_game 1\nnew_game_save\nmission_initialization\nmission_state new_game initial 0\nmission_events new_game 0 0 0\nenemy_gauges\nhuman_hud\ncollisions\n'
     control+=f'talk_font "{font.as_posix()}" 100 100 100 0 0 0 0 0\n'
     control=control.replace('system_init 1','system_init 0').replace('runtime 25 0 system 42','runtime initial initial system 42')
     return control

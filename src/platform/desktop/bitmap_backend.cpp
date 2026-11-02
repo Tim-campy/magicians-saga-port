@@ -25,6 +25,13 @@ OffscreenMatrix bitmap_projection(std::int32_t width,std::int32_t height,BitmapC
 }
 namespace {
 [[noreturn]] void unbound(){throw std::runtime_error("bitmap backend requires an unbound graphics service");}
+std::int32_t word(std::uint32_t v){return static_cast<std::int32_t>(v<=0x7fffffffU?static_cast<std::int64_t>(v):static_cast<std::int64_t>(v)-0x100000000LL);}
+std::int32_t add(std::int32_t a,std::int32_t b){return word(static_cast<std::uint32_t>(a)+static_cast<std::uint32_t>(b));}
+std::int32_t sub(std::int32_t a,std::int32_t b){return word(static_cast<std::uint32_t>(a)-static_cast<std::uint32_t>(b));}
+std::int32_t mul(std::int32_t a,std::int32_t b){return word(static_cast<std::uint32_t>(a)*static_cast<std::uint32_t>(b));}
+std::int32_t divide(std::int32_t a,std::int32_t b){if(!b)return 0;if(b==-1&&a==std::numeric_limits<std::int32_t>::min())return a;return a/b;}
+std::int32_t seb_frame(std::int32_t raw,std::int32_t maximum){return sub(raw,mul(divide(raw,maximum),maximum));}
+std::int32_t scaled_dimension(std::int32_t original,std::int32_t product){return static_cast<std::uint32_t>(add(product,199))<100U?original:product/100;}
 }
 struct BitmapMatrix final:RenderMatrix {
     SpriteMatrix value;
@@ -51,6 +58,7 @@ struct BitmapBackend::Impl final:RenderDrawHost,RenderGraphics,RenderDepth,Image
         return decoded_image_alpha(ready->pixels,x,y,w,h,std::move(alpha));
     }
     SebStaticWork seb_work;
+    ImageDrawingPosition image_motion;
     ImageDrawState image_state;
     ImageDrawStatistics statistics;
     SpriteArray opt_work=std::make_shared<SpriteValues>(7,0);
@@ -223,28 +231,74 @@ RenderDrawHost& BitmapBackend::resources(){return *impl_;}
 void BitmapBackend::set_render_mode(std::int32_t mode,std::int32_t alpha){
     core::set_render_mode(impl_->colors,mode,alpha,mode==0?0:255-alpha);
 }
+void BitmapBackend::set_render_mode(std::int32_t mode,std::int32_t source,std::int32_t destination){
+    core::set_render_mode(impl_->colors,mode,source,destination);
+}
 void BitmapBackend::draw_seb_button(std::int32_t resource,std::int32_t clip,std::int32_t raw,std::int32_t x,std::int32_t y,ImageAnimationGroup* clocks){
-    // ResourceManagerExtension.DrawSebEx 0x10edd2c -> DrawSebImg 0x10ede1c.
+    draw_seb_image(resource,clip,raw,x,y,100,17,clocks);
+}
+void BitmapBackend::draw_seb_image(std::int32_t resource,std::int32_t clip,std::int32_t raw,std::int32_t x,std::int32_t y,
+        std::int32_t scale,std::int32_t anchor,ImageAnimationGroup* clocks){
+    // ResourceManagerExtension.DrawSebImg 0x10ede1c, texture/layer overrides -1.
     auto& s=*impl_;auto* manager=s.resource(resource);
     if(!manager||!manager->animations||!manager->animations->clips||!manager->images)throw std::invalid_argument("missing button SEB resource");
     auto* clock=manager->animations->clips->at(static_cast<std::size_t>(clip));
     if(!clock||!clock->sprites)throw std::invalid_argument("missing button SEB clip");
-    const auto maximum=clock->max_frame,frame=maximum==0?raw:maximum==-1?0:raw%maximum;
+    const auto frame=seb_frame(raw,clock->max_frame);
     auto rows=seb_sprites(*clock->sprites,s.seb_work,frame);
     if(!rows)throw std::invalid_argument("missing button SEB rows");
-    const auto add=[](std::int32_t a,std::int32_t b){const auto v=static_cast<std::uint32_t>(a)+static_cast<std::uint32_t>(b);return static_cast<std::int32_t>(v<=0x7fffffffU?static_cast<std::int64_t>(v):static_cast<std::int64_t>(v)-0x100000000LL);};
     for(const auto& sprite:*rows){
         if(!sprite)throw std::invalid_argument("missing button SEB sprite");
         const auto texture=static_cast<std::size_t>(sprite->at(1));RenderImageDraw d;d.image=manager->images->at(texture);
-        if(clocks){
-            const auto pair=clocks->at(texture);if(!pair)throw std::invalid_argument("missing button image clock");
-            const auto mode=pair->at(0);static_cast<void>(pair->at(1));
-            if(mode==1||mode==2)throw std::logic_error("animated DrawSebImg transforms are unbound");
-        }
+        const auto* motion=update_image_animation(clocks,sprite->at(1),s.image_motion);
+        const ImageDrawingPosition identity;const auto& pose=motion?*motion:identity;
         if(sprite->at(8)!=0)s.reverse=1;
-        d.x=static_cast<float>(add(x,sprite->at(6)));d.y=static_cast<float>(add(y,sprite->at(7)));
         d.u=sprite->at(2);d.v=sprite->at(3);d.source_width=sprite->at(4);d.source_height=sprite->at(5);
+        if(scale==100&&pose.scale_x==100&&pose.scale_y==100){
+            if(anchor&2)x=sub(x,d.source_width/2);else if(anchor&4)x=sub(x,d.source_width);
+            if(anchor&32)y=sub(y,sub(d.source_height,sprite->at(7))/2);
+            else if(anchor&64)y=add(sub(y,d.source_height),sprite->at(7));
+            // Native fast path discards the motion position, including SwingUpDown.
+            d.x=static_cast<float>(add(x,sprite->at(6)));d.y=static_cast<float>(add(y,sprite->at(7)));
+        }else{
+            const auto product_x=mul(mul(d.source_width,scale)/100,pose.scale_x);
+            const auto product_y=mul(mul(d.source_height,scale)/100,pose.scale_y);
+            const auto qx=product_x/100,qy=product_y/100;
+            const auto width=scaled_dimension(d.source_width,product_x),height=scaled_dimension(d.source_height,product_y);
+            if(pose.scale_x!=100||pose.scale_y!=100){x=add(x,sub(d.source_width,width)/2);y=add(y,sub(d.source_height,height)/2);}
+            if(anchor&2)x=sub(x,width/2);else if(anchor&4)x=sub(x,width);
+            const auto ratio_x=divide(mul(qx,100),d.source_width),ratio_y=divide(mul(qy,100),d.source_height);
+            // Native scaled vertical anchoring uses the ratio, not the destination height.
+            if(anchor&32)y=sub(y,ratio_y/2);else if(anchor&64)y=sub(y,ratio_y);
+            d.x=static_cast<float>(add(add(x,pose.x),mul(sprite->at(6),ratio_x)/100));
+            d.y=static_cast<float>(add(add(y,pose.y),mul(sprite->at(7),ratio_y)/100));
+            d.scaled=true;d.width=static_cast<float>(width);d.height=static_cast<float>(height);
+        }
         s.draw_image(d);if(sprite->at(8)!=0)s.reverse=0;
+    }
+}
+void BitmapBackend::draw_scaled_seb(std::int32_t resource,std::int32_t clip,std::int32_t raw,std::int32_t x,std::int32_t y,std::int32_t scale){
+    // ResourceManagerExtension.DrawScaledSeb 0x10ee8c0, layer -1.
+    auto& s=*impl_;auto* manager=s.resource(resource);
+    if(!manager||!manager->animations||!manager->animations->clips)throw std::invalid_argument("missing scaled SEB resource");
+    auto* clock=manager->animations->clips->at(static_cast<std::size_t>(clip));
+    if(!clock||!clock->sprites)throw std::invalid_argument("missing scaled SEB clip");
+    auto frame=seb_frame(raw,clock->max_frame);if(frame<0)frame=sub(0,frame);
+    const auto rows=seb_sprites(*clock->sprites,s.seb_work,frame);
+    const auto count=clock->sprites->groups?clock->sprites->groups->size():0;
+    for(std::size_t i=0;i<count;++i){
+        if(!rows)throw std::invalid_argument("missing scaled SEB rows");
+        const auto& row=rows->at(i);if(!row)throw std::invalid_argument("missing scaled SEB sprite");
+        const auto texture=row->at(1);if(texture<0)continue;
+        RenderImageDraw d;d.source_width=row->at(4);d.source_height=row->at(5);
+        const auto product_x=mul(d.source_width,scale),product_y=mul(d.source_height,scale);
+        const auto qx=product_x/100,qy=product_y/100;
+        if(!manager->images)throw std::invalid_argument("missing scaled SEB images");
+        d.image=manager->images->at(static_cast<std::size_t>(texture));
+        d.x=static_cast<float>(add(x,mul(row->at(6),divide(mul(qx,100),d.source_width))/100));
+        d.y=static_cast<float>(add(y,mul(row->at(7),divide(mul(qy,100),d.source_height))/100));
+        d.u=row->at(2);d.v=row->at(3);d.width=static_cast<float>(scaled_dimension(d.source_width,product_x));
+        d.height=static_cast<float>(scaled_dimension(d.source_height,product_y));d.scaled=true;s.draw_image(d);
     }
 }
 void BitmapBackend::draw_seb(std::int32_t resource,std::int32_t clip,std::optional<std::int32_t> requested,std::int32_t x,std::int32_t y){
@@ -288,5 +342,9 @@ std::optional<std::array<std::int32_t,12>> BitmapBackend::last_sprite()const{ret
 void BitmapBackend::clear_quads(){impl_->output.clear();impl_->last.reset();}
 void BitmapBackend::set_matrix(const SpriteMatrix* matrix){set_graphics_matrix(impl_->transform,matrix);}
 void BitmapBackend::set_depth_host(BitmapDepthHost* host){impl_->depth_host=host;}
+void BitmapBackend::set_depth_layer(std::int32_t layer){
+    impl_->group=layer;impl_->depth.group=layer;
+    if(impl_->depth_host)core::set_mesh_depth_layer(impl_->depth_host->mesh_depth_state(),layer);
+}
 void BitmapBackend::resize_surface(std::int32_t height){if(height<1||height>8192)throw std::invalid_argument("invalid bitmap surface height");impl_->surface.height=height;}
 } // namespace saga::desktop

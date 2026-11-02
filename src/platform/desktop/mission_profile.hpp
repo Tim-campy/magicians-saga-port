@@ -56,7 +56,7 @@ public:
     core::OffscreenMatrix surface_projection(std::int32_t width,std::int32_t height)const;
     std::uint64_t logic_steps=0,movement_steps=0;
     void write_combat_report(std::ostream&); // Diagnostic JSON fragment; not a complete-state snapshot.
-    void draw_enemy_gauges(BitmapBackend&);
+    void draw_dynamic_hud(BitmapBackend&);
     bool attack_widgets_enabled()const{return native_stage_controls()&&resizable_viewport();}
     bool movement_widgets_enabled()const{return attack_widgets_enabled()&&core::get_application_resource(application,2);}
     void draw_stage_controls(BitmapBackend* backend=nullptr);
@@ -79,6 +79,7 @@ public:
     std::optional<std::int32_t> simulate;
     bool collisions=false;
     bool enemy_gauges=false; // Explicit selected dynamic-draw binding; full World.DynamicDraw is separate.
+    bool human_hud=false;
     std::vector<core::ComponentSlots*> created;
     std::map<std::string,std::int32_t> resource_names;
     std::unique_ptr<MissionEntities> entity_world;std::unique_ptr<MissionScene> mission;

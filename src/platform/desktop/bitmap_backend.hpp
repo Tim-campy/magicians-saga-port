@@ -74,12 +74,19 @@ public:
     void draw_parameter_gauge(const core::ParameterGaugeRequest&,core::QuestCameraHost&,core::GaugeDrawState* shared=nullptr);
     void set_matrix(const core::SpriteMatrix*);
     void set_depth_host(BitmapDepthHost*); // Borrowed; null selects the existing 2D diagnostic profile.
+    void set_depth_layer(std::int32_t); // CurrentDepthLayer only; retain the current Z accumulator.
     void resize_surface(std::int32_t height);
     // Selected direct SEB bitmap path; no AppData queue/depth/phase side effects.
     void draw_seb(std::int32_t resource,std::int32_t clip,std::optional<std::int32_t> frame,std::int32_t x,std::int32_t y);
-    // DrawSebEx(scale100,anchor17), selected nonanimated image path used by movement widgets.
+    // DrawSebImg positive-image path, including registered image motion. No queue mutation.
+    void draw_seb_image(std::int32_t resource,std::int32_t clip,std::int32_t frame,std::int32_t x,std::int32_t y,
+                        std::int32_t scale,std::int32_t anchor,core::ImageAnimationGroup*);
+    // DrawSebEx(scale100,anchor17), used by movement widgets.
     void draw_seb_button(std::int32_t resource,std::int32_t clip,std::int32_t frame,std::int32_t x,std::int32_t y,core::ImageAnimationGroup*);
+    // DrawScaledSeb's bitmap path bypasses the AppData image-motion dictionary.
+    void draw_scaled_seb(std::int32_t resource,std::int32_t clip,std::int32_t frame,std::int32_t x,std::int32_t y,std::int32_t scale);
     void set_render_mode(std::int32_t mode,std::int32_t alpha);
+    void set_render_mode(std::int32_t mode,std::int32_t source,std::int32_t destination);
 private:
     struct Impl;std::unique_ptr<Impl> impl_;
 };

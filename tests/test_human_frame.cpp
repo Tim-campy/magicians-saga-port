@@ -74,7 +74,7 @@ void drawing_contracts(){
     {HumanDrawFixture t;t.drawing.on_call=[&](const std::string& name){if(name=="reset")t.f.state.attack_attribute=2;};t.draw();check(t.drawing.gauges.at(0).image==9);}
     for(std::int32_t attribute=0;attribute<5;++attribute){HumanDrawFixture t;t.f.state.attack_attribute=attribute;t.draw();
      check(t.drawing.gauges.at(0).image==std::array<std::int32_t,5>{{7,8,9,0,0}}.at(static_cast<std::size_t>(attribute)));}
-    {HumanDrawFixture t;auto& e=t.hero();t.host.characters[0]->flags=0;t.host.characters[0]->weapon_id=3;t.host.gear[3]->attribute=1;t.f.state.attack_attribute=4;
+    {HumanDrawFixture t;t.host.characters[0]->flags=0;t.host.characters[0]->weapon_id=3;t.host.gear[3]->attribute=1;t.f.state.attack_attribute=4;
      t.draw();check(t.drawing.gauges.at(0).image==8);}
     // Failure preserves the completed prefix; the icon has no finally-style render-mode reset.
     {HumanDrawFixture t;t.host.on_fps=[&]{if(t.host.fps_queries==2)throw std::runtime_error("burst");};

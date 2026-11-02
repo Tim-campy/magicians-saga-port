@@ -108,7 +108,10 @@ int main()try{
         check((host.drawn==std::vector<const BitmapQuad*>{&depth_quads[3],&depth_quads[0],&depth_quads[1],&depth_quads[2]}));
         check(host.clears==2&&submission.used_count==4&&submission.used_materials->at(0)==submission.used_materials->at(1));
         check(host.drawn[3]->native_depth&&host.drawn[3]->points[0].z==depth_quads[2].points[0].z);}
-    check(native.state.layer==0);backend.set_depth_host(nullptr);
+    check(native.state.layer==0);const auto retained_depth=native.state.current;
+    backend.set_depth_layer(99);check(native.state.layer==99&&native.state.current==retained_depth);
+    backend.clear_quads();backend.draw_seb(1,3,0,3,4);check(backend.quads().at(0).depth.group==99);
+    backend.set_depth_host(nullptr);
     // Existing global AppData override is distinct from the primary manager and its texture dimensions.
     clear_render_queue(queue);insert(queue,1,3,0,3);auto row=queue.buffers->at(0)->at(0);row->at(render_texture)=2;row->at(render_image_resource)=1;
     backend.clear_quads();draw();check(backend.quads().size()==1&&backend.quads()[0].texture==key_g);
@@ -123,5 +126,41 @@ int main()try{
     BitmapApplication replacement;replacement.characters=&ar;live_global=&replacement;
     backend.clear_quads();draw();check(backend.quads()[0].texture==key_a);
     live_global=nullptr;fails(draw);
+    // DrawSebImg consumes registered image motion, while its 100% fast path
+    // deliberately ignores SwingUpDown's position. The pair clocks stay read-only.
+    backend.set_matrix(nullptr);backend.set_render_mode(0,255);
+    ImageAnimationGroup clocks(3);clocks[2]=std::make_shared<std::vector<std::int32_t>>(std::initializer_list<std::int32_t>{0,0});
+    const auto box=[&]{std::array<float,4> b{10000,10000,-10000,-10000};
+        for(const auto& p:backend.quads().at(0).points){b[0]=std::min(b[0],p.x);b[1]=std::min(b[1],p.y);b[2]=std::max(b[2],p.x);b[3]=std::max(b[3],p.y);}return b;};
+    backend.clear_quads();backend.draw_seb_button(1,3,0,10,10,&clocks);const auto still=box();
+    clocks[2]->at(0)=1;clocks[2]->at(1)=2;
+    backend.clear_quads();backend.draw_seb_button(1,3,0,10,10,&clocks);const auto pop=box();
+    check(pop[2]-pop[0]==1&&pop[3]-pop[1]==1&&clocks[2]->at(1)==2);
+    clocks[2]->at(0)=2;clocks[2]->at(1)=9;
+    backend.clear_quads();backend.draw_seb_button(1,3,0,10,10,&clocks);check(box()==still);
+    backend.clear_quads();backend.draw_seb_image(1,3,0,10,10,200,17,&clocks);const auto swing=box();
+    check(swing[2]-swing[0]==4&&swing[3]-swing[1]==4&&swing[3]==still[3]-2);
+    // DrawScaledSeb bypasses the image-motion dictionary and retains the native
+    // negative product fallback: -150+199 is unsigned-less-than100.
+    // This synthetic clip has a sprite only at frame0; abs(-1 % 4) is missing.
+    backend.clear_quads();fails([&]{backend.draw_scaled_seb(1,3,-1,10,10,50);});check(backend.quads().empty());
+    backend.draw_scaled_seb(1,3,-4,10,10,50);const auto scaled=box();
+    check(scaled[2]-scaled[0]==1&&scaled[3]-scaled[1]==1);
+    backend.clear_quads();backend.draw_scaled_seb(1,3,0,10,10,-75);check(box()==still);
+    clocks[2].reset();backend.clear_quads();fails([&]{backend.draw_seb_button(1,3,0,10,10,&clocks);});check(backend.quads().empty());
+    // Anchors change the retained base between layers, rather than restarting
+    // from the supplied point. The scaled bottom anchor uses ratioY=200.
+    auto layers=file(2);layers.groups.push_back(layers.groups[0]);PreparedAnimationResource layered({&layers});
+    RenderDrawResource layer_resource{&layered.resource(),ia};app.characters=&layer_resource;
+    backend.clear_quads();backend.draw_seb_image(1,0,0,10,10,100,68,nullptr);
+    check(backend.quads().size()==2&&backend.quads()[1].points[0].x==backend.quads()[0].points[0].x-2);
+    check(backend.quads()[1].points[0].y==backend.quads()[0].points[0].y+2);
+    backend.clear_quads();backend.draw_seb_image(1,0,0,10,10,200,68,nullptr);
+    check(backend.quads()[1].points[0].x==backend.quads()[0].points[0].x-4);
+    check(backend.quads()[1].points[0].y==backend.quads()[0].points[0].y+200);
+    auto negative=file(-1);PreparedAnimationResource negative_clip({&negative});
+    RenderDrawResource negative_resource{&negative_clip.resource(),ia};app.characters=&negative_resource;
+    backend.clear_quads();backend.draw_scaled_seb(1,0,0,10,10,100);check(backend.quads().empty());
+    fails([&]{backend.draw_seb_image(1,0,0,10,10,100,17,nullptr);});check(backend.quads().empty());app.characters=&ar;
     std::cout<<"bitmap backend contract ok\n";return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

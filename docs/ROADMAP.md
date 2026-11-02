@@ -29,7 +29,7 @@ Host: `saga_mission` (headless or SDL window; fresh --data/--quest entry or expl
 
 Tasks:
 - [ ] (blocked on S3 selector13 decoding) Bind Continue world/party/systems before selecting loaded InitWorld in `saga_mission` (A1).
-- [ ] Bind DrawSebImg image-animation transforms, complete World.DynamicDraw order/gates and Human/Stage HUD to the existing bitmap backend (A3).
+- [ ] Bind Stage MP numbers/icon/gauge and remaining World.DynamicDraw bodies to the bitmap backend; identify its post-callback systems-list operation (A3).
 - [ ] Add complete reached-world state hashing and record local per-quest golden replays (A5).
 - [ ] (deferred pending producer evidence) Locate indirect Cursor event2/4 or StartCatch producers before binding screen points; use an original runtime trace if static references remain absent (A2).
 - [ ] Group `src/core/gameplay/` (138 files) into subdirectories by subsystem (`combat/`, `mission/`, `town/`, `render/`, `events/`, `text/`, `runtime/`) without behaviour changes; CMake targets and tests keep their names.

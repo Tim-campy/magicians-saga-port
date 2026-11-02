@@ -128,7 +128,7 @@ int run_native_mission(MissionProfile& profile,std::int32_t width,std::int32_t h
             surface_projection=profile.surface_projection(surface_width,surface_height);
         }
         renderer.resize_target(surface_width,surface_height);backend.resize_surface(surface_height);
-        frame.begin_frame();frame.draw(queue,0);profile.draw_enemy_gauges(backend);frame.draw(queue,1);frame.finish();bind_bitmap_mesh_frame(bindings,frame);
+        frame.begin_frame();frame.draw(queue,0);profile.draw_dynamic_hud(backend);frame.draw(queue,1);frame.finish();bind_bitmap_mesh_frame(bindings,frame);
         s.cursors->at(0)=0;s.lengths->at(0)=frame.records().active_count;
         renderer.begin_frame(GlBitmapClear::color_and_depth,{0,0,0,0},surface_projection);submit_mesh_streams(s,1,host);
         account();

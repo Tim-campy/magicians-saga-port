@@ -185,3 +185,10 @@ kairo:0x060010a5	reimplemented	src/core/gameplay/mesh_geometry.cpp	Used-count-ba
 kairo:0x060010c6	reimplemented	src/core/gameplay/mesh_geometry.cpp	Layer.get_Current returns required groups[currentGroup], retaining null entries and bounds/null faults; native group checks and quad insertion use this accessor.
 kairo:0x06001099	traced	docs/subsystems/assets.md	Ordinary textured material identity uses image reference, shader key and queue variant; host cache wires this slice with native UniColor, special paths/lifetime remain open.
 game:0x0600002f	reimplemented	src/core/gameplay/animation_resources.cpp	Fresh per-image mode/tick pairs from raw catalog ordinal and first lowercase a suffix; host manager identities and form clocks, synthetic parse/bounds/ID tests.
+game:0x06000029	reimplemented	src/core/gameplay/animation_resources.cpp	Mode dispatch with nullable registered group; shared work and read-only clocks
+game:0x0600002a	reimplemented	src/core/gameplay/animation_resources.cpp	PopOut wrapped phase clock and original easing
+game:0x0600002b	reimplemented	src/core/gameplay/animation_resources.cpp	SwingUpDown signed remainder and cubic output
+game:0x06000ac0	reimplemented	src/core/gameplay/animation_resources.cpp	Public Penner cubic with native binary32 wrapper and endpoint clamp
+game:0x06000027	traced	docs/subsystems/assets.md	DrawSebImg consumes image-motion work; selected positive-image path bound in BitmapBackend
+game:0x0600002d	documented	docs/subsystems/assets.md	DrawScaledSeb forwards x/y/clip/frame/scale with layer -1
+game:0x0600002e	documented	docs/subsystems/assets.md	DrawScaledSeb uses absolute frame remainder, layer filter, negative-texture skip and wrapped dimension/offset scaling

@@ -1014,6 +1014,26 @@ class MissionProfileTests(unittest.TestCase):
             for invalid in [text + 'enemy_gauges\n', text.replace('rewards 0 1 6\n', ''),
                             text.replace('resource 23 "gauges.bin" "English.lproj" 0\n', '').replace('global_alias 23 23\n', '')]:
                 scene.write_text(invalid, encoding='utf-8');self.assertNotEqual(self.run_host(scene, frames=1).returncode, 0)
+    def test_human_hud_uses_live_parameters_and_separate_system_gates(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);scene=root/'hud.txt'
+            text=with_mission_map(root,make_gauge_scene(root).replace('runtime 25 0 system 42\n',''))+'input fresh 0 0 0 0 0 0 0 0 0\nsystem_init 1\nhuman_hud\n'
+            def run(suffix=''):
+                scene.write_text(text+suffix,encoding='utf8')
+                r=self.run_host(scene,frames=1)
+                self.assertEqual(r.returncode,0,r.stderr);return json.loads(r.stdout)
+            r=run();self.assertTrue(r['human_hud_enabled'])
+            hp,mp=r['human_gauge_requests']
+            self.assertEqual((hp['entity'],hp['image'],hp['parameter'],hp['anchor'],hp['force']),(1,7,0,2,True))
+            self.assertEqual((mp['entity'],mp['image'],mp['parameter'],mp['anchor'],mp['force']),(1,3,1,2,True))
+            self.assertEqual((mp['x'],mp['y']),(hp['x'],hp['y']+3))
+            human_off=run('system_enabled 4 0\n')
+            self.assertEqual(human_off['human_gauge_requests'],[])
+            self.assertEqual([g['entity'] for g in human_off['enemy_gauge_requests']],[g['entity'] for g in r['enemy_gauge_requests']])
+            enemy_off=run('system_enabled 5 0\n')
+            self.assertEqual(enemy_off['enemy_gauge_requests'],[])
+            self.assertEqual([(g['entity'],g['image'],g['parameter']) for g in enemy_off['human_gauge_requests']],[(g['entity'],g['image'],g['parameter']) for g in r['human_gauge_requests']])
+
     def run_host(self, scene, *extra, fps=25, debug=0, frames=12):
         return subprocess.run([str(EXE), '--scene', str(scene), '--frames', str(frames), '--headless',
                                '--fps', str(fps), '--debug', str(debug), '--rng', 'system', '--seed', '42', *extra],

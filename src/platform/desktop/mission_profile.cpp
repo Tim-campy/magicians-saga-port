@@ -164,7 +164,6 @@ void MissionProfile::construct_systems(){
 }
 void MissionProfile::reset_image_clocks(){reset_image_animations(*image_clocks_);++image_clock_resets_;}
 void MissionProfile::advance_image_clocks(){advance_image_animations(*image_clocks_);++image_clock_updates_;}
-// SAGA_STUB(mission-image-animation-draw): DrawSebImg's PopOut/SwingUpDown transforms are not bound to desktop drawing.
 void MissionProfile::update_world(std::int32_t pass){
     refresh_enabled();last_world_passes_.push_back(pass);++world_update_calls_;
     UpdateSchedule schedule{&update_list_,&timer_};update_systems(schedule,pass);
@@ -623,6 +622,8 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             if(!native||collisions)throw std::invalid_argument("collisions requires native mode and one row with no fields");collisions=true;
         }else if(operation=="enemy_gauges"){
             if(!native||enemy_gauges)throw std::invalid_argument("enemy_gauges requires one native selection");enemy_gauges=true;
+        }else if(operation=="human_hud"){
+            if(!native||human_hud)throw std::invalid_argument("human_hud requires one native selection");human_hud=true;
         }else if(operation=="input"){
             std::string mode;std::uint64_t held=0;std::int32_t front=0;MissionInputScenario value;
             if(!native||input_scenario||!(row>>mode>>held>>value.last_active>>front)||mode!="fresh"||held>0xffffffffULL||(front!=0&&front!=1))throw std::invalid_argument("input requires fresh held-uint32 last-active front0/1 and three state/frame pairs");
@@ -792,7 +793,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         fresh_hero_=true;selected.emplace_back(SelectedFreshHero{});players.push_back(0);tick_ms=b.tick_ms;
         const auto map=initial_mission_map_creation();geometry=StageGeometry{map.step_x,map.step_z,0};
         quest_fields.insert("geometry");map_images=std::make_shared<EventIntegers>(4,0);quest_fields.insert("mission_map");
-        collisions=enemy_gauges=true;initialized_loaded_=std::uint8_t{0};construct_systems_=true;
+        collisions=enemy_gauges=human_hud=true;initialized_loaded_=std::uint8_t{0};construct_systems_=true;
         quest_frame_=QuestFrameConfig{b.debug_controls,0};initial_orientation=true;
         gear_new_game_=true;character_shop_new_game_mask_=b.shop_find_mask;new_game_save_=true;
         initial_context_requested=initial_yugami=true;native_mission_state=true; // Neutral host keys; SDL/replay supplies subsequent input.
@@ -932,6 +933,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         if(!found)throw std::invalid_argument("gauge scenario requires global resource23");
     }
     if(enemy_gauges&&(!rewards||!get_application_resource(application,23)))throw std::invalid_argument("enemy_gauges requires explicit rewards saved counts and resource23");
+    if(human_hud&&(!human_scenario||!get_application_resource(application,20)||!get_application_resource(global,23)))throw std::invalid_argument("human_hud requires human system, effect20 and global gauge23");
     if(collisions&&!human_scenario)throw std::invalid_argument("collisions requires human_system event receivers");
     if(notifications&&!human_scenario)throw std::invalid_argument("stage_notifications requires human_system");
     if(collection&&(!notifications||!human_scenario))throw std::invalid_argument("collection fresh requires stage_notifications and human_system");
@@ -1112,6 +1114,20 @@ void MissionProfile::write_actor_parameters(ComponentSlots& actor,std::ostream& 
     }
     if(const auto* enemy=dynamic_cast<EnemyRecordLink*>(actor.get(24)))out<<",\"enemy_state\":"<<enemy->state<<",\"enemy_frame\":"<<enemy->frame<<",\"enemy_flags\":"<<enemy->flags;
 }
+namespace {
+struct HumanHud final:HumanDrawingHost {
+    MissionProfile& profile;BitmapBackend* backend;
+    std::function<void(const ParameterGaugeRequest&)> gauge;
+    HumanHud(MissionProfile& p,BitmapBackend* b,decltype(gauge) g):profile(p),backend(b),gauge(std::move(g)){}
+    GaugePoint gauge_screen_position(const ContactPosition* p)override{return profile.mission->gauge_screen_position(p);}
+    void set_render_mode(std::int32_t mode,std::int32_t source,std::int32_t destination)override{if(backend)backend->set_render_mode(mode,source,destination);}
+    void reset_render_mode()override{if(backend)backend->set_render_mode(0,255,0);}
+    void draw_scaled_seb(std::int32_t resource,std::int32_t clip,std::int32_t frame,std::int32_t x,std::int32_t y,std::int32_t scale)override{
+        if(backend)backend->draw_scaled_seb(resource,clip,frame,x,y,scale);
+    }
+    void parameter_gauge(const ParameterGaugeRequest& r)override{gauge(r);}
+};
+}
 void MissionProfile::write_combat_report(std::ostream& out){
     if(attack_widgets_enabled()){
         draw_stage_controls();out<<",\"attack_widgets\":[";bool first=true;
@@ -1196,8 +1212,12 @@ void MissionProfile::write_combat_report(std::ostream& out){
     out<<",\"pause_requests\":"<<pause_requests_<<",\"system_enabled\":[";
     for(std::size_t i=0;i<system_states_.size();++i){if(i)out<<',';out<<(system_states_[i].enabled?"true":"false");}out<<']';
     out<<",\"enemy_gauges_enabled\":"<<(enemy_gauges?"true":"false")<<",\"enemy_gauge_requests\":[";
-    if(enemy_gauges){bool first=true;mission->draw_enemy_gauges([&](const ParameterGaugeRequest& r){if(!first)out<<',';first=false;
+    if(enemy_gauges&&system_states_[5].enabled){bool first=true;mission->draw_enemy_gauges([&](const ParameterGaugeRequest& r){if(!first)out<<',';first=false;
         out<<"{\"entity\":"<<entity_world->id(*r.entity)<<",\"x\":"<<r.x<<",\"y\":"<<r.y<<",\"image\":"<<r.image<<",\"parameter\":"<<r.parameter<<",\"anchor\":"<<r.anchor<<",\"force\":"<<(r.force?"true":"false")<<'}';});}out<<']';
+    out<<",\"human_hud_enabled\":"<<(human_hud?"true":"false")<<",\"human_gauge_requests\":[";
+    if(human_hud&&system_states_[4].enabled){bool first=true;HumanHud host(*this,nullptr,[&](const ParameterGaugeRequest& r){
+        if(!first)out<<',';first=false;out<<"{\"entity\":"<<entity_world->id(*r.entity)<<",\"x\":"<<r.x<<",\"y\":"<<r.y<<",\"image\":"<<r.image<<",\"parameter\":"<<r.parameter<<",\"anchor\":"<<r.anchor<<",\"force\":"<<(r.force?"true":"false")<<'}';});humans->draw_dynamic_hud(host);
+    }out<<']';
     out<<",\"selected_quest\":";if(selected_quest)out<<*selected_quest;else out<<"null";
     if(selected_quest&&humans){const auto q=humans->quest();out<<",\"quest_distance\":"<<q->distance<<",\"quest_flags\":"<<q->flags<<",\"quest_money_rate\":"<<q->money_rate<<",\"quest_completion_byte\":"<<static_cast<int>(q->completed)<<",\"quest_rescued\":"<<q->rescued_prisoners;}
     const auto write_indices=[&](const char* name,const auto& indices){out<<",\""<<name<<"\":[";bool first=true;for(const auto id:indices){if(!first)out<<',';first=false;out<<id;}out<<']';};
@@ -1228,8 +1248,14 @@ void MissionProfile::write_combat_report(std::ostream& out){
         if(!first)out<<',';first=false;out<<"{\"id\":"<<entity_world->id(**e)<<",\"type\":"<<drop->type<<",\"value\":"<<drop->value<<",\"x\":"<<p->x<<",\"z\":"<<p->z<<'}';
     }}out<<']';
 }
-void MissionProfile::draw_enemy_gauges(BitmapBackend& backend){
-    if(enemy_gauges)mission->draw_enemy_gauges([&](const ParameterGaugeRequest& r){backend.draw_parameter_gauge(r,mission->gauge_camera_host(),&gauge_scratch_);});
+void MissionProfile::draw_dynamic_hud(BitmapBackend& backend){
+    if(!enemy_gauges&&!human_hud)return;
+    // SystemManager.DynamicDraw 0x113ca88: layer99 once; selected factory4 then5.
+    // SAGA_STUB(mission-dynamic-draw): other dynamic-system bodies remain unbound.
+    backend.set_depth_layer(99);
+    const auto gauge=[&](const ParameterGaugeRequest& r){backend.draw_parameter_gauge(r,mission->gauge_camera_host(),&gauge_scratch_);};
+    if(human_hud&&system_states_[4].enabled){HumanHud host(*this,&backend,gauge);humans->draw_dynamic_hud(host);}
+    if(enemy_gauges&&system_states_[5].enabled)mission->draw_enemy_gauges(gauge);
 }
 PixelImage* MissionProfile::gauge_image(std::int32_t id){
     auto* resource=get_application_resource(global,23);

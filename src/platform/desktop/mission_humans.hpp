@@ -101,6 +101,7 @@ public:
     std::int32_t stage_state()const{return stage_.state;}
     void draw_attack_controls(core::StageControlsHost& host){if(stage_.state==1)core::draw_stage_attack_controls(stage_,host);}
     void draw_move_controls(core::StageControlsHost& host){if(stage_.state==1)core::draw_stage_move_controls(stage_,host);}
+    void draw_dynamic_hud(core::HumanDrawingHost& host){core::draw_human_gauges(system_,*this,host);}
     bool exit_dialog_pending()const;
     bool has_stage_dialog()const{return static_cast<bool>(stage_.dialog);}
     bool stage_modal_pending()const{return !stage_modals_.empty();}

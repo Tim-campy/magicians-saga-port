@@ -37,6 +37,14 @@ struct ExpiringCursor final:GarbageCursor {
     ExpiringCursor(MissionEntities& owner,EntitySubset& group):world(owner),cursor(group.cursor()){}
     std::optional<GarbageEntity> next()override{if(const auto entity=cursor.next())return GarbageEntity{world.handle(**entity),*entity};return std::nullopt;}
 };
+GaugePoint project_gauge_position(const ContactPosition* p,QuestCameraHost& camera){
+        if(!p)return {};
+        const auto x=factory_cell_coordinate(render_isometric_x(p->x,p->z),1);
+        const auto y=factory_cell_coordinate(render_isometric_y(p->x,p->z)-p->y,1);
+        const auto& form=required(camera.current_camera_form());
+        const auto sub=[](std::int32_t a,std::int32_t b){const auto v=static_cast<std::uint32_t>(a)-static_cast<std::uint32_t>(b);return static_cast<std::int32_t>(v<0x80000000U?static_cast<std::int64_t>(v):static_cast<std::int64_t>(v)-0x100000000LL);};
+        return {sub(x,form.x),sub(y,form.y)};
+    }
 struct EnemyGaugeHost final:EnemyGaugeDrawHost {
     MissionEntities& world;QuestCameraHost& camera;const std::function<void(const ParameterGaugeRequest&)>& draw;
     EnemyGaugeHost(MissionEntities& w,QuestCameraHost& c,const std::function<void(const ParameterGaugeRequest&)>& d):world(w),camera(c),draw(d){}
@@ -46,14 +54,7 @@ struct EnemyGaugeHost final:EnemyGaugeDrawHost {
         return row?&*row:nullptr;
     }
     std::int32_t gauge_enemy_defeats(const EnemyRecord& r)override{return world.saved_enemy_defeats(r.id);}
-    GaugePoint gauge_screen_position(const ContactPosition* p)override{
-        if(!p)return {};
-        const auto x=factory_cell_coordinate(render_isometric_x(p->x,p->z),1);
-        const auto y=factory_cell_coordinate(render_isometric_y(p->x,p->z)-p->y,1);
-        const auto& form=required(camera.current_camera_form());
-        const auto sub=[](std::int32_t a,std::int32_t b){const auto v=static_cast<std::uint32_t>(a)-static_cast<std::uint32_t>(b);return static_cast<std::int32_t>(v<0x80000000U?static_cast<std::int64_t>(v):static_cast<std::int64_t>(v)-0x100000000LL);};
-        return {sub(x,form.x),sub(y,form.y)};
-    }
+    GaugePoint gauge_screen_position(const ContactPosition* p)override{return project_gauge_position(p,camera);}
     std::int32_t enemy_gauge_palette(std::int32_t attribute)override{
         static constexpr std::array<std::int32_t,5> ids{{1,5,6,1,1}}; // EnemySystem..cctor 0x11517e8.
         return ids.at(static_cast<std::size_t>(attribute));
@@ -98,6 +99,9 @@ void MissionScene::initialize_system(std::int32_t id){
     }
 }
 QuestCameraHost& MissionScene::gauge_camera_host(){return spatial_?spatial_->camera_host():*this;}
+GaugePoint MissionScene::gauge_screen_position(const ContactPosition* position){
+    return project_gauge_position(position,gauge_camera_host());
+}
 void MissionScene::draw_enemy_gauges(const std::function<void(const ParameterGaugeRequest&)>& draw){
     EnemyGaugeHost host(world_,gauge_camera_host(),draw);core::draw_enemy_gauges(required(world_.subset({24})),host);
 }

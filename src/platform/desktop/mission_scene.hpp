@@ -72,6 +72,7 @@ public:
     void set_debug_enabled(bool value){if(value)core::debug_visualization_enabled(debug_path_);else core::debug_visualization_disabled(debug_path_);}
     std::size_t button_observer_count(std::int32_t factory)const;
     core::QuestCameraHost& gauge_camera_host();
+    core::GaugePoint gauge_screen_position(const core::ContactPosition*);
     void draw_enemy_gauges(const std::function<void(const core::ParameterGaugeRequest&)>&);
     std::uint64_t collision_events()const{return collision_events_;}
     std::uint64_t area_collision_events()const{return area_collision_events_;}
