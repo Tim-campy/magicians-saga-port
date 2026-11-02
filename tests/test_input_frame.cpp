@@ -64,5 +64,19 @@ int main()try{
      InputControl move{35,0x10011};e={99,&move};stage_touch(s,&e);check(s.move_front_pushed&&b.state==0);
      e.type=1;stage_touch(s,&e);check(b.state==1&&s.attack_attribute==1);
      select.value=0x230004;e={2,&select};fails([&]{stage_touch(s,&e);});}
+    {auto a=input_screen_rectangle({556,460,60,60},{10,0,0,0},600,640);
+     auto b=input_screen_rectangle({540,515,60,60},{10,0,0,0},600,640);
+     partition_input_rectangles(a,b);
+     auto c=input_screen_rectangle({556,570,60,60},{10,0,0,0},600,640);
+     partition_input_rectangles(a,c);partition_input_rectangles(b,c);
+     check(a.x==546&&a.width==54&&a.y==460&&a.height==58);
+     check(b.x==530&&b.width==70&&b.y==518&&b.height==55);
+     check(c.y==573&&c.height==57);
+     check(!input_hit_rectangle(a,550,518)&&input_hit_rectangle(b,550,518));
+     InputRectangle left{0,0,10,10},right{7,0,10,10};partition_input_rectangles(left,right);
+     check(left.width==9&&right.x==9&&right.width==8);
+     InputRectangle separate{100,100,10,10};partition_input_rectangles(left,separate);check(left.width==9&&separate.x==100);}
+    {InputRectangle earlier{0,0,10,10},later=earlier;partition_input_rectangles(earlier,later);
+     check(earlier.x==5&&earlier.width==5&&later.x==0&&later.width==5);}
     return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

@@ -3,6 +3,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 
 using namespace saga::core;
 using namespace saga::desktop;
@@ -39,12 +40,19 @@ struct SubmissionHost:MeshSubmissionHost {
 int main()try{
     {const BitmapCamera camera{0,1500100,-1};const auto m=bitmap_projection(600,640,camera).values;
      check(m[0]==2.0F/600&&m[5]==2.0F/640&&m[15]==1);
-     check(m[0]*300+m[12]==0&&m[5]*320+m[13]==0);
+     // Projection coefficients are binary32. Evaluation/contraction of the
+     // centre dot product may retain a rounding residual on another compiler.
+     const auto centred=[](const auto& matrix){
+         const auto tolerance=std::numeric_limits<float>::epsilon();
+         check(std::abs(matrix[0]*300+matrix[12])<=tolerance);
+         check(std::abs(matrix[5]*320+matrix[13])<=tolerance);
+     };
+     centred(m);
      check(std::abs(m[10]*camera.z+m[14]+1)<0.000001F);
      check(std::abs(m[10]*(camera.z+camera.far_clip)+m[14]-1)<0.000001F);
      const auto odd=bitmap_projection(601,641,camera).values;
      check(odd[5]==1.0F/320&&odd[5]!=2.0F/641);
-     check(odd[0]*300+odd[12]==0&&odd[5]*320+odd[13]==0);
+     centred(odd);
      fails([&]{bitmap_projection(600,1,camera);});fails([&]{bitmap_projection(0,640,camera);});
      fails([&]{bitmap_projection(600,640,{1,1,0});});
      fails([&]{bitmap_projection(8192,8192,camera);});
@@ -67,6 +75,12 @@ int main()try{
     RenderDrawState state{&queue,0,&backend.matrix()};
     auto draw=[&]{draw_render_queue(state,&backend.graphics(),0,backend.resources());};draw();
     const auto initial=backend.quads();check(initial.size()==4);
+    backend.clear_quads();const auto queue_phase=state.phase;
+    backend.draw_seb(1,3,0,3,4);check(backend.quads().size()==1&&state.phase==queue_phase);
+    check(backend.quads()[0].texture==key_a&&backend.quads()[0].points[0].x==initial[0].points[0].x);
+    backend.set_render_mode(1,127);backend.clear_quads();backend.draw_seb(1,3,0,3,4);
+    check(backend.quads().size()==1&&backend.quads()[0].color.a==127.0F/255);
+    backend.set_render_mode(0,255);
     check(initial[0].texture==key_a&&initial[1].texture==key_b&&initial[2].texture==key_b&&initial[3].texture==key_a);
     check(initial[0].render_queue==2000&&initial[1].render_queue==2452&&initial[2].render_queue==3002&&initial[3].render_queue==2000);
     check(initial[0].depth.group==1&&initial[0].depth.index==7&&initial[1].depth.group==2&&initial[1].depth.index==9);

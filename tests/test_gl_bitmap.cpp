@@ -121,6 +121,13 @@ int main(int argc,char** argv)try{
     for(std::int32_t y=0;y<38;++y)for(std::int32_t x=0;x<34;++x)for(std::int32_t c=0;c<4;++c)
         check(presented.rgba[static_cast<std::size_t>((y*34+x)*4+c)]==source.rgba[static_cast<std::size_t>(((y/2)*17+x/2)*4+c)]);
     fails([&]{renderer.read_pixels(0,38);});check(renderer.read_pixels().width==17);
+    renderer.compose_target(34,38);renderer.begin_frame(GlBitmapClear::depth,{0,0,0,0},unit);
+    check(renderer.read_pixels().rgba==presented.rgba);
+    renderer.resize_target(17,19);renderer.begin_frame(GlBitmapClear::depth,{0,0,0,0},unit);
+    check(renderer.read_pixels().rgba==source.rgba); // Reuse the retained world target.
+    renderer.compose_target(34,38);renderer.begin_frame(GlBitmapClear::depth,{0,0,0,0},unit);
+    check(renderer.read_pixels().rgba==presented.rgba);
+    fails([&]{renderer.compose_target(0,38);});fails([&]{renderer.compose_target(8192,8192);});
     renderer.resize_target(32,32);renderer.begin_frame(GlBitmapClear::color_and_depth,{0,0,0,0},unit);
     // Unsupported input is rejected, rather than silently flattening or guessing a material.
     auto invalid=quad(0,0);invalid.native_depth=false;renderer.set_material(invalid.shader_key);fails([&]{renderer.draw(invalid,unit);});

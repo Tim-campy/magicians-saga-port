@@ -77,7 +77,7 @@ struct BitmapBackend::Impl final:RenderDrawHost,RenderGraphics,RenderDepth,Image
         const auto nan=std::numeric_limits<float>::quiet_NaN();
         image_state.culling_disabled=true;image_state.clip=std::make_shared<std::vector<float>>(4,nan);
         image_state.bounds=std::make_shared<ImageBounds>();image_state.statistics=&statistics;
-        colors.cache_dirty=&cache.dirty;set_render_mode(colors,0,255,0);set_blend_mode(colors,0,-1);
+        colors.cache_dirty=&cache.dirty;core::set_render_mode(colors,0,255,0);set_blend_mode(colors,0,-1);
         set_graphics_matrix(transform,&world);
     }
     RenderDrawResource* resource(std::int32_t id)override{return get_application_resource(application,id);}
@@ -220,6 +220,44 @@ void BitmapBackend::draw_parameter_gauge(const ParameterGaugeRequest& r,QuestCam
     impl_->gauge_camera=&camera;core::draw_parameter_gauge(shared?*shared:impl_->gauges,impl_.get(),r,*impl_);
 }
 RenderDrawHost& BitmapBackend::resources(){return *impl_;}
+void BitmapBackend::set_render_mode(std::int32_t mode,std::int32_t alpha){
+    core::set_render_mode(impl_->colors,mode,alpha,mode==0?0:255-alpha);
+}
+void BitmapBackend::draw_seb(std::int32_t resource,std::int32_t clip,std::optional<std::int32_t> requested,std::int32_t x,std::int32_t y){
+    // ResourceManager.DrawSeb 0x1ba8c10 -> Seb._draw 0x1bb4140 ->
+    // Seb.Draw 0x1bb740c. Fresh prepared SEBs have zero +0x98 draw offsets.
+    auto& s=*impl_;auto* manager=s.resource(resource);
+    if(!manager||!manager->animations||!manager->animations->clips||!manager->images)throw std::invalid_argument("missing direct SEB resource");
+    auto* clock=manager->animations->clips->at(static_cast<std::size_t>(clip));
+    if(!clock||!clock->sprites)throw std::invalid_argument("missing direct SEB clip");
+    const auto raw=requested.value_or(clock->frame),maximum=clock->max_frame;
+    const auto frame=maximum==0?raw:maximum==-1?0:raw%maximum;
+    auto* payload=clock->sprites;
+    auto sprites=seb_sprites_local(*payload,s.seb_work,frame);
+    if(!sprites)return;
+    if(!payload->groups)throw std::invalid_argument("missing direct SEB layers");
+    for(std::size_t layer=0;layer<payload->groups->size();++layer){
+        auto sprite=sprites->at(layer);if(!sprite)continue;
+        const auto texture=sprite->at(1),blend=sprite->at(10);
+        const float px=(0.0F+static_cast<float>(sprite->at(6)))+static_cast<float>(x);
+        const float py=(0.0F+static_cast<float>(sprite->at(7)))+static_cast<float>(y);
+        if(blend!=0){
+            auto alpha=static_cast<std::int32_t>(static_cast<std::uint32_t>(sprite->at(11))>>24U);
+            if(s.colors.mode==0&&s.colors.source!=255)alpha=std::min(s.colors.source*alpha/255,255);
+            if(blend==1)s.push_render_mode(1,alpha,255-alpha);
+            else if(blend==2)s.push_render_mode(1,alpha,255);
+            else if(blend==3)s.push_render_mode(2,alpha,255);
+            else throw std::invalid_argument("unsupported direct SEB blend");
+        }
+        if(texture>=0){
+            const auto reverse=sprite->at(8)+2*sprite->at(9);if(reverse)s.reverse=reverse;
+            RenderImageDraw d;d.image=manager->images->at(static_cast<std::size_t>(texture));
+            d.x=px;d.y=py;d.u=sprite->at(2);d.v=sprite->at(3);d.source_width=sprite->at(4);d.source_height=sprite->at(5);
+            s.draw_image(d);if(reverse)s.reverse=0;
+        }else if(texture== -2||texture== -3||texture== -4)throw std::invalid_argument("direct SEB primitive drawing is unbound");
+        if(blend!=0)s.pop_render_mode();
+    }
+}
 RenderMatrix& BitmapBackend::matrix(){return impl_->application_matrix;}
 const std::vector<BitmapQuad>& BitmapBackend::quads()const{return impl_->output;}
 std::optional<std::array<std::int32_t,12>> BitmapBackend::last_sprite()const{return impl_->last;}

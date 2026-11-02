@@ -75,6 +75,9 @@ public:
     void set_matrix(const core::SpriteMatrix*);
     void set_depth_host(BitmapDepthHost*); // Borrowed; null selects the existing 2D diagnostic profile.
     void resize_surface(std::int32_t height);
+    // Selected direct SEB bitmap path; no AppData queue/depth/phase side effects.
+    void draw_seb(std::int32_t resource,std::int32_t clip,std::optional<std::int32_t> frame,std::int32_t x,std::int32_t y);
+    void set_render_mode(std::int32_t mode,std::int32_t alpha);
 private:
     struct Impl;std::unique_ptr<Impl> impl_;
 };

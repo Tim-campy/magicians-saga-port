@@ -22,6 +22,26 @@ def command(resource, clip, x, y, depth=0, texture=-1, image_resource=-1):
 
 @unittest.skipUnless(EXE and VIEWER, 'viewer executables supplied by CTest')
 class QueuePixels(unittest.TestCase):
+    def test_attack_widgets_stay_in_physical_pixels_at_zoom(self):
+        if not MISSION:self.skipTest('mission executable required')
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);scene=root/'widgets.txt';replay=root/'widgets.replay'
+            scene.write_text('mission_presentation 128 96 100 0 1 0 1500100 -1\nsystem_init 1\nmaterial_policy native\ntick_ms 1\n'+
+                '\n'.join(line for line in make_boss_scene(root).splitlines() if not line.startswith(('world ','projection ','view ','slots ','animate ','simulate ','material ')))+'\n',encoding='utf8')
+            replay.write_text('1 camera 12 0 0 40\n1 camera 1 0 0 0\n2 widget 100 50\n',encoding='ascii')
+            args=[str(MISSION),'--scene',str(scene),'--frames','3','--fps','25','--debug','0','--rng','system','--seed','42','--replay',str(replay)]
+            def run(extra):
+                r=subprocess.run([*args,*extra],capture_output=True,text=True,timeout=30)
+                self.assertEqual(r.returncode,0,r.stderr);return json.loads(r.stdout)
+            output=root/'widgets.bmp';capture=run(['--capture',str(output)]);headless=run(['--headless'])
+            self.assertEqual(capture['state']['attack_point_events'],1);self.assertEqual(capture['state']['attack_attribute'],2)
+            for key,value in capture['state'].items():self.assertEqual(headless[key],value,key)
+            # The synthetic icon is yellow2x2 at the native physical x/y. Scaling the world must not move it.
+            w,h,pixels=bmp_pixels(output.read_bytes());self.assertEqual((w,h),(128,96))
+            x=capture['state']['attack_widgets'][2]['bounds'][0]+10;y=96-180+55*2
+            self.assertEqual(pixels[y*w+x][:3],(255,255,0))
+            again=root/'again.bmp';self.assertEqual(run(['--capture',str(again)]),capture);self.assertEqual(again.read_bytes(),output.read_bytes())
+
     def test_map_pointer_capture_zoom_cancel_and_resize_match_headless(self):
         if not MISSION:self.skipTest('mission executable required')
         with tempfile.TemporaryDirectory() as directory:

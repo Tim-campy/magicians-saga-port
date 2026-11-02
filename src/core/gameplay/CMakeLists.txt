@@ -373,6 +373,7 @@ else()
 endif()
 target_link_libraries(stage_placement PUBLIC drop_factory game_random)
 saga_library(stage_start stage_start.cpp)
+target_sources(stage_start PRIVATE stage_controls.cpp)
 target_link_libraries(stage_start PUBLIC stage_placement drop_collection stage_cleanup party_start)
 
 saga_library(mission_map mission_map.cpp)

@@ -13,6 +13,8 @@ The game's screens are forms (`kairo.unity.form.FormBase` → `LibraryFormBase` 
 
 | Method | Registry id | Role | Confidence |
 |---|---|---|---|
+| `ecs.StageSystem.DrawAttackButton` | `game:0x06000fc3` | Animated attack sprites and group10 touch registration; bound to S1 | high |
+| `ecs.StageSystem.DrawMoveButton` | `game:0x06000fc4` | Forward/reverse widgets and movement hint; producer ported, desktop widget adapter open | high |
 | `FormManagerBase.Execute` | `kairo:0x06001a15` | Called by Main.OnUpdate (link to `_execute` not traced) | medium |
 | `FormManagerBase._execute` | `kairo:0x06001a16` | Pass count and Update dispatch loop | medium |
 | `FormManagerBase.DoMethod` | `kairo:0x06001a56` | Dispatch event code 0..5 to form virtual slot | high |
@@ -208,6 +210,17 @@ No range validation in SetFrameRate (24 bytes). FormManagerBase: `+0x28` current
 `World.Deserialize` (37014, `0x1135938`, 76 bytes): `EntityManager.Deserialize(World+0x20, stream)` at `0x1135954`, then `SystemManager.Deserialize(World+0x28, stream)` at `0x1135968`, then `World.byte+0x38 = 1` (`0x1135970`) — the flag `AppData.InitWorld` tests before creating systems. No clear/RemoveAllSystems in the wrapper; do not add one without following the callers. Details belong to [ecs.md](ecs.md)/[save.md](save.md).
 
 ### Mission movement and attack controls
+
+`StageSystem.Draw` (`0x1166740`) follows QuestForm.DrawOffscreen through World.Draw. Its enabled gate is the instance byte+0x18; DrawDynamic is an inert RET. The state1 branch draws attacks, optionally the pause control while bossDefeated is false, then movement. State2 draws the paused party/resume/exit UI; state3 draws clear UI and permits confirmation after frame21; states4/5/6 register confirmation. These controls use BaseSystem.view.GetGameWidth/Height, independent of QuestForm.scale.
+
+`DrawAttackButton` (`0x1167604`, `game:0x06000fc3`) reads width then height and iterates the live AttackButton array. For index i, base position is wrap(width-44,height-180+55*i). State0 uses Graph.Easing(-16,0,4,frame,80) for X offset and Easing(255,0,4,frame,80) for alpha; state1 reverses both endpoints; other states use zero offset/alpha. Resource7/clip0 draws frame2*i when alpha<=254, then frame2*i+1 under SetRenderMode(1,alpha) when alpha>=1, followed by the default mode reset. The frame is read separately for each easing. Each control registers group10/value(0x230000|i),60x60,flags8 and Margin(left10,right0,top0,bottom0), even when a layer is not drawn. Array replacements/null failures preserve the preceding output prefix. The port is `stage_controls.cpp`; native state1/enabled gates and direct bitmap output are bound by MissionProfile.
+
+`DrawMoveButton` (`0x1167a00`, `game:0x06000fc4`) reads height once. Forward uses resource7/SEB36 at(2,height-75),key0x20000,anchor17,margins(0,10,15,5). Unless moveFrontPushed it draws resource2/SEB4's current frame at(75,height-53). Unless bossDefeated it adds reverse SEB37 at(2,height-38),key0x80000,margins(0,10,5,15). DrawButton derives values0x10011/0x10013, uses CheckTouch(35,value)&1 as frame, and forwards through ButtonSystem.DrawButton. That helper reads GetBoundingRect for anchor adjustment, draws DrawSebEx(scale100,anchor17), then reads the rectangle again for registration. Anchor17 leaves position unchanged. The producer is ported and tested; its desktop SEB-boundary/drawing adapter remains unbound.
+
+The group10/35 GameView policy has COLLISION=SCREEN=1, with side indices0/1/2/3 and collision/screen indices4/5. An explicit option margin replaces the sides; it does not replace collision/screen policy. Origin0/density100 attack rectangles expand left10, clip to the physical viewport, then partition overlapping same-priority registrations in insertion order. A five-pixel vertical overlap removes2 pixels from the earlier rectangle and3 from the later;600x640 yields Y/height(460,58),(518,55),(573,57). Identical-coordinate ties retain the new registration first. Full touch queues, priority arbitration with other widget groups and cancellation timing remain outside this selected adapter.
+
+Evidence: ignored `mission-stage-controls`, `mission-control-boundary`, `mission-control-layout`, `mission-control-policy`, `mission-control-sprites` and `mission-control-sprite-layer` exports. GameView.cctor side/collision/screen constants are ELF0x6267b0/0x627550; group10's initializer resolves to metadata field24277/default_data172080; group35's row is constructed at0x10ff9b0..0x10ff9e0. Movement margin fields24375/24259 contain int32[0,10,15,5]/[0,10,5,15]. Confidence high for static contracts, no Android observation.
+
 
 InputSystem.Init (0x115b3cc,276 bytes) stores supplied-world And({28,0,1}), writes lastDownFrame_=-1 and subscribes event9. It preserves oldUp_ (+0x28), oldDown_ (+0x29) and frame_ (+0x2c); lastDownFrame_ is +0x30. A fresh managed object supplies zero flags/frame. Update does not iterate the stored subset: controls act on the globally selected hero through MemberSystem.
 
@@ -419,7 +432,7 @@ Port: [quest_render.hpp](../../src/core/gameplay/quest_render.hpp) and its imple
 - Bind HumanSystem.DrawDynamic's attack-icon prefix and HP/MP suffix, Stage HUD, and complete World.DynamicDraw gates/order. Enemy HP drawing is an explicit selected route.
 - Establish the original producer/restoration path for Gauge19 entities. Native CreateGauge and lifecycle are host-reachable with explicit diagnostic arguments; observed actor HP drawing uses separate static helpers. No direct external B/BL caller of CreateGauge was found; indirect/restored routes remain possible.
 
-- Bind original QuestForm movement/attack widget construction/hit testing and Canvas lock/device selection. Selected map registration/hit predicates and desktop capture/cancellation are host-reachable; full Surface touch queues and their frame timing remain open.
+- Bind movement SEB bounds/drawing and Canvas lock/device selection. Attack sprites and clipped/partitioned click regions are host-reachable; full Surface touch queues and their frame timing remain open.
 - Bind remaining stage dialog answers and pause/resume without selecting a retry payment/ad decision automatically.
 - Establish event25 scale consumers before connecting CameraComponent.scale to QuestForm.scale_. Complete World.DynamicDraw and original widget routing around the bound archive managers, GL offscreen surface, live viewport and form gestures; the CameraSystem touch-history handler has no established form subscription. DEBUG group37 SetDebugClear remains unbound and is not produced by desktop camera input.
 

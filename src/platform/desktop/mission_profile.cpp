@@ -300,9 +300,9 @@ void MissionProfile::load_replay(const std::filesystem::path& path){
                d.ec!=std::errc{}||d.ptr!=control.data()+control.size()||++count>100000)throw std::invalid_argument("invalid or unordered touch replay action");
             replay_[step].push_back(action);previous=step;continue;
         }
-        if(kind=="cursor"||kind=="click"||kind=="viewport"){
+        if(kind=="cursor"||kind=="click"||kind=="viewport"||kind=="widget"){
             std::string y;if(!(row>>y))throw std::invalid_argument("point replay requires signed world x y");end(row);
-            std::uint64_t step=0;InputAction action{kind=="cursor"?InputKind::cursor:kind=="click"?InputKind::click:InputKind::viewport};
+            std::uint64_t step=0;InputAction action{kind=="cursor"?InputKind::cursor:kind=="click"?InputKind::click:kind=="widget"?InputKind::widget:InputKind::viewport};
             const auto a=std::from_chars(frame.data(),frame.data()+frame.size(),step);
             const auto b=std::from_chars(value.data(),value.data()+value.size(),action.x),c=std::from_chars(y.data(),y.data()+y.size(),action.y);
             if(a.ec!=std::errc{}||a.ptr!=frame.data()+frame.size()||!step||step<previous||
@@ -1020,6 +1020,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         bind_schedule();
         for(const auto& frame:replay_)for(const auto& action:frame.second)
             if(action.kind==InputKind::viewport&&!offscreen_camera_)throw std::invalid_argument("viewport replay requires mission_presentation");
+            else if(action.kind==InputKind::widget&&!attack_widgets_enabled())throw std::invalid_argument("widget replay requires native stage controls/presentation");
             else if(action.kind==InputKind::answer&&(!stage_loop||!initialized_loaded_))throw std::invalid_argument("answer replay requires stage_loop and system_init");
             else if(action.kind==InputKind::camera&&(!spatial||!input_scenario))throw std::invalid_argument("camera replay requires mission map/input");
             else if((action.kind==InputKind::pointer||action.kind==InputKind::pointer_cancel)&&(!spatial||!input_scenario||!offscreen_camera_))throw std::invalid_argument("pointer replay requires native mission presentation/map/input");
@@ -1060,6 +1061,7 @@ bool MissionProfile::step(){
         else if(action.kind==InputKind::camera)camera_touch(static_cast<std::int32_t>(action.value),action.x,action.y,action.z);
         else if(action.kind==InputKind::pointer)map_pointer_touch(static_cast<std::int32_t>(action.value),action.x,action.y,action.dx,action.dy,action.z);
         else if(action.kind==InputKind::pointer_cancel)cancel_map_pointer();
+        else if(action.kind==InputKind::widget)attack_point(action.x,action.y);
         else if(action.kind==InputKind::cursor)spatial->touch_cursor(action.x,action.y);
         else if(action.kind==InputKind::click)spatial->click_cursor(action.x,action.y);
         else humans->send_logical_touch(action.x,action.y,action.z);
@@ -1091,6 +1093,12 @@ void MissionProfile::write_actor_parameters(ComponentSlots& actor,std::ostream& 
     if(const auto* enemy=dynamic_cast<EnemyRecordLink*>(actor.get(24)))out<<",\"enemy_state\":"<<enemy->state<<",\"enemy_frame\":"<<enemy->frame<<",\"enemy_flags\":"<<enemy->flags;
 }
 void MissionProfile::write_combat_report(std::ostream& out){
+    if(attack_widgets_enabled()){
+        draw_attack_controls();out<<",\"attack_widgets\":[";bool first=true;
+        for(const auto& r:attack_regions_){if(!first)out<<',';first=false;
+            out<<"{\"value\":"<<r.control.value<<",\"bounds\":["<<r.bounds.x<<','<<r.bounds.y<<','<<r.bounds.width<<','<<r.bounds.height<<"]}";}
+        out<<"],\"attack_point_events\":"<<attack_point_events_<<",\"attack_point_rejected\":"<<attack_point_rejected_;
+    }
     out<<",\"entry_source\":\""<<(bootstrap_options_?"data":"scene")<<'"';
     if(bootstrap_options_){
         const auto& b=*bootstrap_options_;const auto& f=b.font;

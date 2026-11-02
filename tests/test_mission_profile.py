@@ -15,6 +15,22 @@ from test_sprite_preview import jar,png,seb
 
 @unittest.skipUnless(EXE, 'saga_mission supplied by CTest')
 class MissionProfileTests(unittest.TestCase):
+    def test_native_attack_widget_hits_use_clipped_partitioned_regions(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);scene=root/'widgets.txt';replay=root/'widgets.replay'
+            scene.write_text('mission_presentation 600 640 100 0 1 0 1500100 -1\nsystem_init 1\nmaterial_policy native\ntick_ms 1\n'+
+                '\n'.join(line for line in make_boss_scene(root).splitlines() if not line.startswith(('world ','projection ','view ','slots ','animate ','simulate ','material ')))+'\n',encoding='utf8')
+            script='1 widget 0 0\n1 widget 600 600\n2 widget 550 518\n3 widget 550 573\n'
+            replay.write_text(script,encoding='ascii')
+            args=[str(EXE),'--scene',str(scene),'--headless','--frames','10','--fps','25','--debug','0','--rng','system','--seed','42','--replay',str(replay)]
+            r=subprocess.run(args,capture_output=True,text=True,timeout=30);self.assertEqual(r.returncode,0,r.stderr)
+            state=json.loads(r.stdout);self.assertEqual(state['attack_attribute'],2)
+            self.assertEqual((state['attack_point_events'],state['attack_point_rejected']),(2,2))
+            self.assertEqual([(r['bounds'][1],r['bounds'][3]) for r in state['attack_widgets']],[(460,58),(518,55),(573,57)])
+            self.assertEqual(subprocess.run(args,capture_output=True,text=True,timeout=30).stdout,r.stdout)
+            for bad in ('0 widget 0 0\n','1 widget 0\n','1 widget 0 0 extra\n','1 widget 2147483648 0\n'):
+                replay.write_text(bad,encoding='ascii');self.assertNotEqual(subprocess.run(args,capture_output=True,text=True,timeout=30).returncode,0)
+
     @unittest.skipUnless(os.environ.get('SAGA_TEST_FONT'),'public font fixture supplied by CTest')
     def test_map_pointer_regions_capture_release_cancel_and_modal(self):
         with tempfile.TemporaryDirectory() as directory:

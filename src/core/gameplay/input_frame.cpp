@@ -1,5 +1,6 @@
 #include "input_frame.hpp"
 #include <limits>
+#include <algorithm>
 #include <stdexcept>
 
 namespace saga::core {
@@ -7,12 +8,37 @@ namespace {
 template<class T>T& required(T* p){if(!p)throw std::invalid_argument("missing input frame value");return *p;}
 template<class T>T& field(ComponentSlots& e,int slot){return required(dynamic_cast<T*>(e.get(slot)));}
 std::int32_t add(std::int32_t a,std::int32_t b){const auto v=static_cast<std::uint32_t>(a)+static_cast<std::uint32_t>(b);return static_cast<std::int32_t>(v<=0x7fffffffU?static_cast<std::int64_t>(v):static_cast<std::int64_t>(v)-0x100000000LL);}
+std::int32_t sub(std::int32_t a,std::int32_t b){return add(a,add(~b,1));}
 bool dead(HumanRecordLink& h){return (static_cast<std::uint32_t>(h.state)&0xfffffffeU)==4U;}
 bool movement(const InputControl& c){return c.group==35&&(static_cast<std::uint32_t>(c.value)&0xffff0000U)==0x10000U&&((c.value&0xffff)|2)==19;}
 }
 bool input_hit_rectangle(const InputRectangle& r,std::int32_t x,std::int32_t y){
     if(r.x>x||r.y>y)return false;
     return add(r.x,r.width)>x&&add(r.y,r.height)>y;
+}
+InputRectangle input_screen_rectangle(InputRectangle r,std::array<std::int32_t,4> m,std::int32_t width,std::int32_t height){
+    const auto left=std::max(sub(r.x,m[0]),0),top=std::max(sub(r.y,m[2]),0);
+    const auto right=std::min(add(add(r.x,r.width),m[1]),width),bottom=std::min(add(add(r.y,r.height),m[3]),height);
+    return {left,top,sub(right,left),sub(bottom,top)};
+}
+void partition_input_rectangles(InputRectangle& a,InputRectangle& b){
+    // GameView._addTouch 0x10fa2bc..0x10fa3d4, after mask/priority checks.
+    auto vertical=sub(add(a.y,a.height),b.y);if(vertical<0)return;
+    auto horizontal=sub(add(a.x,a.width),b.x);if(horizontal<0)return;
+    if(add(b.x,b.width)<a.x||add(b.y,b.height)<a.y)return;
+    if(b.y<a.y)vertical=sub(add(b.y,b.height),a.y);
+    if(b.x<a.x)horizontal=sub(add(b.x,b.width),a.x);
+    const bool split_x=horizontal<vertical&&(b.x!=a.x||a.width!=b.width);
+    const bool same_vertical=b.y==a.y&&a.height==b.height;
+    if(split_x||same_vertical){
+        auto& first=b.x<=a.x?b:a;auto& last=b.x<=a.x?a:b;
+        const auto half=horizontal/2,rest=sub(horizontal,half);
+        first.width=sub(first.width,half);last.x=add(last.x,rest);last.width=sub(last.width,rest);
+    }else{
+        auto& first=b.y<=a.y?b:a;auto& last=b.y<=a.y?a:b;
+        const auto half=vertical/2,rest=sub(vertical,half);
+        first.height=sub(first.height,half);last.y=add(last.y,rest);last.height=sub(last.height,rest);
+    }
 }
 void initialize_input(InputFrameState& s,InputInitializationWorld* world,InputFrameHost& host){
     s.subset=required(world).input_subset({28,0,1});s.last_down_frame=-1;

@@ -12,6 +12,7 @@
 #include "mission_input.hpp"
 #include "core/gameplay/pass_initialization.hpp"
 #include "core/gameplay/hero_bootstrap.hpp"
+#include "core/gameplay/stage_controls.hpp"
 #include <ostream>
 #include <stdexcept>
 
@@ -94,6 +95,7 @@ public:
     void bind_stage_events(std::function<bool(std::int32_t)> callback){stage_event_executor_=std::move(callback);}
     void construct_member_roster(){members_=core::MemberRoster{};} // MemberSystem ctor post-base lists/formation.
     std::int32_t stage_state()const{return stage_.state;}
+    void draw_attack_controls(core::StageControlsHost& host){if(stage_.state==1)core::draw_stage_attack_controls(stage_,host);}
     bool exit_dialog_pending()const;
     bool has_stage_dialog()const{return static_cast<bool>(stage_.dialog);}
     bool stage_modal_pending()const{return !stage_modals_.empty();}

@@ -57,6 +57,9 @@ public:
     std::uint64_t logic_steps=0,movement_steps=0;
     void write_combat_report(std::ostream&); // Diagnostic JSON fragment; not a complete-state snapshot.
     void draw_enemy_gauges(BitmapBackend&);
+    bool attack_widgets_enabled()const{return native_stage_controls()&&resizable_viewport();}
+    void draw_attack_controls(BitmapBackend* backend=nullptr);
+    bool attack_point(std::int32_t x,std::int32_t y);
     void write_actor_parameters(core::ComponentSlots&,std::ostream&);
     std::size_t selected_count=0;
     BitmapApplication application,global;BitmapTextures textures;std::vector<std::unique_ptr<SceneResource>> owners;
@@ -206,7 +209,10 @@ private:
     bool map_pointer_captured_=false;
     std::int32_t map_pointer_x_=0,map_pointer_y_=0;
     std::uint64_t map_pointer_events_=0,map_pointer_rejected_=0,map_pointer_cancellations_=0;
-    enum class InputKind {keys,attack,pulse,cursor,click,touch,viewport,answer,camera,pointer,pointer_cancel};
+    struct AttackRegion {core::InputRectangle bounds;core::InputControl control;};
+    std::vector<AttackRegion> attack_regions_;
+    std::uint64_t attack_point_events_=0,attack_point_rejected_=0;
+    enum class InputKind {keys,attack,pulse,cursor,click,touch,viewport,answer,camera,pointer,pointer_cancel,widget};
     struct InputAction {InputKind kind;std::uint32_t value=0;std::int32_t x=0,y=0,z=0,dx=0,dy=0;};
     std::map<std::uint64_t,std::vector<InputAction>> replay_;
     bool replay_bound_=false;std::uint64_t replay_applied_=0;

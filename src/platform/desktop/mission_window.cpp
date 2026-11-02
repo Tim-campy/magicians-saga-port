@@ -115,7 +115,10 @@ int run_native_mission(MissionProfile& profile,std::int32_t width,std::int32_t h
         int w=0,h=0;require(SDL_GetWindowSizeInPixels(window.get(),&w,&h),"SDL window pixel size");resize(w,h);
     }
     std::int32_t surface_width=width,surface_height=height;
+    std::size_t submitted_quads=0;std::set<std::size_t> submitted_textures;
     auto submit=[&]{
+        submitted_quads=0;submitted_textures.clear();
+        const auto account=[&]{submitted_quads+=backend.quads().size();for(const auto& q:backend.quads())submitted_textures.insert(q.texture);};
         auto surface_projection=projection;surface_width=width;surface_height=height;
         if(profile.resizable_viewport()&&profile.spatial){
             OffscreenBlit blit(profile.spatial->camera_host(),width,height);const auto draw=blit.prepare();
@@ -128,6 +131,16 @@ int run_native_mission(MissionProfile& profile,std::int32_t width,std::int32_t h
         frame.begin_frame();frame.draw(queue,0);profile.draw_enemy_gauges(backend);frame.draw(queue,1);frame.finish();bind_bitmap_mesh_frame(bindings,frame);
         s.cursors->at(0)=0;s.lengths->at(0)=frame.records().active_count;
         renderer.begin_frame(GlBitmapClear::color_and_depth,{0,0,0,0},surface_projection);submit_mesh_streams(s,1,host);
+        account();
+        if(profile.attack_widgets_enabled()){
+            // QuestForm.Draw calls World.Draw after DrawOffscreen: HUD stays in GameView pixels.
+            renderer.compose_target(width,height);backend.resize_surface(height);backend.set_matrix(nullptr);
+            frame.begin_frame();auto* mesh=backend.graphics().mesh_manager();mesh->group=0;mesh->set_depth(0,0);
+            profile.draw_attack_controls(&backend);frame.finish();bind_bitmap_mesh_frame(bindings,frame);
+            s.cursors->at(0)=0;s.lengths->at(0)=frame.records().active_count;
+            renderer.begin_frame(GlBitmapClear::depth,{0,0,0,0},profile.surface_projection(width,height));submit_mesh_streams(s,1,host);account();
+            backend.set_matrix(&world);
+        }
     };
     std::uint64_t rendered=0,logic_steps=0;
     const auto write_state=[&]{
@@ -193,8 +206,10 @@ int run_native_mission(MissionProfile& profile,std::int32_t width,std::int32_t h
                         }
                     }
                 }
-                else if(interactive&&profile.accepts_live_gameplay_input()&&event.type==SDL_EVENT_MOUSE_BUTTON_DOWN&&event.button.button==SDL_BUTTON_LEFT)
-                    profile.humans->select_input_attack(profile.humans->selected_attack());
+                else if(interactive&&profile.accepts_live_gameplay_input()&&event.type==SDL_EVENT_MOUSE_BUTTON_DOWN&&event.button.button==SDL_BUTTON_LEFT){
+                    if(profile.attack_widgets_enabled()){if(const auto p=pointer_position(event.button.x,event.button.y))profile.attack_point(p->x,p->y);}
+                    else profile.humans->select_input_attack(profile.humans->selected_attack());
+                }
                 else if(interactive&&profile.accepts_live_gameplay_input()&&profile.spatial){
                     // Desktop policy: right drag is QuestForm group17; a wheel unit supplies20 raw pinch units.
                     if(event.type==SDL_EVENT_MOUSE_BUTTON_DOWN&&event.button.button==SDL_BUTTON_RIGHT){
@@ -241,8 +256,8 @@ int run_native_mission(MissionProfile& profile,std::int32_t width,std::int32_t h
     }
     if(!loop||rendered==0)submit();auto pixels=renderer.read_pixels(width,height);
     Surface captured(SDL_CreateSurfaceFrom(width,height,SDL_PIXELFORMAT_RGBA32,pixels.rgba.data(),width*4),SDL_DestroySurface);require(captured!=nullptr,"SDL_CreateSurfaceFrom");
-    require(SDL_SaveBMP(captured.get(),output.string().c_str()),"SDL_SaveBMP");std::set<std::size_t> used;for(const auto& q:backend.quads())used.insert(q.texture);
-    std::cout<<"{\"resources\":"<<owners.size()<<",\"entities\":"<<profile.selected_count<<",\"commands\":"<<(queue.counts->at(0)+queue.counts->at(1))<<",\"quads\":"<<backend.quads().size()<<",\"textures\":"<<used.size()
+    require(SDL_SaveBMP(captured.get(),output.string().c_str()),"SDL_SaveBMP");
+    std::cout<<"{\"resources\":"<<owners.size()<<",\"entities\":"<<profile.selected_count<<",\"commands\":"<<(queue.counts->at(0)+queue.counts->at(1))<<",\"quads\":"<<submitted_quads<<",\"textures\":"<<submitted_textures.size()
              <<",\"capture_render_frames\":"<<rendered<<",\"capture_logic_steps\":"<<logic_steps<<",\"surface_width\":"<<surface_width<<",\"surface_height\":"<<surface_height;
     // Capture the same final observations as the non-capture frontend, after the last submitted frame.
     if(mission&&entity_world){std::cout<<",\"state\":{";write_state();std::cout<<'}';}

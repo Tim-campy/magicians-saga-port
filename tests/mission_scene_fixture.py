@@ -84,7 +84,7 @@ def make_shoot_scene(root, rewards=False, area=False, lethal_contact=False, trea
     if rewards:
         (root / 'quest.bin').write_bytes(jar([
             ('img.inf', b'77\ta.png,bin\n98\ta.png,bin\n99\ta.png,bin\n105\ta.png,bin'),
-            ('seb.inf', '\n'.join(f'{i}\ta.seb' for i in ([41, 42, 43, 44] if boss_entry else [41, 42, 43])).encode()),
+            ('seb.inf', '\n'.join(f'{i}\ta.seb' for i in ([0, 41, 42, 43, 44] if boss_entry else [0, 41, 42, 43])).encode()),
             ('a.seb', seb([(0, 98, 0, 0, 2, 2, 0, 0, 0, 0), (3, 98, 0, 0, 2, 2, 0, 0, 0, 0)])),
             ('a.png', png(2, 2, [255, 255, 0, 255] * 4))]))
         text += 'rewards 0 1 4\nresource 7 "quest.bin" "English.lproj" 0\nglobal_alias 7 7\n'

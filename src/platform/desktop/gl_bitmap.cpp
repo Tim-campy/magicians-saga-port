@@ -83,6 +83,7 @@ void configure_gl_bitmap_context(){
 struct GlBitmapRenderer::Impl {
     SDL_Window& window;std::int32_t width,height;Textures textures;SDL_GLContext context=nullptr;std::unique_ptr<Gl> gl;
     GLuint target=0,color=0,depth=0,program=0,vao=0,vbo=0;GLint vp_uniform=-1,model_uniform=-1,modulate_uniform=-1,test_uniform=-1;
+    GLuint spare_target=0,spare_color=0,spare_depth=0;std::int32_t spare_width=0,spare_height=0;
     std::map<std::size_t,GLuint> uploaded;std::uint32_t active_key=0;bool begun=false,material_ready=false;
     Impl(SDL_Window& w,std::int32_t x,std::int32_t y,Textures t):window(w),width(x),height(y),textures(std::move(t)){}
     ~Impl(){
@@ -90,6 +91,7 @@ struct GlBitmapRenderer::Impl {
             for(const auto& entry:uploaded)gl->DeleteTextures(1,&entry.second);
             if(vbo)gl->DeleteBuffers(1,&vbo);if(vao)gl->DeleteVertexArrays(1,&vao);if(program)gl->DeleteProgram(program);
             if(depth)gl->DeleteRenderbuffers(1,&depth);if(color)gl->DeleteTextures(1,&color);if(target)gl->DeleteFramebuffers(1,&target);
+            if(spare_depth)gl->DeleteRenderbuffers(1,&spare_depth);if(spare_color)gl->DeleteTextures(1,&spare_color);if(spare_target)gl->DeleteFramebuffers(1,&spare_target);
         }SDL_GL_DestroyContext(context);}
     }
     void current(){if(SDL_GL_GetCurrentContext()!=context||SDL_GL_GetCurrentWindow()!=&window)require(SDL_GL_MakeCurrent(&window,context),"GL current context");}
@@ -137,11 +139,38 @@ GlBitmapRenderer::~GlBitmapRenderer()=default;
 void GlBitmapRenderer::resize_target(std::int32_t width,std::int32_t height){
     if(width<1||height<1||width>8192||height>8192||static_cast<std::int64_t>(width)*height>16*1024*1024)throw std::invalid_argument("invalid GL resize target");
     auto& s=*impl_;if(width==s.width&&height==s.height)return;s.current();auto& g=*s.gl;
+    if(width==s.spare_width&&height==s.spare_height){
+        std::swap(s.target,s.spare_target);std::swap(s.color,s.spare_color);std::swap(s.depth,s.spare_depth);
+        std::swap(s.width,s.spare_width);std::swap(s.height,s.spare_height);
+        g.BindFramebuffer(GL_FRAMEBUFFER,s.target);s.begun=false;s.material_ready=false;return;
+    }
     g.BindFramebuffer(GL_FRAMEBUFFER,s.target);g.BindTexture(GL_TEXTURE_2D,s.color);
     g.TexImage2D(GL_TEXTURE_2D,0,GL_RGBA8,width,height,0,GL_RGBA,GL_UNSIGNED_BYTE,nullptr);
     g.BindRenderbuffer(GL_RENDERBUFFER,s.depth);g.RenderbufferStorage(GL_RENDERBUFFER,GL_DEPTH_COMPONENT24,width,height);
     if(g.CheckFramebufferStatus(GL_FRAMEBUFFER)!=GL_FRAMEBUFFER_COMPLETE)throw std::runtime_error("GL resized target incomplete");
     g.check("GL target resize");s.width=width;s.height=height;s.begun=false;s.material_ready=false;
+}
+void GlBitmapRenderer::compose_target(std::int32_t width,std::int32_t height){
+    if(width<1||height<1||width>8192||height>8192||static_cast<std::int64_t>(width)*height>16*1024*1024)throw std::invalid_argument("invalid GL composition size");
+    auto& s=*impl_;s.ready();if(width==s.width&&height==s.height)return;auto& g=*s.gl;
+    if(!s.spare_target){
+        g.GenFramebuffers(1,&s.spare_target);g.GenTextures(1,&s.spare_color);g.GenRenderbuffers(1,&s.spare_depth);
+    }
+    g.BindFramebuffer(GL_FRAMEBUFFER,s.spare_target);
+    if(width!=s.spare_width||height!=s.spare_height){
+        g.BindTexture(GL_TEXTURE_2D,s.spare_color);g.TexImage2D(GL_TEXTURE_2D,0,GL_RGBA8,width,height,0,GL_RGBA,GL_UNSIGNED_BYTE,nullptr);
+        g.TexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);g.TexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
+        g.FramebufferTexture2D(GL_FRAMEBUFFER,GL_COLOR_ATTACHMENT0,GL_TEXTURE_2D,s.spare_color,0);
+        g.BindRenderbuffer(GL_RENDERBUFFER,s.spare_depth);g.RenderbufferStorage(GL_RENDERBUFFER,GL_DEPTH_COMPONENT24,width,height);
+        g.FramebufferRenderbuffer(GL_FRAMEBUFFER,GL_DEPTH_ATTACHMENT,GL_RENDERBUFFER,s.spare_depth);
+        if(g.CheckFramebufferStatus(GL_FRAMEBUFFER)!=GL_FRAMEBUFFER_COMPLETE)throw std::runtime_error("GL composition target incomplete");
+        s.spare_width=width;s.spare_height=height;
+    }
+    g.Disable(GL_SCISSOR_TEST);g.BindFramebuffer(GL_READ_FRAMEBUFFER,s.target);g.BindFramebuffer(GL_DRAW_FRAMEBUFFER,s.spare_target);
+    g.BlitFramebuffer(0,0,s.width,s.height,0,0,width,height,GL_COLOR_BUFFER_BIT,GL_NEAREST);
+    std::swap(s.target,s.spare_target);std::swap(s.color,s.spare_color);std::swap(s.depth,s.spare_depth);
+    std::swap(s.width,s.spare_width);std::swap(s.height,s.spare_height);
+    g.BindFramebuffer(GL_FRAMEBUFFER,s.target);g.Enable(GL_SCISSOR_TEST);s.material_ready=false;g.check("GL surface composition");
 }
 void GlBitmapRenderer::begin_frame(GlBitmapClear clear,core::RenderColor background,const core::OffscreenMatrix& vp){
     if(clear!=GlBitmapClear::color_and_depth&&clear!=GlBitmapClear::depth&&clear!=GlBitmapClear::preserve)throw std::invalid_argument("unsupported GL frame clear");
