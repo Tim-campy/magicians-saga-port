@@ -3,6 +3,8 @@
 #include "core/gameplay/select_late.hpp"
 #include "core/gameplay/select_guide.hpp"
 #include <cstdlib>
+#include <cmath>
+#include <limits>
 #include <iostream>
 #include <stdexcept>
 using namespace saga::core;
@@ -148,7 +150,133 @@ struct LateBindings final:SelectBuildingHost,SelectTownButtonsHost,SelectGuidanc
     std::int32_t platform_code() override {++platform_calls;return 0;}
     EventObject make_reviewed(bool) override {throw std::logic_error("unexpected review form");}
 };
+struct BackgroundHost final:SelectBackgroundHost {
+    struct Draw {SelectBackgroundResource resource;std::int32_t clip,frame;float x,y;};
+    std::int32_t camera_x=0,camera_y=0,left=0,right=1,view_y=0;
+    std::int32_t width=320,height=240,view_height=240,clip=7;
+    int owner=0;
+    SelectBackgroundResource resource=&owner;
+    std::array<float,3> pixel{0,0,0};
+    std::array<std::int32_t,4> color{};
+    std::array<std::int32_t,2> fill{};
+    std::vector<Draw> draws;
+    std::vector<std::string> log;
+    std::function<void(const std::string&)> on_call;
+    std::size_t fail_call=0;
+    void call(const std::string& name) {
+        log.push_back(name);
+        if(on_call)on_call(name);
+        if(fail_call==log.size())throw std::runtime_error("background service failed");
+    }
+    SelectBackgroundState state() const {return {camera_x,camera_y,left,right,view_y};}
+    void run() {draw_select_background(state(),*this);}
+    std::array<float,3> background_pixel() override {const auto result=pixel;call("pixel");return result;}
+    void background_color(std::int32_t r,std::int32_t g,std::int32_t b,std::int32_t a) override {color={r,g,b,a};call("color");}
+    std::int32_t background_width() override {const auto result=width;call("width");return result;}
+    std::int32_t background_height() override {const auto result=height;call("height");return result;}
+    void fill_background(std::int32_t w,std::int32_t h) override {fill={w,h};call("fill");}
+    SelectBackgroundResource background_resource() override {const auto result=resource;call("resource");return result;}
+    std::int32_t background_view_height() override {const auto result=view_height;call("view_height");return result;}
+    std::int32_t background_clip() override {const auto result=clip;call("clip");return result;}
+    void draw_background(SelectBackgroundResource r,std::int32_t c,std::int32_t f,float x,float y) override {
+        draws.push_back({r,c,f,x,y});call(f==0?"draw0":"draw1");
+    }
+};
+void test_select_background() {
+    // _Draw 0x11f0850..0x11f0a6c. This host supplies no RNG service.
+    const auto lo=std::numeric_limits<std::int32_t>::min();
+    const auto hi=std::numeric_limits<std::int32_t>::max();
+    const auto inf=std::numeric_limits<float>::infinity();
+    const auto nan=std::numeric_limits<float>::quiet_NaN();
+    struct ColorCase {std::array<float,3> input;std::array<std::int32_t,4> expected;};
+    const ColorCase colors[]={
+        {{0.5F,-0.5F,2.0F},{127,-127,510,255}},
+        {{nan,inf,-inf},{0,lo,lo,255}},
+        {{1.0e10F,-1.0e10F,std::numeric_limits<float>::max()},{hi,lo,lo,255}},
+        // The first binary32 product rounds to257; binary64 multiplication would truncate to256.
+        {{257.0F/255.0F,std::nextafter(1.0F,0.0F),-0.0F},{257,254,0,255}},
+    };
+    for(const auto& item:colors) {
+        BackgroundHost h;h.right=0;h.pixel=item.input;h.run();
+        check(h.color==item.expected,"background RGB uses binary32 products and ARM64 conversion without clamping");
+        check(h.draws.size()==1 && h.draws[0].frame==1,"empty tile range still draws frame1");
+    }
+    {
+        BackgroundHost h;h.right=0;h.width=-17;h.height=4097;
+        h.on_call=[&](const std::string& name){
+            if(name=="width"){h.width=999;h.height=5001;}
+            if(name=="height")h.height=888;
+            if(name=="fill"){h.camera_y=10;h.view_y=20;h.camera_x=-59;}
+        };
+        h.run();
+        check(h.log==std::vector<std::string>({"pixel","color","width","height","fill","resource","clip","draw1"}),"fill and empty-range query ordering");
+        check(h.fill==std::array<std::int32_t,2>{-17,5001},"width captured before live height and dimensions passed unchanged");
+        check(h.draws[0].x==29.0F && h.draws[0].y==50.0F,"background captures coordinates after the fill");
+    }
+    {
+        BackgroundHost h;int next_owner=1,last_owner=2,unused_owner=3;
+        const auto first=h.resource;
+        h.camera_x=-60;h.camera_y=10;h.view_y=20;h.left=-240;h.right=1;h.view_height=300;h.clip=4;
+        int resources=0;
+        h.on_call=[&](const std::string& name){
+            if(name=="resource") {
+                ++resources;
+                if(resources==1) {
+                    h.camera_y=900;h.view_y=800;h.left=700;h.right=-999;h.resource=&next_owner;
+                } else if(resources==3) {
+                    h.right=1000;h.camera_x=-121;h.clip=7;h.resource=&unused_owner;
+                }
+            } else if(name=="draw0" && h.draws.size()==1) {
+                h.right=481;h.view_height=310;h.clip=5;h.camera_x=-91;
+            } else if(name=="draw0" && h.draws.size()==2) {
+                h.right=1;h.resource=&last_owner;h.camera_x=-119;
+            } else if(name=="clip" && resources==1)h.view_height=9000;
+            else if(name=="clip" && resources==3)h.camera_x=9000;
+        };
+        h.run();
+        check(h.log==std::vector<std::string>({"pixel","color","width","height","fill","resource","view_height","clip","draw0","resource","view_height","clip","draw0","resource","clip","draw1"}),"resource is read at every captured-limit test including the false test");
+        check(h.draws.size()==3 && resources==3,"right extent is live but resource callback cannot change its captured comparison");
+        const auto& a=h.draws[0];const auto& b=h.draws[1];const auto& c=h.draws[2];
+        check(a.resource==first && a.clip==4 && a.frame==0 && a.x==-240.0F && a.y==205.0F,"first tile retains captured resource, left extent and baseY");
+        check(b.resource==&next_owner && b.clip==5 && b.frame==0 && b.x==0.0F && b.y==215.0F,"240-step tile rereads resource, view height and clip");
+        check(c.resource==&last_owner && c.clip==7 && c.frame==1 && c.x==26.0F && c.y==50.0F,"frame1 retains false-test resource and baseY but captures fresh camera before clip");
+    }
+    {
+        BackgroundHost h;h.camera_y=hi-10;h.view_y=25;h.left=hi-100;h.right=hi;h.view_height=1000;
+        h.on_call=[&](const std::string& name){
+            if(name=="draw0" && h.draws.size()==1)h.right=lo+200;
+            if(name=="draw0" && h.draws.size()==2)h.camera_x=lo;
+        };
+        h.run();
+        check(h.draws.size()==3,"wrapped tile increment continues under signed live bound");
+        check(h.draws[0].x==static_cast<float>(hi-100) && h.draws[1].x==static_cast<float>(lo+139),"tile X addition wraps int32 before binary32 conversion");
+        check(h.draws[0].y==static_cast<float>(lo+889) && h.draws[1].y==h.draws[0].y,"baseY and tile Y additions wrap int32");
+        check(h.draws[2].x==static_cast<float>(-71582758) && h.draws[2].y==static_cast<float>(lo+34),"negative camera division truncates toward zero and frame1 Y wraps");
+    }
+    {
+        const std::vector<std::string> expected{"pixel","color","width","height","fill","resource","view_height","clip","draw0","resource","clip","draw1"};
+        for(std::size_t fail=1;fail<=expected.size();++fail) {
+            BackgroundHost h;h.fail_call=fail;
+            bool failed=false;try{h.run();}catch(const std::runtime_error&){failed=true;}
+            check(failed && h.log==std::vector<std::string>(expected.begin(),expected.begin()+fail),"background service failure preserves only its native call prefix");
+        }
+    }
+    for(const bool tile:{false,true}) {
+        BackgroundHost h;h.resource=nullptr;h.right=tile?1:0;
+        bool failed=false;try{h.run();}catch(const std::exception&){failed=true;}
+        auto expected=std::vector<std::string>{"pixel","color","width","height","fill","resource"};
+        if(tile)expected.push_back("view_height");
+        check(failed && h.log==expected && h.draws.empty(),"null captured resource fails after tile view height and before clip or drawing");
+    }
+    {
+        BackgroundHost h;
+        h.on_call=[&](const std::string& name){if(name=="draw0")h.resource=nullptr;};
+        bool failed=false;try{h.run();}catch(const std::exception&){failed=true;}
+        check(failed && h.draws.size()==1 && h.log==std::vector<std::string>({"pixel","color","width","height","fill","resource","view_height","clip","draw0","resource"}),"final false-test null resource prevents frame1 after retaining the completed tile");
+    }
+}
 int main() {
+    test_select_background();
     {
         auto h=std::make_shared<Host>();h->room_button=false;h->state.events.loop_counter=0;
         SelectPreludeState prelude{0,0,0,-10};SelectTouchMoveState movement{false,0,0,0,-1};

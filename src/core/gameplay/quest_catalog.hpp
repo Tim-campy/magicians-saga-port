@@ -16,6 +16,20 @@ struct AreaDefinition {
 using AreaTable=std::vector<std::optional<AreaDefinition>>;
 AreaDefinition& load_area_definition(AreaDefinition&,std::optional<std::string_view>,const EventIntegerParser&);
 AreaTable load_area_table(std::string_view,bool normalize_crlf,const EventIntegerParser&);
+struct AreaProgressState {
+    std::int32_t discovery_state=0; // BaseData +0x10.
+    bool is_new=false; // BaseData +0x14; oldNewGame does not write it.
+    EventScript stage_detail; // +0x20, three distinct int32[6] rows.
+    EventInstruction area_detail; // +0x28, int32[6].
+    std::int32_t arrival_stage=0; // +0x30.
+    EventScript stage_total_damage; // +0x38, three distinct int32[2] rows.
+};
+// AreaData.oldNewGame 0x116bf9c: replace arrays in native order, then reset discovery.
+void reset_area_progress(AreaProgressState&,const AreaDefinition&);
+// AreaData.NewGame 0x116bf68: conditional virtual Find(true), then oldNewGame.
+// The default Find is BaseData.Find; callback mutations of flags remain live.
+void reset_area_for_new_game(AreaProgressState&,const AreaDefinition&,
+                             const std::function<void(bool)>& find={});
 // Static QuestData projection. Saved completion/prisoner fields in stage are not read by Load.
 struct QuestDefinition {
     std::int32_t id=-1,image=0,need_stamina=0;

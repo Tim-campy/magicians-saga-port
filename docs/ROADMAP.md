@@ -31,8 +31,8 @@ Host: `saga_mission` (headless or SDL window; fresh --data/--quest entry or expl
 
 Host: `saga_town`. Acceptance: SelectForm town runs with the real map and residents; choosing a quest starts S1's mission; the result returns to town and progression (EXP, money, levels, stock, quest record) is applied in memory; event scripts fire on return (event 31, 1133).
 
-- [ ] (blocking) Bind SelectForm town drawing/residents from Town cache, Chara/Building/Voice records and real resources; preserve Init RNG order and connect native quest selection.
-- [ ] Bind Area/Building/KingReward NewGame state to the town rebuild/menus and return path before those consumers become reachable.
+- [ ] (blocking) Bind remaining SelectForm decoration/building/resident layers from real records/resources; preserve Init RNG order and connect native quest selection.
+- [ ] Bind Building/KingReward NewGame state to town menus and return consumers before those paths become reachable.
 - [ ] Bind `update_select_form` to a desktop host with orientation/image-dictionary storage, camera dimensions and form factories.
 - [ ] Port decor/town/capture callbacks needed by the town host.
 - [ ] Bind billing-item/catalog providers as stubs and the notification manager adapters, preserving task execution gates.

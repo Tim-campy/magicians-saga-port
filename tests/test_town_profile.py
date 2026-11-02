@@ -9,6 +9,7 @@ import unittest
 EXE=Path(sys.argv.pop(1)).resolve() if len(sys.argv)>1 else None
 sys.path.insert(0,str(Path(__file__).resolve().parent))
 from test_sprite_preview import jar
+from town_fixture import add_town_background
 
 
 @unittest.skipUnless(EXE,'saga_town supplied by CTest')
@@ -74,6 +75,35 @@ class TownProfileTests(unittest.TestCase):
             root=Path(directory);self.fixture(root)
             for args in (('--dpi','-1'),('--dpi','1extra'),('--unknown','0'),('--data',str(root))):
                 self.assertNotEqual(self.run_host(root,*args).returncode,0)
+
+    def test_background_prefix_uses_native_area_reset_and_explicit_frames(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);self.fixture(root);add_town_background(root)
+            result=self.run_host(root,'--background','--width','320','--height','200','--camera-y','0')
+            self.assertEqual(result.returncode,0,result.stderr);report=json.loads(result.stdout);scene=report['background']
+            self.assertEqual(scene['area_discovery'],[1,0]);self.assertEqual(scene['camera'],[0,0])
+            self.assertEqual(scene['extents'],[-449,590]);self.assertEqual(scene['view_origin'],[0,53])
+            self.assertEqual((scene['resource'],scene['image'],scene['clip']),(11,9,0))
+            self.assertEqual(scene['fill_color'],0xff0a141e);self.assertEqual(scene['fill_size'],[320,200])
+            self.assertEqual(scene['draws'],[[0,0,x,128] for x in (-449,-209,31,271,511)]+[[0,1,30,73]])
+            self.assertEqual(self.run_host(root,'--background','--width','320','--height','200','--camera-y','0').stdout,result.stdout)
+            # Native integer parallax follows the clamped camera, never a replacement current frame.
+            shifted=self.run_host(root,'--background','--width','320','--height','200','--camera-x','-60','--camera-y','0')
+            self.assertEqual(shifted.returncode,0,shifted.stderr)
+            shifted=json.loads(shifted.stdout)['background'];self.assertEqual(shifted['camera'],[-60,0])
+            self.assertEqual(shifted['draws'][:-1],scene['draws'][:-1]);self.assertEqual(shifted['draws'][-1],[0,1,28,73])
+
+    def test_background_requires_reached_data_and_bounded_viewport(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);self.fixture(root)
+            self.assertNotEqual(self.run_host(root,'--background').returncode,0)
+            add_town_background(root)
+            for args in (('--width','0'),('--height','1'),('--height','8193'),('--width','8192','--height','8192')):
+                self.assertNotEqual(self.run_host(root,'--background',*args).returncode,0)
+            town='\n'.join(f'{i}\t{7+i}\t0\t-1\t1' for i in range(3)).encode()
+            (root/'textassets/tables.bin').write_bytes(jar([('English.lproj/Town.txt',town)]))
+            result=self.run_host(root,'--background');self.assertNotEqual(result.returncode,0)
+            self.assertIn('Area.txt',result.stderr)
 
 
 if __name__=='__main__':unittest.main()

@@ -20,7 +20,7 @@ struct NewGameSaveDefaults {
 };
 // Shared extracted-data inputs for mission and town hosts; no implicit game values.
 std::vector<std::uint8_t> read_game_archive(const std::filesystem::path&);
-GameResourceIndex read_game_resource_index(const std::filesystem::path& root);
+GameResourceIndex read_game_resource_index(const std::filesystem::path& root,bool town=false);
 NewGameSaveDefaults read_new_game_save_defaults(const std::filesystem::path& root);
 // Selected synchronous table set, not the complete native Data.Load/bootstrap.
 // Loaded records/arrays outlive their entity factories; saved progression is supplied separately.

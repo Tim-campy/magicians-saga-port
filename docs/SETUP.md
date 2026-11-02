@@ -253,9 +253,19 @@ build/viewer/queue_capture.exe scene.txt 600 220 --run-frames 12
 
 --material-inputs reports only reached tuples and writes no capture. Assign explicit material identity rows before GPU execution. --interactive is a visible technical window: Space pauses, N advances one selected logic step while paused, Escape closes. --run-frames uses a hidden window and reports render/logic-step counts, movement_steps (including initial simulate passes), and final positions in entity creation order. With simulate 0, the enemy moves using its factory's table-derived velocity; humans start with zero velocity. Move integrates binary32 speed once per logic pass, without a delta-time multiplier. tick_ms controls this selected preview only; it does not establish the original frame timing or establish a complete quest bootstrap. The maintainer's profiles are local at research/exports/mission-data-scene/scene.txt (animation-only) and movement.txt (simulate 0); they require the supplied decoded archives.
 
-### Town data host
+### Town data and background host
 
-`build/desktop/saga_town.exe --data extracted/full` reads the existing resource index and `new-game-save.tsv`, loads Town.txt and prints native fresh permissions and building-cache state. `--language English.lproj` and `--dpi 1` are declared defaults. It runs the Town data/cache subsequence, without bootstrapping a mission, opening a town window or writing a save. Residents, drawing and quest selection remain S2 work; see [town contracts and limits](subsystems/town.md).
+`build/desktop/saga_town.exe --data extracted/full` reads the existing resource index and `new-game-save.tsv`, loads Town.txt and prints native fresh permissions and building-cache state. `--language English.lproj` and `--dpi 1` are declared defaults. It runs the Town data/cache subsequence without bootstrapping a mission or writing a save; see [town contracts and limits](subsystems/town.md).
+
+Index the existing extracted town archives before requesting the native sky/sun background prefix. This command checks the manifest and archive hashes without extracting Unity media again:
+
+```powershell
+python -I tools/extract_assets.py --town-resources --out extracted/full
+build/desktop/saga_town.exe --data extracted/full --background
+build/viewer/saga_town.exe --data extracted/full --capture build/town-preview.bmp
+```
+
+The viewer build captures one hidden GL frame and refuses an existing destination. `--background` runs the same bitmap/SEB prefix without a GPU. Explicit context options are `--width 600 --height 640 --view-x 0 --view-y 53 --camera-x 0 --camera-y -9999`; native camera bounds clamp the requested position, and scale100 is the supported profile. Reports declare this context provisional. Decoration, buildings, residents, interactive town controls and quest selection remain S2 work.
 
 ### Headless mission host
 

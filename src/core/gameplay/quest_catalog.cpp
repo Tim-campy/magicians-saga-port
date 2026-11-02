@@ -43,6 +43,35 @@ AreaDefinition& load_area_definition(AreaDefinition& receiver,std::optional<std:
 AreaTable load_area_table(std::string_view text,bool normalize,const EventIntegerParser& parser){
     return detail::load_table_records<AreaDefinition>(text,normalize,parser,[](detail::TableTokens& t){AreaDefinition r;read(r,t);return r;});
 }
+void reset_area_progress(AreaProgressState& state,const AreaDefinition& definition){
+    // AreaData.oldNewGame 0x116bf9c. Preserve the temporary allocations and each
+    // publication before allocating its rows. Standard shared owners replace
+    // managed array allocation categories/lifetimes; no CLR allocator is emulated.
+    const auto dimensions=std::make_shared<std::vector<EventInstruction>>(3);
+    static_cast<void>(std::make_shared<EventIntegers>(3,0));
+    state.stage_detail=std::make_shared<std::vector<EventInstruction>>(dimensions->size());
+    for(std::size_t row=0;row<state.stage_detail->size();++row){
+        state.stage_detail->at(row)=std::make_shared<EventIntegers>(6,0);
+        for(std::size_t column=0;column<6;++column)state.stage_detail->at(row)->at(column)=0;
+    }
+    state.stage_total_damage=std::make_shared<std::vector<EventInstruction>>(dimensions->size());
+    for(std::size_t row=0;row<state.stage_total_damage->size();++row){
+        state.stage_total_damage->at(row)=std::make_shared<EventIntegers>(2,0);
+        for(std::size_t column=0;column<2;++column)state.stage_total_damage->at(row)->at(column)=0;
+    }
+    state.area_detail=std::make_shared<EventIntegers>(6,0);
+    for(std::size_t column=0;column<6;++column)state.area_detail->at(column)=0;
+    state.arrival_stage=0;
+    static_cast<void>(std::make_shared<EventIntegers>(dimensions->size(),0));
+    state.discovery_state=static_cast<std::int32_t>(static_cast<std::uint32_t>(definition.flags)&1U);
+}
+void reset_area_for_new_game(AreaProgressState& state,const AreaDefinition& definition,
+                             const std::function<void(bool)>& find){
+    if((static_cast<std::uint32_t>(definition.flags)&1U)!=0){
+        if(find)find(true);else find_data_record(state.discovery_state,state.is_new,true);
+    }
+    reset_area_progress(state,definition);
+}
 QuestDefinition& load_quest_definition(QuestDefinition& receiver,std::optional<std::string_view> line,const EventIntegerParser& parser){
     if(line&&!line->empty()){detail::TableTokens t(*line,parser);read(receiver,t);}
     return receiver;

@@ -242,6 +242,12 @@ class MissionIndexTests(unittest.TestCase):
             legacy=root/'mission-resources.tsv';legacy.write_bytes(b'legacy index retained\n')
             output = extractor.write_mission_index(root);original = output.read_bytes()
             self.assertEqual(output.name,'mission-resources-v2.tsv');self.assertTrue(original.startswith(b'mission_resources\t2\n'))
+            expected=['mission_resources\t2']
+            for index,(resource,name) in enumerate(((-1,'xls'),(1,'chara'),(2,'com'),(3,'enemy'),
+                    (7,'quest'),(18,'chip'),(19,'bullet'),(20,'effect'),(21,'hat'),(22,'weapon'),(23,'gauge'))):
+                kind='tables' if resource==-1 else 'resource'
+                expected.append(f'{kind}\t{resource}\t"textassets/{index:02}_{name}.bin"\t"{name}"')
+            self.assertEqual(original,('\n'.join(expected)+'\n').encode())
             self.assertIn(b'resource\t2\t',original);self.assertEqual(legacy.read_bytes(),b'legacy index retained\n')
             self.assertIn(b'resource\t23\t', original)
             self.assertEqual(extractor.write_mission_index(root).read_bytes(), original)
@@ -254,6 +260,116 @@ class MissionIndexTests(unittest.TestCase):
             manifest['files'][0]['sha256'] = hashlib.sha256(b'changed').hexdigest()
             source.write_text(json.dumps(manifest), encoding='utf-8')
             with self.assertRaisesRegex(ValueError, 'ambiguous'):extractor.write_mission_index(root)
+
+
+class TownResourceIndexTests(unittest.TestCase):
+    def fixture(self,root):
+        (root/'textassets').mkdir()
+        entries=[]
+        for number,name in ((91,'xls'),(5,'resident'),(88,'select'),(2,'select_stage')):
+            payload=('synthetic archive: '+name).encode()
+            relative=f'textassets/{number}_{name}.bin'
+            (root/relative).write_bytes(payload)
+            entries.append({'name':name,'output':relative,'sha256':hashlib.sha256(payload).hexdigest()})
+        manifest={'schema':2,'apk_sha256':extractor.APK_SHA,'files':entries}
+        self.write_manifest(root,manifest)
+        return manifest
+
+    def write_manifest(self,root,manifest):
+        (root/'manifest.json').write_text(json.dumps(manifest),encoding='utf-8')
+
+    def test_ordinals_come_from_resource_identity_and_preserve_mission_indices(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);manifest=self.fixture(root)
+            original=(root/'manifest.json').read_bytes()
+            old=root/'mission-resources.tsv';old.write_bytes(b'legacy v1 retained')
+            current=root/'mission-resources-v2.tsv';current.write_bytes(b'mission v2 retained')
+            expected=(b'town_resources\t1\n'
+                      b'tables\t-1\t"textassets/91_xls.bin"\t"xls"\n'
+                      b'resource\t8\t"textassets/5_resident.bin"\t"resident"\n'
+                      b'resource\t11\t"textassets/88_select.bin"\t"select"\n'
+                      b'resource\t13\t"textassets/2_select_stage.bin"\t"select_stage"\n')
+            output=extractor.write_town_index(root)
+            self.assertEqual(output,root/'town-resources.tsv')
+            self.assertEqual(output.read_bytes(),expected)
+            self.assertEqual(extractor.write_town_index(root).read_bytes(),expected)
+            self.assertEqual((root/'manifest.json').read_bytes(),original)
+            manifest['schema']=3;self.write_manifest(root,manifest)
+            self.assertEqual(extractor.write_town_index(root).read_bytes(),expected)
+            self.assertEqual(old.read_bytes(),b'legacy v1 retained')
+            self.assertEqual(current.read_bytes(),b'mission v2 retained')
+
+    def test_missing_and_ambiguous_archives_never_publish_partial_output(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);manifest=self.fixture(root);entries=manifest['files']
+            for files in (entries[:-1],entries+[dict(entries[2])]):
+                manifest['files']=files;self.write_manifest(root,manifest)
+                with self.subTest(files=len(files)),self.assertRaisesRegex(ValueError,'missing or ambiguous'):
+                    extractor.write_town_index(root)
+                self.assertFalse((root/'town-resources.tsv').exists())
+
+    def test_manifest_and_payload_hash_checks_precede_output_replacement(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);manifest=self.fixture(root)
+            output=root/'town-resources.tsv';output.write_bytes(b'keep local index')
+            for key,value in (('schema',1),('schema',4),('apk_sha256','different APK')):
+                changed=dict(manifest);changed[key]=value;self.write_manifest(root,changed)
+                with self.subTest(key=key,value=value),self.assertRaisesRegex(ValueError,'supported APK'):
+                    extractor.write_town_index(root)
+                self.assertEqual(output.read_bytes(),b'keep local index')
+            self.write_manifest(root,manifest)
+            (root/manifest['files'][2]['output']).write_bytes(b'changed payload')
+            with self.assertRaisesRegex(ValueError,'hash mismatch: select'):extractor.write_town_index(root)
+            self.assertEqual(output.read_bytes(),b'keep local index')
+
+    def test_paths_must_be_direct_textassets_children(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);manifest=self.fixture(root)
+            for relative in ('../outside.bin','textassets/../../outside.bin','textassets/nested/select.bin',
+                             str(root/'absolute.bin'),'elsewhere/select.bin'):
+                manifest['files'][2]['output']=relative;self.write_manifest(root,manifest)
+                with self.subTest(relative=relative),self.assertRaisesRegex(ValueError,'direct textassets children'):
+                    extractor.write_town_index(root)
+                self.assertFalse((root/'town-resources.tsv').exists())
+
+    def test_symlink_escape_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory,tempfile.TemporaryDirectory() as outside:
+            root=Path(directory);manifest=self.fixture(root)
+            path=root/manifest['files'][2]['output'];target=Path(outside)/'select.bin'
+            target.write_bytes(path.read_bytes());path.unlink()
+            try:path.symlink_to(target)
+            except OSError:self.skipTest('File symlinks are unavailable on this host')
+            with self.assertRaisesRegex(ValueError,'escapes destination'):extractor.write_town_index(root)
+            self.assertFalse((root/'town-resources.tsv').exists())
+
+    def test_differing_index_is_preserved(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);self.fixture(root)
+            output=extractor.write_town_index(root);output.write_bytes(b'keep user index')
+            with self.assertRaisesRegex(ValueError,'replace differing town'):extractor.write_town_index(root)
+            self.assertEqual(output.read_bytes(),b'keep user index')
+
+    def test_cli_only_indexes_existing_files(self):
+        with patch.object(extractor.sys,'argv',['extract_assets.py','--town-resources','--out','synthetic']),\
+                patch.object(extractor,'write_town_index',return_value=Path('synthetic/town-resources.tsv')) as writer,\
+                patch.object(extractor,'extract') as extraction,patch.object(extractor.zipfile,'ZipFile') as archive,\
+                patch.object(extractor.sys,'stdout',io.StringIO()):
+            extractor.main()
+            writer.assert_called_once_with(Path('synthetic'))
+            extraction.assert_not_called();archive.assert_not_called()
+
+    def test_cli_mode_is_exclusive_before_reading_or_extracting(self):
+        flags=('owned.apk','--check','--mission-index','--mission-font','--new-game-save',
+               '--mission-initialization','--debug-drawing','--unity-media','--culture-signs',
+               '--culture-names','--culture-neutral','--culture-lower','--runtime-tables',
+               '--collation','--collation-indexers')
+        for flag in flags:
+            with self.subTest(flag=flag),patch.object(extractor.sys,'argv',['extract_assets.py','--town-resources',flag]),\
+                    patch.object(extractor,'write_town_index') as writer,patch.object(extractor,'extract') as extraction,\
+                    patch.object(extractor.sys,'stderr',io.StringIO()):
+                with self.assertRaises(SystemExit) as result:extractor.main()
+                self.assertEqual(result.exception.code,1)
+                writer.assert_not_called();extraction.assert_not_called()
 
 
 class CollationTests(unittest.TestCase):

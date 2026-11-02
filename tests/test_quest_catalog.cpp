@@ -6,6 +6,79 @@
 #include <iterator>
 using namespace saga::core;
 #define CHECK(x) do{if(!(x)){std::cerr<<"failed line "<<__LINE__<<'\n';std::abort();}}while(false)
+AreaProgressState dirty_area_progress(){
+    AreaProgressState state;state.discovery_state=7;state.is_new=true;state.arrival_stage=19;
+    auto shared=std::make_shared<EventIntegers>(EventIntegers{8,9});
+    state.stage_detail=std::make_shared<std::vector<EventInstruction>>(2,shared);
+    state.stage_total_damage=state.stage_detail;state.area_detail=shared;
+    return state;
+}
+void check_reset_area_arrays(const AreaProgressState& state){
+    CHECK(state.stage_detail&&state.stage_detail->size()==3);
+    CHECK(state.stage_total_damage&&state.stage_total_damage->size()==3);
+    CHECK(state.stage_detail!=state.stage_total_damage);
+    CHECK(state.area_detail&&*state.area_detail==EventIntegers(6,0));
+    CHECK(state.arrival_stage==0);
+    std::vector<EventInstruction> rows;
+    for(std::size_t i=0;i<3;++i){
+        const auto detail=state.stage_detail->at(i),damage=state.stage_total_damage->at(i);
+        CHECK(detail&&*detail==EventIntegers(6,0)&&damage&&*damage==EventIntegers(2,0));
+        CHECK(detail!=state.area_detail&&damage!=state.area_detail);
+        for(const auto& old:rows)CHECK(old!=detail&&old!=damage);
+        CHECK(detail!=damage);rows.push_back(detail);rows.push_back(damage);
+    }
+}
+void test_area_new_game(){
+    {AreaDefinition definition;definition.id=4;definition.flags=2;definition.image=17;definition.name="Synthetic";
+     definition.stages=std::make_shared<EventIntegers>(EventIntegers{8,3});const auto stages=definition.stages;
+     auto state=dirty_area_progress();const auto old_details=state.stage_detail,old_damage=state.stage_total_damage;
+     const auto old_area=state.area_detail;
+     reset_area_for_new_game(state,definition,[](bool){CHECK(false);});
+     check_reset_area_arrays(state);CHECK(state.discovery_state==0&&state.is_new);
+     CHECK(state.stage_detail!=old_details&&state.stage_total_damage!=old_damage&&state.area_detail!=old_area);
+     CHECK(old_details==old_damage&&old_details->at(0)==old_area&&*old_area==EventIntegers({8,9}));
+     old_area->at(0)=55;CHECK(state.area_detail->at(0)==0&&state.stage_detail->at(0)->at(0)==0);
+     CHECK(definition.id==4&&definition.flags==2&&definition.image==17&&definition.name=="Synthetic"&&definition.stages==stages);
+     const auto first_details=state.stage_detail,first_damage=state.stage_total_damage;const auto first_area=state.area_detail;
+     state.stage_detail->at(1)->at(4)=71;state.stage_total_damage->at(2)->at(1)=72;state.area_detail->at(5)=73;
+     state.is_new=false;reset_area_for_new_game(state,definition);check_reset_area_arrays(state);
+     CHECK(state.discovery_state==0&&!state.is_new&&state.stage_detail!=first_details&&state.stage_total_damage!=first_damage&&state.area_detail!=first_area);
+     CHECK(first_details->at(1)->at(4)==71&&first_damage->at(2)->at(1)==72&&first_area->at(5)==73);
+     for(std::size_t i=0;i<3;++i)for(std::size_t j=0;j<3;++j){
+         CHECK(state.stage_detail->at(i)!=first_details->at(j)&&state.stage_detail->at(i)!=first_damage->at(j));
+         CHECK(state.stage_total_damage->at(i)!=first_details->at(j)&&state.stage_total_damage->at(i)!=first_damage->at(j));
+     }}
+    for(const auto flags:{0,1,2,3,-1}){
+        AreaDefinition definition;definition.flags=flags;AreaProgressState state;state.discovery_state=9;
+        reset_area_for_new_game(state,definition);check_reset_area_arrays(state);
+        CHECK(state.discovery_state==(flags&1)&&state.is_new==((flags&1)!=0));
+    }
+    {AreaDefinition definition;definition.flags=1;auto state=dirty_area_progress();state.is_new=false;
+     const auto old_details=state.stage_detail,old_damage=state.stage_total_damage;const auto old_area=state.area_detail;
+     int calls=0;
+     reset_area_for_new_game(state,definition,[&](bool argument){
+         ++calls;CHECK(argument&&state.discovery_state==7&&!state.is_new&&state.arrival_stage==19);
+         CHECK(state.stage_detail==old_details&&state.stage_total_damage==old_damage&&state.area_detail==old_area);
+         state.discovery_state=22;state.is_new=true;definition.flags=0;
+     });
+     check_reset_area_arrays(state);CHECK(calls==1&&state.discovery_state==0&&state.is_new);}
+    {AreaDefinition definition;definition.flags=1;auto state=dirty_area_progress();
+     reset_area_for_new_game(state,definition,[&](bool argument){CHECK(argument);definition.flags=3;state.discovery_state=-9;state.is_new=false;});
+     check_reset_area_arrays(state);CHECK(state.discovery_state==1&&!state.is_new);}
+    {AreaDefinition definition;definition.flags=1;auto state=dirty_area_progress();
+     const auto old_details=state.stage_detail,old_damage=state.stage_total_damage;const auto old_area=state.area_detail;
+     try{reset_area_for_new_game(state,definition,[&](bool argument){
+         CHECK(argument&&state.stage_detail==old_details&&state.area_detail==old_area);
+         state.discovery_state=23;state.is_new=false;definition.flags=0;throw std::runtime_error("find");
+     });CHECK(false);}catch(const std::runtime_error&){}
+     CHECK(state.discovery_state==23&&!state.is_new&&state.arrival_stage==19);
+     CHECK(state.stage_detail==old_details&&state.stage_total_damage==old_damage&&state.area_detail==old_area&&definition.flags==0);}
+    {AreaDefinition definition;definition.flags=1;auto state=dirty_area_progress();state.is_new=false;
+     reset_area_progress(state,definition);check_reset_area_arrays(state);
+     CHECK(state.discovery_state==1&&!state.is_new); // oldNewGame never calls Find.
+     definition.flags=0;state.is_new=true;reset_area_progress(state,definition);
+     check_reset_area_arrays(state);CHECK(state.discovery_state==0&&state.is_new);}
+}
 int main(int argc,char** argv){
     if(argc==2){
         std::ifstream f(argv[1],std::ios::binary);if(!f)throw std::runtime_error("cannot open quest table");
@@ -14,6 +87,7 @@ int main(int argc,char** argv){
         std::size_t count=0;for(const auto& row:table)if(row)++count;
         std::cout<<"quest slots="<<table.size()<<" populated="<<count<<'\n';return 0;
     }
+    test_area_new_game();
     {
         QuestDefinition r;r.stage.flags=3;r.stage.completed=7;r.stage.rescued_prisoners=9;
         r.record=std::make_shared<QuestRecord>(QuestRecord{1,2,3,4,5,6,7});const auto old=r.record;

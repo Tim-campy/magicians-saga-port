@@ -2013,7 +2013,7 @@ game:0x06000807,game:0x06000807,ui,,172,0x11f3208
 game:0x06000808,game:0x06000808,ui,,8,0x11eff84
 game:0x06000809,game:0x06000809,ui,,8,0x11eff8c
 game:0x0600080a,game:0x0600080a,ui,,300,0x11eff94
-game:0x0600080b,game:0x0600080b,ui,,10820,0x11f0714
+game:0x0600080b,form.SelectForm._Draw,ui,traced,10820,0x11f0714
 game:0x0600080c,game:0x0600080c,ui,,404,0x11f3714
 game:0x0600080d,game:0x0600080d,ui,,624,0x11f417c
 game:0x0600080e,game:0x0600080e,ui,,276,0x11eb418
@@ -3901,9 +3901,9 @@ game:0x0600100e,game:0x0600100e,unassigned,,500,0x116b31c
 game:0x0600100f,game:0x0600100f,unassigned,,820,0x116b510
 game:0x06001010,game:0x06001010,unassigned,,948,0x116b844
 game:0x06001011,game:0x06001011,unassigned,,800,0x116bbf8
-game:0x06001012,data.AreaData.NewGame,data,traced,48,0x116bf68
+game:0x06001012,data.AreaData.NewGame,data,reimplemented,48,0x116bf68
 game:0x06001013,data.AreaData.CheckAllCompleted,data,reimplemented,456,0x116c1dc
-game:0x06001014,data.AreaData.oldNewGame,data,traced,576,0x116bf9c
+game:0x06001014,data.AreaData.oldNewGame,data,reimplemented,576,0x116bf9c
 game:0x06001015,game:0x06001015,data,,8,0x116c3d4
 game:0x06001016,game:0x06001016,data,,8,0x116c3dc
 game:0x06001017,game:0x06001017,data,,8,0x116c3e4

@@ -1,5 +1,37 @@
 #include "select_form_pass.hpp"
+#include "entity_visual.hpp"
+#include <stdexcept>
 namespace saga::core {
+namespace {
+std::int32_t background_add(std::int32_t a,std::int32_t b){
+    const auto bits=static_cast<std::uint32_t>(a)+static_cast<std::uint32_t>(b);
+    return bits<=0x7fffffffU?static_cast<std::int32_t>(bits):-1-static_cast<std::int32_t>(0xffffffffU-bits);
+}
+}
+void draw_select_background(const SelectBackgroundState& state,SelectBackgroundHost& host){
+    const auto pixel=host.background_pixel();
+    host.background_color(factory_cell_coordinate(pixel[0]*255.0F,1),factory_cell_coordinate(pixel[1]*255.0F,1),factory_cell_coordinate(pixel[2]*255.0F,1),255);
+    const auto width=host.background_width();const auto height=host.background_height();
+    host.fill_background(width,height);
+    const auto base_y=background_add(state.camera_y,state.view_y);
+    auto x=state.left_extent;
+    SelectBackgroundResource resource=nullptr;
+    for(;;){
+        const auto limit=state.right_extent;
+        resource=host.background_resource();
+        if(x>=limit)break;
+        const auto view_height=host.background_view_height();
+        if(!resource)throw std::invalid_argument("missing select background resource");
+        const auto clip=host.background_clip();
+        const auto y=background_add(background_add(base_y,-125),view_height);
+        host.draw_background(resource,clip,0,static_cast<float>(x),static_cast<float>(y));
+        x=background_add(x,240);
+    }
+    const auto parallax_x=background_add(state.camera_x/30,30);
+    if(!resource)throw std::invalid_argument("missing select background resource");
+    const auto clip=host.background_clip();
+    host.draw_background(resource,clip,1,static_cast<float>(parallax_x),static_cast<float>(background_add(base_y,20)));
+}
 SelectUpdatePrefixResult update_select_form_prefix(SelectPreludeState& prelude,SelectPreludeHost& prelude_host,
     SelectFormPassState& state,SelectFormPassHost& host,SelectCloudHost& clouds,SelectMarkerHost& markers,
     EventDelayQueue& queue,EventExecutionHost& execution,EventConditionHost& conditions,

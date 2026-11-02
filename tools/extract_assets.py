@@ -47,6 +47,8 @@ APK_SHA = 'd58943e6ed4137975a554f1e210853f4a7b41573a38dbb462f4f5e159bf6eead'
 # Only resources reached by the mission host; the full application inventory stays local.
 MISSION_RESOURCES = ((1, 'chara'), (2, 'com'), (3, 'enemy'), (7, 'quest'), (18, 'chip'),
                      (19, 'bullet'), (20, 'effect'), (21, 'hat'), (22, 'weapon'), (23, 'gauge'))
+# RESOURCE row1 ordinals, independent of AppData.GetResourceManager's selected IDs.
+TOWN_RESOURCES = ((8, 'resident'), (11, 'select'), (13, 'select_stage'))
 
 
 def mission_default_arrays(metadata, layouts):
@@ -160,31 +162,42 @@ def write_debug_drawing(apk, root):
     return write_mission_seed(apk, root, 'mission-debug.tsv', debug_drawing_payload)
 
 
-def write_mission_index(root):
-    """Publish a small native-host index from already extracted, hash-checked files."""
+def write_resource_index(root, label, signature, filename, resources):
+    """Publish an index from existing decoded archives without extracting payloads."""
     manifest = json.loads((root / 'manifest.json').read_text(encoding='utf-8'))
     if manifest.get('schema') not in (2, 3) or manifest.get('apk_sha256') != APK_SHA:
-        raise ValueError('Mission index requires the supported APK schema-2/3 manifest')
-    rows = ['mission_resources\t2']
-    for resource, name in ((-1, 'xls'), *MISSION_RESOURCES):
+        raise ValueError(label + ' index requires the supported APK schema-2/3 manifest')
+    rows = [signature]
+    for resource, name in ((-1, 'xls'), *resources):
         entries = [entry for entry in manifest['files'] if entry['name'] == name]
         if len(entries) != 1:
-            raise ValueError('Mission archive missing or ambiguous: ' + name)
+            raise ValueError(label + ' archive missing or ambiguous: ' + name)
         entry = entries[0];relative = entry['output']
         if Path(relative).parent != Path('textassets'):
-            raise ValueError('Mission archives must be direct textassets children')
+            raise ValueError(label + ' archives must be direct textassets children')
         path = bounded(root, relative)
         if hashlib.sha256(path.read_bytes()).hexdigest() != entry['sha256']:
-            raise ValueError('Mission archive hash mismatch: ' + name)
+            raise ValueError(label + ' archive hash mismatch: ' + name)
         kind = 'tables' if resource == -1 else 'resource'
         rows.append(f'{kind}\t{resource}\t{json.dumps(relative, ensure_ascii=False)}\t{json.dumps(name)}')
-    # Retain the v1 index for already isolated builds, whose loader knows nine resources.
-    output = bounded(root, 'mission-resources-v2.tsv');payload = ('\n'.join(rows) + '\n').encode('utf-8')
+    output = bounded(root, filename);payload = ('\n'.join(rows) + '\n').encode('utf-8')
     if output.exists() and output.read_bytes() != payload:
-        raise ValueError('Refusing to replace differing mission resource index')
+        raise ValueError('Refusing to replace differing ' + label.lower() + ' resource index')
     if not output.exists():
         output.write_bytes(payload)
     return output
+
+
+def write_mission_index(root):
+    """Retain the v1 index for isolated builds whose loader knows nine resources."""
+    return write_resource_index(root, 'Mission', 'mission_resources\t2',
+                                'mission-resources-v2.tsv', MISSION_RESOURCES)
+
+
+def write_town_index(root):
+    """Index the reached SelectForm archives using their original RESOURCE ordinals."""
+    return write_resource_index(root, 'Town', 'town_resources\t1',
+                                'town-resources.tsv', TOWN_RESOURCES)
 
 
 def write_mission_font(root):
@@ -806,6 +819,7 @@ def main():
     p.add_argument('--out', type=Path, default=Path('extracted'))
     p.add_argument('--check', action='store_true')
     p.add_argument('--mission-index', action='store_true', help='Index existing decoded mission archives for the native host; no APK re-extraction')
+    p.add_argument('--town-resources', action='store_true', help='Index existing decoded town archives for the native host; no APK re-extraction')
     p.add_argument('--mission-font', action='store_true', help='Index the existing hash-checked LegacyRuntime font for English/default-skin mission entry')
     p.add_argument('--new-game-save', action='store_true', help='Export the reached normal-save NewGame seeds from the supported APK metadata only')
     p.add_argument('--mission-initialization', action='store_true', help='Export initial system Yugami/orientation and normal event-argument seeds from the supported APK metadata')
@@ -820,7 +834,14 @@ def main():
     p.add_argument('--unity-media', action='store_true', help='Also export Unity textures, fonts and FSB/WAV audio')
     args = p.parse_args()
     try:
-        if args.mission_font:
+        if args.town_resources:
+            if args.apk or args.check or any((args.mission_index, args.mission_font, args.new_game_save,
+                    args.mission_initialization, args.debug_drawing, args.unity_media, args.culture_signs,
+                    args.culture_names, args.culture_neutral, args.culture_lower, args.runtime_tables,
+                    args.collation, args.collation_indexers)):
+                raise ValueError('--town-resources requires existing --out only; cannot combine export/check modes')
+            print('Town resource index: ' + str(write_town_index(args.out)))
+        elif args.mission_font:
             if args.apk or args.check or any((args.mission_index, args.new_game_save, args.mission_initialization, args.debug_drawing,
                     args.unity_media, args.culture_signs, args.culture_names, args.culture_neutral,
                     args.culture_lower, args.runtime_tables, args.collation, args.collation_indexers)):
