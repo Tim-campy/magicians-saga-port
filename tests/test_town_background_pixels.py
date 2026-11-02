@@ -14,6 +14,23 @@ from test_sprite_preview import bmp_pixels
 
 @unittest.skipUnless(EXE,'viewer saga_town supplied by CTest')
 class TownBackgroundPixels(unittest.TestCase):
+    def test_building_texture_override_pixels_and_no_early_notice_flush(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);add_town_background(root,buildings=True)
+            args=[str(EXE),'--data',str(root),'--buildings','--width','600','--height','200']
+            def run(*extra):
+                value=subprocess.run([*args,*extra],capture_output=True,text=True,timeout=30)
+                self.assertEqual(value.returncode,0,value.stderr);return json.loads(value.stdout)
+            first=root/'buildings.bmp';report=run('--capture',str(first));self.assertEqual(run(),report)
+            width,height,pixels=bmp_pixels(first.read_bytes());self.assertEqual((width,height),(600,200))
+            for x,color in ((85,(20,30,40,255)),(175,(40,50,60,255)),(130,(10,100,210,255)),
+                            (220,(210,100,10,255)),(310,(80,90,10,255)),(400,(80,90,10,255))):
+                for yy in (73,74):
+                    for xx in range(x,x+3):self.assertEqual(pixels[yy*width+xx],color)
+            second=root/'reward.bmp';reward=run('--high-score','10','--capture',str(second))
+            self.assertEqual(len(reward['background']['buildings_draw']['notices']),2)
+            self.assertEqual(first.read_bytes(),second.read_bytes(), 'queued arrows cannot draw before area/resident passes')
+
     def test_native_scenery_ground_pixels_and_two_stream_repeat(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);add_town_background(root,scenery=True)

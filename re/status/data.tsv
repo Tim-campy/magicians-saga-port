@@ -1,3 +1,6 @@
 id	status	evidence	note
 game:0x0600101d	reimplemented	src/core/gameplay/quest_catalog.cpp	Ordered AreaData.Load fields, nullable arrays and partial mutation; test_quest_catalog.cpp and native Stage.Start host area binding.
 game:0x0600121d	reimplemented	src/core/gameplay/pass_initialization.cpp	TownData.Load ordered scalar/script fields, nullable arrays and retained partial mutation; fresh-world host loads real Town.txt.
+game:0x06001050	reimplemented	src/core/gameplay/select_building.cpp	Ordered ten-token Building loader; partial mutation, nullable input, IDs/gaps/duplicates tested; static catalog bound to saga_town.
+game:0x0600103d	reimplemented	src/core/gameplay/select_building.hpp	Decoration predicate accepts only types8/12; tested and used by the town drawing contract.
+game:0x0600118a	reimplemented	src/core/gameplay/select_building.cpp	KingReward scalar/script loader preserves received and partial writes; fresh table bound to saga_town read-only availability.

@@ -1,6 +1,42 @@
 #pragma once
 #include "select_navigation.hpp"
+#include <optional>
+#include <string>
+#include <string_view>
 namespace saga::core {
+struct BuildingDefinition {
+    std::int32_t id=0;
+    std::string name,resource;
+    std::int32_t image=0,owner_id=0,type=0,cost=0,base_have=0;
+    std::string explanation;
+    std::int32_t flags=0;
+};
+using BuildingTable=std::vector<std::optional<BuildingDefinition>>;
+// BuildingData.Load 0x116cca8. Static table fields only; saved have/discovery are separate.
+BuildingDefinition& load_building_definition(BuildingDefinition&,std::optional<std::string_view>,const EventIntegerParser&);
+BuildingTable load_building_table(std::string_view,bool normalize_crlf,const EventIntegerParser&);
+// BuildingData.IsDecoration 0x116c9f0; shared by catalogue consumers and drawing.
+inline bool building_is_decoration(std::int32_t type){return type==8||type==12;}
+struct KingRewardDefinition {
+    std::int32_t id=0;
+    std::string name;
+    std::int32_t score_value=0,crystal_level=0,timing=0;
+    EventScript terms,execs;
+    bool received=false; // Saved +0x48; Load does not write it.
+};
+using KingRewardTable=std::vector<std::optional<KingRewardDefinition>>;
+using KingRewardRows=std::vector<std::shared_ptr<KingRewardDefinition>>;
+KingRewardDefinition& load_king_reward_definition(KingRewardDefinition&,std::optional<std::string_view>,const EventIntegerParser&);
+KingRewardTable load_king_reward_table(std::string_view,bool normalize_crlf,const EventIntegerParser&);
+void reset_king_reward_for_new_game(KingRewardDefinition&); // NewGame 0x1171d64 clears only received.
+class KingRewardAvailabilityHost {
+public:
+    virtual ~KingRewardAvailabilityHost()=default;
+    virtual std::int64_t high_score()=0;
+    virtual std::shared_ptr<KingRewardRows> rewards()=0;
+};
+// CheckExeKingEvent(false), 0x11169c4: no scripts, reward grants or state writes.
+bool king_reward_available(KingRewardAvailabilityHost&);
 using BuildingSlots=std::vector<std::shared_ptr<EventIntegers>>;
 struct BuildingMenuRecord {std::int32_t kind;};
 using BuildingMenuCatalog=std::vector<std::shared_ptr<BuildingMenuRecord>>;

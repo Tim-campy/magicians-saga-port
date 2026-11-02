@@ -95,7 +95,7 @@ struct FloorHost final:SelectFloorHost {
     SebSpriteState* floor_sprite()override{call("S");return selected_sprite;}
     RenderImage* floor_image()override{call("I");return selected_image;}
     void floor_draw(SebSpriteState* s,RenderImage* i,std::int32_t frame,std::int32_t x,std::int32_t y)override{floors.push_back({s,i,frame,x,y});call("D");}
-    void floor_depth_layer(std::int32_t layer)override{call("L"+std::to_string(layer));}
+    void floor_push_font(std::int32_t font)override{call("F"+std::to_string(font));}
     SelectBackgroundResource gate_resource()override{call("R");return resource;}
     std::int32_t gate_clip()override{call("C");return 3;}
     void gate_draw(SelectBackgroundResource r,std::int32_t clip,std::int32_t frame,std::int32_t layer,float x,float y)override{gates.push_back({r,clip,frame,layer,x,y});call("T");}
@@ -115,7 +115,7 @@ void floor_sequence(){
         check(d.sprite==&f.host.sprite&&d.image==&f.host.image,"explicit sprite/image forwarded");}
     check(f.host.gates.size()==1,"gate follows floor loop");const auto& g=f.host.gates[0];
     check(g.resource==f.host.resource&&g.clip==3&&g.frame==0&&g.layer==0&&g.x==37&&g.y==465,"unanchored gate frame0/layer0 and fresh height");
-    check(f.host.log==std::vector<std::string>({"G","W","G","H","S","I","D","G","W","G","H","S","I","D","G","W","G","H","S","I","D","L10","H","R","C","T"}),"floor and gate query order");
+    check(f.host.log==std::vector<std::string>({"G","W","G","H","S","I","D","G","W","G","H","S","I","D","G","W","G","H","S","I","D","F10","H","R","C","T"}),"floor and gate query order");
     FloorFixture equality;equality.right=176;draw_select_floor(equality.state,{0,0},equality.host);
     check(equality.host.floors.size()==2&&equality.host.floors[0].frame==0&&equality.host.floors[1].frame==1,"end equal to next does not select final frame");
     FloorFixture one;one.right=120;draw_select_floor(one.state,{0,0},one.host);
@@ -124,13 +124,13 @@ void floor_sequence(){
 void floor_limits(){
     FloorFixture empty;empty.right=112;empty.host.selected_sprite=nullptr;empty.host.selected_image=nullptr;
     draw_select_floor(empty.state,{0,0},empty.host);
-    check(empty.host.floors.empty()&&empty.host.log==std::vector<std::string>({"L10","H","R","C","T"}),"empty floor loop still changes layer and draws gate");
+    check(empty.host.floors.empty()&&empty.host.log==std::vector<std::string>({"F10","H","R","C","T"}),"empty floor loop still pushes font and draws gate");
     FloorFixture culled;draw_select_floor(culled.state,{-1000,0},culled.host);
     check(culled.host.floors.empty()&&culled.host.gates[0].x==-960,"gate has no floor culling");
-    check(culled.host.log==std::vector<std::string>({"G","G","G","L10","H","R","C","T"}),"left culling skips width and draw-only providers");
+    check(culled.host.log==std::vector<std::string>({"G","G","G","F10","H","R","C","T"}),"left culling skips width and draw-only providers");
     FloorFixture absent;absent.right=112;absent.host.resource=nullptr;
     fails<std::invalid_argument>([&]{draw_select_floor(absent.state,{0,0},absent.host);});
-    check(absent.host.log==std::vector<std::string>({"L10","H","R"}),"missing gate resource fails after layer and raw height, before clip");
+    check(absent.host.log==std::vector<std::string>({"F10","H","R"}),"missing gate resource fails after layer and raw height, before clip");
     FloorFixture captured;captured.right=112;const auto resource=captured.host.resource;
     captured.host.action=[&](const auto& call){if(call=="C")captured.host.resource=nullptr;};
     draw_select_floor(captured.state,{0,0},captured.host);

@@ -52,7 +52,7 @@ target_link_libraries(saga_mission PRIVATE mission_profile game_random)
 project_warnings(saga_mission)
 add_executable(saga_town saga_town.cpp)
 saga_library(town_background town_background.cpp)
-target_link_libraries(town_background PUBLIC gameplay_catalog archive_image_set bitmap_backend decoded_image select_form_pass select_camera render_frame render_draw game_random)
+target_link_libraries(town_background PUBLIC gameplay_catalog archive_image_set bitmap_backend decoded_image select_form_pass select_building select_camera render_frame render_draw game_random)
 target_link_libraries(saga_town PRIVATE town_background)
 project_warnings(saga_town)
 

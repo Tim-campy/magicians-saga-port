@@ -36,7 +36,89 @@ struct Host:SelectBuildingHost,FormStackHost {
     EventObject make_share_window(bool first) override {check(first==(share_value==0));log.push_back(10);return child;}
     void push(EventObject,EventObject value,bool option) override {check(value==child && !option && form.auto_save && form.events.event_check_requested);log.push_back(11);if(push_failure)throw std::runtime_error("manager");}
 };
+void catalog_contract(){
+    BuildingDefinition record{9,"old-name","old-resource",3,4,5,6,7,"old-explanation",8};
+    int parses=0;const EventIntegerParser parser=[&](std::string_view text){++parses;return parse_event_decimal(text);};
+    check(&load_building_definition(record,std::nullopt,parser)==&record);
+    check(&load_building_definition(record,std::string_view{},parser)==&record&&parses==0);
+    check(record.id==9&&record.name=="old-name"&&record.explanation=="old-explanation"&&record.flags==8);
+    const auto line=std::string_view("2\tHouse\tresident\t77\t-1\t8\t2147483647\t-2147483648\tDescription\t2\tignored");
+    check(&load_building_definition(record,line,parser)==&record&&parses==7);
+    check(record.id==2&&record.name=="House"&&record.resource=="resident"&&record.image==77&&record.owner_id==-1);
+    check(record.type==8&&record.cost==std::numeric_limits<std::int32_t>::max()&&record.base_have==std::numeric_limits<std::int32_t>::min());
+    check(record.explanation=="Description"&&record.flags==2);
+    fails([&]{load_building_definition(record,"6\tChanged\tother\t44\t-7\t9\tbad",parser);});
+    check(record.id==6&&record.name=="Changed"&&record.resource=="other"&&record.image==44&&record.owner_id==-7&&record.type==9);
+    check(record.cost==std::numeric_limits<std::int32_t>::max()&&record.base_have==std::numeric_limits<std::int32_t>::min()&&record.explanation=="Description"&&record.flags==2);
+    fails([&]{load_building_definition(record,"7\tN\tR\t1\t2\t3\t4\t5\tnew-explanation",parser);});
+    check(record.id==7&&record.cost==4&&record.base_have==5&&record.explanation=="new-explanation"&&record.flags==2);
+    const auto table=load_building_table("\xef\xbb\xbf\n2\tFirst\ta\t3\t4\t8\t6\t7\ttext\t1\r\n0\tZero\tb\t8\t9\t12\t10\t11\tother\t2\r\n2\tLast\tc\t13\t14\t7\t15\t16\tlast\t3\tignored\n",true,parse_event_decimal);
+    check(table.size()==3&&table[0]&&!table[1]&&table[2]);
+    check(table[0]->id==0&&table[0]->type==12&&table[2]->name=="Last"&&table[2]->image==13&&table[2]->base_have==16&&table[2]->flags==3);
+    check(load_building_table("",false,parse_event_decimal).size()==1&&!load_building_table("",false,parse_event_decimal)[0]);
+    fails([&]{load_building_table("-1\tN\tR\t0\t0\t0\t0\t0\tE\t0",false,parse_event_decimal);});
+    fails([&]{load_building_table("2147483647\tN\tR\t0\t0\t0\t0\t0\tE\t0",false,parse_event_decimal);});
+    for(auto type:{8,12})check(building_is_decoration(type));
+    for(auto type:{std::numeric_limits<std::int32_t>::min(),-1,0,7,9,11,13,std::numeric_limits<std::int32_t>::max()})check(!building_is_decoration(type));
+}
+void king_catalog_contract(){
+    KingRewardDefinition record;record.id=9;record.name="old";record.score_value=7;record.crystal_level=8;record.timing=9;record.received=true;
+    record.terms=std::make_shared<std::vector<EventInstruction>>(1,std::make_shared<EventIntegers>(EventIntegers{1,2}));record.execs=record.terms;
+    const auto old=record.terms;
+    int calls=0;const EventIntegerParser parser=[&](std::string_view token){++calls;return parse_event_decimal(token);};
+    check(&load_king_reward_definition(record,std::nullopt,parser)==&record);
+    check(&load_king_reward_definition(record,std::string_view{},parser)==&record&&calls==0&&record.received&&record.terms==old);
+    load_king_reward_definition(record,"3\tGift\t42\t2\t9\t1\t2\t10\t20\t-1\tignored",parser);
+    check(record.id==3&&record.name=="Gift"&&record.score_value==42&&record.crystal_level==2&&record.timing==9&&record.received);
+    check(record.terms&&record.terms->size()==1&&*record.terms->at(0)==EventIntegers({10,20})&&!record.execs);
+    record.terms=old;record.execs=old;
+    fails([&]{load_king_reward_definition(record,"4\tChanged\t55\t3\t10\t1\t2\t12",parser);});
+    check(record.id==4&&record.name=="Changed"&&record.score_value==55&&record.timing==10&&record.terms==old&&record.execs==old&&record.received);
+    fails([&]{load_king_reward_definition(record,"5\tOther\t66\t4\t11\t0\t1\t2\t3",parser);});
+    check(record.id==5&&record.score_value==66&&record.terms&&record.terms->empty()&&record.execs==old&&record.received);
+    const auto empty=record.terms;reset_king_reward_for_new_game(record);
+    check(!record.received&&record.id==5&&record.name=="Other"&&record.score_value==66&&record.crystal_level==4&&record.timing==11&&record.terms==empty&&record.execs==old);
+    const auto table=load_king_reward_table("\xef\xbb\xbf\n2\tFirst\t10\t0\t0\t0\t0\r\n0\tZero\t20\t1\t1\t-1\t0\r\n2\tLast\t30\t2\t2\t0\t-1\tignored\n",true,parse_event_decimal);
+    check(table.size()==3&&table[0]&&!table[1]&&table[2]);
+    check(table[0]->id==0&&!table[0]->terms&&table[0]->execs&&table[0]->execs->empty());
+    check(table[2]->name=="Last"&&table[2]->score_value==30&&table[2]->terms&&table[2]->terms->empty()&&!table[2]->execs&&!table[2]->received);
+    fails([&]{load_king_reward_definition(record,"1\tBad\t0\t0\t0\t1\t-1\t0",parser);});
+    fails([&]{load_king_reward_table("-1\tBad\t0\t0\t0\t0\t0",false,parser);});
+}
+struct RewardHost:KingRewardAvailabilityHost {
+    std::int64_t score=0;int score_reads=0,reads=0;
+    std::shared_ptr<KingRewardRows> data=std::make_shared<KingRewardRows>();
+    std::vector<char> log;std::function<void(int)> on_read;
+    std::int64_t high_score()override{++score_reads;log.push_back('S');return score;}
+    std::shared_ptr<KingRewardRows> rewards()override{log.push_back('R');++reads;if(on_read)on_read(reads);return data;}
+    std::shared_ptr<KingRewardDefinition> add(std::int32_t threshold,bool received=false){
+        auto row=std::make_shared<KingRewardDefinition>();row->score_value=threshold;row->received=received;data->push_back(row);return row;
+    }
+};
+void king_availability_contract(){
+    {RewardHost h;check(!king_reward_available(h)&&h.log==std::vector<char>({'S','R'})&&h.score_reads==1);}
+    {RewardHost h;h.data.reset();fails([&]{king_reward_available(h);});check(h.log==std::vector<char>({'S','R'}));}
+    {RewardHost h;h.data->push_back(nullptr);fails([&]{king_reward_available(h);});check(h.reads==2&&h.score_reads==1);}
+    {RewardHost h;h.score=10;const auto taken=h.add(-100,true),ready=h.add(10);h.data->push_back(nullptr);
+        check(king_reward_available(h)&&h.reads==5&&h.score_reads==1&&taken->received&&!ready->received);}
+    {RewardHost h;h.score=10;h.add(0,true);h.add(11);check(!king_reward_available(h)&&h.reads==6);}
+    {RewardHost h;h.score=0x100000005LL;h.add(5);check(king_reward_available(h)&&h.reads==3);}
+    {RewardHost h;h.score=0x80000000LL;h.add(0);check(!king_reward_available(h));
+        h.data->at(0)->score_value=std::numeric_limits<std::int32_t>::min();check(king_reward_available(h));}
+    {RewardHost h;h.score=std::numeric_limits<std::int64_t>::max();h.add(0);check(!king_reward_available(h));
+        h.data->at(0)->score_value=-1;check(king_reward_available(h));}
+    {RewardHost h;h.score=std::numeric_limits<std::int64_t>::min();h.add(0);check(king_reward_available(h));}
+    {RewardHost h;h.add(1);h.on_read=[&](int n){if(n==1)h.score=1000;};check(!king_reward_available(h)&&h.score_reads==1);}
+    {RewardHost h;const auto previous=h.add(100);h.on_read=[&](int n){if(n==3){h.data=std::make_shared<KingRewardRows>();h.add(-10);}};
+        check(king_reward_available(h)&&h.reads==3&&previous->score_value==100&&!previous->received);}
+    {RewardHost h;h.add(-10);h.on_read=[&](int n){if(n==2)h.data->at(0)->received=true;};
+        check(!king_reward_available(h)&&h.reads==3);}
+    {RewardHost h;h.add(-10);h.on_read=[&](int n){if(n==3)h.data->at(0).reset();};
+        fails([&]{king_reward_available(h);});check(h.reads==3&&h.score_reads==1);}
+}
 int main() {
+    catalog_contract();
+    king_catalog_contract();king_availability_contract();
     for(auto kind:{1,2,3,4,5,9,10})check(building_is_shop(kind));
     for(auto kind:{-1,0,6,7,8,11,12,std::numeric_limits<int>::max()})check(!building_is_shop(kind));
     {Host h;h.button=false;check(!h.run() && h.log==std::vector<int>({1}));}

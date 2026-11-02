@@ -89,9 +89,9 @@ public:
     void draw_seb_anchor(std::int32_t resource,std::int32_t clip,float x,float y,std::int32_t anchor,bool automatic_images);
     // DrawSebImg positive-image path, including registered image motion. No queue mutation.
     void draw_seb_image(std::int32_t resource,std::int32_t clip,std::int32_t frame,std::int32_t x,std::int32_t y,
-                        std::int32_t scale,std::int32_t anchor,core::ImageAnimationGroup*);
+                        std::int32_t scale,std::int32_t anchor,core::ImageAnimationGroup*,std::int32_t image_override=-1,std::int32_t layer=-1);
     void draw_seb_image(core::RenderDrawResource*,std::int32_t clip,std::int32_t frame,std::int32_t x,std::int32_t y,
-                        std::int32_t scale,std::int32_t anchor,core::ImageAnimationGroup*);
+                        std::int32_t scale,std::int32_t anchor,core::ImageAnimationGroup*,std::int32_t image_override=-1,std::int32_t layer=-1);
     // DrawSebEx(scale100,anchor17), used by movement widgets.
     void draw_seb_button(std::int32_t resource,std::int32_t clip,std::int32_t frame,std::int32_t x,std::int32_t y,core::ImageAnimationGroup*);
     // DrawScaledSeb's bitmap path bypasses the AppData image-motion dictionary.

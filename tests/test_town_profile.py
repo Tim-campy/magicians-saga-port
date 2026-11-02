@@ -122,11 +122,36 @@ class TownProfileTests(unittest.TestCase):
             self.assertEqual([row[5] for row in scene['clouds']],[row[5] for row in other['clouds']])
             self.assertNotEqual([row[1] for row in scene['clouds']],[row[1] for row in other['clouds']])
             self.assertTrue(any(row[0]==4 and row[1]==1 for row in scene['draws']))
-            self.assertEqual(scene['floor']['depth_layer'],10)
+            self.assertEqual(scene['floor']['font'],10)
             self.assertTrue(scene['floor']['strips']);self.assertTrue(all(row[0]==1 for row in scene['floor']['strips']))
             self.assertEqual(scene['draws'][-1],[3,0,40,103,0,0,0])
             self.assertIn('buildings, residents',report['scope'])
             self.assertNotEqual(self.run_host(root,'--background','--app-seed','42').returncode,0)
+
+    def test_buildings_use_real_catalog_contracts_and_keep_notices_queued(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);add_town_background(root,buildings=True)
+            args=('--buildings','--width','600','--height','200')
+            result=self.run_host(root,*args);self.assertEqual(result.returncode,0,result.stderr)
+            report=json.loads(result.stdout);scene=report['background']['buildings_draw']
+            self.assertEqual((scene['frame'],scene['selected'],scene['high_score']),(0,-1,0))
+            self.assertEqual(scene['font_requests'],[[1,10],[-1,10],[1,7],[-1,7]])
+            self.assertEqual(scene['chips'],[[1,0,17,85,73],[1,0,18,175,73],[1,0,18,265,73],[1,0,17,355,73],
+                [1,12,47,130,73],[1,4,14,220,73],[1,0,32,310,73],[1,0,32,400,73]])
+            self.assertEqual(scene['notices'],[[11,220,-7,11,1,0,0]])
+            self.assertEqual(scene['labels'],[{'text':'King "Hall"\\Name','x':220,'y':-6,'anchor':34,'font':7}])
+            self.assertEqual(scene['touches'],[[1,0,180,3],[2,0,270,3],[3,0,360,3]])
+            self.assertEqual((scene['building_slots'],scene['character_slots'],scene['king_reward_slots'],scene['king_queries']),(13,1,1,1))
+            self.assertEqual(self.run_host(root,*args).stdout,result.stdout)
+            score=self.run_host(root,*args,'--high-score','10');self.assertEqual(score.returncode,0,score.stderr)
+            self.assertEqual(json.loads(score.stdout)['background']['buildings_draw']['notices'],scene['notices']+[[11,220,28,17,0,0,1]])
+            narrow=self.run_host(root,*args,'--high-score','4294967306');self.assertEqual(narrow.returncode,0,narrow.stderr)
+            self.assertEqual(json.loads(narrow.stdout)['background']['buildings_draw']['notices'],json.loads(score.stdout)['background']['buildings_draw']['notices'])
+            hidden=self.run_host(root,*args,'--top-form','0');self.assertEqual(hidden.returncode,0,hidden.stderr)
+            self.assertEqual(json.loads(hidden.stdout)['background']['buildings_draw']['labels'],[])
+            for invalid in (('--high-score','9223372036854775808'),('--top-form','2')):
+                self.assertNotEqual(self.run_host(root,*args,*invalid).returncode,0)
+            self.assertNotEqual(self.run_host(root,'--scenery','--high-score','1').returncode,0)
 
 
 if __name__=='__main__':unittest.main()

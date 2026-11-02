@@ -161,7 +161,16 @@ int main()try{
     auto negative=file(-1);PreparedAnimationResource negative_clip({&negative});
     RenderDrawResource negative_resource{&negative_clip.resource(),ia};app.characters=&negative_resource;
     backend.clear_quads();backend.draw_scaled_seb(1,0,0,10,10,100);check(backend.quads().empty());
-    fails([&]{backend.draw_seb_image(1,0,0,10,10,100,17,nullptr);});check(backend.quads().empty());app.characters=&ar;
+    fails([&]{backend.draw_seb_image(1,0,0,10,10,100,17,nullptr);});check(backend.quads().empty());
+    backend.draw_seb_image(1,0,0,10,10,100,17,nullptr,2);
+    check(backend.quads().size()==1&&backend.quads()[0].texture==key_a); // Override wins over negative TexId.
+    backend.clear_quads();app.characters=&layer_resource;
+    backend.draw_seb_image(1,0,0,10,10,100,68,nullptr,2,1);
+    check(backend.quads().size()==1);const auto single_layer=box();
+    backend.clear_quads();backend.draw_seb_image(1,0,0,10,10,100,68,nullptr,2);
+    check(backend.quads().size()==2&&box()==single_layer); // Selected layer starts from caller's point.
+    backend.clear_quads();fails([&]{backend.draw_seb_image(1,0,0,10,10,100,17,nullptr,2,2);});
+    check(backend.quads().empty());app.characters=&ar;
     // Anchored current-frame drawing applies the load-time bounding offset and
     // clears it (rather than restoring the old value), including on failure.
     auto* payload=first.resource().clips->at(3)->sprites;

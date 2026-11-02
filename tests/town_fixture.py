@@ -3,15 +3,23 @@ import struct
 from test_sprite_preview import jar,png,seb
 
 
-def add_town_background(root,scenery=False):
+def add_town_background(root,scenery=False,buildings=False):
+    scenery=scenery or buildings
     if not (root/'textassets').exists():
         (root/'textassets').mkdir()
         (root/'mission-resources.tsv').write_text('mission_resources 1\ntables -1 "textassets/tables.bin" "xls"\n')
         (root/'new-game-save.tsv').write_text('new_game_save 1\nselection 0 -1\ntown_capacity 3\nwallet 37 43\n')
     rows=[f'{i}\t{7+i}\t0\t-1\t1' for i in range(3)]
     area='0\tFirst\t0\t0\t1\n1\tSecond\t0\t0\t0'
-    (root/'textassets/tables.bin').write_bytes(jar([
-        ('English.lproj/Town.txt','\n'.join(rows).encode()),('English.lproj/Area.txt',area.encode())]))
+    tables=[('English.lproj/Town.txt','\n'.join(rows).encode()),('English.lproj/Area.txt',area.encode())]
+    if buildings:
+        (root/'new-game-save.tsv').write_text('new_game_save 1\nselection 0 -1\ntown_capacity 4\nwallet 37 43\n')
+        tables[0]=('English.lproj/Town.txt',b'0\t12\t0\t-1\t1\n1\t4\t0\t-1\t1\n2\t-1\t1\t1\t99\t-1\t0\n3\t-1\t1\t1\t99\t-1\t0')
+        tables.extend([
+            ('English.lproj/Building.txt',b'4\tKing "Hall"\\Name\tselect\t14\t50\t7\t0\t0\tGift\t2\n12\tTree\tselect\t47\t-1\t8\t0\t0\tDecoration\t2'),
+            ('English.lproj/KingReward.txt',b'0\tFirst\t10\t0\t0\t0\t0'),
+            ('English.lproj/Chara.txt',b'0\tResident\t7\tres\t8\tres2\t1\t2\t3\t4\t5\t150\t1\t2\t11\t12\t6\t7\t8\t-1\t9\t5')])
+    (root/'textassets/tables.bin').write_bytes(jar(tables))
     atlas=png(4,2,[c for _ in range(2) for p in [(255,0,0,255)]*2+[(0,255,0,255)]*2 for c in p])
     members=[
         ('img.inf',b'0\tatlas.png,bin\n9\tbackground.png,bin\n'),
@@ -35,5 +43,16 @@ def add_town_background(root,scenery=False):
             ('birds.seb',layers()),('leaves.seb',layers()),
             ('ground.png',png(40,8,[80,90,100,255]*(40*8))),
             ('birds.png',png(6,2,[channel for _ in range(2) for color in [(255,0,255,255)]*2+[(255,255,0,255)]*2+[(0,255,255,255)]*2 for channel in color]))])
+    if buildings:
+        # Chip TexId77 deliberately has no image; every call must honor the override.
+        members[0]=('img.inf',members[0][1]+b''.join(f'{i}\tchip{i}.png,bin\n'.encode() for i in (14,17,18,32,33,47)))
+        members[1]=('seb.inf',members[1][1]+b'1\tchip.seb\n9\tbutton.seb\n11\tboard.seb\n17\tarrow.seb\n')
+        members.extend([('chip.seb',seb([(0,77,0,0,3,2,0,0,0,0)])),
+                        ('button.seb',seb([(0,0,0,0,2,2,0,0,0,0)])),
+                        ('board.seb',seb([(0,0,0,0,2,2,0,0,0,0),(1,0,0,0,2,2,0,0,0,0)])),
+                        ('arrow.seb',seb([(0,0,0,0,2,2,0,0,0,0)]))])
+        for i,color in ((14,(210,100,10,255)),(17,(20,30,40,255)),(18,(40,50,60,255)),
+                        (32,(80,90,10,255)),(33,(70,80,10,255)),(47,(10,100,210,255))):
+            members.append((f'chip{i}.png',png(3,2,list(color)*6)))
     (root/'textassets/select.bin').write_bytes(jar(members))
     (root/'town-resources.tsv').write_text('town_resources 1\ntables -1 "textassets/tables.bin" "xls"\nresource 11 "textassets/select.bin" "select"\n')

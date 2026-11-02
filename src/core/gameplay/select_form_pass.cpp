@@ -1,5 +1,6 @@
 #include "select_form_pass.hpp"
 #include "entity_visual.hpp"
+#include "select_building.hpp"
 #include <stdexcept>
 #include <limits>
 namespace saga::core {
@@ -161,11 +162,84 @@ void draw_select_floor(const SelectSceneryState& state,SelectBackgroundOrigin or
         }
         tile=next;
     }
-    host.floor_depth_layer(10);
+    host.floor_push_font(10);
     const auto height=host.floor_view_height();const auto resource=host.gate_resource();
     if(!resource)throw std::invalid_argument("missing SelectForm gate resource");
     const auto clip=host.gate_clip();
     host.gate_draw(resource,clip,0,0,static_cast<float>(background_add(origin.x,40)),static_cast<float>(background_add(background_add(origin.y,-70),height)));
+}
+void queue_select_notice(EventScript& stack,std::int32_t resource,std::int32_t x,std::int32_t y,std::int32_t clip,std::int32_t frame,std::int32_t layer,std::int32_t depth){
+    if(depth==-99999)depth=scenery_count(stack);
+    const auto target=stack;auto row=std::make_shared<EventIntegers>(EventIntegers{resource,x,y,clip,frame,layer,depth});
+    scenery_required(target).push_back(std::move(row));
+}
+namespace {
+std::int32_t town_remainder(std::int32_t frame,std::int32_t maximum){
+    if(!maximum)return frame;if(maximum==-1)return 0;return frame%maximum;
+}
+}
+void draw_select_town_buildings(const SelectTownDrawingState& state,SelectBackgroundOrigin origin,SelectTownDrawingHost& host){
+    const auto count=host.town_count();const auto buildings=host.town_buildings();
+    auto tile=background_add(origin.x,85);
+    for(std::int32_t i=0;i<count;++i,tile=background_add(tile,90)){
+        const auto height=host.town_view_height();const auto game_height=host.game_height();
+        if(!check_select_view_area(background_add(tile,45),background_add(game_height,-1),60,0,host))continue;
+        if(!scenery_required(buildings).at(static_cast<std::size_t>(i)))continue;
+        const auto resource=host.town_resource();const auto clip=host.town_clip(0x168);
+        host.town_draw_chip(resource,clip,state.frame,i%3==0?17:18,tile,background_add(background_add(origin.y,-100),height));
+    }
+    host.town_pop_font();host.town_push_font(7);
+    const auto occupants=host.town_occupants();
+    for(std::int32_t i=0;i<count;++i){
+        // GetBuildingPos 0x11eb8f4 queries raw GameView height before returning.
+        const auto height=host.town_view_height();
+        const auto position=static_cast<std::uint32_t>(i)*90U+130U;
+        const auto px=position<=0x7fffffffU?static_cast<std::int32_t>(position):-1-static_cast<std::int32_t>(0xffffffffU-position);
+        const auto x=background_add(origin.x,px);const auto game_height=host.game_height();
+        if(!check_select_view_area(x,background_add(game_height,-1),60,0,host))continue;
+        const auto row=scenery_required(buildings).at(static_cast<std::size_t>(i));if(!row)continue;
+        static_cast<void>(row->at(2));const auto id=row->at(1);const auto frame=state.frame;
+        const auto enabled=host.town_enabled(i);const auto resource=host.town_resource();const auto clip=host.town_clip(0x168);
+        const auto y=background_add(background_add(height,-100),origin.y);
+        const auto notice=[&](std::int32_t field,std::int32_t nx,std::int32_t ny,std::int32_t nf){
+            const auto nc=host.town_clip(field);queue_select_notice(state.notices,11,nx,ny,nc,nf,0);
+        };
+        const auto animated_notice=[&](std::int32_t field,std::int32_t nx,std::int32_t ny,std::int32_t nf){
+            const auto nc=host.town_clip(field);const auto maximum=host.town_clip_frames(nc);
+            queue_select_notice(state.notices,11,nx,ny,nc,town_remainder(nf,maximum),0);
+        };
+        if(id==-1){
+            host.town_draw_chip(resource,clip,state.frame,enabled?33:32,x,y);
+            if(enabled)animated_notice(0x1a8,x,background_add(y,-50),state.frame);
+        }else{
+            const auto image=scenery_required(host.town_building(id)).image;
+            host.town_draw_chip(resource,clip,background_add(frame,id),image,x,y);
+            const auto type=scenery_required(host.town_building(id)).type;
+            if(!building_is_decoration(type)){
+                const bool dim=i!=state.selected;if(dim)host.town_push_dim();
+                notice(0x190,x,background_add(y,-80),1);
+                if(state.top_form)host.town_label(scenery_required(host.town_building(id)).name,x,background_add(y,-79));
+                if(i!=state.selected)host.town_pop_dim();
+            }
+            if(scenery_required(host.town_building(id)).type==7&&host.town_king_reward_available())animated_notice(0x1a8,x,background_add(y,-45),state.frame);
+            if(scenery_required(host.town_building(id)).type==6&&!scenery_required(occupants).at(static_cast<std::size_t>(i)))animated_notice(0x1a8,x,background_add(y,-45),state.frame);
+            if(scenery_required(host.town_building(id)).type==12&&host.town_share_count()==0&&host.town_form_state()==0&&host.town_share_active()){
+                if(state.top_form)host.town_share_label(x,background_add(y,-45));
+                animated_notice(0x1a8,x,background_add(y,-45),state.frame);
+            }
+        }
+        const bool share=host.town_share_active();
+        if(id!=-1){
+            const auto type=scenery_required(host.town_building(id)).type;
+            if(type==8||(!share&&type==12))continue;
+        }
+        if(i==state.selected){
+            if(!enabled)continue;
+            animated_notice(0x188,background_add(x,-5),background_add(y,14),state.frame/6);
+            host.town_touch(i,true,background_add(x,-40),background_add(y,-90));
+        }else host.town_touch(i,false,background_add(x,-40),background_add(y,-70));
+    }
+    host.town_pop_font();
 }
 SelectUpdatePrefixResult update_select_form_prefix(SelectPreludeState& prelude,SelectPreludeHost& prelude_host,
     SelectFormPassState& state,SelectFormPassHost& host,SelectCloudHost& clouds,SelectMarkerHost& markers,

@@ -244,12 +244,12 @@ void BitmapBackend::draw_seb_button(std::int32_t resource,std::int32_t clip,std:
     draw_seb_image(resource,clip,raw,x,y,100,17,clocks);
 }
 void BitmapBackend::draw_seb_image(std::int32_t resource,std::int32_t clip,std::int32_t raw,std::int32_t x,std::int32_t y,
-        std::int32_t scale,std::int32_t anchor,ImageAnimationGroup* clocks){
-    draw_seb_image(impl_->resource(resource),clip,raw,x,y,scale,anchor,clocks);
+        std::int32_t scale,std::int32_t anchor,ImageAnimationGroup* clocks,std::int32_t image_override,std::int32_t layer){
+    draw_seb_image(impl_->resource(resource),clip,raw,x,y,scale,anchor,clocks,image_override,layer);
 }
 void BitmapBackend::draw_seb_image(RenderDrawResource* manager,std::int32_t clip,std::int32_t raw,std::int32_t x,std::int32_t y,
-        std::int32_t scale,std::int32_t anchor,ImageAnimationGroup* clocks){
-    // ResourceManagerExtension.DrawSebImg 0x10ede1c, texture/layer overrides -1.
+        std::int32_t scale,std::int32_t anchor,ImageAnimationGroup* clocks,std::int32_t image_override,std::int32_t layer){
+    // ResourceManagerExtension.DrawSebImg 0x10ede1c, including explicit overrides.
     auto& s=*impl_;
     if(!manager||!manager->animations||!manager->animations->clips||!manager->images)throw std::invalid_argument("missing button SEB resource");
     auto* clock=manager->animations->clips->at(static_cast<std::size_t>(clip));
@@ -257,10 +257,15 @@ void BitmapBackend::draw_seb_image(RenderDrawResource* manager,std::int32_t clip
     const auto frame=seb_frame(raw,clock->max_frame);
     auto rows=seb_sprites(*clock->sprites,s.seb_work,frame);
     if(!rows)throw std::invalid_argument("missing button SEB rows");
-    for(const auto& sprite:*rows){
+    if(rows->size()>static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max()))throw std::length_error("SEB layer count exceeds int32");
+    const auto first=layer==-1?0:layer,last=layer==-1?static_cast<std::int32_t>(rows->size()):add(layer,1);
+    for(auto index=first;index<last;index=add(index,1)){
+        const auto sprite=rows->at(static_cast<std::size_t>(index));
+        if(image_override==-1&&!sprite)throw std::invalid_argument("missing button SEB sprite");
+        const auto texture=image_override==-1?sprite->at(1):image_override;
+        RenderImageDraw d;d.image=manager->images->at(static_cast<std::size_t>(texture));
+        const auto* motion=update_image_animation(clocks,texture,s.image_motion);
         if(!sprite)throw std::invalid_argument("missing button SEB sprite");
-        const auto texture=static_cast<std::size_t>(sprite->at(1));RenderImageDraw d;d.image=manager->images->at(texture);
-        const auto* motion=update_image_animation(clocks,sprite->at(1),s.image_motion);
         const ImageDrawingPosition identity;const auto& pose=motion?*motion:identity;
         if(sprite->at(8)!=0)s.reverse=1;
         d.u=sprite->at(2);d.v=sprite->at(3);d.source_width=sprite->at(4);d.source_height=sprite->at(5);

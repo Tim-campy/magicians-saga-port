@@ -1,9 +1,20 @@
 #include "select_building.hpp"
+#include "table_catalog.hpp"
 #include <cmath>
 #include <limits>
 #include <stdexcept>
 namespace saga::core {
 namespace {
+void read_building(BuildingDefinition& row,detail::TableTokens& tokens){
+    row.id=tokens.integer();row.name=tokens.take();row.resource=tokens.take();
+    row.image=tokens.integer();row.owner_id=tokens.integer();row.type=tokens.integer();
+    row.cost=tokens.integer();row.base_have=tokens.integer();row.explanation=tokens.take();row.flags=tokens.integer();
+}
+void read_king_reward(KingRewardDefinition& row,detail::TableTokens& tokens){
+    row.id=tokens.integer();row.name=tokens.take();row.score_value=tokens.integer();
+    row.crystal_level=tokens.integer();row.timing=tokens.integer();
+    row.terms=tokens.script();row.execs=tokens.script();
+}
 template<class T> T& required(const std::shared_ptr<T>& value) {
     if(!value)throw std::invalid_argument("null building menu data");
     return *value;
@@ -18,6 +29,41 @@ std::int32_t kind(std::int32_t id,SelectBuildingHost& host) {
     const auto row=required(host.buildings()).at(static_cast<std::size_t>(id));
     return required(row).kind;
 }
+}
+BuildingDefinition& load_building_definition(BuildingDefinition& receiver,std::optional<std::string_view> line,const EventIntegerParser& parser){
+    if(line&&!line->empty()){detail::TableTokens tokens(*line,parser);read_building(receiver,tokens);}
+    return receiver;
+}
+BuildingTable load_building_table(std::string_view text,bool normalize,const EventIntegerParser& parser){
+    return detail::load_table_records<BuildingDefinition>(text,normalize,parser,[](detail::TableTokens& tokens){
+        BuildingDefinition row;read_building(row,tokens);return row;
+    });
+}
+KingRewardDefinition& load_king_reward_definition(KingRewardDefinition& receiver,std::optional<std::string_view> line,const EventIntegerParser& parser){
+    if(line&&!line->empty()){detail::TableTokens tokens(*line,parser);read_king_reward(receiver,tokens);}
+    return receiver;
+}
+KingRewardTable load_king_reward_table(std::string_view text,bool normalize,const EventIntegerParser& parser){
+    return detail::load_table_records<KingRewardDefinition>(text,normalize,parser,[](detail::TableTokens& tokens){
+        KingRewardDefinition row;read_king_reward(row,tokens);return row;
+    });
+}
+void reset_king_reward_for_new_game(KingRewardDefinition& row){row.received=false;}
+bool king_reward_available(KingRewardAvailabilityHost& host){
+    const auto bits=static_cast<std::uint32_t>(host.high_score());
+    const auto score=bits<=0x7fffffffU?static_cast<std::int32_t>(bits):-1-static_cast<std::int32_t>(0xffffffffU-bits);
+    const auto count=[&](){
+        const auto length=required(host.rewards()).size();
+        if(length>static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max()))throw std::length_error("king reward count exceeds int32");
+        return static_cast<std::int32_t>(length);
+    };
+    for(std::int32_t index=0;index<count();++index){
+        const auto received=required(required(host.rewards()).at(static_cast<std::size_t>(index))).received;
+        if(received)continue;
+        const auto threshold=required(required(host.rewards()).at(static_cast<std::size_t>(index))).score_value;
+        if(threshold<=score)return true;
+    }
+    return false;
 }
 // BuildingData.IsShop, 0x116c9c4.
 bool building_is_shop(std::int32_t value) {return (value>=1 && value<=5) || value==9 || value==10;}

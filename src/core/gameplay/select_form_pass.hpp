@@ -72,13 +72,49 @@ public:
     virtual SebSpriteState* floor_sprite()=0; // Fresh resSelect.seb[RESSELECT_SEB_FLOOR].
     virtual RenderImage* floor_image()=0; // Fresh resSelect.images[RESSELECT_IMG_SELECT_FLOOR].
     virtual void floor_draw(SebSpriteState*,RenderImage*,std::int32_t frame,std::int32_t x,std::int32_t y)=0;
-    virtual void floor_depth_layer(std::int32_t)=0;
+    virtual void floor_push_font(std::int32_t)=0;
     virtual SelectBackgroundResource gate_resource()=0;
     virtual std::int32_t gate_clip()=0;
     virtual void gate_draw(SelectBackgroundResource,std::int32_t clip,std::int32_t frame,std::int32_t layer,float x,float y)=0;
 };
-// _Draw 0x11f0e10..0x11f0fe0: floor ends, middle strips, layer10 and gate0/layer0.
+// _Draw 0x11f0e10..0x11f0fe0: floor ends, middle strips, font10 and gate0/layer0.
 void draw_select_floor(const SelectSceneryState&,SelectBackgroundOrigin,SelectFloorHost&);
+struct TownBuildingView {std::int32_t image=0,type=0;FormText name;};
+struct SelectTownDrawingState {
+    const std::int32_t& frame;
+    const std::int32_t& selected;
+    bool top_form;
+    EventScript& notices;
+};
+class SelectTownDrawingHost:public SelectViewportHost {
+public:
+    virtual std::int32_t town_count()=0;
+    virtual EventScript town_buildings()=0;
+    virtual std::shared_ptr<std::vector<EventObject>> town_occupants()=0;
+    virtual bool town_enabled(std::int32_t)=0;
+    virtual std::shared_ptr<TownBuildingView> town_building(std::int32_t)=0;
+    virtual std::int32_t town_view_height()=0;
+    virtual SelectBackgroundResource town_resource()=0;
+    virtual std::int32_t town_clip(std::int32_t field)=0;
+    virtual std::int32_t town_clip_frames(std::int32_t clip)=0;
+    virtual void town_draw_chip(SelectBackgroundResource,std::int32_t clip,std::int32_t frame,std::int32_t image,std::int32_t x,std::int32_t y)=0;
+    virtual void town_push_font(std::int32_t)=0;
+    virtual void town_pop_font()=0;
+    virtual void town_push_dim()=0;
+    virtual void town_pop_dim()=0;
+    virtual void town_label(FormText,std::int32_t x,std::int32_t y)=0;
+    virtual bool town_king_reward_available()=0;
+    virtual std::int32_t town_share_count()=0;
+    virtual bool town_share_active()=0;
+    virtual std::int32_t town_form_state()=0;
+    virtual void town_share_label(std::int32_t x,std::int32_t y)=0;
+    virtual void town_touch(std::int32_t slot,bool selected,std::int32_t x,std::int32_t y)=0;
+};
+// DrawSebStack 0x11f3714: seven-int request; -99999 selects current list count.
+void queue_select_notice(EventScript&,std::int32_t resource,std::int32_t x,std::int32_t y,std::int32_t clip,std::int32_t frame,std::int32_t layer,std::int32_t depth=-99999);
+// _Draw 0x11f0fe4..0x11f1d98: building underlays, font scopes, sprites and notice requests.
+// Does not flush the notice stack or draw the later area/resident/foreground passes.
+void draw_select_town_buildings(const SelectTownDrawingState&,SelectBackgroundOrigin,SelectTownDrawingHost&);
 struct SelectFormPassState {
     std::int32_t state;
     bool captured;

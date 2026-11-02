@@ -42,3 +42,4 @@ game:0x0600013a	reimplemented	src/core/gameplay/select_prelude.cpp	Ordered row[1
 game:0x0600081f	reimplemented	src/core/gameplay/select_touch_move.cpp	CheckCollisionTownHuman: first live-list match at binary32 distance <5 excluding row[8]==2; tests/test_select_touch_move.cpp
 game:0x060001c7	reimplemented	src/core/gameplay/select_triggers.cpp	CheckAlreadyEvent: negative/out-of-range false, fresh catalog row execution_count>0; tests/test_select_triggers.cpp
 game:0x06001130	documented	docs/subsystems/events.md	108-byte constructor initializes inherited BaseData state; execNum+0x20 remains CLR zero; inherited NewGame RET preserves reused counters
+game:0x06000251	traced	docs/subsystems/town.md	Read-only false branch ported: capture highscore once, signed-low32 threshold scan with live rows; granting/event true branch remains unported.

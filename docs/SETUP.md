@@ -267,11 +267,18 @@ build/viewer/saga_town.exe --data extracted/full --capture build/town-preview.bm
 
 The viewer build captures one hidden GL frame and refuses an existing destination. `--background` runs the same bitmap/SEB prefix without a GPU. Explicit context options are `--width 600 --height 640 --view-x 0 --view-y 53 --camera-x 0 --camera-y -9999`; native camera bounds clamp the requested position, and scale100 is the supported profile. Reports declare this context provisional.
 
-`--scenery` extends that prefix through native cloud/bird/leaf initialization, bird drawing, two ground passes, clouds, floor strips and the layer10 gate. Separate `--app-seed 42 --lib-seed 42` defaults select provisional stream states at this subsequence's entry; both draw counts and all rows are reported. The mode does not run town Update or full SelectForm.Init. Buildings, residents, foreground leaves, interactive town controls and quest selection remain S2 work.
+`--scenery` extends that prefix through native cloud/bird/leaf initialization, bird drawing, two ground passes, clouds, floor strips and gate drawing under font10. Separate `--app-seed 42 --lib-seed 42` defaults select provisional stream states at this subsequence's entry; both draw counts and all rows are reported. The mode does not run town Update or full SelectForm.Init.
 
 ```powershell
 build/desktop/saga_town.exe --data extracted/full --scenery
 build/viewer/saga_town.exe --data extracted/full --scenery --capture build/town-scenery.bmp
+```
+
+`--buildings` implies scenery and adds initial construction sprites from Building.txt, KingReward reset/read-only availability and Chara NewGame-derived occupancy. `--high-score 0` is a provisional int64 system-save input; `--top-form 1` supplies the provisional standalone form-stack context. Reports retain queued notice rows, font scopes and stubbed text/touch requests. Residents, foreground, notice-stack flushing, interactive controls and quest selection remain S2 work.
+
+```powershell
+build/desktop/saga_town.exe --data extracted/full --buildings
+build/viewer/saga_town.exe --data extracted/full --buildings --capture build/town-buildings.bmp
 ```
 
 ### Headless mission host

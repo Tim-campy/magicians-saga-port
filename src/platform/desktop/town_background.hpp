@@ -5,7 +5,10 @@
 #include "core/gameplay/select_form_pass.hpp"
 #include "core/gameplay/select_camera.hpp"
 #include "core/gameplay/game_random.hpp"
+#include "core/gameplay/select_building.hpp"
+#include "core/gameplay/progression_tables.hpp"
 #include <ostream>
+#include <stdexcept>
 
 namespace saga::desktop {
 struct TownBackgroundContext {
@@ -18,10 +21,12 @@ struct TownBackgroundContext {
     bool depth_step=true;
     bool scenery=false;
     std::int32_t app_seed=42,lib_seed=42; // Separate provisional streams at the cloud-init boundary.
+    bool buildings=false,top_form=true; // Provisional standalone form-stack context.
+    std::int64_t high_score=0; // Provisional system-save slot8, independent of normal NewGame.
 };
-class TownBackground final:private core::SelectBackgroundHost,private core::SelectActiveAreaHost,private core::SelectCameraHost,private core::SelectSceneryHost,private core::SelectFloorHost {
+class TownBackground final:private core::SelectBackgroundHost,private core::SelectActiveAreaHost,private core::SelectCameraHost,private core::SelectSceneryHost,private core::SelectFloorHost,private core::SelectTownDrawingHost,private core::KingRewardAvailabilityHost {
 public:
-    TownBackground(ResourceArchive& tables,const GameArchiveEntry& selected,ResourceProfile,std::int32_t capacity,TownBackgroundContext);
+    TownBackground(ResourceArchive& tables,const GameArchiveEntry& selected,ResourceProfile,std::int32_t capacity,TownBackgroundContext,core::EventScript buildings=nullptr,std::shared_ptr<std::vector<std::uint8_t>> enabled=nullptr);
     void draw(BitmapBackend&);
     void report(std::ostream&)const;
     BitmapApplication& application(){return application_;}
@@ -58,7 +63,24 @@ private:
     struct FloorDraw {std::int32_t frame,x,y;};
     std::vector<FloorDraw> floor_draws_;
     core::SebStaticWork floor_work_;
-    std::int32_t floor_layer_=0;
+    std::int32_t floor_font_=0;
+    std::vector<std::int32_t> fonts_;
+    std::vector<std::array<std::int32_t,2>> font_requests_;
+    core::BuildingTable building_records_;
+    core::EventScript building_cache_,notices_=std::make_shared<std::vector<core::EventInstruction>>();
+    std::shared_ptr<std::vector<std::uint8_t>> building_enabled_;
+    std::vector<std::shared_ptr<core::TownBuildingView>> building_views_;
+    core::CharacterProgressionTable characters_;
+    std::vector<std::shared_ptr<core::CharacterNewGameState>> character_states_;
+    std::shared_ptr<core::KingRewardRows> king_rewards_=std::make_shared<core::KingRewardRows>();
+    std::shared_ptr<core::ImageAnimationGroup> image_clocks_;
+    std::int32_t town_frame_=0,selected_chip_=-1; // SelectForm.Init stores, before any Update.
+    struct ChipDraw {std::int32_t clip,frame,image,x,y;};
+    std::vector<ChipDraw> chip_draws_;
+    struct Label {core::FormText text;std::int32_t x,y;};
+    std::vector<Label> labels_;
+    std::vector<std::array<std::int32_t,4>> touches_;
+    std::int32_t king_queries_=0;
     std::size_t quads_=0;
     std::shared_ptr<core::EventIntegers> normal_save_integers()override{return save_integers_;}
     std::shared_ptr<core::CameraAreas> camera_areas()override{return camera_areas_;}
@@ -90,9 +112,32 @@ private:
     core::SebSpriteState* floor_sprite()override;
     core::RenderImage* floor_image()override{return manager_.drawing().images->at(3);} // RESSELECT_IMG_SELECT_FLOOR.
     void floor_draw(core::SebSpriteState*,core::RenderImage*,std::int32_t,std::int32_t,std::int32_t)override;
-    void floor_depth_layer(std::int32_t value)override{floor_layer_=value;backend_->set_depth_layer(value);}
+    void floor_push_font(std::int32_t value)override{floor_font_=value;town_push_font(value);}
     core::SelectBackgroundResource gate_resource()override{return &manager_.drawing();}
     std::int32_t gate_clip()override{return 3;} // RESSELECT_SEB_GATE, AppData static+0x170.
     void gate_draw(core::SelectBackgroundResource,std::int32_t,std::int32_t,std::int32_t,float,float)override;
+    std::int32_t town_count()override{return save_integers_->at(19);}
+    core::EventScript town_buildings()override{return building_cache_;}
+    std::shared_ptr<std::vector<core::EventObject>> town_occupants()override;
+    bool town_enabled(std::int32_t index)override{return (building_enabled_->at(static_cast<std::size_t>(index))&1)!=0;}
+    std::shared_ptr<core::TownBuildingView> town_building(std::int32_t index)override{return building_views_.at(static_cast<std::size_t>(index));}
+    std::int32_t town_view_height()override{return view_height();}
+    core::SelectBackgroundResource town_resource()override{return &manager_.drawing();}
+    std::int32_t town_clip(std::int32_t field)override;
+    std::int32_t town_clip_frames(std::int32_t clip)override{return manager_.animations().clips->at(static_cast<std::size_t>(clip))->max_frame;}
+    void town_draw_chip(core::SelectBackgroundResource,std::int32_t,std::int32_t,std::int32_t,std::int32_t,std::int32_t)override;
+    void town_push_font(std::int32_t)override;
+    void town_pop_font()override;
+    void town_push_dim()override{backend_->graphics().push_render_mode(0,160,0);}
+    void town_pop_dim()override{backend_->graphics().pop_render_mode();}
+    void town_label(core::FormText,std::int32_t,std::int32_t)override;
+    bool town_king_reward_available()override{++king_queries_;return core::king_reward_available(*this);}
+    std::int64_t high_score()override{return context_.high_score;}
+    std::shared_ptr<core::KingRewardRows> rewards()override{return king_rewards_;}
+    std::int32_t town_share_count()override{throw std::logic_error("system share-count restoration is unbound");}
+    bool town_share_active()override{return false;} // MyConfig..cctor 0x11743f8.
+    std::int32_t town_form_state()override{return 0;} // Native fresh SetState(0).
+    void town_share_label(std::int32_t,std::int32_t)override{throw std::logic_error("share label provider is unbound");}
+    void town_touch(std::int32_t,bool,std::int32_t,std::int32_t)override;
 };
 } // namespace saga::desktop

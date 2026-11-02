@@ -571,7 +571,7 @@ game:0x0600024d,main.AppData.DrawZSortObjects,boot,reimplemented,2548,0x1115e54
 game:0x0600024e,game:0x0600024e,boot,,68,0x1116848
 game:0x0600024f,game:0x0600024f,boot,,28,0x111688c
 game:0x06000250,game:0x06000250,boot,,284,0x11168a8
-game:0x06000251,game:0x06000251,boot,,804,0x11169c4
+game:0x06000251,main.AppData.CheckExeKingEvent,boot,traced,804,0x11169c4
 game:0x06000252,game:0x06000252,boot,,508,0x1116ce8
 game:0x06000253,game:0x06000253,boot,,304,0x1116ee4
 game:0x06000254,game:0x06000254,boot,,440,0x1117014
@@ -2014,7 +2014,7 @@ game:0x06000808,game:0x06000808,ui,,8,0x11eff84
 game:0x06000809,game:0x06000809,ui,,8,0x11eff8c
 game:0x0600080a,game:0x0600080a,ui,,300,0x11eff94
 game:0x0600080b,form.SelectForm._Draw,ui,traced,10820,0x11f0714
-game:0x0600080c,game:0x0600080c,ui,,404,0x11f3714
+game:0x0600080c,form.SelectForm.DrawSebStack,ui,reimplemented,404,0x11f3714
 game:0x0600080d,game:0x0600080d,ui,,624,0x11f417c
 game:0x0600080e,game:0x0600080e,ui,,276,0x11eb418
 game:0x0600080f,game:0x0600080f,ui,,16,0x11f4464
@@ -3944,7 +3944,7 @@ game:0x06001039,data.BaseData.Check,data,documented,16,0x1169924
 game:0x0600103a,data.BuildingData.NewGame,data,traced,132,0x116c868
 game:0x0600103b,game:0x0600103b,data,,216,0x116c8ec
 game:0x0600103c,data.BuildingData.IsShop,data,reimplemented,44,0x116c9c4
-game:0x0600103d,game:0x0600103d,data,,32,0x116c9f0
+game:0x0600103d,data.BuildingData.IsDecoration,data,reimplemented,32,0x116c9f0
 game:0x0600103e,game:0x0600103e,data,,188,0x116ca10
 game:0x0600103f,game:0x0600103f,data,,348,0x116cacc
 game:0x06001040,game:0x06001040,data,,8,0x116cc28
@@ -3963,7 +3963,7 @@ game:0x0600104c,game:0x0600104c,data,,8,0x116cc88
 game:0x0600104d,game:0x0600104d,data,,8,0x116cc90
 game:0x0600104e,game:0x0600104e,data,,8,0x116cc98
 game:0x0600104f,game:0x0600104f,data,,8,0x116cca0
-game:0x06001050,game:0x06001050,data,,280,0x116cca8
+game:0x06001050,data.BuildingData.Load,data,reimplemented,280,0x116cca8
 game:0x06001051,game:0x06001051,data,,120,0x116cdc0
 game:0x06001052,game:0x06001052,data,,120,0x116ce38
 game:0x06001053,game:0x06001053,data,,108,0x116ceb0
@@ -4272,10 +4272,10 @@ game:0x06001186,game:0x06001186,data,,8,0x1171c50
 game:0x06001187,game:0x06001187,data,,8,0x1171c58
 game:0x06001188,game:0x06001188,data,,8,0x1171c60
 game:0x06001189,game:0x06001189,data,,8,0x1171c68
-game:0x0600118a,game:0x0600118a,data,,232,0x1171c70
+game:0x0600118a,data.KingRewardData.Load,data,reimplemented,232,0x1171c70
 game:0x0600118b,game:0x0600118b,data,,8,0x1171d58
 game:0x0600118c,game:0x0600118c,data,,4,0x1171d60
-game:0x0600118d,data.KingRewardData.NewGame,data,traced,8,0x1171d64
+game:0x0600118d,data.KingRewardData.NewGame,data,reimplemented,8,0x1171d64
 game:0x0600118e,game:0x0600118e,data,,12,0x1171d6c
 game:0x0600118f,game:0x0600118f,data,,124,0x1171d78
 game:0x06001190,game:0x06001190,data,,124,0x1171df4
