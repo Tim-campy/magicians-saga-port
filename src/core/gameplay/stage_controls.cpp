@@ -1,5 +1,6 @@
 #include "stage_controls.hpp"
 #include "combat_rules.hpp"
+#include "ecs_combat.hpp"
 #include <stdexcept>
 
 namespace saga::core {
@@ -41,5 +42,19 @@ void draw_stage_move_controls(StageStartState& state,StageControlsHost& host){
     host.controls_move_button(35,2,add(height,-75),36,0x20000,17,{0,10,15,5});
     if(!state.move_front_pushed)host.controls_draw_seb(2,4,std::nullopt,75,add(height,-53));
     if(!state.collection.boss_defeated)host.controls_move_button(35,2,add(height,-38),37,0x80000,17,{0,10,5,15});
+}
+void draw_stage_player_mp_gauge(StageMpDrawingHost& host){
+    const auto width=host.mp_width(),height=host.mp_height();
+    auto& player=required(host.mp_player());
+    auto& parameter=required(resolve_combat_parameter(player,1));
+    const auto context=host.capture_mp_numbers();
+    const auto value=add(parameter.value,parameter.extra),maximum=add(parameter.maximum,parameter.extra_maximum);
+    const auto text=host.format_mp(value,maximum);
+    const auto y=add(height,-2);
+    const auto text_width=host.draw_mp_numbers(context,text,add(width,-83),y,0,68);
+    const auto x=word(static_cast<std::uint32_t>(width)-static_cast<std::uint32_t>(text_width)-95U);
+    host.draw_mp_icon(static_cast<float>(x),static_cast<float>(y),68);
+    auto* fresh_player=host.mp_player();
+    host.mp_parameter_gauge({fresh_player,width,height,4,1,68,true});
 }
 }
