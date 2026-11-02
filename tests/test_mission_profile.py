@@ -241,6 +241,58 @@ class MissionProfileTests(unittest.TestCase):
             self.assertEqual(scaled['wallet']['crystals'],0)
 
     @unittest.skipUnless(os.environ.get('SAGA_TEST_FONT'),'public font fixture supplied by CTest')
+    def test_fresh_quest_exit_reports_retreat_and_timeout_without_grants(self):
+        cases=(
+            ('retreat',3,None,180,
+             ''.join(f'{frame} pulse 1048576\n' for frame in range(30,181,5)),
+             '200 pulse 33554432\n201 pulse 134217728\n202 answer 0\n'),
+            ('timeout',2,0,39,
+             '28 pulse 1048576\n29 pulse 1048576\n30 pulse 1048576\n31 pulse 1048576\n',
+             '40 answer 0\n41 answer 2\n'),
+        )
+        for outcome,code,time_limit,active_frame,opening,ending in cases:
+            with self.subTest(outcome=outcome), tempfile.TemporaryDirectory() as directory:
+                root=Path(directory)
+                make_data_entry_fixture(root,os.environ['SAGA_TEST_FONT'],quest_time_limit=time_limit)
+                replay=root/'ending.replay';replay.write_text(opening+ending,encoding='ascii')
+                def run(frames):
+                    result=subprocess.run([str(EXE),'--data',str(root),'--quest','2','--frames',str(frames),
+                                           '--headless','--replay',str(replay)],capture_output=True,text=True,timeout=30)
+                    self.assertEqual(result.returncode,0,result.stderr)
+                    return json.loads(result.stdout)
+                active=run(active_frame)
+                self.assertTrue(active['fresh_hero_bootstrap'] and active['new_game_save'] and active['original_world_entry'])
+                self.assertTrue(active['native_stage_started'])
+                self.assertIsNone(active['quest_exit'])
+                self.assertFalse(active['transition_pending'] or active['result_granted'])
+                self.assertEqual(active['wallet'],{'money':37,'crystals':43})
+                if outcome=='timeout':
+                    self.assertEqual(active['stage_modal_stack'],['retry','defeat'])
+                else:
+                    self.assertEqual(active['stage_state'],1)
+                terminal=run(540)
+                self.assertEqual(terminal['quest_exit'],{
+                    'code':code,'outcome':outcome,'handoff':'held','rewards_granted':False})
+                self.assertTrue(terminal['transition_pending'])
+                self.assertFalse(terminal['result_granted'] or terminal['quest_completed'] or terminal['stage_retried'])
+                self.assertNotIn('quest_result',terminal)
+                self.assertEqual(terminal['wallet'],active['wallet'])
+                self.assertEqual(terminal['inventory_changes'],[])
+                self.assertEqual(terminal['recruit_changes'],[])
+                self.assertEqual(terminal['quest_record']['challenges'],1)
+                self.assertEqual(terminal['quest_record']['clears'],0)
+                self.assertEqual(terminal['notification_events'].count('transition:1'),1)
+                self.assertEqual(run(540),terminal)
+                extended=run(800)
+                # The requested budget is outside the reached state: a held return cannot tick again.
+                for key in ('frames','movement_steps','battle_steps','world_update_calls','remaining_time',
+                            'stage_state','stage_rewards','wallet','rescued_prisoners','quest_record',
+                            'saved_characters','inventory_changes','recruit_changes','quest_exit',
+                            'notification_events','logic_state_hash','logic_state_bytes'):
+                    self.assertEqual(extended[key],terminal[key],key)
+                self.assertEqual((terminal['frames_requested'],extended['frames_requested']),(540,800))
+
+    @unittest.skipUnless(os.environ.get('SAGA_TEST_FONT'),'public font fixture supplied by CTest')
     def test_native_notice_victory_and_result_modal_acknowledgement(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);make_data_entry_fixture(root,os.environ['SAGA_TEST_FONT'])
@@ -1688,6 +1740,8 @@ class MissionProfileTests(unittest.TestCase):
             self.assertTrue(report['quest_completed'])
             self.assertEqual(report['stage_state'], 4)
             self.assertTrue(report['result_granted'])
+            self.assertEqual(report['quest_exit'],{
+                'code':0,'outcome':'clear','handoff':'held','rewards_granted':True})
             self.assertEqual(report['wallet'], {'money': 19, 'crystals': 23})
             self.assertEqual(report['rescued_prisoners'], 5)
             self.assertEqual(report['result_gear_levels'], {'weapon': 2, 'hat': 2, 'cloth': 2})
@@ -1698,8 +1752,33 @@ class MissionProfileTests(unittest.TestCase):
             self.assertEqual(report['saved_characters'], [{'id': 2, 'level': 1 + (9 + gained) // 10, 'experience': (9 + gained) % 10}])
             self.assertEqual({(v['kind'], v['id'], v['stock']) for v in report['inventory_changes']}, {(0, 1, 1), (1, 0, 1), (2, 0, 1)})
             self.assertEqual(report['recruit_changes'], [{'id': 2, 'found': 1, 'is_new': True, 'recruited': 1}])
+            rewards=report['quest_result']
+            self.assertEqual({name:rewards[name] for name in ('weapons','characters','clothes','hats')},
+                             {'weapons':[[1,1]],'characters':[[2,1]],'clothes':[[0,1]],'hats':[[0,1]]})
+            self.assertEqual((rewards['money'],rewards['crystals'],rewards['prisoners']),(9,3,1))
+            self.assertEqual(len(rewards['members']),1)
+            member=rewards['members'][0]
+            self.assertEqual({key:member[key] for key in ('levels_gained','added_experience','display_level','display_experience','level_up_frame')},
+                             {'levels_gained':(9+gained)//10,'added_experience':gained,'display_level':1,
+                              'display_experience':9,'level_up_frame':-1})
             self.assertEqual(report['notification_events'][-3:], ['make_result', 'push:result', 'transition:1'])
             self.assertEqual(self.run_host(scene, frames=240).stdout, result.stdout)
+            # Grant rows describe the award even when one-slot inventory and recruitment are unchanged.
+            capped_text=text
+            for kind in ('equipment','cloth','hat'):
+                capped_text=capped_text.replace(f'result_inventory {kind} 0 0 0\n',
+                                                f'result_inventory {kind} 1 0 1\n')
+            capped_text=capped_text.replace('result_recruits 0 0 0\n','result_recruits 1 1 1\n')
+            scene.write_text(capped_text,encoding='utf-8')
+            capped=self.run_host(scene,frames=240)
+            self.assertEqual(capped.returncode,0,capped.stderr)
+            capped=json.loads(capped.stdout)
+            self.assertEqual(capped['inventory_changes'],[])
+            self.assertEqual(capped['recruit_changes'],[])
+            self.assertEqual(capped['quest_result'],rewards)
+            self.assertEqual(capped['wallet'],report['wallet'])
+            self.assertEqual(capped['saved_characters'],report['saved_characters'])
+            self.assertEqual(capped['quest_exit'],report['quest_exit'])
             # The same cleared state must wait for an explicit confirmation, without repeating grants.
             scene.write_text(text.replace('stage_pulse 200 1048576\n', ''), encoding='utf-8')
             waiting = self.run_host(scene, frames=240)
@@ -1707,6 +1786,7 @@ class MissionProfileTests(unittest.TestCase):
             pending = json.loads(waiting.stdout)
             self.assertEqual(pending['stage_state'], 3)
             self.assertFalse(pending['result_granted'])
+            self.assertIsNone(pending['quest_exit'])
             self.assertEqual(pending['wallet'], {'money': 10, 'crystals': 20})
             self.assertEqual(pending['saved_characters'], [{'id': 2, 'level': 1, 'experience': 9}])
             scene.write_text(text.replace('stage_pulse 200', 'stage_pulse 1'), encoding='utf-8')
@@ -1722,6 +1802,9 @@ class MissionProfileTests(unittest.TestCase):
             self.assertEqual(terminal['frames'], 201)
             self.assertEqual(terminal['wallet'], report['wallet'])
             self.assertEqual(terminal['notification_events'].count('transition:1'), 1)
+            self.assertEqual(terminal['quest_exit'],report['quest_exit'])
+            self.assertEqual(terminal['quest_result'],rewards)
+            self.assertEqual(terminal['logic_state_hash'],report['logic_state_hash'])
             scene.write_text(text.replace('stage_events fresh 0', 'stage_events fresh 1 99 0'), encoding='utf-8')
             self.assertIn('stage event catalog dispatch', self.run_host(scene).stderr)
             scene.write_text(text.replace('result_inventory hat 0 0 0\n', ''), encoding='utf-8')
@@ -1746,6 +1829,8 @@ class MissionProfileTests(unittest.TestCase):
             self.assertEqual(lost.returncode, 0, lost.stderr)
             losing = json.loads(lost.stdout)
             self.assertEqual(losing['frames'], 1)
+            self.assertEqual(losing['quest_exit'],{
+                'code':1,'outcome':'defeat','handoff':'held','rewards_granted':False})
             self.assertFalse(losing['result_granted'])
             self.assertFalse(losing['quest_completed'])
             self.assertEqual(losing['quest_record']['challenges'], 1)

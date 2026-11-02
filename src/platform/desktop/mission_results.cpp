@@ -1,5 +1,6 @@
 #include "mission_humans.hpp"
 #include "core/gameplay/event_progression.hpp"
+#include "core/gameplay/quest_return.hpp"
 #include <stdexcept>
 
 namespace saga::desktop {
@@ -85,6 +86,12 @@ std::int32_t MissionResults::return_stage(){
 }
 void MissionResults::change_to_town_form(bool){unavailable("town form switch");}
 void MissionResults::send_town_return(std::int32_t,const TownReturnEvent&){unavailable("town event31");}
+std::optional<std::int32_t> MissionResults::exit_code()const{
+    if(!transition_)return std::nullopt;
+    const auto* continuation=transition_.target<QuestTownContinuation>();
+    if(!continuation)throw std::logic_error("mission result has an unknown return continuation");
+    return continuation->result;
+}
 void MissionHumans::enable_results(MissionResultScenario scenario){
     if(results_||!collection_enabled_)throw std::invalid_argument("results require one explicit state and collection fresh");
     results_=std::make_unique<MissionResults>(*this,std::move(scenario));
@@ -95,6 +102,11 @@ void MissionHumans::write_result_report(std::ostream& out){
     out<<",\"results_enabled\":"<<(results_?"true":"false");if(results_)results_->report(out);
 }
 void MissionResults::report(std::ostream& out){
+    out<<",\"quest_exit\":";
+    if(const auto code=exit_code()){
+        const auto* outcome=*code==0?"clear":*code==1?"defeat":*code==2?"timeout":*code==3?"retreat":"unknown";
+        out<<"{\"code\":"<<*code<<",\"outcome\":\""<<outcome<<"\",\"handoff\":\"held\",\"rewards_granted\":"<<(result_?"true":"false")<<'}';
+    }else out<<"null";
     out<<",\"result_granted\":"<<(result_?"true":"false")<<",\"transition_pending\":"<<(transition_pending()?"true":"false")
        <<",\"quest_completed\":"<<(owner_.stage_.quest->completed?"true":"false")<<",\"wallet\":{\"money\":"<<state_.money<<",\"crystals\":"<<state_.crystals<<"},\"rescued_prisoners\":"<<rescued_prisoners();
     const auto& q=quest_record();out<<",\"quest_record\":{\"best_experience\":"<<q.best_experience<<",\"best_money\":"<<q.best_money<<",\"challenges\":"<<q.challenges<<",\"clears\":"<<q.clears<<",\"defeated\":"<<q.defeated<<",\"rescued\":"<<q.rescued<<",\"best_damage\":"<<q.best_damage<<'}';
@@ -108,7 +120,13 @@ void MissionResults::report(std::ostream& out){
         if(!first)out<<',';first=false;out<<"{\"kind\":"<<k<<",\"id\":"<<e.first<<",\"found\":"<<v.discovery_state<<",\"is_new\":"<<(v.is_new?"true":"false")<<",\"stock\":"<<v.stock<<'}';}out<<']';
     out<<",\"recruit_changes\":[";first=true;for(const auto& e:recruits_){const auto& v=e.second;const auto& a=state_.recruit_records?state_.recruit_records->at(e.first):state_.recruits;if(v.discovery_state==a.discovery_state&&v.is_new==a.is_new&&v.recruited==a.recruited)continue;
         if(!first)out<<',';first=false;out<<"{\"id\":"<<e.first<<",\"found\":"<<v.discovery_state<<",\"is_new\":"<<(v.is_new?"true":"false")<<",\"recruited\":"<<v.recruited<<'}';}out<<']';
-    if(!result_)return;const auto& r=*result_;out<<",\"quest_result\":{\"experience\":"<<r.experience<<",\"money\":"<<r.money<<",\"crystals\":"<<r.crystals<<",\"prisoners\":"<<r.prisoners<<",\"members\":[";first=true;
-    for(const auto& m:r.members){if(!first)out<<',';first=false;out<<"{\"handle\":"<<m.character<<",\"levels_gained\":"<<m.levels_gained<<",\"added_experience\":"<<m.added_experience<<",\"display_level\":"<<m.display_level<<",\"display_experience\":"<<m.display_experience<<'}';}out<<"]}";
+    if(!result_)return;const auto& r=*result_;out<<",\"quest_result\":{\"experience\":"<<r.experience<<",\"money\":"<<r.money<<",\"crystals\":"<<r.crystals<<",\"prisoners\":"<<r.prisoners;
+    const auto grants=[&](const char* name,const std::vector<QuestRewardResult::Grant>& rows){
+        out<<",\""<<name<<"\":[";bool first_grant=true;
+        for(const auto& row:rows){if(!first_grant)out<<',';first_grant=false;out<<'['<<row[0]<<','<<row[1]<<']';}out<<']';
+    };
+    grants("weapons",r.weapons);grants("characters",r.characters);grants("clothes",r.clothes);grants("hats",r.hats);
+    out<<",\"members\":[";first=true;
+    for(const auto& m:r.members){if(!first)out<<',';first=false;out<<"{\"handle\":"<<m.character<<",\"levels_gained\":"<<m.levels_gained<<",\"added_experience\":"<<m.added_experience<<",\"display_level\":"<<m.display_level<<",\"display_experience\":"<<m.display_experience<<",\"level_up_frame\":"<<m.level_up_frame<<'}';}out<<"]}";
 }
 }

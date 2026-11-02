@@ -28,6 +28,7 @@ public:
     bool check_crystals(std::int64_t amount)const;
     void subtract_crystals(std::int32_t amount,std::int32_t yugami);
     bool transition_pending()const{return static_cast<bool>(transition_);}
+    std::optional<std::int32_t> exit_code()const;
     core::StageCleanupHost& cleanup_service(){return *this;}
 private:
     friend struct MissionCheckpoint;

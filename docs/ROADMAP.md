@@ -9,7 +9,7 @@ The plan in one page. Work happens in **vertical slices**: each ends in somethin
 | M0 | APK inventory, architecture, subsystem map | Done: [overview](subsystems/overview.md). |
 | M1 | Asset extraction and technical rendering | Partial: archives, OPT, SEB, Unity media verified; sprites render through GL; public font metrics/direct glyph output are provisional, audio remains unbound. |
 | M2 | Boot, forms/menus and input | Static research; SelectForm passes ported in isolation (slice S2/S3). |
-| M3 | First playable gameplay loop | **Current = slice S1.** Scene host runs table-backed shots, terminal damage, enemy defeat, pending drops, enemy population, contact/area collisions, pickup and stage accumulation; clear/result grants, cleanup and decoded character writeback reach the scene host; native fresh-world/formation initialization runs; scene-free fresh entry runs; Continue restoration and interactive end flow remain open. |
+| M3 | First playable gameplay loop | **Current = slice S1.** Fresh mission entry runs combat, population, collisions, collection and native clear/death/timeout/retreat through result grants, cleanup and decoded member writeback. Window termination and structured exit/results are bound; Continue restoration, town return and original runtime comparison remain open. |
 | M4 | Save/load, progression, economy, content | Slice S3; save envelope not decoded. |
 | M5 | Windows/Linux release candidate | Windows builds and CTest; Linux builds in CI. |
 | M6 | 3DS feasibility benchmark | Not started; nothing is claimed. |
@@ -23,14 +23,13 @@ Host: `saga_mission` (headless or SDL window; fresh --data/--quest entry or expl
 - [x] A1. `saga_mission --data extracted --quest <id>` opens a window with the quest's map, party and enemies from the real tables.
 - [x] A2. Mouse/keyboard moves the hero and triggers attacks through the ported Human/Shoot/Projectile passes.
 - [ ] A3. The full system schedule runs each frame: enemies act, collisions, damage, defeat, drops, EXP.
-- [ ] A4. The stage ends (clear, game over, retreat) and prints the quest result (EXP, money, treasures, levels).
+- [x] A4. The stage ends (clear, game over, retreat) and prints the quest result (EXP, money, treasures, levels).
 - [x] A5. `--replay <inputs> --frames N` prints a state hash; the same inputs give the same hash; one local golden run per quest is recorded in integration.md.
 - [ ] A6. Every service the host fakes is listed in the stub table of integration.md.
 
 Tasks:
 - [ ] (blocked on S3 selector13 decoding) Bind Continue world/party/systems before selecting loaded InitWorld in `saga_mission` (A1).
 - [ ] (blocked on original runtime reference) Validate notice font geometry, alpha and Graphics/text-task routing against the original (A3).
-- [ ] Complete native fresh-entry clear/game-over/retreat scenarios in `saga_mission`; print accumulated and permanent results before the held town handoff (A4).
 - [ ] (deferred pending producer evidence) Locate indirect Cursor event2/4 or StartCatch producers before binding screen points; use an original runtime trace if static references remain absent (A2).
 - [ ] Group `src/core/gameplay/` (138 files) into subdirectories by subsystem (`combat/`, `mission/`, `town/`, `render/`, `events/`, `text/`, `runtime/`) without behaviour changes; CMake targets and tests keep their names.
 

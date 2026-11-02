@@ -239,7 +239,7 @@ int run_native_mission(MissionProfile& profile,std::int32_t width,std::int32_t h
                 profile.humans->set_input_movement(focused&&(keys[SDL_SCANCODE_W]||keys[SDL_SCANCODE_UP]),focused&&(keys[SDL_SCANCODE_S]||keys[SDL_SCANCODE_DOWN]));
                 if(profile.accepts_fast_forward())profile.humans->set_input_fast_forward(focused&&keys[SDL_SCANCODE_TAB]);
             }
-            if(!paused||single_step){if(profile.step())++logic_steps;else{paused=true;if(bounded)break;}}
+            if(!paused||single_step){if(profile.step())++logic_steps;else{paused=true;if(bounded||(profile.humans&&profile.humans->transition_pending()))break;}}
             if(interactive&&profile.accepts_live_input()&&profile.native_stage_controls()){
                 const std::string talk_title=profile.talk_title();
                 const auto stage_title=profile.humans->stage_modal_title();

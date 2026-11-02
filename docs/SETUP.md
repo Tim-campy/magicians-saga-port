@@ -255,6 +255,8 @@ build/viewer/queue_capture.exe scene.txt 600 220 --run-frames 12
 
 ### Headless mission host
 
+With quest results enabled, terminal reports expose `quest_exit`: null before return, otherwise the typed native `code`, `outcome`, `handoff: "held"` and `rewards_granted`. Clear code0, main-character death1, timeout2 and retreat3 remain distinct. A granted `quest_result` includes EXP, money, crystals, prisoners, all weapon/character/cloth/hat grant lists and member records with `level_up_frame`; wallet, inventory, quest-record and member-writeback fields retain the actual in-memory effects. The held town callback and save-file persistence remain separate services. Native fresh replay commands and real-data outcomes are in [mission endings](subsystems/integration-endings.md).
+
 The scene-free fresh entry uses the existing extracted media and four small local indexes. Diagnostic drawing additionally accepts an optional metadata-label file. Generate these without extracting the media again:
 
 ```powershell
