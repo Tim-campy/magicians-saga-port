@@ -14,6 +14,7 @@ class ProjectilePass {
 public:
     void update(EntitySubset&,ProjectileMotionHost&);
 private:
+    friend struct StateArchiveAccess;
     // Native system +0x28: retained after failure, cleared only on successful delivery.
     std::vector<ComponentSlots*> completed_;
     std::uint32_t version_=0;

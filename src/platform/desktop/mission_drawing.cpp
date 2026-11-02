@@ -15,6 +15,33 @@ template<class T>T& required(T* value){if(!value)throw std::invalid_argument("mi
 template<class T>T& field(ComponentSlots& e,std::int32_t slot){return required(dynamic_cast<T*>(e.get(slot)));}
 std::int32_t word(std::uint32_t v){return static_cast<std::int32_t>(v<=0x7fffffffU?static_cast<std::int64_t>(v):static_cast<std::int64_t>(v)-0x100000000LL);}
 std::int32_t add(std::int32_t a,std::int32_t b){return word(static_cast<std::uint32_t>(a)+static_cast<std::uint32_t>(b));}
+struct GaugeOutputSink final:RenderGraphics {
+    [[noreturn]]static void unexpected(){throw std::logic_error("unexpected headless gauge graphics operation");}
+    RenderDepth* mesh_manager()override{unexpected();}
+    void push_render_mode(std::int32_t,std::int32_t,std::int32_t)override{unexpected();}
+    void pop_render_mode()override{unexpected();}
+    void push_blend_mode(std::int32_t,std::int32_t)override{unexpected();}
+    void pop_blend_mode()override{unexpected();}
+    void push_matrix(RenderMatrix&)override{unexpected();}
+    void pop_matrix()override{unexpected();}
+    void draw_image(const RenderImageDraw&)override{} // Intentional headless pixel sink; native gauge queries still execute.
+};
+}
+
+void MissionProfile::draw_parameter_gauge_request(const ParameterGaugeRequest& request,BitmapBackend* backend){
+    auto& camera=mission->gauge_camera_host();
+    if(backend){backend->draw_parameter_gauge(request,camera,&gauge_scratch_);return;}
+    struct Host final:GaugeDrawingHost {
+        MissionProfile& owner;QuestCameraHost& camera;
+        Host(MissionProfile& p,QuestCameraHost& c):owner(p),camera(c){}
+        PixelImage* gauge_image(std::int32_t id)override{return owner.gauge_image(id);}
+        std::int32_t gauge_view_width()override{return quest_game_width(camera.current_camera_form(),camera);}
+        std::int32_t gauge_view_height()override{return quest_game_height(camera.current_camera_form(),camera);}
+        std::shared_ptr<std::vector<float>> gauge_alpha(PixelImage& image,std::int32_t x,std::int32_t y,std::int32_t w,std::int32_t h,std::shared_ptr<std::vector<float>> alpha)override{
+            return owner.gauge_alpha(image,x,y,w,h,std::move(alpha));
+        }
+    } host(*this,camera);
+    GaugeOutputSink output;core::draw_parameter_gauge(gauge_scratch_,&output,request,host);
 }
 
 std::unique_ptr<MissionProfile::TextBitmap> MissionProfile::make_text_bitmap(const std::u16string& contents,std::int32_t request,std::uint32_t color){

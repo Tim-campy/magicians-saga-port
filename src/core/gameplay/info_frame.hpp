@@ -23,6 +23,7 @@ public:
     void replace(std::int32_t index,Ref value){values_.at(static_cast<std::size_t>(index))=std::move(value);++version_;}
     std::uint32_t version()const{return version_;}
 private:
+    friend struct StateArchiveAccess;
     std::vector<Ref> values_;std::uint32_t version_=0;
 };
 struct PopupBar {

@@ -31,6 +31,7 @@ class GarbagePass {
 public:
     void update(GarbageUpdateHost&);
 private:
+    friend struct StateArchiveAccess;
     std::vector<QuestMemberId> expired_;
 };
 }

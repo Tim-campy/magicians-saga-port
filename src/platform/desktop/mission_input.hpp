@@ -3,6 +3,7 @@
 #include "core/gameplay/boss_notification.hpp"
 #include <array>
 #include <ostream>
+#include <string>
 
 namespace saga::desktop {
 class MissionHumans;
@@ -26,13 +27,14 @@ public:
     core::InputControl* control(std::int32_t group,std::int32_t value){for(auto& c:controls_)if(c.touch.group==group&&c.touch.value==value)return &c.touch;return nullptr;}
     void bind_movement_widgets(bool front,bool back){widget_lookup_=true;widget_active_={front,back};}
     void select_attack(std::int32_t);
-    void observe_touch(std::function<void(const core::InputTouch*)> receiver){subscribe_input_touch(std::move(receiver));}
+    void observe_touch(std::function<void(const core::InputTouch*)>,std::string semantic_id={});
     void logical_touch(std::int32_t type,std::int32_t group,std::int32_t value);
     void dispatch(const core::InputTouch*);
     core::MovementControl* movement_control(std::int32_t group,std::int32_t value);
     void release(core::MovementControl&,std::int32_t type,std::int32_t event_id);
     void report(std::ostream&);
 private:
+    friend struct MissionCheckpoint;
     struct Control:core::MovementControl {core::InputControl touch;};
     core::EntitySubset* input_subset(const core::EventIntegers& slots)override;
     void subscribe_input_touch(std::function<void(const core::InputTouch*)>)override;
@@ -46,7 +48,8 @@ private:
     MissionHumans& owner_;MissionInputScenario scenario_;core::InputFrameState state_;
     core::InputHumans humans_;std::array<Control,5> controls_;
     using Receiver=std::function<void(const core::InputTouch*)>;
-    std::shared_ptr<const std::vector<Receiver>> receivers_;
+    struct ReceiverSlot {Receiver callback;std::string semantic_id;};
+    std::shared_ptr<const std::vector<ReceiverSlot>> receivers_;
     std::uint64_t steps_=0,touches_=0;
     std::uint32_t keyboard_keys_=0,pointer_keys_=0;
     bool widget_lookup_=false;std::array<bool,2> widget_active_{};

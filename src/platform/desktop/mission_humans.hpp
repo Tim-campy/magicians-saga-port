@@ -96,7 +96,7 @@ public:
     bool keyboard_holds_widget(std::uint32_t mask)const{return input_&&input_->keyboard_holds(mask);}
     void bind_movement_widgets(bool front,bool back){if(!input_)throw std::logic_error("input fresh is required");input_->bind_movement_widgets(front,back);}
     void select_input_attack(std::int32_t);
-    void observe_input_touch(std::function<void(const core::InputTouch*)>);
+    void observe_input_touch(std::function<void(const core::InputTouch*)>,std::string semantic_id={});
     void send_logical_touch(std::int32_t type,std::int32_t group,std::int32_t value);
     void dispatch_form_touch(const core::InputTouch* event){if(!input_)throw std::logic_error("input fresh is required");input_->dispatch(event);}
     std::int32_t selected_attack()const{return stage_.attack_attribute;}
@@ -128,13 +128,15 @@ public:
     void debug_defeat_form(std::int32_t);
     void debug_victory_form(std::int32_t,bool);
 private:
+    friend struct MissionCheckpoint;
     core::StageHumanStart* initialization_humans()override{return &system_;}
     core::MemberRoster* initialization_members()override{return &members_;}
     core::StageEnemyStart* initialization_enemies()override;
-    void subscribe_stage_death(std::function<void(core::ComponentSlots*)> f)override{world_.events().subscribe(30,std::move(f));}
-    void subscribe_stage_touch(std::function<void(const core::InputTouch*)> f)override{if(!input_)throw std::logic_error("Stage Init requires Input owner");input_->observe_touch(std::move(f));}
+    void subscribe_stage_death(std::function<void(core::ComponentSlots*)> f)override{world_.events().subscribe(30,std::move(f),std::nullopt,"ecs.StageSystem.OnHumanDead");}
+    void subscribe_stage_touch(std::function<void(const core::InputTouch*)> f)override{if(!input_)throw std::logic_error("Stage Init requires Input owner");input_->observe_touch(std::move(f),"ecs.StageSystem.OnTouchEvent");}
     void subscribe_stage_damage(std::function<void(core::ComponentSlots*,std::int32_t)> f)override{
         auto previous=damage_receiver_;damage_receiver_=[previous=std::move(previous),f=std::move(f)](auto* e,auto amount){if(previous)previous(e,amount);f(e,amount);};
+        damage_bindings_.push_back("ecs.StageSystem.OnDamage");
     }
     core::PartyCharacters character_table()override{return world_.character_table();}
     core::PlayerWorldState* current_world()override{return &world_.player_world();}
@@ -284,6 +286,7 @@ private:
     bool deferred_init_=false,native_state_=false,damage_labels_enabled_=false;core::EnemyGaugeService* gauge_service_=nullptr;
     std::unique_ptr<core::EnemyStageEntry> default_enemy_entry_;
     std::function<void(core::ComponentSlots*,std::int32_t)> damage_receiver_;
+    std::vector<std::string> damage_bindings_; // Ordered native multicast identities; callback captures the same Stage owner.
     core::HumanEventServices services_{records_,*this,*this};
     core::EnemyEventServices enemy_services_{records_,world_.enemy_maximum_levels(),random_,*this,*this,*this};
     core::ProjectileSystemState projectiles_;core::EventInstruction attack_clips_=core::initial_attack_animation_ids();

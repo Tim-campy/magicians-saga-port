@@ -13,9 +13,30 @@ from mission_scene_fixture import make_table_scene, make_shoot_scene, with_missi
 from test_sprite_preview import jar,png,seb
 from mission_scene_fixture import with_common_resource
 
+# These tests compare selected observations across deliberately different loader,
+# resource, formation or presentation contexts. Whole-state identity is tested
+# separately; unlike the report projection it must retain those differences.
+CHECKPOINT_FIELDS={'state_hash','logic_state_hash','state_hash_schema','state_hash_bytes','logic_state_bytes'}
+def observations(state):return {k:v for k,v in state.items() if k not in CHECKPOINT_FIELDS}
 
 @unittest.skipUnless(EXE, 'saga_mission supplied by CTest')
 class MissionProfileTests(unittest.TestCase):
+    def test_checkpoint_covers_future_replay_and_ignores_source_paths(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);scene=root/'scene.txt';scene.write_text(make_boss_scene(root),encoding='utf8')
+            replay=root/'pending.replay';relocated=root/'copy.replay';different=root/'changed.replay'
+            replay.write_text('100 keys 131072\n');relocated.write_bytes(replay.read_bytes());different.write_text('100 keys 524288\n')
+            def run(path):
+                result=self.run_host(scene,'--replay',str(path),frames=1)
+                self.assertEqual(result.returncode,0,result.stderr);return json.loads(result.stdout)
+            a=run(replay);b=run(relocated);changed=run(different)
+            self.assertEqual(a,b);self.assertEqual(a,run(replay))
+            self.assertRegex(a['state_hash'],r'^[0-9a-f]{16}$');self.assertRegex(a['logic_state_hash'],r'^[0-9a-f]{16}$')
+            self.assertEqual(a['state_hash_schema'],'mission-v1-xxh64')
+            self.assertGreater(a['state_hash_bytes'],a['logic_state_bytes']);self.assertGreater(a['logic_state_bytes'],0)
+            self.assertEqual(observations(a),observations(changed))
+            self.assertNotEqual(a['state_hash'],changed['state_hash']);self.assertNotEqual(a['logic_state_hash'],changed['logic_state_hash'])
+
     def test_movement_widgets_hold_release_dash_and_keyboard_sources(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);scene=root/'movement.txt';replay=root/'movement.replay'
@@ -283,7 +304,7 @@ class MissionProfileTests(unittest.TestCase):
             reference=self.run_host(scene,'--data',str(root),fps='initial',debug='initial',frames=22)
             self.assertEqual(reference.returncode,0,reference.stderr);reference=json.loads(reference.stdout)
             for key,value in reference.items():
-                if key!='entry_source':self.assertEqual(data[key],value,key)
+                if key not in CHECKPOINT_FIELDS|{'entry_source'}:self.assertEqual(data[key],value,key)
             scene.unlink() # Data entry still works when the only diagnostic file is absent.
             self.assertEqual(run().stdout,result.stdout)
             explicit=run('--font',os.environ['SAGA_TEST_FONT'],'--width','640','--height','600','--tick-ms','33','--ui-debug','1','--short-words','1',frames=21)
@@ -385,7 +406,7 @@ class MissionProfileTests(unittest.TestCase):
             control=control.replace('mission_events new_game 0 0 0','mission_events fresh "" 0 0 0').replace('runtime initial initial','runtime 30 0')
             reference=run(control,fps=30);self.assertEqual(reference.returncode,0,reference.stderr);reference=json.loads(reference.stdout)
             for key,value in reference.items():
-                if key not in {'mission_initialization','new_game_event_context'}:self.assertEqual(data[key],value,key)
+                if key not in CHECKPOINT_FIELDS|{'mission_initialization','new_game_event_context'}:self.assertEqual(data[key],value,key)
             for bad in (text.replace('mission_initialization\n',''),text+'mission_initialization\n',text.replace('new_game_save\n',''),text.replace('system_init 0','system_init 1')):
                 self.assertNotEqual(run(bad,fps='initial',debug='initial').returncode,0)
             for bad in (payload+'extra\n',payload.replace('initialization 1','initialization 2'),payload.replace('yugami 9999','yugami 2147483648'),payload.replace('event_arguments ""','event_arguments null')):
@@ -421,7 +442,7 @@ class MissionProfileTests(unittest.TestCase):
             reference=run(control);self.assertEqual(reference.returncode,0,reference.stderr);reference=json.loads(reference.stdout)
             excluded={'native_mission_state','native_party_formation'}
             for key,value in reference.items():
-                if key not in excluded:self.assertEqual(data[key],value,key)
+                if key not in excluded|CHECKPOINT_FIELDS:self.assertEqual(data[key],value,key)
             held=run(text.replace('new_game 10000 0','new_game 10000 131072'))
             self.assertEqual(held.returncode,0,held.stderr);self.assertEqual(json.loads(held.stdout)['input_held_keys'],131072)
             scene.write_text(text,encoding='utf8');replay=root/'native.replay';replay.write_text('25 attack 0\n',encoding='ascii')
@@ -452,8 +473,8 @@ class MissionProfileTests(unittest.TestCase):
             # Compare against the same native formation supplied explicitly, including placement/RNG/render state.
             control=fresh.replace(snapshot,'party_formation '+' '.join(map(str,expected)))
             reference=run(control);self.assertEqual(reference.returncode,0,reference.stderr);reference=json.loads(reference.stdout)
-            self.assertEqual({k:v for k,v in data.items() if k!='native_party_formation'},
-                             {k:v for k,v in reference.items() if k!='native_party_formation'})
+            self.assertEqual({k:v for k,v in observations(data).items() if k!='native_party_formation'},
+                             {k:v for k,v in observations(reference).items() if k!='native_party_formation'})
             self.assertEqual(run(text).stdout,result.stdout)
             for bad in (text+'party_formation new_game\n',text.replace('party_formation new_game','party_formation new_game 2'),
                         text.replace('system_init 0','system_init 1'),text.replace('system_construct empty_manager\n',''),
@@ -564,12 +585,12 @@ class MissionProfileTests(unittest.TestCase):
             data=json.loads(a.stdout);control=json.loads(b.stdout)
             self.assertTrue(data['native_mission_selection']);self.assertEqual(data['stage_entry_stage'],2)
             self.assertEqual(data['decoded_mission_selection'],{'area_slot8':5,'quest_slot9':2,'effective_quest_slot9':2})
-            for key in control.keys()-{'native_mission_selection'}:self.assertEqual(data[key],control[key],key)
+            for key in control.keys()-{'native_mission_selection'}-CHECKPOINT_FIELDS:self.assertEqual(data[key],control[key],key)
             changed=run(native,'--quest','3');expected=run(original.replace('quest 2 0','quest 3 0').replace('stage_start 0 null','stage_start 3 area 5'))
             self.assertEqual(changed.returncode,0,changed.stderr);self.assertEqual(expected.returncode,0,expected.stderr)
             data=json.loads(changed.stdout);control=json.loads(expected.stdout)
             self.assertEqual(data['stage_entry_stage'],3);self.assertEqual(data['decoded_mission_selection']['effective_quest_slot9'],3)
-            for key in control.keys()-{'native_mission_selection'}:self.assertEqual(data[key],control[key],key)
+            for key in control.keys()-{'native_mission_selection'}-CHECKPOINT_FIELDS:self.assertEqual(data[key],control[key],key)
             # A valid cached area index can hold null; StartExplore checks only the array length.
             gap=run(base+'mission_selection 0 2 0\n');self.assertEqual(gap.returncode,0,gap.stderr)
             self.assertIsNone(json.loads(gap.stdout)['stage_area'])
@@ -592,7 +613,7 @@ class MissionProfileTests(unittest.TestCase):
             result=run(37,5);self.assertEqual(result.returncode,0,result.stderr);data=json.loads(result.stdout)
             self.assertEqual(data['stage_area'],{'id':5,'image':17,'flags':7,'stages':[2,3]})
             self.assertEqual(data['stage_entry_stage'],37) # Start stores the argument without inferring an index into Area.stages.
-            for key in baseline.keys()-{'stage_area','stage_entry_stage'}:self.assertEqual(data[key],baseline[key],key)
+            for key in baseline.keys()-{'stage_area','stage_entry_stage'}-CHECKPOINT_FIELDS:self.assertEqual(data[key],baseline[key],key)
             result=run(-7,9);self.assertEqual(result.returncode,0,result.stderr);data=json.loads(result.stdout)
             self.assertEqual(data['stage_entry_stage'],-7);self.assertEqual(data['stage_area'],{'id':9,'image':18,'flags':4,'stages':None})
             for area in (-1,0,6,10,'bad','5 extra',''):
@@ -765,7 +786,7 @@ class MissionProfileTests(unittest.TestCase):
             text='mission_presentation 128 96 100 0 1 0 1500100 -1\n'+'\n'.join(l for l in original.splitlines() if not l.startswith(('world ','projection ','slots ','view ','animate ','simulate ')))+'\n'
             scene.write_text(text,encoding='utf-8');result=self.run_host(scene,frames=12)
             self.assertEqual(result.returncode,0,result.stderr);a=json.loads(baseline.stdout);b=json.loads(result.stdout)
-            for key in a.keys()&b.keys():self.assertEqual(a[key],b[key],key)
+            for key in (a.keys()&b.keys())-CHECKPOINT_FIELDS:self.assertEqual(a[key],b[key],key)
             self.assertEqual((b['viewport']['width'],b['viewport']['height'],b['viewport']['changes']),(128,96,0))
             replay.write_text('2 viewport 161 99\n8 viewport 128 96\n',encoding='ascii')
             resized=self.run_host(scene,'--replay',str(replay),frames=12)
@@ -799,7 +820,7 @@ class MissionProfileTests(unittest.TestCase):
             self.assertEqual(len(manual_clocks),sum(line.startswith('resource ') for line in text.splitlines()))
             for group in automatic_clocks+manual_clocks:
                 for row in group:self.assertEqual(row,[0,0])
-            self.assertEqual(automatic_state,manual_state)
+            self.assertEqual(observations(automatic_state),observations(manual_state))
             for bad in [content.replace('resource 23 ', 'resource 22 '),content.replace('textassets/hero.bin','../hero.bin'),
                         '\n'.join(content.splitlines()[:-1])+'\n',content.replace('mission_resources 1','mission_resources 2')]:
                 index.write_text(bad,encoding='utf-8');self.assertNotEqual(self.run_host(scene,'--data',str(data)).returncode,0)

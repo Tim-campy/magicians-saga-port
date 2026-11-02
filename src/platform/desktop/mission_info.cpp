@@ -24,6 +24,8 @@ struct ScenarioSlide final:SlideBar {
     std::int32_t duration()override{return values.duration;}
 };
 }
+const MissionPopupScenario& mission_popup_payload(const PopupBar& bar){const auto* known=dynamic_cast<const ScenarioPopup*>(&bar);if(!known)throw std::logic_error("checkpoint has an unknown popup payload");return known->values;}
+const MissionSlideScenario& mission_slide_payload(const SlideBar& bar){const auto* known=dynamic_cast<const ScenarioSlide*>(&bar);if(!known)throw std::logic_error("checkpoint has an unknown slide payload");return known->values;}
 void MissionScene::advance_info(std::int32_t pass,bool enabled){if(gameplay_needs_update(25,enabled,pass)){update_info(info_,*this);++info_steps_;}}
 void MissionScene::deliver_info_click(CursorPointRef point){info_click_(std::move(point));++info_clicks_;}
 void MissionScene::add_info_popup(MissionPopupScenario s){

@@ -6,10 +6,12 @@
 #include <unordered_map>
 
 namespace saga::core {
+struct StateArchiveAccess;
 struct SubsetFilter {
     const std::vector<std::int32_t> *all=nullptr,*any=nullptr,*none=nullptr;
 };
 class EntitySubset {
+    friend struct StateArchiveAccess;
 public:
     // IDs are supplied by the registry; allocation/restoration policy is not invented here.
     using Predicate=std::function<bool(ComponentSlots*)>;
@@ -30,6 +32,7 @@ public:
     // Reuses this adapter's established public HashSet slot/version contract.
     void clear_entities();
     class Cursor {
+        friend struct StateArchiveAccess;
     public:
         explicit Cursor(const EntitySubset& owner):owner_(owner),version_(owner.version_){}
         std::optional<ComponentSlots*> next();

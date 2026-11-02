@@ -23,6 +23,7 @@ public:
     const core::TextBlockLayout& blocks()const{return blocks_;}
     std::uint64_t measurements()const{return measurements_;}
 private:
+    friend struct MissionCheckpoint;
     MissionFontScenario scenario_;
     std::shared_ptr<DesktopTextFont> backend_;
     core::TextFontState font_;

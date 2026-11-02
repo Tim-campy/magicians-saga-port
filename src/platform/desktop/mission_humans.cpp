@@ -34,7 +34,7 @@ MissionHumans::MissionHumans(MissionEntities& world,const GameplayCatalog& data,
         if(!scenario.stage_entry)add_member(members_,*actor);
     }
     if(!defer){
-        world_.events().subscribe(30,[this](ComponentSlots* e){stage_human_dead(required(e),records_,*this);});
+        world_.events().subscribe(30,[this](ComponentSlots* e){stage_human_dead(required(e),records_,*this);},std::nullopt,"ecs.StageSystem.OnHumanDead");
         initialize_humans(system_,this,services_);initialize_enemies(enemies_,this,enemy_services_);initialize_projectiles(projectiles_,this,*this);
     }
 }
@@ -80,8 +80,8 @@ bool MissionHumans::playing_cut_in(ComponentSlots& e){return field<EntityPlaybac
 void MissionHumans::change_animation(ComponentSlots& e,std::int32_t clip,bool reset){core::change_animation(live_animation(e),clip,reset);}
 std::int32_t MissionHumans::celebration_frame_period(){return world_.clip_max_frame(1,0);}
 void MissionHumans::remove_human_modification(ComponentSlots& e){e.remove(15);} // Detached objects remain owned; pool reuse is unbound.
-void MissionHumans::subscribe_human_impact(EntityEvents::Single receiver,std::optional<EventHashes> hash){world_.events().subscribe(23,std::move(receiver),hash);}
-void MissionHumans::subscribe_human_contact(EntityEvents::Pair receiver,std::optional<EventHashes> hash){world_.events().subscribe(29,std::move(receiver),hash);}
+void MissionHumans::subscribe_human_impact(EntityEvents::Single receiver,std::optional<EventHashes> hash){world_.events().subscribe(23,std::move(receiver),hash,"ecs.HumanSystem.OnImpact");}
+void MissionHumans::subscribe_human_contact(EntityEvents::Pair receiver,std::optional<EventHashes> hash){world_.events().subscribe(29,std::move(receiver),hash,"ecs.HumanSystem.OnCollide");}
 ComponentSlots& MissionHumans::hero(){return required(member_hero(human_world()));}
 void MissionHumans::cut_in_animation(ComponentSlots& e,std::int32_t clip,std::int32_t backup){core::cut_in_animation(live_animation(e),clip,backup);}
 bool MissionHumans::shoot_human(ComponentSlots& actor,ComponentSlots& target){

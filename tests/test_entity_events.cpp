@@ -1,9 +1,55 @@
 #include "core/ecs/entity_events.hpp"
 #include <cstdlib>
+#include <algorithm>
 #include <stdexcept>
+#include <string>
+#include <utility>
 using namespace saga::core;
 void check(bool v){if(!v)std::abort();}
+namespace saga::core {
+struct StateArchiveAccess {
+    static std::vector<std::string> single(const EntityEvents& bus,std::int32_t event){
+        std::vector<std::string> names;const auto channel=bus.single_.find(event);if(channel==bus.single_.end())return names;
+        for(const auto& wrapper:*channel->second){const auto record=std::find_if(bus.single_tracking_.records.begin(),bus.single_tracking_.records.end(),
+            [&](const auto& r){return r.wrapper==wrapper;});check(record!=bus.single_tracking_.records.end());names.push_back(record->semantic_id);}return names;
+    }
+    static std::vector<std::string> pair(const EntityEvents& bus,std::int32_t event){
+        std::vector<std::string> names;const auto channel=bus.pair_.find(event);if(channel==bus.pair_.end())return names;
+        for(const auto& wrapper:*channel->second){const auto record=std::find_if(bus.pair_tracking_.records.begin(),bus.pair_tracking_.records.end(),
+            [&](const auto& r){return r.wrapper==wrapper;});check(record!=bus.pair_tracking_.records.end());names.push_back(record->semantic_id);}return names;
+    }
+    static std::vector<std::pair<std::int32_t,std::string>> single_records(const EntityEvents& bus){
+        std::vector<std::pair<std::int32_t,std::string>> records;
+        for(const auto& record:bus.single_tracking_.records)records.emplace_back(record.event,record.semantic_id);return records;
+    }
+};
+}
+void semantic_receivers(){
+    EntityEvents bus;std::vector<int> calls;std::string first="first";
+    bus.subscribe(7,EntityEvents::Single([&](ComponentSlots*){calls.push_back(1);}),EventHashes{11,101},first);first="changed";
+    bus.subscribe(8,EntityEvents::Single([](ComponentSlots*){}),EventHashes{12,102},"other-event");
+    bus.subscribe(7,EntityEvents::Single([&](ComponentSlots*){calls.push_back(2);}),EventHashes{13,103},"second");
+    check(StateArchiveAccess::single(bus,7)==std::vector<std::string>({"first","second"}));
+    check(StateArchiveAccess::single_records(bus)==std::vector<std::pair<std::int32_t,std::string>>({{7,"first"},{8,"other-event"},{7,"second"}}));
+    check(bus.unsubscribe_single(7,11));check(StateArchiveAccess::single(bus,7)==std::vector<std::string>{"second"});
+    bus.subscribe(7,EntityEvents::Single([&](ComponentSlots*){calls.push_back(3);}),EventHashes{11,104},"first-readded");
+    check(StateArchiveAccess::single(bus,7)==std::vector<std::string>({"second","first-readded"}));
+    check(StateArchiveAccess::single_records(bus)==std::vector<std::pair<std::int32_t,std::string>>({{8,"other-event"},{7,"second"},{7,"first-readded"}}));
+    bus.send(7,nullptr);check(calls==std::vector<int>({2,3}));calls.clear();
+    bus.subscribe(7,EntityEvents::Pair([&](ComponentSlots*,ComponentSlots*){calls.push_back(4);}),EventHashes{21,201},"pair-first");
+    bus.subscribe(7,EntityEvents::Pair([&](ComponentSlots*,ComponentSlots*){calls.push_back(5);}),EventHashes{22,202},"pair-second");
+    check(bus.unsubscribe_pair(7,21));
+    bus.subscribe(7,EntityEvents::Pair([&](ComponentSlots*,ComponentSlots*){calls.push_back(6);}),EventHashes{21,203},"pair-readded");
+    check(StateArchiveAccess::pair(bus,7)==std::vector<std::string>({"pair-second","pair-readded"}));
+    bus.send(7,nullptr,nullptr);check(calls==std::vector<int>({5,6}));
+    // Existing subscriptions remain untagged and retain separate delivery channels.
+    EntityEvents defaults;calls.clear();defaults.subscribe(1,EntityEvents::Single([&](ComponentSlots*){calls.push_back(7);}));
+    defaults.subscribe(1,EntityEvents::Pair([&](ComponentSlots*,ComponentSlots*){calls.push_back(8);}));
+    check(StateArchiveAccess::single(defaults,1)==std::vector<std::string>{""}&&StateArchiveAccess::pair(defaults,1)==std::vector<std::string>{""});
+    defaults.send(1,nullptr);defaults.send(1,nullptr,nullptr);check(calls==std::vector<int>({7,8}));
+}
 int main(){
+    semantic_receivers();
     EntityEvents events;ComponentSlots a(35),b(35);std::vector<int> calls;
     events.send(99,nullptr);events.send(99,nullptr,nullptr);
     CombatReceivers r;

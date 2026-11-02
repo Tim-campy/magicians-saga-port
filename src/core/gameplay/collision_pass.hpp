@@ -23,6 +23,7 @@ class CollisionPass {
 public:
     void update(CollisionPassHost&);
 private:
+    friend struct StateArchiveAccess;
     // Original list is persistent and only cleared after successful event delivery.
     std::vector<std::pair<ComponentSlots*,ComponentSlots*>> pending_;
     std::uint32_t version_=0;

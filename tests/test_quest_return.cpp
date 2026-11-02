@@ -1,5 +1,6 @@
 #include "core/gameplay/quest_return.hpp"
 #include "core/gameplay/stage_cleanup.hpp"
+#include <algorithm>
 #include <cstdlib>
 #include <map>
 #include <stdexcept>
@@ -44,7 +45,9 @@ struct Host final:MemberFinishHost,QuestReturnHost {
     void cleanup_stage()override{call("cleanup");if(cleanup_action)cleanup_action();}
     MemberFinishHost& finish_members_host()override{call("finish");return *this;}
     void make_transition(std::int32_t mode,std::function<void()> fn,bool flag,std::uint32_t color)override{
-        check(mode==1&&flag&&color==0xff000000U);call("transition");callback=std::move(fn);
+        check(mode==1&&flag&&color==0xff000000U);
+        const auto* payload=fn.target<QuestTownContinuation>();check(payload&&payload->host==static_cast<QuestReturnHost*>(this));
+        call("transition");callback=std::move(fn);
     }
     std::int32_t return_area_id()override{call("area");return area;}
     std::int32_t return_stage()override{call("stage");return stage;}
@@ -86,14 +89,25 @@ int main(){
     {Host h;h.fail="clear_sub";try{finish_quest_members(h);check(false);}catch(const std::runtime_error&){}
         check(h.members.empty()&&!h.subs.empty());}
     {Host h;return_to_town(0,h);check(h.record.challenges==0&&h.callback&&h.event.area_id==0);
+        const auto* payload=h.callback.target<QuestTownContinuation>();check(payload&&payload->result==0&&payload->host==static_cast<QuestReturnHost*>(&h));
         h.area=11;h.stage=12;h.callback();check(h.event.result==0&&h.event.area_id==11&&h.event.stage==12);
         check(h.calls[0]=="cleanup"&&h.calls[1]=="finish");}
     {Host h;return_to_town(2,h);check(h.record.challenges==1&&h.record.defeated==3&&h.record.clears==0);
-        check(h.calls[0]=="record"&&h.calls[1]=="defeated"&&h.calls[2]=="cleanup");h.callback();check(h.event.result==2);}
+        const auto* payload=h.callback.target<QuestTownContinuation>();check(payload&&payload->result==2&&payload->host==static_cast<QuestReturnHost*>(&h));
+        check(h.calls[0]=="record"&&h.calls[1]=="defeated"&&h.calls[2]=="cleanup");
+        const auto copied=h.callback;h.area=-17;h.stage=23;h.calls.clear();copied();
+        check(h.event.result==2&&h.event.area_id==-17&&h.event.stage==23&&h.calls==std::vector<std::string>({"area","stage","form","event"}));}
     {Host h;h.fail="cleanup";try{return_to_town(1,h);check(false);}catch(const std::runtime_error&){}
         check(h.record.challenges==1&&h.human_count==0&&!h.callback);}
     {Host h;h.fail_human=3;try{return_to_town(0,h);check(false);}catch(const std::runtime_error&){}
         check(!h.callback&&h.saved[1].level==1200);}
     {Host h;return_to_town(3,h);h.fail="form";try{h.callback();check(false);}catch(const std::runtime_error&){}
         check(h.event.area_id==0&&h.calls.back()=="form");}
+    for(const auto& failure:std::vector<std::string>{"area","stage","form","event"}){
+        Host h;return_to_town(4,h);h.area=31;h.stage=47;h.calls.clear();h.fail=failure;
+        try{h.callback();check(false);}catch(const std::runtime_error&){}
+        const std::vector<std::string> order{"area","stage","form","event"};
+        const auto end=std::find(order.begin(),order.end(),failure)+1;
+        check(h.calls==std::vector<std::string>(order.begin(),end)&&h.event.area_id==0);
+    }
 }

@@ -6,6 +6,7 @@
 #include <vector>
 
 namespace saga::core {
+struct StateArchiveAccess;
 class RandomSource {
 public:
     virtual ~RandomSource()=default;
@@ -13,6 +14,7 @@ public:
 };
 // Seeded System.Random route only. Public .NET Core 3.1 algorithm, checked against APK anchors.
 class LegacySystemRandom final:public RandomSource {
+    friend struct StateArchiveAccess;
 public:
     explicit LegacySystemRandom(std::int32_t seed);
     std::int32_t next() override;
@@ -31,6 +33,7 @@ void apply_replay_random_configuration(RandomConfiguration&,bool unity_editor,Ra
 std::int32_t random_seed_from_millis(std::int64_t,bool fixed_seed);
 // JRandom.NextInt selects from three independent objects on every call.
 class SelectedRandomSource final:public RandomSource {
+    friend struct StateArchiveAccess;
 public:
     SelectedRandomSource(const RandomConfiguration& config,RandomSource* system,
                          RandomSource* random2018,RandomSource* xorshift)

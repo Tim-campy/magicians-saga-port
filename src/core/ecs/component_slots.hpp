@@ -4,6 +4,7 @@
 #include <vector>
 
 namespace saga::core {
+struct StateArchiveAccess;
 
 // Portable type boundary; not an IL2CPP object layout. Ownership stays with ECS.
 struct Component {
@@ -22,6 +23,7 @@ struct ComponentObserver {
 // Borrowed components/observer must remain alive through each operation/callback.
 // One allocation on construction; operations don't allocate, clone or delete.
 class ComponentSlots {
+    friend struct StateArchiveAccess;
 public:
     explicit ComponentSlots(std::int32_t count, ComponentObserver* observer = nullptr);
     ComponentSlots(const ComponentSlots&) = delete;

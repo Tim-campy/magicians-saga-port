@@ -65,6 +65,7 @@ public:
     void draw_dynamic_hud(BitmapBackend* backend=nullptr);
     void draw_entity_buttons(bool dynamic,BitmapBackend* backend=nullptr);
     void draw_debug_graphics(BitmapBackend* backend=nullptr);
+    void draw_parameter_gauge_request(const core::ParameterGaugeRequest&,BitmapBackend* backend=nullptr);
     bool has_static_buttons()const;
     core::InputRectangle draw_widget_button(const core::ButtonDrawRequest&,BitmapBackend*);
     std::optional<StageMpHud> draw_stage_hud(BitmapBackend* backend=nullptr);
@@ -106,6 +107,7 @@ public:
     bool accepts_live_gameplay_input()const{return accepts_live_input()&&!talk_pending()&&!humans->stage_modal_pending();}
     std::string talk_title()const{return events_?events_->title():std::string{};}
 private:
+    friend struct MissionCheckpoint;
     MissionProfile(const std::filesystem::path&,bool,ArchiveImageSet::Decoder,std::optional<MissionRuntimeConfig>,std::optional<std::filesystem::path>,MissionSelection,const MissionBootstrapOptions*);
     std::optional<MissionBootstrapOptions> bootstrap_options_;
     float instance_view_scale_=100,base_view_scale_=100;
@@ -127,6 +129,7 @@ private:
     core::PixelImage& solid_color(std::uint32_t);
     void load_debug_data(const std::filesystem::path&);
     void write_drawing_report(std::ostream&);
+    void prepare_drawing_state(); // Run native draw-side queries in headless frames too; bitmap output stays optional.
     struct ImageDrawing {std::int32_t resource,clip,frame,scale;float x,y;bool dynamic;};
     struct TouchDrawing {std::int32_t group,value;core::InputRectangle bounds;bool delayed;core::ButtonSebContext seb=nullptr;std::int32_t frame=0;core::ButtonTouchOption option=nullptr;};
     struct TextDrawing {std::u16string source;float x,y;std::int32_t font,anchor;std::uint32_t color;bool bound;};

@@ -29,18 +29,20 @@ void finish_quest_members(MemberFinishHost& host){
     host.clear_finish_members(FinishMemberList::members);
     host.clear_finish_members(FinishMemberList::sub_members);
 }
+void QuestTownContinuation::operator()()const{
+    // <ReturnTown>b__0 0x116847c snapshots live area/stage before switching forms.
+    if(!host)throw std::invalid_argument("missing town continuation host");
+    const auto area=host->return_area_id();
+    const auto stage=host->return_stage();
+    const TownReturnEvent event{result,area,stage};
+    host->change_to_town_form(false);
+    host->send_town_return(31,event);
+}
 void return_to_town(std::int32_t result,QuestReturnHost& host){
     // StageSystem.ReturnTown 0x1162dc4; result 0 was already recorded by ShowQuestResult.
     if(result!=0)update_quest_record(host.return_record(),result,0,0,host);
     host.cleanup_stage();
     finish_quest_members(host.finish_members_host());
-    host.make_transition(1,[result,&host]{
-        // <ReturnTown>b__0 0x116847c snapshots live area/stage before switching forms.
-        const auto area=host.return_area_id();
-        const auto stage=host.return_stage();
-        const TownReturnEvent event{result,area,stage};
-        host.change_to_town_form(false);
-        host.send_town_return(31,event);
-    },true,0xff000000U);
+    host.make_transition(1,QuestTownContinuation{result,&host},true,0xff000000U);
 }
 }

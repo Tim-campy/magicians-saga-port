@@ -28,7 +28,7 @@ void MissionHumans::advance_projectiles(std::int32_t pass,bool enabled){
     if(gameplay_needs_update(10,enabled,pass))projectiles_.pass.value().update(required(projectiles_.subset),*this);
 }
 void MissionHumans::play_attack_sound(bool){++attack_sounds_;} // SAGA_STUB(mission-attack-audio): no audio output backend.
-void MissionHumans::subscribe_impact(EntityEvents::Single receiver,std::optional<EventHashes> hash){world_.events().subscribe(23,std::move(receiver),hash);}
+void MissionHumans::subscribe_impact(EntityEvents::Single receiver,std::optional<EventHashes> hash){world_.events().subscribe(23,std::move(receiver),hash,"ecs.ProjectileSystem.OnImpact");}
 void MissionHumans::send_impact(ComponentSlots& e){world_.events().send(23,&e);}
 ComponentSlots* MissionHumans::search_opponent(ComponentSlots& e){return search_enemy_target(enemies_,&e,*this);}
 const BulletImpactData* MissionHumans::bullet_data(ComponentSlots& e){

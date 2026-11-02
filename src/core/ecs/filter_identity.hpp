@@ -10,6 +10,7 @@ public:
     std::int32_t hash(const std::function<void()>& diagnostic);
     bool equals(FilterIdentity* other,const std::function<void()>& diagnostic);
 private:
+    friend struct StateArchiveAccess;
     std::int32_t cached_=-1; // Filter +0x28; builders/setters do not invalidate it.
 };
 // Filter.GetComponentTypesArrayHashCode 0x113a774.

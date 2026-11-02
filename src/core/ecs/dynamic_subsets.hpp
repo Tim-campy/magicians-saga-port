@@ -3,6 +3,7 @@
 #include "entity_registration.hpp"
 
 namespace saga::core {
+struct StateArchiveAccess;
 class GroupFilter {
 public:
     virtual ~GroupFilter()=default;
@@ -11,6 +12,7 @@ public:
     virtual bool matches(ComponentSlots*)=0;
 };
 class ComponentGroupFilter final:public GroupFilter {
+    friend struct StateArchiveAccess;
 public:
     ComponentGroupFilter()=default;
     explicit ComponentGroupFilter(std::vector<std::int32_t> all)
@@ -27,6 +29,7 @@ private:
     std::shared_ptr<const std::vector<std::int32_t>> owned_none_;
 };
 class DynamicSubsets final:public ComponentObserver {
+    friend struct StateArchiveAccess;
 public:
     DynamicSubsets(EntityRegistry& registry,EntitySubset::Identity identity):registry_(registry),identity_(std::move(identity)){}
     // EntityManager.GetSubSet 0x1138408. Retains the key/filter, populates before publication.

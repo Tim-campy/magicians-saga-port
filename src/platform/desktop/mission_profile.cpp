@@ -1,4 +1,5 @@
 #include "mission_profile.hpp"
+#include "mission_checkpoint.hpp"
 #include "assets/jar_archive.hpp"
 #include <fstream>
 #include <iomanip>
@@ -78,7 +79,7 @@ void MissionProfile::initialize_factory(std::int32_t id,InitializationWorld* arg
     default:
         mission->initialize_system(id);
         if(id==25)spatial->observe_cursor_click([this](CursorPointRef point){mission->deliver_info_click(std::move(point));});
-        if(id==26)humans->observe_input_touch([this](const InputTouch* event){mission->deliver_button_touch(event);});
+        if(id==26)humans->observe_input_touch([this](const InputTouch* event){mission->deliver_button_touch(event);},"ecs.ButtonSystem.OnTouchEvent");
         if(id==30)mission->set_debug_flags(debug_requested_flags_);
     }
 }
@@ -943,8 +944,8 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     }
     const bool enemy_requested=enemy_config||enemy_population||enemy_pool;
     if(initialized_loaded_&&(!native||!human_scenario||!input_scenario||!map_images))throw std::invalid_argument("system_init requires native Human, Input and mission_map providers");
-    if(!gauges.empty()){
-        if(!geometry)throw std::invalid_argument("gauge scenario requires geometry");
+    if(!gauges.empty()||human_hud||enemy_gauges||stage_mp_hud){
+        if(!gauges.empty()&&!geometry)throw std::invalid_argument("gauge scenario requires geometry");
         auto* resource=get_application_resource(global,23);bool found=false;
         for(auto& owner:owners)if(&owner->manager.drawing()==resource){
             if(!owner->images){owner->images=std::make_unique<ArchiveImageSet>(owner->manager,decode_png);textures.bind(*owner->images);}
@@ -1023,7 +1024,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             if(result_requested)humans->enable_results(std::move(result_state));
             if(stage_loop)humans->enable_stage_loop(std::move(stage_scenario));
             if(input_scenario)humans->enable_input(*input_scenario);
-            if(input_scenario&&!initialized_loaded_)humans->observe_input_touch([this](const InputTouch* event){mission->deliver_button_touch(event);});
+            if(input_scenario&&!initialized_loaded_)humans->observe_input_touch([this](const InputTouch* event){mission->deliver_button_touch(event);},"ecs.ButtonSystem.OnTouchEvent");
             if(map_images){spatial=std::make_unique<MissionSpatial>(*entity_world,*live_map,view,humans->quest_form(),humans->quest(),map_images,initialized_loaded_.has_value());mission->bind_spatial(*spatial,!initialized_loaded_);
                 spatial->bind_form_touch([this](const InputTouch* event){humans->dispatch_form_touch(event);},[this]{return runtime->debug;},[this]{
                     if(!new_game_save_)throw std::logic_error("pinch priority lookup requires native normal-save context");
@@ -1087,6 +1088,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     selected_count=selected.size();
     if(movement_widgets_enabled())draw_stage_controls();
 }
+void MissionProfile::prepare_drawing_state(){draw_dynamic_hud();draw_stage_hud();draw_stage_controls();draw_entity_buttons(false);}
 bool MissionProfile::step(){
     if(!mission)throw std::invalid_argument("selected logic requires a table-backed entity scene");
     if(talk_pending()||(humans&&(humans->stage_modal_pending()||humans->transition_pending()))){cancel_map_pointer();cancel_control_pointer();}
@@ -1113,7 +1115,7 @@ bool MissionProfile::step(){
         ++replay_applied_;
     }
     last_updates_.clear();last_world_passes_.clear();halted_=false;
-    if(humans&&humans->stage_modal_pending()){humans->wait_stage_modal();++logic_steps;return true;} // SAGA_STUB(mission-stage-modal): explicit top-form acknowledgement gates the parent mission.
+    if(humans&&humans->stage_modal_pending()){humans->wait_stage_modal();++logic_steps;prepare_drawing_state();return true;} // SAGA_STUB(mission-stage-modal): explicit top-form acknowledgement gates the parent mission.
     if(quest_frame_){
         humans->begin_stage_frame(logic_steps+1);
         try{
@@ -1126,8 +1128,7 @@ bool MissionProfile::step(){
     if(talk_pending()||(humans&&(humans->stage_modal_pending()||humans->transition_pending()))){cancel_map_pointer();cancel_control_pointer();}
     if(held_move_control_&&humans->stage_state()!=1)cancel_control_pointer();
     if(halted_)return false;
-    if(movement_widgets_enabled())draw_stage_controls();
-    ++logic_steps;return true;
+    ++logic_steps;prepare_drawing_state();return true;
 }
 void MissionProfile::write_actor_parameters(ComponentSlots& actor,std::ostream& out){
     if(const auto* direction=dynamic_cast<ContactDirection*>(actor.get(12)))out<<",\"direction\":"<<direction->direction<<",\"direction_locked\":"<<(direction->locked?"true":"false");
@@ -1154,6 +1155,9 @@ struct HumanHud final:HumanDrawingHost {
 };
 }
 void MissionProfile::write_combat_report(std::ostream& out){
+    const auto checkpoint=mission_state_digest(*this);
+    out<<",\"state_hash\":"<<std::quoted(checkpoint.hash)<<",\"logic_state_hash\":"<<std::quoted(checkpoint.logic_hash)
+       <<",\"state_hash_schema\":\"mission-v1-xxh64\",\"state_hash_bytes\":"<<checkpoint.bytes<<",\"logic_state_bytes\":"<<checkpoint.logic_bytes;
     draw_dynamic_hud();
     const auto mp=draw_stage_hud();out<<",\"stage_mp_hud_enabled\":"<<(stage_mp_hud?"true":"false")<<",\"stage_mp_hud\":";
     if(mp){std::string ascii;for(const auto c:mp->text)ascii.push_back(static_cast<char>(c));
@@ -1336,9 +1340,9 @@ void MissionProfile::draw_notice_text(const MissionEffectTextDraw& request){
 void MissionProfile::draw_dynamic_body(std::int32_t id){
     last_dynamic_bodies_.push_back(id);
     if(id==4&&human_hud){HumanHud host(*this,dynamic_backend_,[&](const ParameterGaugeRequest& r){
-        human_gauge_requests_.push_back(r);if(dynamic_backend_)dynamic_backend_->draw_parameter_gauge(r,mission->gauge_camera_host(),&gauge_scratch_);});humans->draw_dynamic_hud(host);}
+        human_gauge_requests_.push_back(r);draw_parameter_gauge_request(r,dynamic_backend_);});humans->draw_dynamic_hud(host);}
     else if(id==5&&enemy_gauges)mission->draw_enemy_gauges([&](const ParameterGaugeRequest& r){
-        enemy_gauge_requests_.push_back(r);if(dynamic_backend_)dynamic_backend_->draw_parameter_gauge(r,mission->gauge_camera_host(),&gauge_scratch_);});
+        enemy_gauge_requests_.push_back(r);draw_parameter_gauge_request(r,dynamic_backend_);});
     else if(id==26)draw_entity_buttons(true,dynamic_backend_);
     else if(id==30)draw_debug_graphics(dynamic_backend_);
     else if(id==16||id==22||id==23){

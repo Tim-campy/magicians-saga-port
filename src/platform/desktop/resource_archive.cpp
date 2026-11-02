@@ -185,6 +185,8 @@ struct ResourceArchive::Impl final : JarResourceHost, ResourceNameHost, Resource
 ResourceArchive::ResourceArchive(std::vector<std::uint8_t> bytes,ResourceProfile profile,ArchiveContents contents)
     : impl_(std::make_unique<Impl>(std::move(bytes),std::move(profile),contents)) {}
 ResourceArchive::~ResourceArchive()=default;
+const std::vector<std::uint8_t>& ResourceArchive::source_bytes()const{return impl_->bytes;}
+const ResourceProfile& ResourceArchive::selected_profile()const{return impl_->profile;}
 const ArchiveCatalog& ResourceArchive::images() const {if(!impl_->catalogs)throw std::logic_error("data archive has no image catalog");return impl_->image_catalog;}
 const ArchiveCatalog& ResourceArchive::animations() const {if(!impl_->catalogs)throw std::logic_error("data archive has no animation catalog");return impl_->animation_catalog;}
 std::shared_ptr<core::ImageAnimationGroup> ResourceArchive::image_animation_infos(){

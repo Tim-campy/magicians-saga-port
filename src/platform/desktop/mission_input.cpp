@@ -18,7 +18,7 @@ MissionInput::MissionInput(MissionHumans& owner,MissionInputScenario scenario,bo
         owner.stage_.attack_buttons=std::make_shared<std::vector<AttackButtonState*>>();
         for(auto& button:scenario_.buttons)owner.stage_.attack_buttons->push_back(&button);
     }
-    if(!defer){initialize();subscribe_input_touch([this](const InputTouch* e){stage_touch(owner_.stage_,e);});}
+    if(!defer){initialize();observe_touch([this](const InputTouch* e){stage_touch(owner_.stage_,e);},"ecs.StageSystem.OnTouchEvent");}
 } // SAGA_STUB(mission-control-surfaces): stable native IDs; Stage supplies selected visibility; full Surface queues remain external.
 void MissionInput::initialize(){initialize_input(state_,this,*this);}
 void MissionInput::apply_scenario(){
@@ -28,7 +28,8 @@ void MissionInput::apply_scenario(){
     for(std::size_t i=0;i<scenario_.buttons.size();++i)*buttons.at(i)=scenario_.buttons.at(i);
 }
 EntitySubset* MissionInput::input_subset(const EventIntegers& slots){return owner_.world_.subset(slots);}
-void MissionInput::subscribe_input_touch(Receiver f){auto next=receivers_?std::make_shared<std::vector<Receiver>>(*receivers_):std::make_shared<std::vector<Receiver>>();next->push_back(std::move(f));receivers_=std::move(next);}
+void MissionInput::subscribe_input_touch(Receiver f){observe_touch(std::move(f),"ecs.InputSystem.OnTouchEvent");}
+void MissionInput::observe_touch(Receiver f,std::string semantic_id){auto next=receivers_?std::make_shared<std::vector<ReceiverSlot>>(*receivers_):std::make_shared<std::vector<ReceiverSlot>>();next->push_back({std::move(f),std::move(semantic_id)});receivers_=std::move(next);}
 bool MissionInput::input_key_state(std::int32_t mask){return (owner_.held_keys_&static_cast<std::uint32_t>(mask))!=0;}
 InputControl* MissionInput::input_control(std::int32_t group,std::int32_t value){
     for(std::size_t i=0;i<controls_.size();++i){auto& c=controls_[i];if(c.touch.group==group&&c.touch.value==value){
@@ -38,7 +39,7 @@ InputControl* MissionInput::input_control(std::int32_t group,std::int32_t value)
 void MissionInput::send_input_touch(std::int32_t type,InputControl* c){InputTouch event{type,c};dispatch(&event);}
 void MissionInput::dispatch(const InputTouch* event){
     if(!event)throw std::invalid_argument("null mission touch event");
-    const auto receivers=receivers_;if(receivers)for(const auto& f:*receivers)f(event);++touches_;
+    const auto receivers=receivers_;if(receivers)for(const auto& f:*receivers)f.callback(event);++touches_;
 }
 ComponentSlots* MissionInput::input_hero(){return member_hero(&owner_.world_.player_world());}
 StageStartState* MissionInput::input_stage(){return &owner_.stage_;}
@@ -70,7 +71,7 @@ void MissionHumans::enable_input(MissionInputScenario scenario){if(input_)throw 
 void MissionHumans::advance_input(std::int32_t pass,bool enabled){if(input_)input_->advance(pass,enabled);}
 void MissionHumans::set_input_keys(std::uint32_t value){if(!input_)throw std::logic_error("input fresh is required");input_->set_keys(value);}
 void MissionHumans::select_input_attack(std::int32_t value){if(!input_)throw std::logic_error("input fresh is required");input_->select_attack(value);}
-void MissionHumans::observe_input_touch(std::function<void(const InputTouch*)> receiver){if(!input_)throw std::logic_error("input fresh is required");input_->observe_touch(std::move(receiver));}
+void MissionHumans::observe_input_touch(std::function<void(const InputTouch*)> receiver,std::string semantic_id){if(!input_)throw std::logic_error("input fresh is required");input_->observe_touch(std::move(receiver),std::move(semantic_id));}
 void MissionHumans::send_logical_touch(std::int32_t type,std::int32_t group,std::int32_t value){if(!input_)throw std::logic_error("input fresh is required");input_->logical_touch(type,group,value);}
 void MissionHumans::write_input_report(std::ostream& out){out<<",\"input_enabled\":"<<(input_?"true":"false");if(input_)input_->report(out);}
 }

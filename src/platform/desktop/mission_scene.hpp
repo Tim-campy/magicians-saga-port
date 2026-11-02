@@ -41,6 +41,8 @@ struct MissionEffectDrawing {
 };
 struct MissionPopupScenario {std::int32_t id,category,type,priority;bool single;std::int32_t height,duration;};
 struct MissionSlideScenario {std::int32_t id,width,height,duration;};
+const MissionPopupScenario& mission_popup_payload(const core::PopupBar&);
+const MissionSlideScenario& mission_slide_payload(const core::SlideBar&);
 // Selected entity group and fixed supplied view. Full mission culling/camera/input remain host bindings.
 class MissionScene final:private core::RenderInitializationWorld,private core::RenderFrameHost,
     private core::QuestCameraHost,private core::QuestViewportView,private core::GarbageUpdateHost,private core::ModificationFrameHost,
@@ -103,6 +105,7 @@ public:
     core::RenderQueue& render();
     const std::vector<MissionRenderFault>& faults()const{return faults_;}
 private:
+    friend struct MissionCheckpoint;
     struct DynamicHost;
     core::GaugePoint effect_screen_work_;
     std::optional<std::array<std::int32_t,3>> dynamic_text_color_;

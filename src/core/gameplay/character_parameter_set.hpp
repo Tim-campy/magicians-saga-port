@@ -12,6 +12,7 @@ public:
     CharacterParameterSet& operator=(const CharacterParameterSet&)=delete;
     const DamageParameterMap& values()const{return values_;}
 private:
+    friend struct StateArchiveAccess;
     friend std::shared_ptr<CharacterParameterSet> create_character_parameters(
         const CharacterParameters&,std::int32_t,EventInstruction,CharacterParameterHost&);
     friend std::shared_ptr<CharacterParameterSet> create_enemy_parameters(

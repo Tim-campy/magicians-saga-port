@@ -50,6 +50,8 @@ public:
     ResourceArchive(const ResourceArchive&) = delete;
     ResourceArchive& operator=(const ResourceArchive&) = delete;
     const ArchiveCatalog& images() const;
+    const std::vector<std::uint8_t>& source_bytes()const;
+    const ResourceProfile& selected_profile()const;
     const ArchiveCatalog& animations() const;
     std::shared_ptr<core::ImageAnimationGroup> image_animation_infos();
     std::optional<ArchiveData> data(std::string_view name); // Same native candidate/first-match lookup; no image catalog required.

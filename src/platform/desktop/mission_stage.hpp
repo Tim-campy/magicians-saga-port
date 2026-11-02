@@ -36,6 +36,7 @@ public:
     void start(std::int32_t,const core::EventIntegers*,core::StageMapLoader&,
                std::function<bool()>,std::function<void()>,std::shared_ptr<core::AreaDefinition>);
 private:
+    friend struct MissionCheckpoint;
     core::StageCleanupHost& cleanup_host()override;
     core::StageMapLoader* current_map_system()override{return map_loader_;}
     core::PartyStartHost& party_host()override{return *this;}

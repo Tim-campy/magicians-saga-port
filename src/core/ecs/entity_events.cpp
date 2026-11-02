@@ -4,7 +4,7 @@
 #include <algorithm>
 
 namespace saga::core {
-template<class F>void EntityEvents::append(Channels<F>& channels,Tracking<F>& tracking,std::int32_t id,F callback,std::optional<EventHashes> hashes){
+template<class F>void EntityEvents::append(Channels<F>& channels,Tracking<F>& tracking,std::int32_t id,F callback,std::optional<EventHashes> hashes,std::string semantic_id){
     if(!callback)throw std::invalid_argument("missing entity event callback");
     auto next=std::make_shared<List<F>>();
     const auto found=channels.find(id);
@@ -12,10 +12,10 @@ template<class F>void EntityEvents::append(Channels<F>& channels,Tracking<F>& tr
     auto wrapper=std::make_shared<F>(std::move(callback));
     next->push_back(wrapper);
     channels[id]=std::move(next);
-    tracking.records.push_back({id,hashes,std::move(wrapper)});++tracking.version;
+    tracking.records.push_back({id,hashes,std::move(wrapper),std::move(semantic_id)});++tracking.version;
 }
-void EntityEvents::subscribe(std::int32_t id,Single callback,std::optional<EventHashes> hashes){append(single_,single_tracking_,id,std::move(callback),hashes);}
-void EntityEvents::subscribe(std::int32_t id,Pair callback,std::optional<EventHashes> hashes){append(pair_,pair_tracking_,id,std::move(callback),hashes);}
+void EntityEvents::subscribe(std::int32_t id,Single callback,std::optional<EventHashes> hashes,std::string semantic_id){append(single_,single_tracking_,id,std::move(callback),hashes,std::move(semantic_id));}
+void EntityEvents::subscribe(std::int32_t id,Pair callback,std::optional<EventHashes> hashes,std::string semantic_id){append(pair_,pair_tracking_,id,std::move(callback),hashes,std::move(semantic_id));}
 template<class F>bool EntityEvents::remove(Channels<F>& channels,Tracking<F>& tracking,std::int32_t id,std::int32_t hash){
     const auto channel=channels.find(id);if(channel==channels.end())return false;
     for(auto at=tracking.records.begin();at!=tracking.records.end();++at){

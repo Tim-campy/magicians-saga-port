@@ -32,6 +32,7 @@ public:
     std::shared_ptr<DesktopTextFont> font_provider()const{return font_provider_;}
     const std::optional<MissionFontScenario>& font_scenario()const{return scenario_.font;}
 private:
+    friend struct MissionCheckpoint;
     struct Talk {
         std::int32_t id=0,state=0,frame=0,finish_frame=-1;
         core::PreparedTalkForm prepared;

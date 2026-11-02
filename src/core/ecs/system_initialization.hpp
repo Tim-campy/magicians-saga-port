@@ -21,6 +21,7 @@ public:
     void erase(std::size_t);
     void clear();
 private:
+    friend struct StateArchiveAccess;
     friend void initialize_systems(struct InitializationSchedule&,InitializationWorld*);
     std::vector<InitSystem*> entries_;
     std::uint32_t version_=0;

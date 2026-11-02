@@ -39,6 +39,11 @@ public:
     virtual void change_to_town_form(bool)=0;
     virtual void send_town_return(std::int32_t event_id,const TownReturnEvent&)=0;
 };
+// Inspectable payload of the deferred ReturnTown callback. The borrowed host outlives it.
+struct QuestTownContinuation {
+    std::int32_t result=0;QuestReturnHost* host=nullptr;
+    void operator()()const;
+};
 // StageSystem.ReturnTown: non-clear record, cleanup, writeback, then deferred transition.
 void return_to_town(std::int32_t result,QuestReturnHost&);
 }

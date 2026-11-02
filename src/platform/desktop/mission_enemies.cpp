@@ -41,9 +41,9 @@ std::int32_t MissionHumans::system_yugami(){
     if(!enemy_scenario_)throw std::logic_error("mission service unbound: explicit SYSSAVEI_YUGAMI");
     return enemy_scenario_->yugami;
 }
-void MissionHumans::subscribe_enemy_impact(EntityEvents::Single receiver,std::optional<EventHashes> hash){world_.events().subscribe(23,std::move(receiver),hash);}
-void MissionHumans::subscribe_enemy_contact(EntityEvents::Pair receiver,std::optional<EventHashes> hash){world_.events().subscribe(29,std::move(receiver),hash);}
-void MissionHumans::subscribe_enemy_human_dead(EntityEvents::Single receiver,std::optional<EventHashes> hash){world_.events().subscribe(30,std::move(receiver),hash);}
+void MissionHumans::subscribe_enemy_impact(EntityEvents::Single receiver,std::optional<EventHashes> hash){world_.events().subscribe(23,std::move(receiver),hash,"ecs.EnemySystem.OnImpact");}
+void MissionHumans::subscribe_enemy_contact(EntityEvents::Pair receiver,std::optional<EventHashes> hash){world_.events().subscribe(29,std::move(receiver),hash,"ecs.EnemySystem.OnCollide");}
+void MissionHumans::subscribe_enemy_human_dead(EntityEvents::Single receiver,std::optional<EventHashes> hash){world_.events().subscribe(30,std::move(receiver),hash,"ecs.EnemySystem.OnHumanDead");}
 void MissionHumans::fly_away(ComponentSlots& e,std::int32_t x0,std::int32_t x1,std::int32_t z0,std::int32_t z1,bool modify){
     core::fly_away(e,x0,x1,z0,z1,modify,random_,static_cast<EnemyImpactHost&>(*this));
 }

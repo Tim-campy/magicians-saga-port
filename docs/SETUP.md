@@ -30,6 +30,8 @@ Everything game-derived stays local and gitignored. The maintainer supplies the 
 
 Desktop builds fetch FreeType2.13.3 from its public release archive, pinned by SHA256 in `cmake/FreeType.cmake`; this GPL-2.0 project uses FreeType's GPLv2 license option. Optional compressed-font/shaping dependencies are disabled. Tests download a pinned public NotoSans-Regular font (OFL1.1) into build/_deps and verify its hash; the revision/URL/hash live in tests/CMakeLists.txt. No original font or other game data is required by these tests. A first configure needs network access; subsequent builds reuse the local downloads.
 
+Mission checkpoint builds fetch the public [xxHash 0.8.3 header](https://github.com/Cyan4973/xxHash/blob/v0.8.3/xxhash.h), BSD-2-Clause, into `build/_deps/`. `cmake/XxHash.cmake` pins its source URL and SHA256; upstream code is not vendored in the repository.
+
 ## Regenerating local inputs
 
 ```powershell
@@ -351,7 +353,15 @@ Both `saga_mission` and native `queue_capture` commands accept a trailing `--rep
 200 pulse 1048576
 ```
 
-Indices include initial simulate passes; prefer simulate0 for a replay starting at the first visible logical tick. Same-step actions preserve file order; an empty replay disables physical gameplay input. `keys` is an absolute uint32 mask, `attack` is0..2; `pulse` ORs a one-tick uint32 mask into Stage input and requires stage_loop. It is separate from held keys. Replay is limited to8MiB/100000 actions and has no implicit state defaults, recording or complete-state hash. Replay text is ASCII/invariant (UTF-8 without BOM); comments occupy whole lines beginning with #. Input controls beginning at native frame0 preserve the original no-acceleration quirk until another press; beginning at logical tick2 permits the normal FPS-based dash. See [input integration](subsystems/integration.md#native-movement-attack-and-input-replay-s1-a2a3a5).
+For repeated local per-quest checkpoints, use the existing replay with the golden runner:
+
+```powershell
+python -I tools/mission_golden.py --exe build/desktop/saga_mission.exe --data extracted/full --replay research/exports/mission-move-input/real-playable-input.replay --out research/mission-goldens.json --frames 540 --seed 42 --language English.lproj --dpi 1
+```
+
+The output must not exist. The runner selects real quest IDs from the indexed table, runs each twice and compares the full parsed JSON. `--quests 1,4` restricts the IDs; `--timeout 120` sets each run's deadline. The 76 real IDs `0..75` are the default batch for this extracted dataset. `matched` means all requested frames agree; `held` records a matching early stop without claiming 540 completed frames; `failed`/`mismatch` make the command return nonzero. Output includes source/replay/executable fingerprints and remains local under gitignored `research/`. See [checkpoint coverage and boundaries](subsystems/integration-replay.md).
+
+Indices include initial simulate passes; prefer simulate0 for a replay starting at the first visible logical tick. Same-step actions preserve file order; an empty replay disables physical gameplay input. `keys` is an absolute uint32 mask, `attack` is0..2; `pulse` ORs a one-tick uint32 mask into Stage input and requires stage_loop. It is separate from held keys. Replay is limited to8MiB/100000 actions and has no implicit state defaults or input recording. Reports include [typed checkpoint hashes](subsystems/integration-replay.md) for the selected mission state. Replay text is ASCII/invariant (UTF-8 without BOM); comments occupy whole lines beginning with #. Input controls beginning at native frame0 preserve the original no-acceleration quirk until another press; beginning at logical tick2 permits the normal FPS-based dash. See [input integration](subsystems/integration.md#native-movement-attack-and-input-replay-s1-a2a3a5).
 
 Loaded `system_init` plus `stage_loop` also accepts `step answer <signed-int32>` for a pending exit dialog. Pause/resume/request-exit pulses are decimal33554432/67108864/134217728. Example: `2 pulse 33554432`, `3 pulse 134217728`, `10 answer 1`, `11 pulse 67108864` pauses, opens exit, waits, cancels and resumes. Answer0 confirms retreat; every other signed value cancels. No response is inferred from the dialog's initial answer field. Early/duplicate answers fail; retry crystal/ad choices remain unbound. The local pause-retreat.replay and quest-pause-retreat.txt profile exercise both cancellation and confirmation with real Quest1 data.
 

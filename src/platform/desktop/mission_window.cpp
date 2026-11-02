@@ -256,7 +256,7 @@ int run_native_mission(MissionProfile& profile,std::int32_t width,std::int32_t h
         if(interactive&&profile.accepts_live_input()){profile.cancel_map_pointer();profile.cancel_control_pointer();}
         if(!capture){std::cout<<"{\"entities\":"<<profile.selected_count<<",\"render_frames\":"<<rendered<<",\"logic_steps\":"<<logic_steps
                  <<',';write_state();
-        std::cout<<",\"profile\":\"selected mission systems; full application entry, save restoration and complete-state hashes unbound\"}\n";return 0;}
+        std::cout<<",\"profile\":\"selected mission checkpoint; full application entry and save restoration unbound\"}\n";return 0;}
     }
     if(!loop||rendered==0)submit();auto pixels=renderer.read_pixels(width,height);
     Surface captured(SDL_CreateSurfaceFrom(width,height,SDL_PIXELFORMAT_RGBA32,pixels.rgba.data(),width*4),SDL_DestroySurface);require(captured!=nullptr,"SDL_CreateSurfaceFrom");

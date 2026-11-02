@@ -24,13 +24,13 @@ Host: `saga_mission` (headless or SDL window; fresh --data/--quest entry or expl
 - [x] A2. Mouse/keyboard moves the hero and triggers attacks through the ported Human/Shoot/Projectile passes.
 - [ ] A3. The full system schedule runs each frame: enemies act, collisions, damage, defeat, drops, EXP.
 - [ ] A4. The stage ends (clear, game over, retreat) and prints the quest result (EXP, money, treasures, levels).
-- [ ] A5. `--replay <inputs> --frames N` prints a state hash; the same inputs give the same hash; one local golden run per quest is recorded in integration.md.
+- [x] A5. `--replay <inputs> --frames N` prints a state hash; the same inputs give the same hash; one local golden run per quest is recorded in integration.md.
 - [ ] A6. Every service the host fakes is listed in the stub table of integration.md.
 
 Tasks:
 - [ ] (blocked on S3 selector13 decoding) Bind Continue world/party/systems before selecting loaded InitWorld in `saga_mission` (A1).
 - [ ] (blocked on original runtime reference) Validate notice font geometry, alpha and Graphics/text-task routing against the original (A3).
-- [ ] Add complete reached-world state hashing and record local per-quest golden replays (A5).
+- [ ] Complete native fresh-entry clear/game-over/retreat scenarios in `saga_mission`; print accumulated and permanent results before the held town handoff (A4).
 - [ ] (deferred pending producer evidence) Locate indirect Cursor event2/4 or StartCatch producers before binding screen points; use an original runtime trace if static references remain absent (A2).
 - [ ] Group `src/core/gameplay/` (138 files) into subdirectories by subsystem (`combat/`, `mission/`, `town/`, `render/`, `events/`, `text/`, `runtime/`) without behaviour changes; CMake targets and tests keep their names.
 
@@ -88,4 +88,4 @@ Host: `saga`. Acceptance: talk and event forms show their text with the correct 
 
 ## Decisions waiting for the maintainer
 
-- An Android device or emulator as the behavioural oracle: needed for `verified`, for golden replays and for run-time-only questions (live RNG backend, FPS, camera, render order).
+- An Android device or emulator as the behavioural oracle: needed for `verified`, original-reference replays and run-time-only questions (live RNG backend, FPS, camera, render order). Local port goldens are recorded for S1 A5.

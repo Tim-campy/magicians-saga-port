@@ -1,4 +1,5 @@
 saga_library(component_slots component_slots.cpp component_filter.cpp)
+saga_library(state_archive state_archive.cpp)
 saga_library(entity_subset entity_subset.cpp)
 target_link_libraries(entity_subset PUBLIC component_slots)
 saga_library(update_scheduler update_scheduler.cpp)

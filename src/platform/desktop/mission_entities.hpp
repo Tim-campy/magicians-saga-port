@@ -142,6 +142,7 @@ public:
     core::EffectComponent& acquire_effect()override;
     core::GarbageLifetime& acquire_garbage()override;
 private:
+    friend struct MissionCheckpoint;
     void remove_all_components(core::QuestMemberId)override;
     void dispose_entity_events(core::QuestMemberId)override;
     void erase_registration(core::QuestMemberId)override;

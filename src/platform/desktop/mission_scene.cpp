@@ -172,7 +172,7 @@ void MissionScene::draw_dynamic_scene(std::int32_t id,EffectNumberContext app,
     else if(id==23)draw_effects(effects_,host);
     else throw std::invalid_argument("unsupported dynamic sprite scene factory");
 }
-void MissionScene::subscribe_dropoff(EntityEvents::Single receiver,std::optional<EventHashes> hashes){world_.events().subscribe(16,std::move(receiver),hashes);}
+void MissionScene::subscribe_dropoff(EntityEvents::Single receiver,std::optional<EventHashes> hashes){world_.events().subscribe(16,std::move(receiver),hashes,"ecs.ParameterSystem.OnDropOff");}
 void MissionScene::subscribe_parameter_experience(ParameterExperienceInitializationWorld::Receiver receiver,std::optional<EventHashes> hashes){
     // Fresh scene Init has one event21 receiver. General typed EventManager removal/restoration is unbound.
     if(hashes||experience_receiver_)throw std::logic_error("parameter experience requires fresh scene initialization");experience_receiver_=std::move(receiver);

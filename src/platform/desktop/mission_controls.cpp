@@ -23,8 +23,8 @@ struct MissionNumbers final:core::NumberImageHost {
     }
 };
 struct MissionMp final:core::StageMpDrawingHost {
-    MissionProfile& profile;BitmapBackend* backend;core::SebStaticWork& work;core::GaugeDrawState& gauges;StageMpHud result;
-    MissionMp(MissionProfile& p,BitmapBackend* b,core::SebStaticWork& w,core::GaugeDrawState& g):profile(p),backend(b),work(w),gauges(g){}
+    MissionProfile& profile;BitmapBackend* backend;core::SebStaticWork& work;StageMpHud result;
+    MissionMp(MissionProfile& p,BitmapBackend* b,core::SebStaticWork& w):profile(p),backend(b),work(w){}
     std::int32_t mp_width()override{return profile.view.width;}
     std::int32_t mp_height()override{return profile.view.height;}
     core::ComponentSlots* mp_player()override{return core::world_player_entity(profile.entity_world->player_world());}
@@ -45,7 +45,7 @@ struct MissionMp final:core::StageMpDrawingHost {
         result.icon={x,y};if(backend)backend->draw_seb_anchor(7,40,x,y,anchor,profile.automatic!=0);
     }
     void mp_parameter_gauge(const core::ParameterGaugeRequest& r)override{
-        result.gauge=r;if(backend)backend->draw_parameter_gauge(r,profile.mission->gauge_camera_host(),&gauges);
+        result.gauge=r;profile.draw_parameter_gauge_request(r,backend);
     }
 };
 struct MissionControls final:core::StageControlsHost {
@@ -76,7 +76,7 @@ struct MissionControls final:core::StageControlsHost {
 }
 std::optional<StageMpHud> MissionProfile::draw_stage_hud(BitmapBackend* backend){
     if(!stage_mp_hud||!native_stage_controls()||!system_states_[3].enabled)return std::nullopt;
-    MissionMp host(*this,backend,hud_sprite_work_,gauge_scratch_);core::draw_stage_player_mp_gauge(host);return std::move(host.result);
+    MissionMp host(*this,backend,hud_sprite_work_);core::draw_stage_player_mp_gauge(host);return std::move(host.result);
 }
 void MissionProfile::draw_stage_controls(BitmapBackend* backend){
     attack_regions_.clear();move_regions_.clear();

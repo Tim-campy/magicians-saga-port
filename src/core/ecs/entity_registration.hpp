@@ -6,6 +6,7 @@
 #include <limits>
 
 namespace saga::core {
+struct StateArchiveAccess;
 class ComponentSubscriptions {
 public:
     virtual ~ComponentSubscriptions()=default;
@@ -15,6 +16,7 @@ public:
 };
 // Entity's three multicast channels; observers and entities remain externally owned.
 class ComponentEvents final:public ComponentObserver,public ComponentSubscriptions {
+    friend struct StateArchiveAccess;
 public:
     void subscribe_added(ComponentObserver&)override;
     void subscribe_removed(ComponentObserver&)override;
@@ -35,6 +37,7 @@ struct EntityRegistration {
     ComponentSubscriptions* events;
 };
 class EntityRegistry {
+    friend struct StateArchiveAccess;
 public:
     explicit EntityRegistry(ComponentObserver& observer):observer_(observer){}
     // EntityManager.AddEntity 0x1137758: insert first unless temporary, then subscribe A/R/C.
@@ -44,6 +47,7 @@ public:
     void erase(std::int32_t); // Host primitive, not full entity destruction.
     void clear();
     class Cursor {
+        friend struct StateArchiveAccess;
     public:
         explicit Cursor(const EntityRegistry& owner):owner_(owner),version_(owner.version_){}
         std::optional<ComponentSlots*> next();

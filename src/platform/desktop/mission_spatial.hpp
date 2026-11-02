@@ -34,6 +34,7 @@ public:
     core::EntitySubset& visible(){return visible_;}
     void report(std::ostream&);
 private:
+    friend struct MissionCheckpoint;
     core::QuestFormCameraHost& form_camera_host()override{return *this;}
     void forward_quest_touch(const core::InputTouch* event)override{touch_forward_(event);}
     bool quest_touch_debug()override{return touch_debug_();}
