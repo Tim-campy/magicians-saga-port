@@ -1,16 +1,87 @@
 #include "animation_resources.hpp"
+#include "combat_rules.hpp"
 #include "presentation_text.hpp"
+#include <algorithm>
 #include <limits>
 #include <unordered_set>
 
 namespace saga::core {
 namespace {
+std::int32_t motion_word(std::uint32_t value){
+    return static_cast<std::int32_t>(value<=0x7fffffffU?static_cast<std::int64_t>(value):
+                                    static_cast<std::int64_t>(value)-0x100000000LL);
+}
+std::int32_t motion_subtract(std::int32_t a,std::int32_t b){
+    return motion_word(static_cast<std::uint32_t>(a)-static_cast<std::uint32_t>(b));
+}
+std::int32_t motion_integer(float value){
+    if(value==std::numeric_limits<float>::infinity())return std::numeric_limits<std::int32_t>::min();
+    if(value>=2147483648.0F)return std::numeric_limits<std::int32_t>::max();
+    if(value<=-2147483648.0F)return std::numeric_limits<std::int32_t>::min();
+    if(value!=value)return 0;
+    return static_cast<std::int32_t>(value);
+}
 std::vector<const assets::Seb*> selected_files(const ResourceCatalogIndex& index,const std::vector<const assets::Seb*>& files) {
     std::vector<const assets::Seb*> result(index.rows.size(),nullptr);
     for(std::size_t slot=0;slot<index.rows.size();++slot)
         if(index.rows[slot])result[slot]=files.at(*index.rows[slot]);
     return result;
 }
+}
+std::int32_t image_animation_cubic_in_out(std::int32_t start,std::int32_t end,
+                                         std::int32_t duration,std::int32_t progress){
+    if(progress<0)return start;
+    if(progress>=duration)return end;
+    // Penner's public cubicInOut, also published by d3-ease v3.0.1/src/cubic.js
+    // (BSD-3-Clause; see third_party/licenses/d3-ease.txt). The game wrapper
+    // divides by half-duration and preserves these binary32 operation boundaries.
+    const volatile float half_duration=static_cast<float>(duration)*0.5F;
+    const volatile float t=static_cast<float>(progress)/half_duration;
+    const auto difference=motion_subtract(end,start);
+    const volatile float half_change=static_cast<float>(difference)*0.5F;
+    float result;
+    if(t<1.0F){
+        const volatile float first=half_change*t;
+        const volatile float second=t*first;
+        const volatile float third=t*second;
+        const volatile float value=third+static_cast<float>(start);
+        result=value;
+    }else{
+        const volatile float shifted=t-2.0F;
+        const volatile float square=shifted*shifted;
+        const volatile float cube=shifted*square;
+        const volatile float curve=cube+2.0F;
+        const volatile float delta=half_change*curve;
+        const volatile float value=delta+static_cast<float>(start);
+        result=value;
+    }
+    return std::clamp(motion_integer(result),std::min(start,end),std::max(start,end));
+}
+const ImageDrawingPosition* update_image_animation(const ImageAnimationGroup* group,
+    std::int32_t image,ImageDrawingPosition& work){
+    if(!group)return nullptr;
+    const auto pair=group->at(static_cast<std::size_t>(image));
+    if(!pair)throw std::invalid_argument("missing image animation pair");
+    const auto mode=pair->at(0),frame=pair->at(1);
+    if(mode==1){
+        // ResourceManagerExtension.PopOut 0x10ee670. Phase selection uses the
+        // wrapped frame-2, even for the last phase's separate frame-11 progress.
+        const auto phase=motion_subtract(frame,2);
+        std::int32_t scale;
+        if(phase<=4)scale=easing(60,110,5,phase,80);
+        else if(phase<=6)scale=easing(110,95,2,motion_subtract(frame,7),80);
+        else if(phase<=8)scale=easing(95,106,2,motion_subtract(frame,9),80);
+        else scale=easing(106,100,7,motion_subtract(frame,11),0);
+        work={0,0,scale,scale,0};
+    }else if(mode==2){
+        // ResourceManagerExtension.SwingUpDown 0x10ee754. Signed remainder is
+        // retained for negative clocks; the second half reflects around 11.
+        const auto phase=motion_subtract(frame,5)%9;
+        const auto progress=phase>5?motion_subtract(11,phase):phase;
+        const auto y=image_animation_cubic_in_out(0,3,5,progress);
+        work={0,y,100,100,0};
+    }else return nullptr;
+    return &work;
 }
 ResourceCatalogIndex index_resource_catalog(std::vector<std::int32_t> ids,std::size_t max_slots) {
     if(ids.size()>static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max()))

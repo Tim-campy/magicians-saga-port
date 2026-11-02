@@ -11,7 +11,88 @@ struct ImageText final:ImageAnimationTextHost {
     bool starts_with(const std::u16string& s,std::u16string_view prefix)override{return s.compare(0,prefix.size(),prefix)==0;}
     std::int32_t parse_id(std::u16string_view s)override{parsed.emplace_back(s);if(s==u"1")return 1;if(s==u"2")return 2;throw std::invalid_argument("mode");}
 };
+void position_is(const ImageDrawingPosition& value,std::int32_t x,std::int32_t y,
+                 std::int32_t scale_x,std::int32_t scale_y,std::int32_t angle){
+    check(value.x==x&&value.y==y&&value.scale_x==scale_x&&value.scale_y==scale_y&&value.angle==angle);
+}
+void image_motion(){
+    const auto minimum=std::numeric_limits<std::int32_t>::min(),maximum=std::numeric_limits<std::int32_t>::max();
+    // At quarter, half and three-quarter time, the normalized public cubic is
+    // exactly 1/16, 1/2 and 15/16. These values are exactly representable in binary32.
+    check(image_animation_cubic_in_out(0,128,4,1)==8);
+    check(image_animation_cubic_in_out(0,128,4,2)==64);
+    check(image_animation_cubic_in_out(0,128,4,3)==120);
+    check(image_animation_cubic_in_out(128,0,4,1)==120);
+    check(image_animation_cubic_in_out(128,0,4,2)==64);
+    check(image_animation_cubic_in_out(128,0,4,3)==8);
+    // Swing's 0..3 output crosses integer boundaries only at the last three samples.
+    const std::array<std::int32_t,6> cubic{0,0,0,2,2,3};
+    for(std::int32_t progress=0;progress<=5;++progress)
+        check(image_animation_cubic_in_out(0,3,5,progress)==cubic.at(static_cast<std::size_t>(progress)));
+    check(image_animation_cubic_in_out(9,17,5,-1)==9);
+    check(image_animation_cubic_in_out(9,17,5,maximum)==17);
+    check(image_animation_cubic_in_out(9,17,0,-1)==9);
+    check(image_animation_cubic_in_out(9,17,0,0)==17);
+    check(image_animation_cubic_in_out(9,17,-10,-3)==9);
+    check(image_animation_cubic_in_out(9,17,-10,0)==17);
+    check(image_animation_cubic_in_out(0,maximum,4,2)==1073741824); // binary32 rounds maximum upward before halving.
+    check(image_animation_cubic_in_out(-2000000000,2000000000,4,2)==-2000000000); // Wrapped delta, then endpoint clamp.
+    check(image_animation_cubic_in_out(2000000000,-2000000000,4,2)==2000000000);
+    check(image_animation_cubic_in_out(minimum,maximum,4,2)==minimum);
+    check(image_animation_cubic_in_out(maximum,minimum,4,2)==maximum);
+
+    ImageDrawingPosition work{11,12,13,14,15};
+    position_is(ImageDrawingPosition{},0,0,100,100,0);
+    check(!update_image_animation(nullptr,minimum,work));position_is(work,11,12,13,14,15);
+    ImageAnimationGroup group{std::make_shared<EventIntegers>(EventIntegers{1,0}),
+                              std::make_shared<EventIntegers>(EventIntegers{2,0})};
+    // PopOut phase boundaries, the overshoot/undershoot samples, and the complete linear tail.
+    const std::array<std::int32_t,19> pop{60,60,60,77,92,102,107,110,98,95,103,106,105,104,103,102,101,100,100};
+    const ImageDrawingPosition* shared=nullptr;
+    for(std::int32_t frame=0;frame<static_cast<std::int32_t>(pop.size());++frame){
+        group[0]->at(1)=frame;shared=update_image_animation(&group,0,work);
+        check(shared==&work);const auto scale=pop.at(static_cast<std::size_t>(frame));position_is(work,0,0,scale,scale,0);
+        check(group[0]->at(0)==1&&group[0]->at(1)==frame);
+    }
+    for(const auto frame:{-100,-1,minimum+2}){
+        group[0]->at(1)=frame;check(update_image_animation(&group,0,work)==shared);position_is(work,0,0,60,60,0);
+    }
+    for(const auto frame:{minimum,minimum+1,maximum}){
+        group[0]->at(1)=frame;check(update_image_animation(&group,0,work)==shared);position_is(work,0,0,100,100,0);
+    }
+    // Signed remainder keeps ordinary negative clocks at zero; the wrapped subtraction
+    // sends the first three int32 clocks through the positive end of the nine-tick wave.
+    const std::array<std::int32_t,9> swing{0,0,0,2,2,3,3,2,2};
+    for(std::int32_t frame=0;frame<23;++frame){
+        group[1]->at(1)=frame;check(update_image_animation(&group,1,work)==shared);
+        const auto y=frame<5?0:swing.at(static_cast<std::size_t>((frame-5)%9));position_is(*shared,0,y,100,100,0);
+        check(group[1]->at(0)==2&&group[1]->at(1)==frame);
+    }
+    for(const auto frame:{-100,-4,-1,minimum+5}){
+        group[1]->at(1)=frame;update_image_animation(&group,1,work);position_is(work,0,0,100,100,0);
+    }
+    const std::array<std::array<std::int32_t,2>,4> extremes{{{minimum,3},{minimum+1,2},{minimum+2,2},{maximum,3}}};
+    for(const auto& item:extremes){
+        group[1]->at(1)=item[0];update_image_animation(&group,1,work);position_is(work,0,item[1],100,100,0);
+    }
+    for(const auto mode:{minimum,-1,0,3,maximum}){
+        work={11,12,13,14,15};group[0]->at(0)=mode;group[0]->at(1)=maximum;
+        check(!update_image_animation(&group,0,work));position_is(work,11,12,13,14,15);
+        check(group[0]->at(0)==mode&&group[0]->at(1)==maximum);
+    }
+    fails<std::out_of_range>([&]{update_image_animation(&group,-1,work);});
+    fails<std::out_of_range>([&]{update_image_animation(&group,2,work);});
+    group[0].reset();fails<std::invalid_argument>([&]{update_image_animation(&group,0,work);});
+    for(const auto mode:{0,1,2,3}){
+        group[0]=std::make_shared<EventIntegers>(1,mode);
+        fails<std::out_of_range>([&]{update_image_animation(&group,0,work);});position_is(work,11,12,13,14,15);
+    }
+    group[0]->clear();fails<std::out_of_range>([&]{update_image_animation(&group,0,work);});
+    group.clear();fails<std::out_of_range>([&]{update_image_animation(&group,0,work);});
+    position_is(work,11,12,13,14,15);
+}
 int main(){
+    image_motion();
     {ImageText host;auto rows=std::make_shared<std::vector<CatalogText>>();
      for(auto s:{u"file.png, A1 ,a2",u"other.png,q+1,a2",u"plain.png"})rows->push_back(std::make_shared<const std::u16string>(s));
      auto group=load_image_animation_infos(5,rows,host);

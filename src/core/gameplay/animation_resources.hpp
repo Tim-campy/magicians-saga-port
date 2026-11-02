@@ -25,6 +25,18 @@ public:
 // indexes raw post-ID catalog rows, independently of the indexed image IDs.
 std::shared_ptr<ImageAnimationGroup> load_image_animation_infos(std::size_t image_count,CatalogRows,ImageAnimationTextHost&);
 
+struct ImageDrawingPosition {
+    std::int32_t x=0,y=0,scale_x=100,scale_y=100,angle=0;
+};
+// Easing.CubicInOut 0x1129e4c: binary32 arithmetic and the native int32 wrapper.
+std::int32_t image_animation_cubic_in_out(std::int32_t start,std::int32_t end,
+                                         std::int32_t duration,std::int32_t progress);
+// ResourceManagerExtension.UpdateImageAnimation 0x10ee3f8. Null means that the
+// manager has no registered group; supported modes return the caller's shared work.
+// Pair clocks are read only. Unknown modes return null without changing work.
+const ImageDrawingPosition* update_image_animation(const ImageAnimationGroup* group,
+    std::int32_t image,ImageDrawingPosition& work);
+
 template<class Resource>struct ApplicationResourceFields {
     Resource *characters=nullptr,*common=nullptr,*enemies=nullptr,*equipment=nullptr;
     Resource *quest=nullptr,*residents=nullptr,*selection=nullptr;
