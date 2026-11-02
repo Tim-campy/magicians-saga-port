@@ -14,7 +14,8 @@ struct EquipmentCombatRecord {std::int32_t id=0,attribute=0,flags=0;EventScript 
     std::int32_t distance=0,burst_count=0,use_mp=0; // EquipmentData +0x70/+0x74/+0x7c.
     std::int32_t type=0,bullet_id=-1,max_height=0,bullet_speed=0; // +0x3c/+0x54/+0x68/+0x6c.
     std::int32_t image=0;std::string resource;
-    std::int32_t initial_level=0;}; // Equipment +0x80, cloth +0x4c, hat +0x44.
+    std::int32_t initial_level=0; // Equipment +0x80, cloth +0x4c, hat +0x44.
+    std::string name;}; // BaseData name, selected resource-language table token1.
 struct EquipmentNewGameState {
     std::int32_t level=0;
     ItemStock inventory{0,false,0}; // Fresh constructors explicitly clear discovery/new.

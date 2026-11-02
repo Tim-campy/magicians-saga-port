@@ -3,6 +3,7 @@
 #include "entity_visual.hpp"
 #include "quest_camera.hpp"
 #include <string>
+#include <memory>
 
 namespace saga::core {
 struct EntityButton final:Component {
@@ -50,4 +51,42 @@ public:
 void initialize_buttons(ButtonFrameState&,ButtonInitializationWorld*,ButtonFrameHost&); // 0x114277c.
 void update_buttons(ButtonFrameState&,ButtonFrameHost&); // 0x11428a0; pass0 gate external.
 void button_touch(ButtonFrameState&,const InputTouch*,ButtonFrameHost&); // 0x11437b8.
+// Borrowed identities; the host retains AppData, ResourceManager, SEB and TouchOption lifetimes.
+using ButtonApplicationContext=const void*;
+using ButtonResourceContext=void*;
+using ButtonSebContext=void*;
+using ButtonTouchOption=const void*;
+using ButtonText=std::shared_ptr<const std::u16string>;
+struct ButtonDrawMetrics {float view_scale=0;std::int32_t quest_scale=0;};
+class ButtonDrawingHost {
+public:
+    virtual ~ButtonDrawingHost()=default;
+    // GameView.GetInstance 0x10f2abc -> SurfaceBase.scaleRatio_ +0xc4, then current QuestForm.scale +0x1dc.
+    virtual ButtonDrawMetrics button_draw_metrics();
+    // Fresh QuestForm.scale, then BaseSystem.view_ +0x18 -> SurfaceBase.scaleRatio_ +0xc4.
+    virtual ButtonDrawMetrics button_touch_metrics();
+    virtual void button_black_color();
+    virtual ButtonApplicationContext capture_button_application();
+    virtual ButtonResourceContext button_resource(ButtonApplicationContext,std::int32_t resource);
+    virtual ButtonSebContext button_seb(ButtonResourceContext,std::int32_t clip);
+    virtual std::array<std::int32_t,4> button_bounds(ButtonSebContext,std::int32_t frame); // Left/top/width/height; signed int16 widened to int32.
+    virtual void button_draw_sprite(ButtonResourceContext,std::int32_t clip,std::int32_t frame,float x,float y);
+    virtual void button_draw_scaled_sprite(ButtonResourceContext,std::int32_t clip,std::int32_t frame,std::int32_t x,std::int32_t y,std::int32_t scale);
+    virtual void button_draw_seb_ex(ButtonResourceContext,std::int32_t clip,std::int32_t frame,std::int32_t x,std::int32_t y,std::int32_t scale,std::int32_t anchor);
+    virtual void button_render_mode(std::int32_t mode,std::int32_t source,std::int32_t destination);
+    virtual void button_reset_render_mode();
+    virtual void button_draw_text(ButtonText,float x,float y,std::int32_t anchor);
+    virtual void button_add_touch(std::int32_t id,InputRectangle,std::int32_t value);
+    virtual void button_add_touch_seb(std::int32_t id,std::int32_t x,std::int32_t y,ButtonSebContext,std::int32_t frame,std::int32_t value,ButtonTouchOption);
+    virtual void button_add_touch_delay(std::int32_t id,std::int32_t x,std::int32_t y,ButtonSebContext,std::int32_t frame,std::int32_t value,ButtonTouchOption);
+};
+// ButtonSystem.Draw 0x1142dac / DrawDynamic 0x11437a8 -> DrawButtons 0x1142db4.
+// The caller owns enabled and selects dynamic=false/true. The live predicate precedes Invisible21.
+void draw_buttons(ButtonFrameState&,bool dynamic,ButtonDrawingHost&);
+struct ButtonDrawRequest {
+    std::int32_t id=35,x=0,y=0,resource=0,clip=0,frame=0,value=0,anchor=17;
+    bool dynamic=false;ButtonTouchOption option=nullptr;
+};
+// Full DrawButton 0x1143988; default id35 also covers its forwarding overload 0x1143938.
+void draw_button(const ButtonDrawRequest&,ButtonDrawingHost&);
 }

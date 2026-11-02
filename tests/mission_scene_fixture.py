@@ -1,4 +1,5 @@
 """Synthetic table/archive profile shared by mission and GPU contracts."""
+import json
 from test_sprite_preview import jar, png, seb
 
 def make_table_scene(root, valid_png=True, human_frame=False, shoot=False, rewards=False, area=False, lethal_contact=False, treasure_flags=0, spell_attribute=3, boss_entry=False, alternate_quest=False, stage_entry=False, talk_events=False, bullet_category=0, quest_time_limit=None):
@@ -191,6 +192,12 @@ def make_data_entry_fixture(root, font_file, quest_time_limit=None):
         f'{"tables" if i==-1 else "resource"} {i} "textassets/{file}.bin" "{name}"\n' for i,file,name in entries),encoding='utf8')
     (root/'new-game-save.tsv').write_text('new_game_save 1\nselection 5 2\ntown_capacity 1\nwallet 37 43\n',encoding='ascii')
     (root/'mission-initialization.tsv').write_text('mission_initialization 1\nyugami 10000\norientation 0\nevent_arguments ""\n',encoding='ascii')
+    # Synthetic labels exercise native Debug consumers without shipping metadata strings.
+    (root/'mission-debug.tsv').write_text('mission_debug 1\nparameter_ids 13 '+ ' '.join(map(str,range(13)))+'\n'+
+        'parameter_names 13 '+ ' '.join(json.dumps('P'+str(i)) for i in range(13))+'\n'+
+        'human_states 7 '+ ' '.join(json.dumps('H'+str(i)) for i in range(7))+'\n'+
+        'enemy_states 6 '+ ' '.join(json.dumps('E'+str(i)) for i in range(6))+'\n'+
+        'texts 7 '+ ' '.join(json.dumps(s) for s in [' Lv.',' ','/','{0}/{1}({2})','%','HP ','EXP '])+'\n',encoding='ascii')
     font=root/'unity/Font/different-number.ttf';font.parent.mkdir(parents=True);font.write_bytes(Path(font_file).read_bytes())
     (root/'mission-font.tsv').write_text(f'mission_font 1\nfont "unity/Font/{font.name}" {font.stat().st_size}\n',encoding='ascii')
     removed=('world ','projection ','slots ','view ','animate ','simulate ','gpu_depth ','material ',

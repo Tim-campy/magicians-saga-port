@@ -181,6 +181,9 @@ For table-backed entity scenes, replace manual draw rows with tables, progress a
 | global_alias | global target ID, ready application source ID; declare after that resource |
 | slots | component-slot count (diagnostic limit1..1024) |
 | view | width, height, scale, camera X/Y, VIEW margins X/Y, extra-depth rate |
+| view_scales | finite instance GameView and BaseSystem.view SurfaceBase scale ratios; independent provisional defaults100/100, separate from quest zoom |
+| debug_flags | int32 diagnostic mask applied after native Debug.Init resets flags;8 Human,64 quest grid,128 collisions,256 enemies; requires the separate quest_frame UI-debug gate |
+| debug_labels | quoted local mission-debug.tsv path, relative to the scene; active diagnostic text readers require extracted metadata labels |
 | geometry | map step X/Z and height; required when a selected bullet reaches the map |
 | animate | initial animation-pass count0..10000, automatic flag0/1, application-update flag0/1 |
 | mission_events | fresh plus null/quoted UTF8 normal-save string0, or new_game from mission_initialization; followed by IsShortWords0/1, held-advance0/1 and PRINT0/1; requires quest_frame/tick_ms and freshly loaded event counters |
@@ -250,19 +253,22 @@ build/viewer/queue_capture.exe scene.txt 600 220 --run-frames 12
 
 ### Headless mission host
 
-The scene-free fresh entry uses the existing extracted media and four small local indexes. Generate the missing indexes without extracting the assets again:
+The scene-free fresh entry uses the existing extracted media and four small local indexes. Diagnostic drawing additionally accepts an optional metadata-label file. Generate these without extracting the media again:
 
 ```powershell
 python -I tools/extract_assets.py --out extracted/full --mission-index
 python -I tools/extract_assets.py game/MagiciansSaga-1.4.0.apk --out extracted/full --new-game-save
 python -I tools/extract_assets.py game/MagiciansSaga-1.4.0.apk --out extracted/full --mission-initialization
 python -I tools/extract_assets.py --out extracted/full --mission-font
+python -I tools/extract_assets.py game/MagiciansSaga-1.4.0.apk --out extracted/full --debug-drawing
 .\build\viewer\saga_mission.exe --data .\extracted\full --quest 1
 # Fixed-pass execution without SDL:
 .\build\desktop\saga_mission.exe --data .\extracted\full --quest 1 --frames 600 --headless
 ```
 
-The viewer command opens an interactive window; add `--frames N` for a bounded run or `--capture new-output.bmp --frames N` for a capture. Build it with `tools\build-viewer.cmd`. Retry/victory/defeat/result notices use the window title: Enter acknowledges a notice; C spends100 crystals, A selects the offline ad-request service and N declines retry. Replay uses `answer <int32>` (0/1/other for retry;0 acknowledges a notice). Pending native forms suspend the parent mission until explicitly closed. `--human-static-fps` (provisional default30) supplies the FPS captured at Human class initialization for the existing invincibility-duration initializer. The image_animation_infos report contains each loaded resource owner's mode/tick pairs; native form-frame reset/update advances these actual tables, while DrawSebImg visual motion remains unbound. Native defaults and every unresolved context override are listed by `--help` and reported as provisional in bootstrap_context; FPS/damage DEBUG use MyConfig30/0, while the System.Random seed42 is declared host policy. The default font is selected from the manifest by Unity identity and its size/hash are checked by --mission-font. Automatic font selection covers English/default skin only; other policies require explicit --font. This entry initializes fresh records/world/formation; it does not load an Android save or boot through title/town. See [integration](subsystems/integration.md#scene-free-fresh-mission-s1-a1).
+The viewer command opens an interactive window; add `--frames N` for a bounded run or `--capture new-output.bmp --frames N` for a capture. Build it with `tools\build-viewer.cmd`. Retry/victory/defeat/result notices use the window title: Enter acknowledges a notice; C spends100 crystals, A selects the offline ad-request service and N declines retry. Replay uses `answer <int32>` (0/1/other for retry;0 acknowledges a notice). Pending native forms suspend the parent mission until explicitly closed. `--human-static-fps` (provisional default30) supplies the FPS captured at Human class initialization for the existing invincibility-duration initializer. The image_animation_infos report contains each loaded resource owner's mode/tick pairs; native form-frame reset/update advances these actual tables. Native defaults and every unresolved context override are listed by `--help` and reported as provisional in bootstrap_context; FPS/damage DEBUG use MyConfig30/0, while the System.Random seed42 is declared host policy. The default font is selected from the manifest by Unity identity and its size/hash are checked by --mission-font. Automatic font selection covers English/default skin only; other policies require explicit --font. This entry initializes fresh records/world/formation; it does not load an Android save or boot through title/town. See [integration](subsystems/integration.md#scene-free-fresh-mission-s1-a1).
+
+`--instance-view-scale` and `--base-view-scale` select independent finite Surface scales, each with provisional default100; they do not replace QuestForm.scale. `--ui-debug 1 --debug-flags 456` requests the four native Debug handlers. UI debug is Config.DEBUG+0x10; combat `--debug` is MyConfig.DEBUG+0x4 and cannot enable overlays. The mask defaults0; active label readers load mission-debug.tsv when present and fail if required game data is missing. The extractor writes native metadata labels/formats, without inventing translations or copying them into source code. Exact text.txt lookup and public ASCII glyph/primitive policies retain their [output-service limits](subsystems/fonts.md#button-and-debug-text-output); deferred entity-button Surface hits remain recorded requests, not physical controls. Static Button drawing after Stage controls is a selected host binding, not the full ordinary system/form draw schedule.
 
 For table-selected quests, add `quest <id> <saved-rescued-count>` to the profile and use the `quest` source forms in [integration](subsystems/integration.md#table-selected-quests-s1-a1a3). Quest.txt comes from the existing tables archive; saved state, actors and resource bindings remain explicit. `stage_loop quest` uses the ported ResetTimer, while a numeric timer supplies an explicit mid-mission snapshot. The diagnostic CLI accepts `--data` and `--quest` alongside `--scene`; the native fresh entry above needs no scene.
 

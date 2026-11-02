@@ -19,6 +19,7 @@ struct Cursor final:RenderCursor {
             // The diagnostic fallback group includes entities without native culling cells.
             // CreateEffect adds Cell5/Depth4 only for depth=true; Nor4 belongs to DrawDynamic.
             if(effect&&!(*entry)->contains(4))continue;
+            if((*entry)->contains(17)&&!(*entry)->contains(5))continue; // CreateButton has no culling Cell; dedicated static/dynamic passes own it.
             return entry;
         }return std::nullopt;
     }
@@ -169,8 +170,7 @@ void MissionScene::draw_dynamic_scene(std::int32_t id,EffectNumberContext app,
     if(id==16)draw_dynamic_bubbles(bubbles_,host);
     else if(id==22)draw_dynamic_gauges(gauges_,host);
     else if(id==23)draw_effects(effects_,host);
-    // SAGA_STUB(mission-button-debug-draw): dedicated Button/Debug output is independent of the sprite queues.
-    else if(id!=26&&id!=30)throw std::invalid_argument("unsupported dynamic scene factory");
+    else throw std::invalid_argument("unsupported dynamic sprite scene factory");
 }
 void MissionScene::subscribe_dropoff(EntityEvents::Single receiver,std::optional<EventHashes> hashes){world_.events().subscribe(16,std::move(receiver),hashes);}
 void MissionScene::subscribe_parameter_experience(ParameterExperienceInitializationWorld::Receiver receiver,std::optional<EventHashes> hashes){

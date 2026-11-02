@@ -7,7 +7,7 @@ The plan in one page. Work happens in **vertical slices**: each ends in somethin
 | Milestone | Goal | State |
 | --- | --- | --- |
 | M0 | APK inventory, architecture, subsystem map | Done: [overview](subsystems/overview.md). |
-| M1 | Asset extraction and technical rendering | Partial: archives, OPT, SEB, Unity media verified; sprites of real entities render through GL; fonts and audio not ported. |
+| M1 | Asset extraction and technical rendering | Partial: archives, OPT, SEB, Unity media verified; sprites render through GL; public font metrics/direct glyph output are provisional, audio remains unbound. |
 | M2 | Boot, forms/menus and input | Static research; SelectForm passes ported in isolation (slice S2/S3). |
 | M3 | First playable gameplay loop | **Current = slice S1.** Scene host runs table-backed shots, terminal damage, enemy defeat, pending drops, enemy population, contact/area collisions, pickup and stage accumulation; clear/result grants, cleanup and decoded character writeback reach the scene host; native fresh-world/formation initialization runs; scene-free fresh entry runs; Continue restoration and interactive end flow remain open. |
 | M4 | Save/load, progression, economy, content | Slice S3; save envelope not decoded. |
@@ -29,7 +29,6 @@ Host: `saga_mission` (headless or SDL window; fresh --data/--quest entry or expl
 
 Tasks:
 - [ ] (blocked on S3 selector13 decoding) Bind Continue world/party/systems before selecting loaded InitWorld in `saga_mission` (A1).
-- [ ] Bind Button/Debug dynamic drawing to saga_mission using existing bitmap/font output (A3).
 - [ ] (blocked on original runtime reference) Validate notice font geometry, alpha and Graphics/text-task routing against the original (A3).
 - [ ] Add complete reached-world state hashing and record local per-quest golden replays (A5).
 - [ ] (deferred pending producer evidence) Locate indirect Cursor event2/4 or StartCatch producers before binding screen points; use an original runtime trace if static references remain absent (A2).

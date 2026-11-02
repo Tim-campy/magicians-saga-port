@@ -79,6 +79,7 @@ void MissionProfile::initialize_factory(std::int32_t id,InitializationWorld* arg
         mission->initialize_system(id);
         if(id==25)spatial->observe_cursor_click([this](CursorPointRef point){mission->deliver_info_click(std::move(point));});
         if(id==26)humans->observe_input_touch([this](const InputTouch* event){mission->deliver_button_touch(event);});
+        if(id==30)mission->set_debug_flags(debug_requested_flags_);
     }
 }
 void MissionProfile::initialize_loaded_world(){
@@ -245,8 +246,8 @@ void MissionProfile::bind_schedule(){
     bind(24,static_cast<bool>(spatial),[this](auto pass){spatial->advance_cursor(pass);});
     bind(25,true,[this](auto pass){mission->advance_info(pass);});
     bind(26,true,[this](auto pass){mission->advance_buttons(pass);});
-    // Render-only profiles without runtime declare DEBUG=false; this native diagnostic body has no state effects for either value.
-    bind(30,true,[this](auto pass){mission->advance_debug(runtime?runtime->debug:false,pass);});
+    // Config.DEBUG is the UI/quest flag, distinct from MyConfig.DEBUG used by combat.
+    bind(30,true,[this](auto pass){mission->advance_debug(quest_frame_&&quest_frame_->debug_controls,pass);});
     bind(31,simulate.has_value(),[this](auto pass){mission->advance_garbage(pass);});
     std::array<UpdateSystem*,32> factory{};
     for(std::size_t i=0;i<factory.size();++i)factory[i]=updates_[i].get();
@@ -464,6 +465,15 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
                localized!=0||(japanese!=0&&japanese!=1)||(style!=0&&style!=1))throw std::invalid_argument("talk_font requires path, font/app/layout scales, localization-disabled0, Japanese0/1, Japanese-style0/1, load flags and kerning mode");
             font.path=std::filesystem::u8path(path);if(font.path.is_relative())font.path=scene.parent_path()/font.path;
             font.japanese=japanese!=0;font.japanese_style=style!=0;event_scenario.font=std::move(font);end(row);continue;
+        }else if(operation=="view_scales"){
+            if(!(row>>instance_view_scale_>>base_view_scale_)||!std::isfinite(instance_view_scale_)||!std::isfinite(base_view_scale_))
+                throw std::invalid_argument("view_scales requires finite instance/base SurfaceBase scale ratios");
+            end(row);continue;
+        }else if(operation=="debug_flags"){
+            if(!(row>>debug_requested_flags_))throw std::invalid_argument("debug_flags requires an int32 mask");end(row);continue;
+        }else if(operation=="debug_labels"){
+            std::string path;if(!(row>>std::quoted(path)))throw std::invalid_argument("debug_labels requires a local metadata-label file");
+            auto target=std::filesystem::u8path(path);if(target.is_relative())target=scene.parent_path()/target;load_debug_data(target);end(row);continue;
         }
         if(operation=="talk_layout"){
             std::int32_t id=0,count=0;
@@ -793,6 +803,9 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         }else font.path=std::filesystem::absolute(font.path);
         presentation(b.width,b.height,100,b.automatic_images,b.application_update,b.camera);
         load_resources(b.language,b.dpi);
+        if(!std::isfinite(b.instance_view_scale)||!std::isfinite(b.base_view_scale))throw std::invalid_argument("nonfinite button surface scales");
+        instance_view_scale_=b.instance_view_scale;base_view_scale_=b.base_view_scale;debug_requested_flags_=b.debug_flags;
+        if(std::filesystem::exists(b.data_root/"mission-debug.tsv"))load_debug_data(b.data_root/"mission-debug.tsv");
         bootstrap_options_=b;human_static_fps=b.human_static_fps;native_materials=true;has_gpu_depth=true;depth_bits=b.depth_bits;depth_step=b.depth_step;
         fresh_hero_=true;selected.emplace_back(SelectedFreshHero{});players.push_back(0);tick_ms=b.tick_ms;
         const auto map=initial_mission_map_creation();geometry=StageGeometry{map.step_x,map.step_z,0};
@@ -996,6 +1009,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             if(!entity)throw std::invalid_argument("selected entity record is unavailable");created.push_back(entity);
         }
         mission=std::make_unique<MissionScene>(*entity_world,application,*entity_world->subset({0,2}),view,live_map,initialized_loaded_.has_value());
+        if(!initialized_loaded_)mission->set_debug_flags(debug_requested_flags_);
         for(const auto ordinal:players){auto* actor=created.at(ordinal);if(!actor&&fresh_hero_)continue;if(!actor||!actor->contains(14))throw std::invalid_argument("selected player needs Human component");entity_world->mark_player(*actor);}
         if(human_scenario){
             if(!runtime||!geometry||!simulate)throw std::invalid_argument("human_system requires runtime, geometry and simulate rows");
@@ -1243,6 +1257,7 @@ void MissionProfile::write_combat_report(std::ostream& out){
         out<<"{\"notice\":"<<r.notice<<",\"x\":"<<r.x<<",\"y\":"<<r.y<<",\"anchor\":"<<r.anchor<<",\"font\":"<<r.font<<",\"bound\":"<<(r.bound?"true":"false");
         if(r.bound)out<<",\"text\":"<<std::quoted(notice_texts_.at(static_cast<std::size_t>(r.notice))->display);
         out<<'}';}out<<']';
+    draw_entity_buttons(false);write_drawing_report(out);
     out<<",\"selected_quest\":";if(selected_quest)out<<*selected_quest;else out<<"null";
     if(selected_quest&&humans){const auto q=humans->quest();out<<",\"quest_distance\":"<<q->distance<<",\"quest_flags\":"<<q->flags<<",\"quest_money_rate\":"<<q->money_rate<<",\"quest_completion_byte\":"<<static_cast<int>(q->completed)<<",\"quest_rescued\":"<<q->rescued_prisoners;}
     const auto write_indices=[&](const char* name,const auto& indices){out<<",\""<<name<<"\":[";bool first=true;for(const auto id:indices){if(!first)out<<',';first=false;out<<id;}out<<']';};
@@ -1284,35 +1299,20 @@ void MissionProfile::bind_dynamic_draw_schedule(){
     dynamic_draw_list_=make_gameplay_dynamic_draw_list(factory);
 }
 void MissionProfile::prepare_notice_texts(){
-    if(!events_||!events_->font_provider()||!events_->font_scenario()||!tables)return;
+    if(!tables)return;
     const auto data=tables->data("text.txt");if(!data)return; // SAGA_STUB(mission-notice-legacy): partial profiles omit this table.
-    const auto& scenario=*events_->font_scenario();
-    TextFontState font{0,0,true,0,1,scenario.requested_scale};const std::vector<std::int32_t> presets{12,24,30};
-    set_text_font_size(font,10,true,&presets);update_text_font_scale(font,scenario.requested_scale,&presets);adjust_text_font_size(font,scenario.layout_scale);
-    const auto pixels=text_gui_pixel_size(font.adjusted_size,scenario.application_ratio);
     std::istringstream input(std::string(data->bytes.begin(),data->bytes.end()));std::string line;
-    for(std::size_t row=0;row<=208&&std::getline(input,line);++row){
-        if(row<205)continue;
+    for(std::size_t row=0;std::getline(input,line);++row){
         if(!line.empty()&&line.back()=='\r')line.pop_back();
         const auto tab=line.find('\t');if(tab==std::string::npos)continue;
         const auto next=line.find('\t',tab+1);const auto display=line.substr(tab+1,next==std::string::npos?next:next-tab-1);
-        if(tab==0||display.empty())continue; // No invented translation for a missing selected-language entry.
-        auto text=std::make_unique<NoticeText>();text->source=std::make_shared<const std::u16string>(decode_mission_text(std::string_view(line).substr(0,tab)));
-        text->display=display;
-        auto content=decode_mission_text(display);
-        auto raster=events_->font_provider()->rasterize_run(content,pixels,scenario.load_flags,scenario.kerning_mode);
-        std::replace(content.begin(),content.end(),u' ',u'.'); // Native Font.StringWidthF GUI measurement rule, separate from glyph contents.
-        text->width=text_run_logical_width(events_->font_provider()->run_width(content,pixels,scenario.load_flags,scenario.kerning_mode),scenario.application_ratio);
-        text->ascent=raster.ascent;text->left=raster.left;text->top=raster.top;
-        text->font_height=font.size;text->scale=100.0F/scenario.application_ratio;text->ready.pixels=std::move(raster.pixels);
-        if(!text->ready.pixels.rgba.empty()){
-            text->ready.image=std::make_unique<PixelImage>();auto& image=*text->ready.image;
-            image.width=image.standard_width=text->ready.pixels.width;image.height=image.standard_height=text->ready.pixels.height;
-            ImageAlphaClassifier alpha;for(std::size_t i=3;i<text->ready.pixels.rgba.size();i+=4)alpha.add(static_cast<float>(text->ready.pixels.rgba[i])/255.0F);
-            text->ready.alpha_type=alpha.finish(image.width*image.height);
-        }
-        const auto index=row-205;notice_texts_[index]=std::move(text);
-        if(notice_texts_[index]->ready.image)textures.bind(notice_texts_[index]->ready);
+        if(tab==0||display.empty())continue;
+        auto source=decode_mission_text(std::string_view(line).substr(0,tab));
+        auto translated=decode_mission_text(display);drawing_translations_.emplace(source,translated);
+        if(row<205||row>208)continue;
+        auto text=make_text_bitmap(translated,10,0xffffffffU);if(!text)continue;
+        text->source=std::make_shared<const std::u16string>(std::move(source));text->display=display;
+        notice_texts_[row-205]=std::move(text);
     }
 }
 void MissionProfile::draw_notice_text(const MissionEffectTextDraw& request){
@@ -1339,7 +1339,9 @@ void MissionProfile::draw_dynamic_body(std::int32_t id){
         human_gauge_requests_.push_back(r);if(dynamic_backend_)dynamic_backend_->draw_parameter_gauge(r,mission->gauge_camera_host(),&gauge_scratch_);});humans->draw_dynamic_hud(host);}
     else if(id==5&&enemy_gauges)mission->draw_enemy_gauges([&](const ParameterGaugeRequest& r){
         enemy_gauge_requests_.push_back(r);if(dynamic_backend_)dynamic_backend_->draw_parameter_gauge(r,mission->gauge_camera_host(),&gauge_scratch_);});
-    else if(id==16||id==22||id==23||id==26||id==30){
+    else if(id==26)draw_entity_buttons(true,dynamic_backend_);
+    else if(id==30)draw_debug_graphics(dynamic_backend_);
+    else if(id==16||id==22||id==23){
         MissionEffectDrawing output;
         output.number=[&](const MissionNumberDraw& r){
             effect_number_draws_.push_back(r);
@@ -1371,16 +1373,20 @@ void MissionProfile::draw_dynamic_body(std::int32_t id){
 }
 void MissionProfile::draw_dynamic_hud(BitmapBackend* backend){
     last_dynamic_bodies_.clear();human_gauge_requests_.clear();enemy_gauge_requests_.clear();effect_number_draws_.clear();effect_sprite_draws_.clear();effect_render_modes_.clear();unbound_effect_draws_.clear();notice_text_draws_.clear();
+    button_draws_.clear();button_touches_.clear();drawing_texts_.clear();drawing_primitives_.clear();
     if(!mission)return;
     dynamic_backend_=backend;
     if(initialization_complete_){
         bind_dynamic_draw_schedule();DynamicDrawSchedule schedule{&dynamic_draw_list_,&system_identities_,&timer_};
         try{draw_dynamic_systems(schedule,this);}catch(...){dynamic_backend_=nullptr;throw;}
-    }else if(enemy_gauges||human_hud){
+    }else{
         // SAGA_STUB(mission-dynamic-legacy-context): selected snapshots do not own the complete initialized system context.
         set_dynamic_depth_layer(99);
         if(human_hud&&system_states_[4].enabled)draw_dynamic_body(4);
         if(enemy_gauges&&system_states_[5].enabled)draw_dynamic_body(5);
+        // Explicit diagnostic Button rows remain reachable without claiming the full World schedule.
+        if(system_states_[26].enabled)draw_dynamic_body(26);
+        if(debug_requested_flags_&&system_states_[30].enabled)draw_dynamic_body(30);
     }
     dynamic_backend_=nullptr;
 }

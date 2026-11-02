@@ -90,10 +90,14 @@ public:
     // DrawSebImg positive-image path, including registered image motion. No queue mutation.
     void draw_seb_image(std::int32_t resource,std::int32_t clip,std::int32_t frame,std::int32_t x,std::int32_t y,
                         std::int32_t scale,std::int32_t anchor,core::ImageAnimationGroup*);
+    void draw_seb_image(core::RenderDrawResource*,std::int32_t clip,std::int32_t frame,std::int32_t x,std::int32_t y,
+                        std::int32_t scale,std::int32_t anchor,core::ImageAnimationGroup*);
     // DrawSebEx(scale100,anchor17), used by movement widgets.
     void draw_seb_button(std::int32_t resource,std::int32_t clip,std::int32_t frame,std::int32_t x,std::int32_t y,core::ImageAnimationGroup*);
     // DrawScaledSeb's bitmap path bypasses the AppData image-motion dictionary.
     void draw_scaled_seb(std::int32_t resource,std::int32_t clip,std::int32_t frame,std::int32_t x,std::int32_t y,std::int32_t scale);
+    void draw_scaled_seb(core::RenderDrawResource*,std::int32_t clip,std::int32_t frame,std::int32_t x,std::int32_t y,std::int32_t scale);
+    void draw_line(core::PixelImage& solid,float x1,float y1,float x2,float y2,float width);
     void set_render_mode(std::int32_t mode,std::int32_t alpha);
     void set_render_mode(std::int32_t mode,std::int32_t source,std::int32_t destination);
 private:

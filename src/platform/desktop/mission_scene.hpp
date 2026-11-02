@@ -10,6 +10,7 @@
 #include "core/gameplay/gauge_drawing.hpp"
 #include "core/gameplay/gauge_frame.hpp"
 #include "core/gameplay/enemy_initialization.hpp"
+#include "core/gameplay/debug_drawing.hpp"
 #include "core/gameplay/info_frame.hpp"
 #include <ostream>
 
@@ -92,6 +93,9 @@ public:
     core::QuestCameraHost& gauge_camera_host();
     core::GaugePoint gauge_screen_position(const core::ContactPosition*);
     void draw_enemy_gauges(const std::function<void(const core::ParameterGaugeRequest&)>&);
+    void draw_entity_buttons(bool dynamic,core::ButtonDrawingHost& host){core::draw_buttons(buttons_,dynamic,host);}
+    void draw_debug(core::DebugDrawingHost& host){core::draw_debug_dynamic(debug_visualization_,host);}
+    void set_debug_flags(std::int32_t mask){core::enable_debug_flag(debug_visualization_,mask);}
     void draw_dynamic_scene(std::int32_t,core::EffectNumberContext,
         const MissionEffectDrawing&,std::vector<std::int32_t>& unbound_effects);
     std::uint64_t collision_events()const{return collision_events_;}

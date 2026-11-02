@@ -69,19 +69,8 @@ struct MissionControls final:core::StageControlsHost {
         const auto value=0x10000|(key==0x20000?17:19);auto* control=profile.humans->widget_control(value);
         if(!control)throw std::logic_error("missing stable movement control");
         const auto frame=pressed(control)?1:0;
-        auto* resource=core::get_application_resource(profile.application,7);
-        if(!resource||!resource->animations||!resource->animations->clips)throw std::invalid_argument("missing movement resource7");
-        auto* clock=resource->animations->clips->at(static_cast<std::size_t>(clip));
-        if(!clock||!clock->sprites)throw std::invalid_argument("missing movement SEB");
-        // ButtonSystem.DrawButton reads bounds before drawing, then GameView.AddTouch reads again.
-        static_cast<void>(core::seb_bounding_rect(*clock->sprites,frame));
-        if(backend){core::ImageAnimationGroup* clocks=nullptr;
-            for(const auto& owner:profile.owners)if(&owner->manager.drawing()==resource){clocks=owner->image_clocks.get();break;}
-            backend->draw_seb_button(7,clip,frame,x,y,clocks);
-        }
-        const auto bounds=core::seb_bounding_rect(*clock->sprites,frame);
-        const auto add_word=[](std::int32_t a,std::int32_t b){const auto v=static_cast<std::uint32_t>(a)+static_cast<std::uint32_t>(b);return static_cast<std::int32_t>(v<=0x7fffffffU?static_cast<std::int64_t>(v):static_cast<std::int64_t>(v)-0x100000000LL);};
-        move(core::input_screen_rectangle({add_word(x,bounds[0]),add_word(y,bounds[1]),bounds[2],bounds[3]},margins,width,height),control,static_cast<std::uint32_t>(key),frame);
+        const auto bounds=profile.draw_widget_button({group,x,y,7,clip,frame,value,anchor,false,nullptr},backend);
+        move(core::input_screen_rectangle(bounds,margins,width,height),control,static_cast<std::uint32_t>(key),frame);
     }
 };
 }

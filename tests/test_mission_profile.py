@@ -932,6 +932,26 @@ class MissionProfileTests(unittest.TestCase):
             for bad in ['info_popup 1 0 0 0 2 20 -1\n', 'info_popup 1 0 0 0 0 20\n', 'info_slide 1 80 20\n']:
                 scene.write_text(text + bad, encoding='utf-8');self.assertNotEqual(self.run_host(scene).returncode, 0)
 
+    @unittest.skipUnless(os.environ.get('SAGA_TEST_FONT'),'public font fixture supplied by CTest')
+    def test_debug_drawing_reaches_all_active_handlers_without_combat_debug(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);make_data_entry_fixture(root,os.environ['SAGA_TEST_FONT'])
+            def run(*extra):
+                result=subprocess.run([str(EXE),'--data',str(root),'--quest','2','--headless','--frames','1',*extra],capture_output=True,text=True,timeout=30)
+                self.assertEqual(result.returncode,0,result.stderr);return json.loads(result.stdout)
+            ordinary=run();gated=run('--debug-flags','456');active=run('--debug-flags','456','--ui-debug','1')
+            self.assertFalse(gated['drawing_text_requests']);self.assertFalse(gated['debug_primitive_requests'])
+            self.assertEqual(active['debug'],0);self.assertEqual(active['debug_visualization_flags'],456)
+            self.assertGreater(len(active['drawing_text_requests']),27)
+            self.assertEqual({p['type'] for p in active['debug_primitive_requests']},{0,1,2})
+            self.assertTrue(all(p['bound'] for p in active['drawing_text_requests']))
+            for key in ('positions','rng_draws','shots','total_damage','enemy_created','wallet'):
+                self.assertEqual(active[key],ordinary[key],key)
+            self.assertEqual(run('--debug-flags','456','--ui-debug','1'),active)
+            labels=root/'mission-debug.tsv';labels.write_text(labels.read_text().replace('mission_debug 1','mission_debug 2'))
+            bad=subprocess.run([str(EXE),'--data',str(root),'--quest','2','--headless','--frames','1','--ui-debug','1','--debug-flags','456'],capture_output=True,text=True,timeout=30)
+            self.assertNotEqual(bad.returncode,0);self.assertIn('metadata label version',bad.stderr)
+
     def test_entity_buttons_follow_native_camera_and_route_touch(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory);scene = root / 'scene.txt';replay = root / 'buttons.txt'
@@ -951,6 +971,10 @@ class MissionProfileTests(unittest.TestCase):
             self.assertEqual((buttons[0]['x'], buttons[0]['y']), (buttons[1]['x'], buttons[1]['y']))
             self.assertAlmostEqual(buttons[0]['x'], -88 - d['camera']['x'], places=4)
             self.assertAlmostEqual(buttons[0]['y'], 356 - d['camera']['y'], places=4)
+            self.assertEqual([r['dynamic'] for r in d['button_image_draws']],[True,False])
+            self.assertEqual([r['value'] for r in d['button_touch_requests']],[124,123])
+            self.assertEqual([r['delayed'] for r in d['button_touch_requests']],[True,False])
+            self.assertEqual(d['button_view_scales'],{'provisional':True,'instance':100,'base':100})
             self.assertLess(d['last_update_order'].index(24), d['last_update_order'].index(26))
             self.assertLess(d['last_update_order'].index(26), d['last_update_order'].index(31))
             self.assertEqual(self.run_host(scene, '--replay', str(replay), frames=1).stdout, result.stdout)

@@ -58,6 +58,13 @@ public:
     std::uint64_t random_draws()const{return random_.draws;}
     std::uint64_t shots()const{return shots_;}
     std::int32_t total_damage()const{return stage_.total_damage;}
+    std::int32_t debug_parameter(core::ComponentSlots& e,std::int32_t key){return human_parameter(e,key);}
+    std::int32_t debug_interval(core::ComponentSlots& e){return core::human_attack_interval(system_,&e,*this);}
+    std::int32_t debug_burst_wait(core::ComponentSlots& e){return core::human_burst_wait(system_,&e,*this);}
+    std::int32_t debug_burst_count(core::ComponentSlots& e){return core::human_burst_count(system_,&e,*this);}
+    std::int32_t debug_distance(core::ComponentSlots& e){return core::human_attack_distance(system_,&e,*this);}
+    const core::EquipmentCombatRecord* debug_equipment(core::ComponentSlots& e,core::EquipmentSlot slot){return core::resolve_combat_equipment(e,slot,records_);}
+    std::int32_t debug_equipment_level(core::ComponentSlots& e,core::EquipmentSlot slot);
     void enable_rewards(MissionRewardScenario);
     void write_reward_report(std::ostream&);
     void enable_enemies(MissionEnemyScenario);

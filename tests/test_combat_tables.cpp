@@ -57,6 +57,7 @@ int main(int argc,char** argv){
     TableCharacterParameterHost host(maxima,upgrades);check(member_base_parameter(c,0,host)==1021);
     const std::string gear="3\tBlade\t1\t2\t3\t4\tRes\t5\t6\t2\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t"+endpoints()+"\tD\t4";
     auto weapons=load_equipment_combat_table(gear,EquipmentTableKind::weapon_or_shield,false,parse_event_decimal);
+    check(weapons[3]->name=="Blade");
     auto e=bind_equipment_parameters(*weapons[3],100);check(e.attribute==2&&equipment_parameter(e.parameters,0)==1000);
     std::string ranged=gear;std::size_t at=0;
     for(int token=0;token<17;++token)at=ranged.find('\t',at)+1;

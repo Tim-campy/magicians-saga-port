@@ -35,6 +35,8 @@ struct MissionBootstrapOptions {
     BitmapCamera camera{0.0F,1500100.0F,-1.0F};
     MissionFontScenario font{{},100,0,0,100.0F,100.0F,false,false};
     std::int32_t depth_bits=24,depth_step=1;
+    float instance_view_scale=100,base_view_scale=100; // Independent provisional SurfaceBase.scaleRatio_ inputs.
+    std::int32_t debug_flags=0; // Explicit diagnostic mask, applied after native Debug.Init resets flags.
     bool automatic_images=false,application_update=true;
     bool debug_controls=false,short_words=false,held_advance=false,print=false;
 };
@@ -61,6 +63,10 @@ public:
     std::uint64_t logic_steps=0,movement_steps=0;
     void write_combat_report(std::ostream&); // Diagnostic JSON fragment; not a complete-state snapshot.
     void draw_dynamic_hud(BitmapBackend* backend=nullptr);
+    void draw_entity_buttons(bool dynamic,BitmapBackend* backend=nullptr);
+    void draw_debug_graphics(BitmapBackend* backend=nullptr);
+    bool has_static_buttons()const;
+    core::InputRectangle draw_widget_button(const core::ButtonDrawRequest&,BitmapBackend*);
     std::optional<StageMpHud> draw_stage_hud(BitmapBackend* backend=nullptr);
     bool attack_widgets_enabled()const{return native_stage_controls()&&resizable_viewport();}
     bool movement_widgets_enabled()const{return attack_widgets_enabled()&&core::get_application_resource(application,2);}
@@ -102,18 +108,41 @@ public:
 private:
     MissionProfile(const std::filesystem::path&,bool,ArchiveImageSet::Decoder,std::optional<MissionRuntimeConfig>,std::optional<std::filesystem::path>,MissionSelection,const MissionBootstrapOptions*);
     std::optional<MissionBootstrapOptions> bootstrap_options_;
+    float instance_view_scale_=100,base_view_scale_=100;
     std::unique_ptr<MissionEvents> events_;
-    struct NoticeText {
+    struct TextBitmap {
         core::EffectText source;
         std::string display;
         ReadyArchiveImage ready;
         float width=0,ascent=0,scale=1;std::int32_t left=0,top=0,font_height=0;
     };
-    std::array<std::unique_ptr<NoticeText>,4> notice_texts_;
+    std::array<std::unique_ptr<TextBitmap>,4> notice_texts_;
     struct NoticeTextDraw {std::int32_t notice,x,y,anchor,font;bool bound;};
     std::vector<NoticeTextDraw> notice_text_draws_;
     void prepare_notice_texts();
     void draw_notice_text(const MissionEffectTextDraw&);
+    struct DrawingHost;
+    std::unique_ptr<TextBitmap> make_text_bitmap(const std::u16string&,std::int32_t font,std::uint32_t color);
+    void output_text(core::DebugText,float x,float y,std::int32_t anchor,BitmapBackend*);
+    core::PixelImage& solid_color(std::uint32_t);
+    void load_debug_data(const std::filesystem::path&);
+    void write_drawing_report(std::ostream&);
+    struct ImageDrawing {std::int32_t resource,clip,frame,scale;float x,y;bool dynamic;};
+    struct TouchDrawing {std::int32_t group,value;core::InputRectangle bounds;bool delayed;core::ButtonSebContext seb=nullptr;std::int32_t frame=0;core::ButtonTouchOption option=nullptr;};
+    struct TextDrawing {std::u16string source;float x,y;std::int32_t font,anchor;std::uint32_t color;bool bound;};
+    struct PrimitiveDrawing {std::int32_t type;std::array<float,7> values;std::uint32_t color;};
+    std::vector<ImageDrawing> button_draws_;
+    std::vector<TouchDrawing> button_touches_;
+    std::vector<TextDrawing> drawing_texts_;
+    std::vector<PrimitiveDrawing> drawing_primitives_;
+    std::map<std::tuple<std::u16string,std::int32_t,std::uint32_t>,std::unique_ptr<TextBitmap>> drawing_bitmaps_;
+    std::map<std::uint32_t,std::unique_ptr<ReadyArchiveImage>> solid_colors_;
+    std::map<std::u16string,std::u16string> drawing_translations_;
+    core::EventInstruction debug_parameter_ids_;
+    core::DebugNames debug_parameter_names_,debug_human_states_,debug_enemy_states_,debug_texts_;
+    std::int32_t debug_requested_flags_=0;
+    std::uint32_t drawing_color_=0xff000000U;
+    std::vector<std::int32_t> drawing_fonts_{0}; // Explicit fresh Font preset0; original aliases/copy service remains external.
     struct SavedMissionSelection {std::int32_t area8,quest9;};
     std::optional<SavedMissionSelection> saved_mission_selection_;
     struct QuestFrameConfig {bool debug_controls;std::int32_t orientation;};

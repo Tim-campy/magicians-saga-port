@@ -1,4 +1,21 @@
 id	status	evidence	note
+game:0x06000dd1	reimplemented	src/core/gameplay/button_frame.cpp	Static Button drawing wrapper uses native false pass; physical mission HUD binding and contracts
+game:0x06000dd3	reimplemented	src/core/gameplay/button_frame.cpp	Dynamic Button drawing wrapper uses native true pass; selected and initialized host binding
+game:0x06000dd4	reimplemented	src/core/gameplay/button_frame.cpp	Dynamic-before-Invisible gate; captured SEB bounds; fresh hover; wrapped scale and deferred registration order; synthetic contracts
+game:0x06000dd6	reimplemented	src/core/gameplay/button_frame.cpp	Short DrawButton defaults group35; request defaults tested and movement host-bound
+game:0x06000dd7	reimplemented	src/core/gameplay/button_frame.cpp	Anchored DrawSebEx then captured SEB touch registration; distinct view metrics; callback mutation and failure prefixes tested
+game:0x06000ddf	reimplemented	src/core/gameplay/button_frame.cpp	Button.dynamic equals captured pass before Invisible slot21; live enumeration and malformed input contracts
+game:0x06000e2e	reimplemented	src/core/gameplay/debug_drawing.cpp	Config.DEBUG UI gate and fresh masks1..256; active8/64/128/256 handlers; host-bound explicit debug flags
+game:0x06000e2f	reimplemented	src/core/gameplay/debug_drawing.cpp	Hero gear and thirteen parameters before live actors; states and attack timing; native font/color/order and failure contracts
+game:0x06000e30	reimplemented	src/core/gameplay/debug_drawing.cpp	Eleven wrapped quest grid rows followed by current-world opponent lines; native color/blend and success-only reset
+game:0x06000e31	reimplemented	src/core/gameplay/debug_drawing.cpp	And32 positions plus collision offsets; one-pixel marker and wrapped radius arc; native ordering tested
+game:0x06000e32	reimplemented	src/core/gameplay/debug_drawing.cpp	And24 state names HP and level-scaled EXP; nullable projection and normal-return font restoration tested
+game:0x06000e33	reimplemented	src/core/gameplay/debug_drawing.cpp	Native RET DrawMapChipInfo; no callbacks or dereferences; contract tested
+game:0x06000e34	reimplemented	src/core/gameplay/debug_drawing.cpp	Native RET DrawNodeConnect; no callbacks or dereferences; contract tested
+game:0x06000e35	reimplemented	src/core/gameplay/debug_drawing.cpp	Native RET DrawNodeCost; no callbacks or dereferences; contract tested
+game:0x06000e36	reimplemented	src/core/gameplay/debug_drawing.cpp	Native RET DrawNodeInfo; ignored int32 argument; contract tested
+game:0x06000e37	reimplemented	src/core/gameplay/debug_drawing.cpp	Native RET DrawTownAreaInfo; no callbacks or dereferences; contract tested
+game:0x06000e38	reimplemented	src/core/gameplay/debug_drawing.cpp	Native RET DrawVisualizeSystem; no callbacks or dereferences; contract tested
 game:0x06000e9a	reimplemented	src/core/gameplay/bubble_frame.hpp	Fresh distinct seen-parent/pending lists; retained across Init and failures; duplicate entries and live drain contracts tested
 game:0x06000e9b	reimplemented	src/core/gameplay/bubble_frame.cpp	Supplied-world And18 nullable store, no queue clear; real MissionScene Init and repeated/null-world contracts
 game:0x06000e9d	reimplemented	src/core/gameplay/bubble_frame.cpp	Clock/expiry/geometry then reversed parent-identity dedup; persistent duplicate queues and destroy/reload/remove ordering; live index16

@@ -71,6 +71,11 @@ std::int32_t MissionHumans::human_parameter(ComponentSlots& e,std::int32_t key){
     characters_.at(static_cast<std::size_t>(id))=saved_.characters.at(id).level;
     return ecs_member_total_parameter(e,key,records_,levels_,world_);
 }
+std::int32_t MissionHumans::debug_equipment_level(ComponentSlots& e,EquipmentSlot slot){
+    const auto& ids=required(field<EquipmentRecordLinks>(e,combat_equipment_slot).ids.get());
+    const auto id=ids.at(static_cast<std::size_t>(slot));
+    return (slot==EquipmentSlot::hat?saved_.hat_levels:slot==EquipmentSlot::cloth?saved_.cloth_levels:saved_.equipment_levels).at(id);
+}
 bool MissionHumans::playing_cut_in(ComponentSlots& e){return field<EntityPlayback>(e,10).state.return_clip!=-1;}
 void MissionHumans::change_animation(ComponentSlots& e,std::int32_t clip,bool reset){core::change_animation(live_animation(e),clip,reset);}
 std::int32_t MissionHumans::celebration_frame_period(){return world_.clip_max_frame(1,0);}

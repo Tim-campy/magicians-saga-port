@@ -245,8 +245,12 @@ void BitmapBackend::draw_seb_button(std::int32_t resource,std::int32_t clip,std:
 }
 void BitmapBackend::draw_seb_image(std::int32_t resource,std::int32_t clip,std::int32_t raw,std::int32_t x,std::int32_t y,
         std::int32_t scale,std::int32_t anchor,ImageAnimationGroup* clocks){
+    draw_seb_image(impl_->resource(resource),clip,raw,x,y,scale,anchor,clocks);
+}
+void BitmapBackend::draw_seb_image(RenderDrawResource* manager,std::int32_t clip,std::int32_t raw,std::int32_t x,std::int32_t y,
+        std::int32_t scale,std::int32_t anchor,ImageAnimationGroup* clocks){
     // ResourceManagerExtension.DrawSebImg 0x10ede1c, texture/layer overrides -1.
-    auto& s=*impl_;auto* manager=s.resource(resource);
+    auto& s=*impl_;
     if(!manager||!manager->animations||!manager->animations->clips||!manager->images)throw std::invalid_argument("missing button SEB resource");
     auto* clock=manager->animations->clips->at(static_cast<std::size_t>(clip));
     if(!clock||!clock->sprites)throw std::invalid_argument("missing button SEB clip");
@@ -284,8 +288,11 @@ void BitmapBackend::draw_seb_image(std::int32_t resource,std::int32_t clip,std::
     }
 }
 void BitmapBackend::draw_scaled_seb(std::int32_t resource,std::int32_t clip,std::int32_t raw,std::int32_t x,std::int32_t y,std::int32_t scale){
+    draw_scaled_seb(impl_->resource(resource),clip,raw,x,y,scale);
+}
+void BitmapBackend::draw_scaled_seb(RenderDrawResource* manager,std::int32_t clip,std::int32_t raw,std::int32_t x,std::int32_t y,std::int32_t scale){
     // ResourceManagerExtension.DrawScaledSeb 0x10ee8c0, layer -1.
-    auto& s=*impl_;auto* manager=s.resource(resource);
+    auto& s=*impl_;
     if(!manager||!manager->animations||!manager->animations->clips)throw std::invalid_argument("missing scaled SEB resource");
     auto* clock=manager->animations->clips->at(static_cast<std::size_t>(clip));
     if(!clock||!clock->sprites)throw std::invalid_argument("missing scaled SEB clip");
@@ -306,6 +313,14 @@ void BitmapBackend::draw_scaled_seb(std::int32_t resource,std::int32_t clip,std:
         d.u=row->at(2);d.v=row->at(3);d.width=static_cast<float>(scaled_dimension(d.source_width,product_x));
         d.height=static_cast<float>(scaled_dimension(d.source_height,product_y));d.scaled=true;s.draw_image(d);
     }
+}
+void BitmapBackend::draw_line(PixelImage& solid,float x1,float y1,float x2,float y2,float width){
+    const float dx=x2-x1,dy=y2-y1;const float length=std::sqrt(dx*dx+dy*dy);
+    if(length==0||width==0)return;
+    const float angle=std::atan2(dy,dx)*180.0F/3.14159265358979323846F;
+    impl_->push_rotation(angle,x1,y1);
+    try{draw_bitmap(solid,x1,y1-width*0.5F,length,width);}catch(...){impl_->pop_matrix();throw;}
+    impl_->pop_matrix();
 }
 void BitmapBackend::draw_seb(std::int32_t resource,std::int32_t clip,std::optional<std::int32_t> requested,std::int32_t x,std::int32_t y){
     draw_seb_from(impl_->resource(resource),clip,requested,static_cast<float>(x),static_cast<float>(y));

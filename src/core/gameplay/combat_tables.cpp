@@ -12,7 +12,7 @@ MagicShopCombatTable load_magic_shop_combat_table(std::string_view text,bool nor
 EquipmentCombatTable load_equipment_combat_table(std::string_view text,EquipmentTableKind kind,
                                                  bool normalize,const EventIntegerParser& parser) {
     return detail::load_table_records<EquipmentCombatRecord>(text,normalize,parser,[kind](detail::TableTokens& t){
-        EquipmentCombatRecord r;r.id=t.integer();t.take();
+        EquipmentCombatRecord r;r.id=t.integer();r.name=t.take();
         if(kind==EquipmentTableKind::weapon_or_shield) {
             // EquipmentData.Load 0x116f428, status_ +0x88; attribute is fixed token 9.
             t.integer();r.type=t.integer();t.integer();t.integer();

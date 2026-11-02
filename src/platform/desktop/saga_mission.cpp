@@ -36,13 +36,15 @@ int main(int argc,char** argv)try{
                    "Font: --font path (otherwise manifest index, English/default skin only), --font-scale --app-ratio --layout-scale,\n"
                    "      --japanese --japanese-style --ft-load --kerning (defaults100/100/100,0/0/0/0).\n"
                    "Presentation: --camera-near --camera-far --camera-z --auto-images --application-update --depth-bits --depth-step.\n"
+                   "Button surfaces: --instance-view-scale --base-view-scale (provisional defaults100/100, separate from quest zoom).\n"
+                   "Debug overlay: --ui-debug 1 --debug-flags mask (default0; human8,quest64,collision128,enemy256; metadata labels required).\n"
                    "Other: --shop-mask; --human-static-fps (default30, captured retry duration); --fps/--debug accept initial; --rng system/--seed override host defaults.\n"
                    "Bootstrap options apply only without --scene. Context inputs are provisional, not observed Android runtime settings.\n";return 0;
     }
     const std::set<std::string> legacy_required{"--scene","--fps","--debug","--rng","--seed"};
     const std::set<std::string> bootstrap_keys{"--width","--height","--language","--dpi","--tick-ms","--ui-debug","--short-words","--held-advance","--print",
         "--font","--font-scale","--app-ratio","--layout-scale","--japanese","--japanese-style","--ft-load","--kerning",
-        "--camera-near","--camera-far","--camera-z","--auto-images","--application-update","--depth-bits","--depth-step","--shop-mask","--human-static-fps"};
+        "--camera-near","--camera-far","--camera-z","--auto-images","--application-update","--depth-bits","--depth-step","--shop-mask","--human-static-fps","--instance-view-scale","--base-view-scale","--debug-flags"};
     auto allowed=legacy_required;for(const auto* key:{"--replay","--frames","--data","--quest","--capture"})allowed.insert(key);
     allowed.insert(bootstrap_keys.begin(),bootstrap_keys.end());
     std::map<std::string,std::string> options;bool headless=false;
@@ -93,6 +95,8 @@ int main(int argc,char** argv)try{
         if(options.count("--font"))b.font.path=std::filesystem::u8path(options.at("--font"));
         set_int("--font-scale",b.font.requested_scale);set_int("--ft-load",b.font.load_flags);set_int("--kerning",b.font.kerning_mode);
         set_float("--app-ratio",b.font.application_ratio);set_float("--layout-scale",b.font.layout_scale);
+        set_float("--instance-view-scale",b.instance_view_scale);set_float("--base-view-scale",b.base_view_scale);
+        set_int("--debug-flags",b.debug_flags);
         set_float("--camera-near",b.camera.near_clip);set_float("--camera-far",b.camera.far_clip);set_float("--camera-z",b.camera.z);
         set_bool("--japanese",b.font.japanese);set_bool("--japanese-style",b.font.japanese_style);
         set_bool("--auto-images",b.automatic_images);set_bool("--application-update",b.application_update);

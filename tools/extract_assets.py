@@ -127,6 +127,39 @@ def write_mission_initialization(apk, root):
     return write_mission_seed(apk, root, 'mission-initialization.tsv', mission_initialization_payload)
 
 
+def debug_drawing_payload(metadata):
+    """Reached cctor string arrays and formatting literals; never embed their text."""
+    ids = mission_default_arrays(metadata, {24345:'<13i'})[24345]
+    table, table_size, data, data_size = struct.unpack_from('<IIII', metadata, 8)
+    if (table < 256 or data < 256 or table_size % 8 or
+            table+table_size > len(metadata) or data+data_size > len(metadata)):
+        raise ValueError('Invalid debug literal sections')
+    def literal(index):
+        if index < 0 or index >= table_size//8:
+            raise ValueError('Debug literal index outside metadata')
+        length, offset = struct.unpack_from('<II', metadata, table+8*index)
+        if offset+length > data_size:
+            raise ValueError('Debug literal outside data section')
+        text = metadata[data+offset:data+offset+length].decode('utf8')
+        if any(ord(unit)<32 for unit in text):
+            raise ValueError('Unsupported control character in debug label')
+        return json.dumps(text, ensure_ascii=False)
+    arrays = (
+        ('parameter_names', (4683,5711,15240,15259,14917,15378,15013,14914,15359,14920,15393,15339,15366)),
+        ('human_states', (14978,15073,15012,14746,15254,14626,14749)),
+        ('enemy_states', (14978,15073,15012,14746,15254,15210)),
+        ('texts', (199,124,1057,13928,450,4684,3892)),
+    )
+    lines = ['mission_debug\t1', 'parameter_ids\t13\t'+'\t'.join(map(str,ids))]
+    for name, indices in arrays:
+        lines.append(name+'\t'+str(len(indices))+'\t'+'\t'.join(literal(i) for i in indices))
+    return ('\n'.join(lines)+'\n').encode('utf8')
+
+
+def write_debug_drawing(apk, root):
+    return write_mission_seed(apk, root, 'mission-debug.tsv', debug_drawing_payload)
+
+
 def write_mission_index(root):
     """Publish a small native-host index from already extracted, hash-checked files."""
     manifest = json.loads((root / 'manifest.json').read_text(encoding='utf-8'))
@@ -776,6 +809,7 @@ def main():
     p.add_argument('--mission-font', action='store_true', help='Index the existing hash-checked LegacyRuntime font for English/default-skin mission entry')
     p.add_argument('--new-game-save', action='store_true', help='Export the reached normal-save NewGame seeds from the supported APK metadata only')
     p.add_argument('--mission-initialization', action='store_true', help='Export initial system Yugami/orientation and normal event-argument seeds from the supported APK metadata')
+    p.add_argument('--debug-drawing', action='store_true', help='Export only reached debug parameter/state labels and format strings from supported APK metadata')
     p.add_argument('--collation-indexers', action='store_true', help='Include native indexer configurations and collation resources')
     p.add_argument('--collation', action='store_true', help='Include seven original version-3 collation resources')
     p.add_argument('--runtime-tables', action='store_true', help='Include the 72-entry runtime Hashtable prime table')
@@ -787,15 +821,15 @@ def main():
     args = p.parse_args()
     try:
         if args.mission_font:
-            if args.apk or args.check or any((args.mission_index, args.new_game_save, args.mission_initialization,
+            if args.apk or args.check or any((args.mission_index, args.new_game_save, args.mission_initialization, args.debug_drawing,
                     args.unity_media, args.culture_signs, args.culture_names, args.culture_neutral,
                     args.culture_lower, args.runtime_tables, args.collation, args.collation_indexers)):
                 raise ValueError('--mission-font requires existing --out only; cannot combine export/check modes')
             print('Mission font index: ' + str(write_mission_font(args.out)))
-        elif args.new_game_save or args.mission_initialization:
-            if not args.apk or args.check or args.mission_index or (args.new_game_save and args.mission_initialization) or any((args.unity_media, args.culture_signs, args.culture_names, args.culture_neutral, args.culture_lower, args.runtime_tables, args.collation, args.collation_indexers)):
+        elif args.new_game_save or args.mission_initialization or args.debug_drawing:
+            if not args.apk or args.check or args.mission_index or sum((args.new_game_save,args.mission_initialization,args.debug_drawing))!=1 or any((args.unity_media, args.culture_signs, args.culture_names, args.culture_neutral, args.culture_lower, args.runtime_tables, args.collation, args.collation_indexers)):
                 raise ValueError('Select one mission seed export with APK and --out only')
-            writer=write_new_game_save if args.new_game_save else write_mission_initialization
+            writer=write_new_game_save if args.new_game_save else write_mission_initialization if args.mission_initialization else write_debug_drawing
             print('Mission defaults: ' + str(writer(args.apk, args.out)))
         elif args.mission_index:
             if args.apk or args.check:

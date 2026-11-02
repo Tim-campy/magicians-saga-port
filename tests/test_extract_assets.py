@@ -14,6 +14,34 @@ extractor = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(extractor)
 
 
+class DebugDrawingTests(unittest.TestCase):
+    def metadata(self):
+        count=15394;fields=256+8*count;defaults=fields+12;pool=defaults+52
+        data=bytearray(pool+16);struct.pack_into('<II',data,0,0xfab11baf,31)
+        struct.pack_into('<IIII',data,8,256,count*8,pool,16)
+        struct.pack_into('<IIII',data,64,fields,12,defaults,52)
+        struct.pack_into('<iii',data,fields,24345,0,0);struct.pack_into('<13i',data,defaults,*range(13))
+        data[pool:pool+9]=b'synthetic'
+        for i in range(count):struct.pack_into('<II',data,256+8*i,9,0)
+        return data
+
+    def test_only_reached_arrays_and_widths(self):
+        lines=extractor.debug_drawing_payload(self.metadata()).decode().splitlines()
+        self.assertEqual(lines[0],'mission_debug\t1')
+        self.assertEqual(lines[1].split('\t'),['parameter_ids','13',*map(str,range(13))])
+        for line,count in zip(lines[2:],(13,7,6,7)):
+            tokens=line.split('\t');self.assertEqual(int(tokens[1]),count)
+            self.assertEqual([json.loads(x) for x in tokens[2:]],['synthetic']*count)
+
+    def test_wrong_version_literal_bounds_and_controls(self):
+        for change in ('version','offset','control'):
+            data=self.metadata()
+            if change=='version':struct.pack_into('<I',data,4,30)
+            elif change=='offset':struct.pack_into('<II',data,256+8*4683,9,1000)
+            else:data[-16]=10
+            with self.subTest(change=change),self.assertRaises(ValueError):extractor.debug_drawing_payload(data)
+
+
 class NewGameSaveTests(unittest.TestCase):
     def metadata(self):
         data=bytearray(512+160)
