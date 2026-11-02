@@ -272,4 +272,4 @@ game:0x06000e4a	reimplemented	src/core/gameplay/effect_frame.cpp	Normal depth ga
 game:0x06000e4b	reimplemented	src/core/gameplay/effect_frame.cpp	Damage bounce, fade, scaleX and clip metric overrides with captured remaining-time reset; real producer bound
 game:0x06000e4c	reimplemented	src/core/gameplay/effect_frame.cpp	Time formatting delegated as discarded public service followed by required live Position projection; no pixels
 game:0x06000e4f	reimplemented	src/core/gameplay/effect_frame.cpp	Jump captured remaining-time fade, projection and success-only render-mode reset; no glyph output
-game:0x06000e51	documented	docs/subsystems/animation.md	StringBackground displacement/alpha, original four frame indices, background/text/font/reset order; font/translation service unbound
+game:0x06000e51	reimplemented	src/core/gameplay/effect_frame.cpp	StringBackground native displacement/fade, captured manager/frame bounds, text identity and font/color/reset order; table-backed notice output bound

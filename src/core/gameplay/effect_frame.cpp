@@ -18,6 +18,13 @@ EffectResourceContext EffectDrawingHost::capture_effect_resource(EffectNumberCon
 void EffectDrawingHost::effect_draw_sprite(EffectResourceContext,std::int32_t,std::int32_t,float,float){throw std::logic_error("unbound effect sprite draw");}
 void EffectDrawingHost::effect_render_mode(std::int32_t,std::int32_t){throw std::logic_error("unbound effect render mode");}
 void EffectDrawingHost::effect_reset_render_mode(){throw std::logic_error("unbound effect render mode reset");}
+std::int32_t EffectDrawingHost::effect_notice_frame(std::int32_t){throw std::logic_error("unbound effect notice frame");}
+EffectText EffectDrawingHost::effect_notice_text(std::int32_t){throw std::logic_error("unbound effect notice text");}
+void EffectDrawingHost::effect_draw_anchored_sprite(EffectResourceContext,std::int32_t,std::int32_t,float,float,std::int32_t){throw std::logic_error("unbound anchored effect sprite draw");}
+void EffectDrawingHost::effect_push_font(std::int32_t){throw std::logic_error("unbound effect font push");}
+void EffectDrawingHost::effect_white_text_color(){throw std::logic_error("unbound effect text color");}
+void EffectDrawingHost::effect_draw_text(EffectText,std::int32_t,std::int32_t,std::int32_t){throw std::logic_error("unbound effect text draw");}
+void EffectDrawingHost::effect_pop_font(){throw std::logic_error("unbound effect font pop");}
 void initialize_effects(EffectSystemState& s,EffectInitializationWorld* world){
     s.subset=required(world).effect_subset({26},{4});s.expired=std::make_shared<EmitterExpiryQueue>();
 }
@@ -145,6 +152,32 @@ void draw_jump_number_effect(ComponentSlots* input,EffectDrawingHost& host){
     if(remaining<=9)host.effect_render_mode(1,easing(255,0,10,sub(10,remaining),100));
     static_cast<void>(host.effect_screen_position(dynamic_cast<ContactPosition*>(entity.get(0))));
     if(remaining<=9)host.effect_reset_render_mode();
+}
+void draw_string_background_effect(ComponentSlots* input,EffectDrawingHost& host){
+    auto& entity=required(input);
+    auto* captured=dynamic_cast<EffectComponent*>(entity.get(26));
+    auto& point=host.effect_screen_position(dynamic_cast<ContactPosition*>(entity.get(0)));
+    auto& value=required(captured);const auto notice=value.value;
+    if(notice==0||notice==1||notice==2||notice==3){
+        const auto y=point.y;
+        const auto offset=easing(0,notice==1||notice==2?-20:20,5,value.frame,80);
+        point.y=add(y,offset);
+    }
+    const auto frame=value.frame;
+    const auto alpha=frame<=5?easing(0,255,5,frame,-100):
+        frame<16?255:easing(255,0,5,sub(frame,15),80);
+    host.effect_render_mode(1,alpha);
+    const auto context=host.capture_effect_numbers();
+    if(!context)throw std::invalid_argument("missing effect notice application");
+    const auto manager=host.capture_effect_resource(context,7);
+    const auto x=point.x,y=point.y;
+    const auto background=host.effect_notice_frame(value.value); // Bounds precede the required manager check.
+    if(!manager)throw std::invalid_argument("missing effect notice resource");
+    host.effect_draw_anchored_sprite(manager,49,background,static_cast<float>(x),static_cast<float>(y),34);
+    const auto text=host.effect_notice_text(value.value);
+    host.effect_push_font(10);host.effect_white_text_color();
+    host.effect_draw_text(text,point.x,add(point.y,1),34);
+    host.effect_pop_font();host.effect_reset_render_mode(); // Neither scope has exceptional cleanup here.
 }
 void draw_effects(EffectSystemState& state,EffectDrawingHost& host){
     auto cursor=required(state.subset).cursor();

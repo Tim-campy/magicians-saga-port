@@ -135,6 +135,19 @@ struct MissionScene::DynamicHost final:GaugeDynamicDrawHost,BubbleDynamicDrawHos
     void effect_draw_sprite(EffectResourceContext manager,std::int32_t clip,std::int32_t frame,float x,float y)override{
         output.sprite({static_cast<RenderDrawResource*>(manager),clip,frame,x,y});
     }
+    void effect_draw_anchored_sprite(EffectResourceContext manager,std::int32_t clip,std::int32_t frame,float x,float y,std::int32_t anchor)override{
+        output.sprite({static_cast<RenderDrawResource*>(manager),clip,frame,x,y,anchor});
+    }
+    std::int32_t effect_notice_frame(std::int32_t value)override{
+        static constexpr std::array<std::int32_t,4> frames{{3,3,2,0}};return frames.at(static_cast<std::size_t>(value));
+    }
+    EffectText effect_notice_text(std::int32_t value)override{return output.notice_text(value);}
+    void effect_push_font(std::int32_t font)override{push_dynamic_font(font);}
+    void effect_pop_font()override{pop_dynamic_font();}
+    void effect_white_text_color()override{dynamic_color(255,255,255);}
+    void effect_draw_text(EffectText text,std::int32_t x,std::int32_t y,std::int32_t anchor)override{
+        output.text({std::move(text),x,y,anchor,scene.dynamic_font_scopes_.back()});
+    }
     void effect_render_mode(std::int32_t mode,std::int32_t alpha)override{output.render_mode(mode,alpha,255-alpha);}
     void effect_reset_render_mode()override{output.render_mode(0,255,0);}
     // SAGA_STUB(mission-effect-discarded-time): public formatting result is discarded by DrawTimeEffect.
@@ -144,8 +157,11 @@ struct MissionScene::DynamicHost final:GaugeDynamicDrawHost,BubbleDynamicDrawHos
     void effect_draw_damage(ComponentSlots& e)override{draw_damage_number_effect(&e,*this);}
     void effect_draw_time(ComponentSlots& e)override{draw_time_effect(&e,*this);}
     void effect_draw_jump(ComponentSlots& e)override{draw_jump_number_effect(&e,*this);}
-    // SAGA_STUB(mission-effect-special-draw): font/translation and StringBackground output remain unbound.
-    void effect_draw_string_background(ComponentSlots&)override{omitted(7);}
+    void effect_draw_string_background(ComponentSlots& entity)override{
+        // SAGA_STUB(mission-notice-legacy): partial profiles may omit quest49 and the notice text/font provider.
+        if(!output.notice_background){omitted(7);return;}
+        draw_string_background_effect(&entity,*this);
+    }
 };
 void MissionScene::draw_dynamic_scene(std::int32_t id,EffectNumberContext app,
         const MissionEffectDrawing& output,std::vector<std::int32_t>& missing){

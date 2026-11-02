@@ -29,7 +29,8 @@ Host: `saga_mission` (headless or SDL window; fresh --data/--quest entry or expl
 
 Tasks:
 - [ ] (blocked on S3 selector13 decoding) Bind Continue world/party/systems before selecting loaded InitWorld in `saga_mission` (A1).
-- [ ] Bind Effect StringBackground, Button/Debug drawing and dynamic font output to saga_mission (A3).
+- [ ] Bind Button/Debug dynamic drawing to saga_mission using existing bitmap/font output (A3).
+- [ ] (blocked on original runtime reference) Validate notice font geometry, alpha and Graphics/text-task routing against the original (A3).
 - [ ] Add complete reached-world state hashing and record local per-quest golden replays (A5).
 - [ ] (deferred pending producer evidence) Locate indirect Cursor event2/4 or StartCatch producers before binding screen points; use an original runtime trace if static references remain absent (A2).
 - [ ] Group `src/core/gameplay/` (138 files) into subdirectories by subsystem (`combat/`, `mission/`, `town/`, `render/`, `events/`, `text/`, `runtime/`) without behaviour changes; CMake targets and tests keep their names.

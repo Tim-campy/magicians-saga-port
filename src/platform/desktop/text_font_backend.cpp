@@ -11,6 +11,8 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <algorithm>
+#include <cmath>
 
 namespace saga::desktop {
 namespace {
@@ -63,5 +65,50 @@ float DesktopTextFont::run_width(std::u16string_view text,std::int32_t pixel_siz
         advance+=static_cast<std::int64_t>(impl_->face->glyph->advance.x);previous=glyph;
     }
     return static_cast<float>(advance)/64.0F;
+}
+TextRunBitmap DesktopTextFont::rasterize_run(std::u16string_view text,std::int32_t pixel_size,std::int32_t load_flags,std::int32_t kerning_mode){
+    TextRunBitmap result;
+    result.advance=run_width(text,pixel_size,load_flags,kerning_mode); // Same validation and face/size policy.
+    result.ascent=static_cast<float>(impl_->face->size->metrics.ascender)/64.0F;
+    struct Glyph {std::int32_t left,top,width,height;std::vector<std::uint8_t> alpha;};
+    std::vector<Glyph> glyphs;std::int64_t pen=0;FT_UInt previous=0;
+    std::int32_t left=0,top=0,right=0,bottom=0;bool ink=false;
+    for(const auto point:codepoints(text)){
+        const auto id=FT_Get_Char_Index(impl_->face,static_cast<FT_ULong>(point));
+        if(previous&&kerning_mode>=0&&FT_HAS_KERNING(impl_->face)){
+            FT_Vector delta{};require(FT_Get_Kerning(impl_->face,previous,id,static_cast<FT_UInt>(kerning_mode),&delta),"rasterize run kerning");pen+=delta.x;
+        }
+        require(FT_Load_Glyph(impl_->face,id,load_flags),"load raster glyph");
+        require(FT_Render_Glyph(impl_->face->glyph,FT_RENDER_MODE_NORMAL),"render grayscale glyph");
+        const auto& slot=*impl_->face->glyph;const auto& bitmap=slot.bitmap;
+        if(bitmap.width&&bitmap.rows){
+            if(bitmap.pixel_mode!=FT_PIXEL_MODE_GRAY||bitmap.num_grays!=256)throw std::invalid_argument("font raster requires grayscale8 glyphs");
+            if(bitmap.width>8192||bitmap.rows>8192||pen< -524288LL||pen>524288LL)throw std::length_error("text raster exceeds desktop bounds");
+            // Pixel-grid placement is an explicit desktop provider policy; retain fractional advances between glyphs.
+            Glyph glyph{static_cast<std::int32_t>(std::floor(static_cast<double>(pen)/64.0))+slot.bitmap_left,
+                -slot.bitmap_top,static_cast<std::int32_t>(bitmap.width),static_cast<std::int32_t>(bitmap.rows),{}};
+            glyph.alpha.resize(static_cast<std::size_t>(glyph.width)*glyph.height);
+            for(std::int32_t y=0;y<glyph.height;++y){
+                const auto* row=bitmap.buffer+static_cast<std::ptrdiff_t>(y)*bitmap.pitch;
+                std::copy_n(row,glyph.width,glyph.alpha.begin()+static_cast<std::size_t>(y)*glyph.width);
+            }
+            if(!ink){left=glyph.left;top=glyph.top;right=left+glyph.width;bottom=top+glyph.height;ink=true;}
+            else{left=std::min(left,glyph.left);top=std::min(top,glyph.top);right=std::max(right,glyph.left+glyph.width);bottom=std::max(bottom,glyph.top+glyph.height);}
+            glyphs.push_back(std::move(glyph));
+        }
+        pen+=slot.advance.x;previous=id;
+    }
+    if(!ink)return result;
+    result.left=left;result.top=top;result.pixels.width=right-left;result.pixels.height=bottom-top;
+    if(result.pixels.width>8192||result.pixels.height>8192||static_cast<std::int64_t>(result.pixels.width)*result.pixels.height>16*1024*1024)
+        throw std::length_error("text bitmap exceeds desktop bounds");
+    result.pixels.rgba.assign(static_cast<std::size_t>(result.pixels.width)*result.pixels.height*4,255);
+    for(std::size_t i=3;i<result.pixels.rgba.size();i+=4)result.pixels.rgba[i]=0;
+    for(const auto& glyph:glyphs)for(std::int32_t y=0;y<glyph.height;++y)for(std::int32_t x=0;x<glyph.width;++x){
+        auto& alpha=result.pixels.rgba[(static_cast<std::size_t>(glyph.top-top+y)*result.pixels.width+glyph.left-left+x)*4+3];
+        const auto value=glyph.alpha[static_cast<std::size_t>(y)*glyph.width+x];
+        alpha=static_cast<std::uint8_t>(value+(static_cast<std::uint32_t>(alpha)*(255-value)+127)/255);
+    }
+    return result;
 }
 }

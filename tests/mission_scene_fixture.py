@@ -13,6 +13,7 @@ def make_table_scene(root, valid_png=True, human_frame=False, shoot=False, rewar
         'MagicShop.txt': '\n'.join(f'{i}\tUpgrade\t0\t1\t2\tText\t0' for i in range(8)),
         'Enemy.txt': f'4\tEnemy\t0\t2\t10\t100\t0\t0\t0\tenemy-book\t7\t0\t0\t0\t{params}\t0',
         'Bullet.txt': '3\t0\t0\tbullet\t5\t6\teffect\t7\t0',
+        'text.txt': '\n'.join([f'source{i}\t' for i in range(205)]+[f'notice{i}\tNOTICE{i}' for i in range(4)]),
     }
     if quest_time_limit is not None:
         quest=tables['Quest.txt'].split('\t');quest[14]=str(quest_time_limit);tables['Quest.txt']='\t'.join(quest)
@@ -83,8 +84,10 @@ def make_shoot_scene(root, rewards=False, area=False, lethal_contact=False, trea
             ('a.png', png(2, 2, [0, 255, 0, 255] * 4))]))
     if rewards:
         (root / 'quest.bin').write_bytes(jar([
-            ('img.inf', b'77\ta.png,bin\n98\ta.png,bin\n99\ta.png,bin\n105\ta.png,bin\n91\tmove.png,bin'),
-            ('seb.inf', ('\n'.join(f'{i}\ta.seb' for i in ([0, 40, 41, 42, 43, 44] if boss_entry else [0, 40, 41, 42, 43]))+'\n36\tfront.seb\n37\tback.seb').encode()),
+            ('img.inf', b'77\ta.png,bin\n98\ta.png,bin\n99\ta.png,bin\n105\ta.png,bin\n91\tmove.png,bin\n49\tnotice.png,bin'),
+            ('seb.inf', ('\n'.join(f'{i}\ta.seb' for i in ([0, 40, 41, 42, 43, 44] if boss_entry else [0, 40, 41, 42, 43]))+'\n36\tfront.seb\n37\tback.seb\n49\tnotice.seb').encode()),
+            ('notice.seb',seb([(i,49,0,14*i,48,14,0,0,0,0) for i in range(4)])),
+            ('notice.png',png(48,56,[64,0,64,255]*(48*56))),
             ('front.seb',seb([(0,91,0,0,80,50,-5,-3,0,0),(1,91,80,0,80,50,-5,-3,0,0)])),
             ('back.seb',seb([(0,91,0,50,80,50,-5,-3,0,0),(1,91,80,50,80,50,-5,-3,0,0)])),
             ('move.png',png(160,100,[c for y in range(100) for x in range(160) for c in

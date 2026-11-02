@@ -29,6 +29,8 @@ public:
     bool advance(std::uint64_t frame,std::int32_t tick_ms,bool pulse,bool held);
     void write_report(std::ostream&)const;
     std::string title()const;
+    std::shared_ptr<DesktopTextFont> font_provider()const{return font_provider_;}
+    const std::optional<MissionFontScenario>& font_scenario()const{return scenario_.font;}
 private:
     struct Talk {
         std::int32_t id=0,state=0,frame=0,finish_frame=-1;

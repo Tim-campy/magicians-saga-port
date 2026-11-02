@@ -32,6 +32,11 @@ struct Drawing final:EffectDrawingHost {
     EffectResourceContext manager=this,drawn_manager=nullptr;EffectNumberContext resource_application=nullptr;
     std::int32_t resource_id=0,sprite_clip=0,sprite_frame=0,formatted_time=0;float sprite_x=0,sprite_y=0;bool mode=false;
     std::vector<std::array<std::int32_t,2>> modes;
+    std::vector<std::int32_t> notice_frames{3,3,2,0};
+    std::vector<EffectText> notice_texts{std::make_shared<const std::u16string>(u"zero"),std::make_shared<const std::u16string>(u"one"),
+        std::make_shared<const std::u16string>(u"two"),std::make_shared<const std::u16string>(u"three")};
+    EffectText drawn_text;std::optional<std::array<std::int32_t,3>> text_args;
+    std::int32_t frame_notice=-1,text_notice=-1,sprite_anchor=0,font_depth=0;bool white=false;
     void step(const std::string& name){calls.push_back(name);if(callback)callback(name);if(fail==name)throw std::runtime_error(name);}
     void handler(const std::string& name,ComponentSlots& e){actors.push_back(&e);step(name);}
     void effect_draw_normal(ComponentSlots& e)override{handler("normal",e);}
@@ -54,6 +59,17 @@ struct Drawing final:EffectDrawingHost {
     void effect_render_mode(std::int32_t kind,std::int32_t alpha)override{modes.push_back({kind,alpha});step("mode");mode=true;}
     void effect_reset_render_mode()override{step("reset");mode=false;}
     void effect_format_time(std::int32_t value)override{formatted_time=value;step("format");}
+    std::int32_t effect_notice_frame(std::int32_t notice)override{frame_notice=notice;step("notice frame");return notice_frames.at(static_cast<std::size_t>(notice));}
+    EffectText effect_notice_text(std::int32_t notice)override{text_notice=notice;step("notice text");return notice_texts.at(static_cast<std::size_t>(notice));}
+    void effect_draw_anchored_sprite(EffectResourceContext resource,std::int32_t clip,std::int32_t frame,float x,float y,std::int32_t anchor)override{
+        drawn_manager=resource;sprite_clip=clip;sprite_frame=frame;sprite_x=x;sprite_y=y;sprite_anchor=anchor;step("background");
+    }
+    void effect_push_font(std::int32_t size)override{check(size==10);step("font push");++font_depth;}
+    void effect_white_text_color()override{step("white");white=true;}
+    void effect_draw_text(EffectText text,std::int32_t x,std::int32_t y,std::int32_t anchor)override{
+        drawn_text=std::move(text);text_args=std::array<std::int32_t,3>{x,y,anchor};step("text");
+    }
+    void effect_pop_font()override{step("font pop");--font_depth;}
 };
 struct Projection final:EffectProjectionHost {
     GaugePoint work{},camera{};std::array<GaugePoint*,3> points{{&work,&work,&work}};
@@ -188,10 +204,60 @@ void visual_handler_contracts(){
     {Drawing d;fails([&]{d.EffectDrawingHost::capture_effect_resource(&d,20);});fails([&]{d.EffectDrawingHost::effect_draw_sprite(&d,0,0,0,0);});
      fails([&]{d.EffectDrawingHost::effect_render_mode(1,255);});fails([&]{d.EffectDrawingHost::effect_reset_render_mode();});d.EffectDrawingHost::effect_format_time(42);}
 }
+void notice_contracts(){
+    const std::vector<std::string> order{"screen","mode","capture","resource","notice frame","background","notice text","font push","white","text","font pop","reset"};
+    const std::array<std::int32_t,6> displacement{{0,6,12,16,18,20}};
+    const std::array<std::int32_t,21> alpha{{0,3,24,75,156,255,255,255,255,255,255,255,255,255,255,255,165,91,40,12,0}};
+    for(std::int32_t notice=0;notice<4;++notice)for(std::int32_t frame=0;frame<=20;++frame){Actor a;Drawing d;a.effect.value=notice;a.effect.frame=frame;a.entity.remove(2);
+     const auto text=d.notice_texts[static_cast<std::size_t>(notice)];draw_string_background_effect(&a.entity,d);
+     const auto offset=displacement[static_cast<std::size_t>(frame<5?frame:5)]*(notice==1||notice==2?-1:1);
+     check(d.calls==order&&d.point.y==50+offset&&d.modes==std::vector<std::array<std::int32_t,2>>{{1,alpha[static_cast<std::size_t>(frame)]}});
+     check(d.resource_id==7&&d.resource_application==&d&&d.drawn_manager==&d&&d.sprite_clip==49&&d.sprite_frame==d.notice_frames[static_cast<std::size_t>(notice)]);
+     check(d.sprite_x==40&&d.sprite_y==50+offset&&d.sprite_anchor==34&&d.frame_notice==notice&&d.text_notice==notice);
+     check(d.drawn_text==text&&d.text_args&&*d.text_args==std::array<std::int32_t,3>{40,51+offset,34}&&d.font_depth==0&&d.white&&!d.mode&&!d.number);
+     check(a.effect.frame==frame&&a.effect.value==notice);}
+    for(auto frame:{-1,std::numeric_limits<std::int32_t>::min(),std::numeric_limits<std::int32_t>::max()}){Actor a;Drawing d;a.effect.frame=frame;
+     draw_string_background_effect(&a.entity,d);check(d.modes==std::vector<std::array<std::int32_t,2>>{{1,0}}&&d.point.y==(frame<0?50:70));}
+    // Manager and background coordinates are captured before frame lookup; later text reads the retained Effect and shared point.
+    {Actor a;Drawing d;EffectComponent replacement;replacement.value=0;a.effect.value=1;a.effect.frame=5;int application=0,other_application=0,manager=0;
+     const auto original_text=d.notice_texts[2];d.context=&application;d.manager=&manager;
+     d.callback=[&](const std::string& name){
+         if(name=="mode"){a.effect.value=3;a.entity.change(26,&replacement);d.point={60,70};}
+         if(name=="resource"){d.context=&other_application;d.point={80,90};}
+         if(name=="notice frame")d.point={100,110};
+         if(name=="background"){a.effect.value=2;d.point={120,130};}
+         if(name=="font push"){d.notice_texts[2]=std::make_shared<const std::u16string>(u"replacement");d.point={140,150};}
+         if(name=="white")d.point={160,170};
+     };
+     draw_string_background_effect(&a.entity,d);check(d.calls==order&&d.resource_application==&application&&d.drawn_manager==&manager);
+     check(d.frame_notice==3&&d.sprite_frame==0&&d.sprite_x==80&&d.sprite_y==90&&d.text_notice==2&&d.drawn_text==original_text);
+     check(d.text_args&&*d.text_args==std::array<std::int32_t,3>{160,171,34});}
+    {Actor a;Drawing d;d.notice_texts[0].reset();draw_string_background_effect(&a.entity,d);check(!d.drawn_text&&d.calls==order&&!d.mode&&d.font_depth==0);}
+    {Actor a;Drawing d;d.point={std::numeric_limits<std::int32_t>::max(),std::numeric_limits<std::int32_t>::max()};draw_string_background_effect(&a.entity,d);
+     check(d.sprite_x==2147483648.0F&&d.sprite_y==2147483648.0F&&d.text_args->at(0)==std::numeric_limits<std::int32_t>::max()&&d.text_args->at(1)==std::numeric_limits<std::int32_t>::min());}
+    // Every exceptional prefix leaves the current font/mode scope intact, with no synthetic cleanup.
+    for(std::size_t i=0;i<order.size();++i){Actor a;Drawing d;d.fail=order[i];fails([&]{draw_string_background_effect(&a.entity,d);});
+     check(d.calls==std::vector<std::string>(order.begin(),order.begin()+static_cast<std::ptrdiff_t>(i+1)));
+     check(d.mode==(i>=2)&&d.font_depth==(i>=8&&i<=10?1:0));}
+    for(auto notice:{-1,4,std::numeric_limits<std::int32_t>::min(),std::numeric_limits<std::int32_t>::max()}){Actor a;Drawing d;a.effect.value=notice;d.manager=nullptr;
+     bool bounds=false;try{draw_string_background_effect(&a.entity,d);}catch(const std::out_of_range&){bounds=true;}
+     check(bounds&&d.calls==std::vector<std::string>{"screen","mode","capture","resource","notice frame"}&&d.mode&&d.point.y==50);}
+    {Actor a;Drawing d;d.manager=nullptr;fails([&]{draw_string_background_effect(&a.entity,d);});
+     check(d.calls==std::vector<std::string>{"screen","mode","capture","resource","notice frame"}&&d.mode);}
+    {Actor a;Drawing d;d.notice_texts.clear();fails([&]{draw_string_background_effect(&a.entity,d);});
+     check(d.calls.back()=="notice text"&&d.sprite_clip==49&&d.mode&&d.font_depth==0);}
+    {Actor a;Drawing d;d.context=nullptr;fails([&]{draw_string_background_effect(&a.entity,d);});check(d.calls==std::vector<std::string>{"screen","mode","capture"}&&d.mode);}
+    {Actor a;Drawing d;a.entity.remove(26);fails([&]{draw_string_background_effect(&a.entity,d);});check(d.calls==std::vector<std::string>{"screen"});}
+    {Drawing d;fails([&]{draw_string_background_effect(nullptr,d);});check(d.calls.empty());
+     fails([&]{d.EffectDrawingHost::effect_notice_frame(0);});fails([&]{d.EffectDrawingHost::effect_notice_text(0);});
+     fails([&]{d.EffectDrawingHost::effect_draw_anchored_sprite(&d,49,3,0,0,34);});fails([&]{d.EffectDrawingHost::effect_push_font(10);});
+     fails([&]{d.EffectDrawingHost::effect_white_text_color();});fails([&]{d.EffectDrawingHost::effect_draw_text({},0,0,34);});fails([&]{d.EffectDrawingHost::effect_pop_font();});}
+}
 }
 int main(){
     drawing_contracts();
     visual_handler_contracts();
+    notice_contracts();
     const auto low=std::numeric_limits<std::int32_t>::min(),high=std::numeric_limits<std::int32_t>::max();
     {Host h;auto old=h.state.expired;h.state.expired->add(nullptr);initialize_effects(h.state,&h);check(h.state.expired!=old&&h.state.expired->size()==0);
      old=h.state.expired;h.fail_subset=true;fails([&]{initialize_effects(h.state,&h);});check(h.state.expired==old&&h.state.subset==&h.group);

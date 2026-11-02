@@ -215,6 +215,12 @@ void BitmapTextures::bind(const ArchiveImageSet& images){
         const auto key=bind(*ready->image,ready->pixels.width,ready->pixels.height,ready->alpha_type);entries_.at(key).ready=ready;
     }
 }
+std::size_t BitmapTextures::bind(const ReadyArchiveImage& ready){
+    if(!ready.image||ready.pixels.rgba.size()!=static_cast<std::size_t>(ready.pixels.width)*ready.pixels.height*4)
+        throw std::invalid_argument("invalid borrowed bitmap pixels");
+    const auto key=bind(*ready.image,ready.pixels.width,ready.pixels.height,ready.alpha_type);
+    entries_.at(key).ready=&ready;return key;
+}
 std::size_t BitmapTextures::key(PixelImage& image)const{
     const auto it=indices_.find(&image);if(it==indices_.end())throw std::invalid_argument("bitmap image has no ready texture");return it->second;
 }
@@ -306,6 +312,23 @@ void BitmapBackend::draw_seb(std::int32_t resource,std::int32_t clip,std::option
 }
 void BitmapBackend::draw_seb_frame(RenderDrawResource* manager,std::int32_t clip,std::int32_t frame,float x,float y){
     draw_seb_from(manager,clip,frame,x,y);
+}
+void BitmapBackend::draw_bitmap(PixelImage& image,float x,float y,float width,float height){
+    RenderImageDraw draw;draw.image=&image;draw.x=x;draw.y=y;draw.width=width;draw.height=height;draw.scaled=true;
+    draw.u=draw.v=0;draw.source_width=image.width;draw.source_height=image.height;impl_->draw_image(draw);
+}
+void BitmapBackend::draw_seb_anchor_frame(RenderDrawResource* manager,std::int32_t clip,std::int32_t raw,float x,float y,std::int32_t anchor){
+    // ResourceManager.DrawSebAnchor 0x1ba8f78: explicit frame, no automatic-image registration.
+    const auto current=[&]()->SharedAnimationClip&{
+        if(!manager||!manager->animations||!manager->animations->clips)throw std::invalid_argument("missing notice SEB resource");
+        auto* clock=manager->animations->clips->at(static_cast<std::size_t>(clip));
+        if(!clock||!clock->sprites)throw std::invalid_argument("missing notice SEB clip");return *clock;
+    };
+    const auto frame=seb_frame(raw,current().max_frame);
+    const auto offset=seb_anchor_position(*current().sprites,frame,0,0,anchor);
+    set_seb_draw_offset(*current().sprites,offset[0],offset[1]);
+    try{draw_seb_from(manager,clip,frame,x,y);}catch(...){clear_seb_draw_offset(*current().sprites);throw;}
+    clear_seb_draw_offset(*current().sprites);
 }
 std::int64_t BitmapBackend::draw_number_value(const BitmapApplication& app,std::int32_t clip,std::int64_t value,
         std::int32_t x,std::int32_t y,std::int32_t padding,std::int32_t anchor,std::int32_t scale,std::int32_t width,std::int32_t height){

@@ -3452,7 +3452,7 @@ game:0x06000e4d,ecs.EffectSystem.DrawNumberEffect,ecs,reimplemented,300,0x114ac3
 game:0x06000e4e,game:0x06000e4e,ecs,,4,0x114ad60
 game:0x06000e4f,ecs.EffectSystem.DrawJumpNumEffect,ecs,reimplemented,252,0x114ad64
 game:0x06000e50,game:0x06000e50,ecs,,4,0x114ae60
-game:0x06000e51,ecs.EffectSystem.DrawStrWithBgEffect,ecs,documented,664,0x114ae64
+game:0x06000e51,ecs.EffectSystem.DrawStrWithBgEffect,ecs,reimplemented,664,0x114ae64
 game:0x06000e52,game:0x06000e52,ecs,,248,0x114b268
 game:0x06000e53,game:0x06000e53,ecs,,824,0x114b368
 game:0x06000e54,ecs.EffectSystem.ToScreenPos,ecs,reimplemented,364,0x114b0fc
@@ -9108,7 +9108,7 @@ kairo:0x06001327,kairo:0x06001327,ui,,1664,0x1b6c46c
 kairo:0x06001328,kairo:0x06001328,ui,,1020,0x1b6ba2c
 kairo:0x06001329,kairo:0x06001329,ui,,12,0x1b6caec
 kairo:0x0600132a,kairo:0x0600132a,ui,,612,0x1b6caf8
-kairo:0x0600132b,kairo:0x0600132b,ui,,5492,0x1b6a2d0
+kairo:0x0600132b,kairo.unity.ui.Graphics.DrawString,ui,traced,5492,0x1b6a2d0
 kairo:0x0600132c,kairo:0x0600132c,ui,,1128,0x1b6d46c
 kairo:0x0600132d,kairo:0x0600132d,ui,,1212,0x1b6cfb0
 kairo:0x0600132e,kairo:0x0600132e,ui,,264,0x1b6da3c
@@ -10085,7 +10085,7 @@ kairo:0x060016fa,kairo:0x060016fa,ui,,136,0x1ba8b24
 kairo:0x060016fb,kairo:0x060016fb,ui,,84,0x1ba8c10
 kairo:0x060016fc,kairo:0x060016fc,ui,,84,0x1ba8694
 kairo:0x060016fd,kairo.unity.ui.ResourceManager.DrawSebAnchor,ui,documented,464,0x1ba8c68
-kairo:0x060016fe,kairo:0x060016fe,ui,,452,0x1ba8f78
+kairo:0x060016fe,kairo.unity.ui.ResourceManager.DrawSebAnchor,ui,reimplemented,452,0x1ba8f78
 kairo:0x060016ff,kairo:0x060016ff,ui,,464,0x1ba88d0
 kairo:0x06001700,kairo.unity.ui.ResourceManager.GetSebAnchorPosition,ui,documented,268,0x1ba8e38
 kairo:0x06001701,kairo:0x06001701,ui,,268,0x1ba9204

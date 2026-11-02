@@ -103,6 +103,15 @@ int main()try{
         const auto& n=numbers[0];check(n.application==&app&&n.clip==35&&n.value==17&&n.x==26&&n.y==25&&n.scale==50&&n.width==10&&n.height==12);
         check(modes[0][0]==1&&modes[0][1]+modes[0][2]==255&&modes[2]==modes[0]);
         check(modes[1]==std::array<std::int32_t,3>{0,255,0}&&modes[3]==modes[1]);
+        app.quest=&resource;
+        auto source=std::make_shared<const std::u16string>(u"synthetic notice");std::vector<MissionEffectTextDraw> texts;
+        create_effect({{10,0,4},7,2,0,0,false,false,20,5,nullptr,-1,true},effects.ids,effects.factory);
+        output.notice_background=true;output.notice_text=[&](auto index){check(index==2);return source;};
+        output.text=[&](const MissionEffectTextDraw& r){texts.push_back(r);};
+        sprites.clear();modes.clear();scene.draw_dynamic_scene(23,&app,output,missing);
+        check(missing.empty()&&sprites.size()==2&&modes.size()==6&&texts.size()==1);
+        const auto& bg=sprites[1];check(bg.manager==&resource&&bg.clip==49&&bg.frame==2&&bg.anchor==34&&bg.x==26&&bg.y==17);
+        const auto& t=texts[0];check(t.text==source&&t.x==26&&t.y==18&&t.anchor==34&&t.font==10);
     }
     {
         MissionEntities mapped(data,saved,35,nullptr,[&](std::int32_t){return &animations.resource();},[](std::string_view){return 3;});

@@ -15,6 +15,16 @@ int main(int argc,char** argv){
     check(font.run_width(u"AV",64,0,0)==a+v); // This GPOS-only fixture has no legacy FT_Get_Kerning pair.
     const auto non_ascii=font.run_width(u"caf\u00e9",16,0,-1);check(non_ascii>0&&std::isfinite(non_ascii));
     const auto first=font.run_width(u"whole run",12,0,0);check(first==font.run_width(u"whole run",12,0,0));
+    const auto rendered=font.rasterize_run(u"whole run",12,0,0);
+    check(rendered.advance==first&&rendered.ascent>0&&rendered.top<0&&rendered.pixels.width>0&&rendered.pixels.height>0);
+    check(rendered.pixels.rgba==font.rasterize_run(u"whole run",12,0,0).pixels.rgba);
+    bool opaque=false,transparent=false,partial=false;
+    for(std::size_t i=3;i<rendered.pixels.rgba.size();i+=4){const auto a=rendered.pixels.rgba[i];opaque|=a==255;transparent|=a==0;partial|=a>0&&a<255;}
+    check(opaque&&transparent&&partial);
+    check(font.rasterize_run(u"   ",12,0,0).pixels.rgba.empty());
+    check(font.rasterize_run(u"   ",12,0,0).advance>0);
+    check(font.rasterize_run(u"",12,0,0).advance==0);
+    fails([&]{font.rasterize_run(u"\U0010ffff",16,0,0);});
     check(font.run_width(u"whole run",24,0,0)>first);
     fails([&]{font.run_width(u"x",0,0,0);});fails([&]{font.run_width(u"x",16,0,3);});
     fails([&]{font.run_width(u"x",16,0,2);}); // Unscaled kerning has font units, not pixel advances.

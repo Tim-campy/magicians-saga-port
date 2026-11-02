@@ -25,12 +25,18 @@ struct MissionNumberDraw {
     std::int32_t x=0,y=0,padding=0,anchor=0,scale=0,width=0,height=0;
 };
 struct MissionEffectSpriteDraw {
-    core::RenderDrawResource* manager=nullptr;std::int32_t clip=0,frame=0;float x=0,y=0;
+    core::RenderDrawResource* manager=nullptr;std::int32_t clip=0,frame=0;float x=0,y=0;std::int32_t anchor=0;
+};
+struct MissionEffectTextDraw {
+    core::EffectText text;std::int32_t x=0,y=0,anchor=0,font=0;
 };
 struct MissionEffectDrawing {
     std::function<void(const MissionNumberDraw&)> number;
     std::function<void(const MissionEffectSpriteDraw&)> sprite;
     std::function<void(std::int32_t mode,std::int32_t source,std::int32_t destination)> render_mode;
+    bool notice_background=false;
+    std::function<core::EffectText(std::int32_t)> notice_text;
+    std::function<void(const MissionEffectTextDraw&)> text;
 };
 struct MissionPopupScenario {std::int32_t id,category,type,priority;bool single;std::int32_t height,duration;};
 struct MissionSlideScenario {std::int32_t id,width,height,duration;};

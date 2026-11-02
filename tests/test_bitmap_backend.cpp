@@ -175,6 +175,16 @@ int main()try{
     const auto saved_images=ar.images;ar.images.reset();
     fails([&]{backend.draw_seb_anchor(1,3,10,10,68,false);});ar.images=saved_images;
     check(payload->draw_offset->at(0)==0&&payload->draw_offset->at(1)==0);
+    backend.clear_quads();backend.draw_seb_anchor_frame(&ar,3,4,10.5F,10.25F,68);
+    check(box()==anchored&&payload->draw_offset->at(0)==0&&payload->draw_offset->at(1)==0);
+    ar.images.reset();fails([&]{backend.draw_seb_anchor_frame(&ar,3,0,10,10,68);});ar.images=saved_images;
+    check(payload->draw_offset->at(0)==0&&payload->draw_offset->at(1)==0);
+    ReadyArchiveImage raster;raster.image=std::make_unique<PixelImage>();raster.image->width=raster.image->height=2;
+    raster.pixels={2,2,{255,255,255,0,255,255,255,64,255,255,255,128,255,255,255,255}};raster.alpha_type=2;
+    const auto raster_key=textures.bind(raster);check(textures.at(raster_key).ready==&raster);
+    backend.clear_quads();backend.draw_bitmap(*raster.image,10,10,4,6);
+    check(backend.quads().size()==1&&backend.quads()[0].texture==raster_key);
+    const auto raster_box=box();check(raster_box[2]-raster_box[0]==4&&raster_box[3]-raster_box[1]==6);
     // The int64 path uses common-resource digit frames with a local scale scope,
     // independently of the string route used by the Stage MP display.
     auto digits=file(2);digits.header_value=11;digits.groups[0].record_count=11;

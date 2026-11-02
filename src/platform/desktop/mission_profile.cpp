@@ -1056,6 +1056,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         if(event_context){
             if(!tables||!humans||!humans->stage_input_enabled())throw std::invalid_argument("mission_events requires table-backed Stage Update");
             events_=std::make_unique<MissionEvents>(*tables,std::move(event_scenario),[this]{humans->clear_form_input();});
+            prepare_notice_texts();
             humans->bind_stage_events([this](std::int32_t id){return events_->execute(id);});
         }
         if(simulate&&*simulate>0){for(std::int32_t i=0;i<*simulate;++i)if(!step())break;}else{queue=mission->render();if(!mission->faults().empty())throw std::invalid_argument("entity render fault: "+mission->faults().front().message);}
@@ -1235,9 +1236,13 @@ void MissionProfile::write_combat_report(std::ostream& out){
     for(std::size_t i=0;i<effect_number_draws_.size();++i){if(i)out<<',';const auto& r=effect_number_draws_[i];
         out<<"{\"clip\":"<<r.clip<<",\"value\":"<<r.value<<",\"x\":"<<r.x<<",\"y\":"<<r.y<<",\"anchor\":"<<r.anchor<<",\"scale\":"<<r.scale<<",\"width\":"<<r.width<<",\"height\":"<<r.height<<'}';}out<<"],\"effect_sprite_draws\":[";
     for(std::size_t i=0;i<effect_sprite_draws_.size();++i){if(i)out<<',';const auto& r=effect_sprite_draws_[i];
-        out<<"{\"clip\":"<<r.clip<<",\"frame\":"<<r.frame<<",\"x\":"<<r.x<<",\"y\":"<<r.y<<'}';}out<<"],\"effect_render_modes\":[";
+        out<<"{\"clip\":"<<r.clip<<",\"frame\":"<<r.frame<<",\"x\":"<<r.x<<",\"y\":"<<r.y<<",\"anchor\":"<<r.anchor<<'}';}out<<"],\"effect_render_modes\":[";
     for(std::size_t i=0;i<effect_render_modes_.size();++i){if(i)out<<',';const auto& r=effect_render_modes_[i];out<<'['<<r[0]<<','<<r[1]<<','<<r[2]<<']';}out<<"],\"unbound_effect_draw_types\":[";
-    for(std::size_t i=0;i<unbound_effect_draws_.size();++i){if(i)out<<',';out<<unbound_effect_draws_[i];}out<<']';
+    for(std::size_t i=0;i<unbound_effect_draws_.size();++i){if(i)out<<',';out<<unbound_effect_draws_[i];}out<<"],\"effect_text_draws\":[";
+    for(std::size_t i=0;i<notice_text_draws_.size();++i){if(i)out<<',';const auto& r=notice_text_draws_[i];
+        out<<"{\"notice\":"<<r.notice<<",\"x\":"<<r.x<<",\"y\":"<<r.y<<",\"anchor\":"<<r.anchor<<",\"font\":"<<r.font<<",\"bound\":"<<(r.bound?"true":"false");
+        if(r.bound)out<<",\"text\":"<<std::quoted(notice_texts_.at(static_cast<std::size_t>(r.notice))->display);
+        out<<'}';}out<<']';
     out<<",\"selected_quest\":";if(selected_quest)out<<*selected_quest;else out<<"null";
     if(selected_quest&&humans){const auto q=humans->quest();out<<",\"quest_distance\":"<<q->distance<<",\"quest_flags\":"<<q->flags<<",\"quest_money_rate\":"<<q->money_rate<<",\"quest_completion_byte\":"<<static_cast<int>(q->completed)<<",\"quest_rescued\":"<<q->rescued_prisoners;}
     const auto write_indices=[&](const char* name,const auto& indices){out<<",\""<<name<<"\":[";bool first=true;for(const auto id:indices){if(!first)out<<',';first=false;out<<id;}out<<']';};
@@ -1278,6 +1283,56 @@ void MissionProfile::bind_dynamic_draw_schedule(){
     }
     dynamic_draw_list_=make_gameplay_dynamic_draw_list(factory);
 }
+void MissionProfile::prepare_notice_texts(){
+    if(!events_||!events_->font_provider()||!events_->font_scenario()||!tables)return;
+    const auto data=tables->data("text.txt");if(!data)return; // SAGA_STUB(mission-notice-legacy): partial profiles omit this table.
+    const auto& scenario=*events_->font_scenario();
+    TextFontState font{0,0,true,0,1,scenario.requested_scale};const std::vector<std::int32_t> presets{12,24,30};
+    set_text_font_size(font,10,true,&presets);update_text_font_scale(font,scenario.requested_scale,&presets);adjust_text_font_size(font,scenario.layout_scale);
+    const auto pixels=text_gui_pixel_size(font.adjusted_size,scenario.application_ratio);
+    std::istringstream input(std::string(data->bytes.begin(),data->bytes.end()));std::string line;
+    for(std::size_t row=0;row<=208&&std::getline(input,line);++row){
+        if(row<205)continue;
+        if(!line.empty()&&line.back()=='\r')line.pop_back();
+        const auto tab=line.find('\t');if(tab==std::string::npos)continue;
+        const auto next=line.find('\t',tab+1);const auto display=line.substr(tab+1,next==std::string::npos?next:next-tab-1);
+        if(tab==0||display.empty())continue; // No invented translation for a missing selected-language entry.
+        auto text=std::make_unique<NoticeText>();text->source=std::make_shared<const std::u16string>(decode_mission_text(std::string_view(line).substr(0,tab)));
+        text->display=display;
+        auto content=decode_mission_text(display);
+        auto raster=events_->font_provider()->rasterize_run(content,pixels,scenario.load_flags,scenario.kerning_mode);
+        std::replace(content.begin(),content.end(),u' ',u'.'); // Native Font.StringWidthF GUI measurement rule, separate from glyph contents.
+        text->width=text_run_logical_width(events_->font_provider()->run_width(content,pixels,scenario.load_flags,scenario.kerning_mode),scenario.application_ratio);
+        text->ascent=raster.ascent;text->left=raster.left;text->top=raster.top;
+        text->font_height=font.size;text->scale=100.0F/scenario.application_ratio;text->ready.pixels=std::move(raster.pixels);
+        if(!text->ready.pixels.rgba.empty()){
+            text->ready.image=std::make_unique<PixelImage>();auto& image=*text->ready.image;
+            image.width=image.standard_width=text->ready.pixels.width;image.height=image.standard_height=text->ready.pixels.height;
+            ImageAlphaClassifier alpha;for(std::size_t i=3;i<text->ready.pixels.rgba.size();i+=4)alpha.add(static_cast<float>(text->ready.pixels.rgba[i])/255.0F);
+            text->ready.alpha_type=alpha.finish(image.width*image.height);
+        }
+        const auto index=row-205;notice_texts_[index]=std::move(text);
+        if(notice_texts_[index]->ready.image)textures.bind(notice_texts_[index]->ready);
+    }
+}
+void MissionProfile::draw_notice_text(const MissionEffectTextDraw& request){
+    std::int32_t index=-1;
+    if(request.text)for(std::size_t i=0;i<notice_texts_.size();++i)if(notice_texts_[i]&&notice_texts_[i]->source==request.text){index=static_cast<std::int32_t>(i);break;}
+    notice_text_draws_.push_back({index,request.x,request.y,request.anchor,request.font,index>=0});
+    if(index<0){ // SAGA_STUB(mission-notice-legacy): retain the native background when text/font data is unavailable.
+        if(std::find(unbound_effect_draws_.begin(),unbound_effect_draws_.end(),7)==unbound_effect_draws_.end())unbound_effect_draws_.push_back(7);return;
+    }
+    const auto& text=*notice_texts_.at(static_cast<std::size_t>(index));
+    if(!dynamic_backend_||!text.ready.image)return;
+    if(request.font!=10)throw std::logic_error("notice font provider requires the captured size10 scope");
+    float x=static_cast<float>(request.x),y=static_cast<float>(request.y);
+    const auto width=text.width;
+    if(request.anchor&2)x=x-width*0.5F;else if(request.anchor&4)x=x-width;
+    if(request.anchor&32)y=y-static_cast<float>(text.font_height)*0.5F;else if(request.anchor&64)y=y-static_cast<float>(text.font_height);
+    // SAGA_STUB(mission-notice-font-geometry): public face ascender/pixel-grid policy; Unity baseline/Graphics task equivalence requires the oracle.
+    x=x+static_cast<float>(text.left)*text.scale;y=y+(text.ascent+static_cast<float>(text.top))*text.scale;
+    dynamic_backend_->draw_bitmap(*text.ready.image,x,y,static_cast<float>(text.ready.pixels.width)*text.scale,static_cast<float>(text.ready.pixels.height)*text.scale);
+}
 void MissionProfile::draw_dynamic_body(std::int32_t id){
     last_dynamic_bodies_.push_back(id);
     if(id==4&&human_hud){HumanHud host(*this,dynamic_backend_,[&](const ParameterGaugeRequest& r){
@@ -1295,8 +1350,17 @@ void MissionProfile::draw_dynamic_body(std::int32_t id){
         };
         output.sprite=[&](const MissionEffectSpriteDraw& r){
             effect_sprite_draws_.push_back(r);
-            if(dynamic_backend_)dynamic_backend_->draw_seb_frame(r.manager,r.clip,r.frame,r.x,r.y);
+            if(dynamic_backend_){
+                if(r.anchor)dynamic_backend_->draw_seb_anchor_frame(r.manager,r.clip,r.frame,r.x,r.y,r.anchor);
+                else dynamic_backend_->draw_seb_frame(r.manager,r.clip,r.frame,r.x,r.y);
+            }
         };
+        const auto* quest=get_application_resource(application,7);
+        output.notice_background=quest&&quest->animations&&quest->animations->clips&&quest->animations->clips->size()>49&&quest->animations->clips->at(49);
+        output.notice_text=[&](std::int32_t index)->EffectText{
+            const auto& row=notice_texts_.at(static_cast<std::size_t>(index));return row?row->source:nullptr;
+        };
+        output.text=[&](const MissionEffectTextDraw& r){draw_notice_text(r);};
         output.render_mode=[&](std::int32_t mode,std::int32_t source,std::int32_t destination){
             effect_render_modes_.push_back({mode,source,destination});
             if(dynamic_backend_)dynamic_backend_->set_render_mode(mode,source,destination);
@@ -1306,7 +1370,7 @@ void MissionProfile::draw_dynamic_body(std::int32_t id){
     // Stage.DrawDynamic 0x1167fc0 and CursorRender.DrawDynamic 0x1147724 are RET bodies.
 }
 void MissionProfile::draw_dynamic_hud(BitmapBackend* backend){
-    last_dynamic_bodies_.clear();human_gauge_requests_.clear();enemy_gauge_requests_.clear();effect_number_draws_.clear();effect_sprite_draws_.clear();effect_render_modes_.clear();unbound_effect_draws_.clear();
+    last_dynamic_bodies_.clear();human_gauge_requests_.clear();enemy_gauge_requests_.clear();effect_number_draws_.clear();effect_sprite_draws_.clear();effect_render_modes_.clear();unbound_effect_draws_.clear();notice_text_draws_.clear();
     if(!mission)return;
     dynamic_backend_=backend;
     if(initialization_complete_){

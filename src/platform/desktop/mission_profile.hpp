@@ -103,6 +103,17 @@ private:
     MissionProfile(const std::filesystem::path&,bool,ArchiveImageSet::Decoder,std::optional<MissionRuntimeConfig>,std::optional<std::filesystem::path>,MissionSelection,const MissionBootstrapOptions*);
     std::optional<MissionBootstrapOptions> bootstrap_options_;
     std::unique_ptr<MissionEvents> events_;
+    struct NoticeText {
+        core::EffectText source;
+        std::string display;
+        ReadyArchiveImage ready;
+        float width=0,ascent=0,scale=1;std::int32_t left=0,top=0,font_height=0;
+    };
+    std::array<std::unique_ptr<NoticeText>,4> notice_texts_;
+    struct NoticeTextDraw {std::int32_t notice,x,y,anchor,font;bool bound;};
+    std::vector<NoticeTextDraw> notice_text_draws_;
+    void prepare_notice_texts();
+    void draw_notice_text(const MissionEffectTextDraw&);
     struct SavedMissionSelection {std::int32_t area8,quest9;};
     std::optional<SavedMissionSelection> saved_mission_selection_;
     struct QuestFrameConfig {bool debug_controls;std::int32_t orientation;};

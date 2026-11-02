@@ -1,6 +1,8 @@
 #pragma once
 #include "emitter_frame.hpp"
 #include "gauge_drawing.hpp"
+#include <memory>
+#include <string>
 
 namespace saga::core {
 struct EffectSystemState {
@@ -30,6 +32,7 @@ void update_string_background_effect(ComponentSlots*); // 0x114a400.
 void update_effects(EffectSystemState&,EffectFrameHost&);
 using EffectNumberContext=const void*; // Borrowed current AppData identity, captured before the fresh Seb lookup.
 using EffectResourceContext=void*; // Borrowed resource manager resolved from a captured AppData.
+using EffectText=std::shared_ptr<const std::u16string>; // Nullable immutable source identity, retained through font callbacks.
 class EffectDrawingHost {
 public:
     virtual ~EffectDrawingHost()=default;
@@ -49,6 +52,14 @@ public:
     virtual void effect_reset_render_mode(); // Default mode/source/destination (0,255,0).
     // Native duration formatting is discarded. Public formatting/culture services stay outside the core.
     virtual void effect_format_time(std::int32_t){}
+    virtual std::int32_t effect_notice_frame(std::int32_t notice);
+    virtual EffectText effect_notice_text(std::int32_t notice);
+    virtual void effect_draw_anchored_sprite(EffectResourceContext,std::int32_t clip,std::int32_t frame,
+        float x,float y,std::int32_t anchor);
+    virtual void effect_push_font(std::int32_t size);
+    virtual void effect_white_text_color();
+    virtual void effect_draw_text(EffectText,std::int32_t x,std::int32_t y,std::int32_t anchor);
+    virtual void effect_pop_font();
 };
 class EffectProjectionHost {
 public:
@@ -65,6 +76,7 @@ void draw_normal_effect(ComponentSlots*,EffectDrawingHost&); // DrawNormalEffect
 void draw_damage_number_effect(ComponentSlots*,EffectDrawingHost&); // DrawDamageNumEffect 0x114a79c.
 void draw_time_effect(ComponentSlots*,EffectDrawingHost&); // DrawTimeEffect 0x114aad4; no pixel output.
 void draw_jump_number_effect(ComponentSlots*,EffectDrawingHost&); // DrawJumpNumEffect 0x114ad64; fade/projection only.
+void draw_string_background_effect(ComponentSlots*,EffectDrawingHost&); // DrawStrWithBgEffect 0x114ae64.
 // DrawDynamic 0x114a438. Types4/6 are native RET handlers; no enabled/parent/context gate here.
 void draw_effects(EffectSystemState&,EffectDrawingHost&);
 }
