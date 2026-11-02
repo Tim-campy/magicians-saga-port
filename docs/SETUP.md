@@ -265,7 +265,14 @@ build/desktop/saga_town.exe --data extracted/full --background
 build/viewer/saga_town.exe --data extracted/full --capture build/town-preview.bmp
 ```
 
-The viewer build captures one hidden GL frame and refuses an existing destination. `--background` runs the same bitmap/SEB prefix without a GPU. Explicit context options are `--width 600 --height 640 --view-x 0 --view-y 53 --camera-x 0 --camera-y -9999`; native camera bounds clamp the requested position, and scale100 is the supported profile. Reports declare this context provisional. Decoration, buildings, residents, interactive town controls and quest selection remain S2 work.
+The viewer build captures one hidden GL frame and refuses an existing destination. `--background` runs the same bitmap/SEB prefix without a GPU. Explicit context options are `--width 600 --height 640 --view-x 0 --view-y 53 --camera-x 0 --camera-y -9999`; native camera bounds clamp the requested position, and scale100 is the supported profile. Reports declare this context provisional.
+
+`--scenery` extends that prefix through native cloud/bird/leaf initialization, bird drawing, two ground passes and clouds. Separate `--app-seed 42 --lib-seed 42` defaults select provisional stream states at this subsequence's entry; both draw counts and all rows are reported. The mode does not run town Update or full SelectForm.Init. Floor, buildings, residents, foreground leaves, interactive town controls and quest selection remain S2 work.
+
+```powershell
+build/desktop/saga_town.exe --data extracted/full --scenery
+build/viewer/saga_town.exe --data extracted/full --scenery --capture build/town-scenery.bmp
+```
 
 ### Headless mission host
 

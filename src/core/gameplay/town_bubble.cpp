@@ -48,7 +48,7 @@ void set_town_bubble(TownBubbleState& state,std::int32_t index,bool,TownBubbleHo
     state.frames=120;
 }
 // SelectForm.CheckViewArea, 0x11f43ec: query order matters on short circuits.
-bool check_select_view_area(std::int32_t x,std::int32_t y,std::int32_t mx,std::int32_t my,TownBubbleHost& host) {
+bool check_select_view_area(std::int32_t x,std::int32_t y,std::int32_t mx,std::int32_t my,SelectViewportHost& host) {
     if(wrap(-static_cast<std::int64_t>(mx))>x)return false;
     const auto width=host.game_width();
     if(wrap(-static_cast<std::int64_t>(my))>y)return false;

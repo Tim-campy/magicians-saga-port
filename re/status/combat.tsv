@@ -237,3 +237,5 @@ game:0x06000a8b	reimplemented	src/core/gameplay/quest_camera.cpp	Wrapping int32 
 game:0x06000fd4	reimplemented	src/core/gameplay/stage_start.cpp	Explicit AttackButton constructor state0/frame4, confirmed from ELF0x6271d8 and tested through Stage.Init.
 game:0x06000ff1	reimplemented	src/core/gameplay/pass_initialization.cpp	Forward-removal quirk, three-int append and deferred/non-deferred rebuild boundary; partial-failure contract tested.
 game:0x060010e6	documented	docs/subsystems/combat-enemies.md	108-byte ctor only clears BaseData fields after Object ctor; defeatCount+0x20 stays CLR zero; fresh mission seeds separate saved counters
+game:0x06000988	reimplemented	src/core/gameplay/game_random.cpp	Lib.Random bounded zero gate and wrapping Abs before remainder; separate town provider tested
+game:0x06000989	reimplemented	src/core/gameplay/game_random.cpp	Lib inclusive range reuses existing kernel over independent source; equal/reversed ranges always draw; town initialization bound

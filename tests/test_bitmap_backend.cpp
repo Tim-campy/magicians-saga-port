@@ -179,6 +179,15 @@ int main()try{
     check(box()==anchored&&payload->draw_offset->at(0)==0&&payload->draw_offset->at(1)==0);
     ar.images.reset();fails([&]{backend.draw_seb_anchor_frame(&ar,3,0,10,10,68);});ar.images=saved_images;
     check(payload->draw_offset->at(0)==0&&payload->draw_offset->at(1)==0);
+    // DrawSebAnchor(frame,layer,anchor) evaluates only the selected layer.
+    backend.clear_quads();backend.draw_seb_anchor_frame(&layer_resource,0,4,10,10,2,1);
+    check(backend.quads().size()==1);
+    auto* layered_payload=layered.resource().clips->at(0)->sprites;
+    check(layered_payload->draw_offset->at(0)==0&&layered_payload->draw_offset->at(1)==0);
+    backend.clear_quads();backend.draw_seb_anchor_frame(&layer_resource,0,4,10,10,2);
+    check(backend.quads().size()==2);
+    backend.clear_quads();fails([&]{backend.draw_seb_anchor_frame(&layer_resource,0,0,10,10,2,2);});
+    check(backend.quads().empty()&&layered_payload->draw_offset->at(0)==0&&layered_payload->draw_offset->at(1)==0);
     ReadyArchiveImage raster;raster.image=std::make_unique<PixelImage>();raster.image->width=raster.image->height=2;
     raster.pixels={2,2,{255,255,255,0,255,255,255,64,255,255,255,128,255,255,255,255}};raster.alpha_type=2;
     const auto raster_key=textures.bind(raster);check(textures.at(raster_key).ready==&raster);

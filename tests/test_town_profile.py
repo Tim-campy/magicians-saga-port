@@ -105,5 +105,25 @@ class TownProfileTests(unittest.TestCase):
             result=self.run_host(root,'--background');self.assertNotEqual(result.returncode,0)
             self.assertIn('Area.txt',result.stderr)
 
+    def test_scenery_preserves_separate_streams_and_native_cloud_prefix(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);add_town_background(root,scenery=True)
+            args=('--scenery','--width','320','--height','200')
+            first=self.run_host(root,*args);self.assertEqual(first.returncode,0,first.stderr)
+            report=json.loads(first.stdout);scene=report['background']['scenery']
+            # First public System.Random(42) values; distinct AppData/Lib owners.
+            self.assertEqual(scene['clouds'][:2],[[-15,1434747710%31,14,0,1,1434747710%4,0,20],
+                [4,302596119%31,14,0,1,269548474%4,0,20]])
+            self.assertEqual(self.run_host(root,*args).stdout,first.stdout)
+            changed=self.run_host(root,*args,'--lib-seed','123');self.assertEqual(changed.returncode,0,changed.stderr)
+            other=json.loads(changed.stdout)['background']['scenery']
+            self.assertEqual(scene['app_draws'],other['app_draws']);self.assertEqual(scene['lib_draws'],other['lib_draws'])
+            self.assertEqual([row[0] for row in scene['clouds']],[row[0] for row in other['clouds']])
+            self.assertEqual([row[5] for row in scene['clouds']],[row[5] for row in other['clouds']])
+            self.assertNotEqual([row[1] for row in scene['clouds']],[row[1] for row in other['clouds']])
+            self.assertTrue(any(row[0]==4 and row[1]==1 for row in scene['draws']))
+            self.assertIn('floor, buildings, residents',report['scope'])
+            self.assertNotEqual(self.run_host(root,'--background','--app-seed','42').returncode,0)
+
 
 if __name__=='__main__':unittest.main()

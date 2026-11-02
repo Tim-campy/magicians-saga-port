@@ -47,6 +47,9 @@ private:
 std::int32_t random_bounded(RandomSource&,std::int32_t bound);
 std::int32_t random_inclusive(RandomSource&,std::int32_t minimum,std::int32_t maximum);
 std::int32_t jrandom_bounded(RandomSource&,std::int32_t bound);
+// AppData.Random and Lib.Random have distinct zero gates and abs/remainder order.
+std::int32_t app_random_bounded(RandomSource&,std::int32_t bound);
+std::int32_t lib_random_bounded(RandomSource&,std::int32_t bound);
 bool random_hits1000(RandomSource&,std::int32_t threshold);
 bool random_hits(RandomSource&,std::int32_t threshold);
 // Random..cctor's 256-cell table is the mutable scratch space used by Lot.

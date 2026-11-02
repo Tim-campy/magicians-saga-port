@@ -38,6 +38,13 @@ std::int32_t random_inclusive(RandomSource& source,std::int32_t minimum,std::int
 }
 // JRandom.NextInt(bound) 0x1b04e20.
 std::int32_t jrandom_bounded(RandomSource& source,std::int32_t bound){return remainder(source.next(),bound);}
+// AppData.Random 0x1102f70: zero skips the draw; Abs applies after remainder.
+std::int32_t app_random_bounded(RandomSource& source,std::int32_t bound){
+    if(!bound)return 0;
+    const auto value=jrandom_bounded(source,bound);return value<0?-value:value;
+}
+// Lib.Random 0x111cf28: zero skips the draw; Abs wraps before remainder.
+std::int32_t lib_random_bounded(RandomSource& source,std::int32_t bound){return bound?random_bounded(source,bound):0;}
 // Random.Hits1000 0x1128f94.
 bool random_hits1000(RandomSource& source,std::int32_t threshold){return random_bounded(source,1000)<threshold;}
 // Random.Hits 0x1128f34: the draw occurs even outside the probability range.

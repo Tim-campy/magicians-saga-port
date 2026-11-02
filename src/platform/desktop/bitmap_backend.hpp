@@ -81,7 +81,7 @@ public:
     void draw_seb(std::int32_t resource,std::int32_t clip,std::optional<std::int32_t> frame,std::int32_t x,std::int32_t y);
     // Seb.DrawFrame: caller supplies the freshly resolved manager and explicit frame.
     void draw_seb_frame(core::RenderDrawResource*,std::int32_t clip,std::int32_t frame,float x,float y);
-    void draw_seb_anchor_frame(core::RenderDrawResource*,std::int32_t clip,std::int32_t frame,float x,float y,std::int32_t anchor);
+    void draw_seb_anchor_frame(core::RenderDrawResource*,std::int32_t clip,std::int32_t frame,float x,float y,std::int32_t anchor,std::int32_t layer=-1);
     void draw_bitmap(core::PixelImage&,float x,float y,float width,float height);
     std::int64_t draw_number_value(const BitmapApplication&,std::int32_t clip,std::int64_t value,
         std::int32_t x,std::int32_t y,std::int32_t padding,std::int32_t anchor,
@@ -101,7 +101,7 @@ public:
     void set_render_mode(std::int32_t mode,std::int32_t alpha);
     void set_render_mode(std::int32_t mode,std::int32_t source,std::int32_t destination);
 private:
-    void draw_seb_from(core::RenderDrawResource*,std::int32_t clip,std::optional<std::int32_t> frame,float x,float y);
+    void draw_seb_from(core::RenderDrawResource*,std::int32_t clip,std::optional<std::int32_t> frame,float x,float y,std::int32_t layer=-1);
     struct Impl;std::unique_ptr<Impl> impl_;
 };
 } // namespace saga::desktop

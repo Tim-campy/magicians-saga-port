@@ -14,6 +14,25 @@ from test_sprite_preview import bmp_pixels
 
 @unittest.skipUnless(EXE,'viewer saga_town supplied by CTest')
 class TownBackgroundPixels(unittest.TestCase):
+    def test_native_scenery_ground_pixels_and_two_stream_repeat(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);add_town_background(root,scenery=True)
+            base=[str(EXE),'--data',str(root),'--scenery','--width','320','--height','200']
+            def run(*args):
+                result=subprocess.run([*base,*args],capture_output=True,text=True,timeout=30)
+                self.assertEqual(result.returncode,0,result.stderr);return json.loads(result.stdout)
+            first=root/'scenery.bmp';report=run('--capture',str(first))
+            self.assertEqual(run(),report)
+            width,height,pixels=bmp_pixels(first.read_bytes());self.assertEqual((width,height),(320,200))
+            ground_y=200-8+53-80 # Raw height - SEB bounds height + viewY + clamped cameraY.
+            for y in range(ground_y,ground_y+8):self.assertEqual(pixels[y*width:(y+1)*width],[(80,90,100,255)]*width)
+            second=root/'repeat.bmp';self.assertEqual(run('--capture',str(second)),report)
+            self.assertEqual(first.read_bytes(),second.read_bytes())
+            scene=report['background']['scenery']
+            self.assertTrue(scene['provisional_rng']);self.assertEqual((scene['app_seed'],scene['lib_seed']),(42,42))
+            self.assertGreater(scene['app_draws'],scene['lib_draws'])
+            self.assertTrue(any(draw[0]==14 for draw in scene['draws']))
+
     def test_fill_tiles_parallax_repeat_and_headless_parity(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);add_town_background(root)

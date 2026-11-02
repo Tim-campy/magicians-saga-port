@@ -327,7 +327,7 @@ game:0x06000159,main.AppData.InitWorld,boot,reimplemented,272,0x1101c48
 game:0x0600015a,main.AppData.NewGame,boot,traced,1420,0x1101d58
 game:0x0600015b,main.AppData.NewData,boot,documented,280,0x11022e4
 game:0x0600015c,main.AppData.InitCheckScriptData,boot,documented,1060,0x1102b4c
-game:0x0600015d,game:0x0600015d,boot,,140,0x1102f70
+game:0x0600015d,main.AppData.Random,boot,reimplemented,140,0x1102f70
 game:0x0600015e,game:0x0600015e,boot,,1180,0x1102ffc
 game:0x0600015f,game:0x0600015f,boot,,464,0x1103498
 game:0x06000160,game:0x06000160,boot,,196,0x1103668
@@ -2039,11 +2039,11 @@ game:0x06000821,game:0x06000821,ui,,640,0x11ee638
 game:0x06000822,game:0x06000822,ui,,2016,0x11f38a8
 game:0x06000823,form.SelectForm.MoveCursor,ui,reimplemented,288,0x11ef0dc
 game:0x06000824,game:0x06000824,ui,,244,0x11f4088
-game:0x06000825,game:0x06000825,ui,,488,0x11eb52c
+game:0x06000825,form.SelectForm.InitDecoObject,ui,reimplemented,488,0x11eb52c
 game:0x06000826,game:0x06000826,ui,,2104,0x11ede00
-game:0x06000827,game:0x06000827,ui,,596,0x11f4ef8
-game:0x06000828,game:0x06000828,ui,,504,0x11f514c
-game:0x06000829,game:0x06000829,ui,,800,0x11f33f4
+game:0x06000827,form.SelectForm.GenerateObjBird,ui,reimplemented,596,0x11f4ef8
+game:0x06000828,form.SelectForm.GenerateLeaf,ui,reimplemented,504,0x11f514c
+game:0x06000829,form.SelectForm.DrawDecoObject,ui,reimplemented,800,0x11f33f4
 game:0x0600082a,game:0x0600082a,ui,,156,0x11eb8f4
 game:0x0600082b,game:0x0600082b,ui,,156,0x11eb990
 game:0x0600082c,form.SelectForm.CheckGuidArrow,ui,reimplemented,892,0x11ee8b8
@@ -2368,8 +2368,8 @@ game:0x06000984,game:0x06000984,util,,320,0x111ca6c
 game:0x06000985,game:0x06000985,util,,636,0x111cbac
 game:0x06000986,game:0x06000986,util,,156,0x111ce28
 game:0x06000987,game:0x06000987,util,,100,0x111cec4
-game:0x06000988,game:0x06000988,util,,180,0x111cf28
-game:0x06000989,game:0x06000989,util,,140,0x111cfdc
+game:0x06000988,ext.util.Lib.Random,util,reimplemented,180,0x111cf28
+game:0x06000989,ext.util.Lib.Random,util,reimplemented,140,0x111cfdc
 game:0x0600098a,game:0x0600098a,util,,120,0x111d068
 game:0x0600098b,game:0x0600098b,util,,68,0x111d0e0
 game:0x0600098c,game:0x0600098c,util,,104,0x111d124
@@ -10086,7 +10086,7 @@ kairo:0x060016fb,kairo:0x060016fb,ui,,84,0x1ba8c10
 kairo:0x060016fc,kairo:0x060016fc,ui,,84,0x1ba8694
 kairo:0x060016fd,kairo.unity.ui.ResourceManager.DrawSebAnchor,ui,documented,464,0x1ba8c68
 kairo:0x060016fe,kairo.unity.ui.ResourceManager.DrawSebAnchor,ui,reimplemented,452,0x1ba8f78
-kairo:0x060016ff,kairo:0x060016ff,ui,,464,0x1ba88d0
+kairo:0x060016ff,kairo.unity.ui.ResourceManager.DrawSebAnchor,ui,reimplemented,464,0x1ba88d0
 kairo:0x06001700,kairo.unity.ui.ResourceManager.GetSebAnchorPosition,ui,documented,268,0x1ba8e38
 kairo:0x06001701,kairo:0x06001701,ui,,268,0x1ba9204
 kairo:0x06001702,kairo:0x06001702,ui,,380,0x1ba9310

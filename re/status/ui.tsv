@@ -174,4 +174,9 @@ kairo:0x060016fd	documented	docs/subsystems/ui.md	Current-frame anchor offset, d
 game:0x06000178	reimplemented	src/core/gameplay/render_draw.cpp	Int64 numeric glyph layout/header/footer, uint32 to uint64 extent, local scale, INT64_MIN and minus fallback; host-bound
 kairo:0x060016fe	reimplemented	src/platform/desktop/bitmap_backend.cpp	Explicit-frame DrawSebAnchor, signed remainder, captured manager, offset and success/exception clear; notice-host binding tested
 kairo:0x0600132b	traced	docs/subsystems/fonts.md	Selected TextFormat-null ASCII GUI/deferred-text branches, anchor/rectangle/color calls identified; original mission Graphics/task selection remains open
-game:0x0600080b	traced	docs/subsystems/town.md	Native background prefix bound through pixel color fill and explicit tile/parallax frames; later town drawing suffix remains unported
+game:0x0600080b	traced	docs/subsystems/town.md	Native sky/sun, bird, two ground passes and reverse clouds bound; floor/building/resident/foreground suffix unported
+game:0x06000825	reimplemented	src/core/gameplay/select_form_pass.cpp	Fresh bird/leaf list publication and captured append owners; ordered counts/generators, partial failures and town host binding tested
+game:0x06000827	reimplemented	src/core/gameplay/select_form_pass.cpp	Six-int bird generation, captured extents, native AppData/Lib call order and initial-X override; town initialization bound
+game:0x06000828	reimplemented	src/core/gameplay/select_form_pass.cpp	Six-int leaf generation, repeated raw heights, wrap32/truncation and consumed overwritten offset; town initialization bound
+game:0x06000829	reimplemented	src/core/gameplay/select_form_pass.cpp	Bird/leaf live iteration, culling, parallax, frame/layer/anchor and live reverse cleanup; type0 town binding
+kairo:0x060016ff	reimplemented	src/platform/desktop/bitmap_backend.cpp	Explicit frame/layer anchored overload reuses native bounds/offset/draw/clear; selected layer vs all groups and failure cleanup tested

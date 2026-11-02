@@ -4,6 +4,7 @@
 #include "bitmap_backend.hpp"
 #include "core/gameplay/select_form_pass.hpp"
 #include "core/gameplay/select_camera.hpp"
+#include "core/gameplay/game_random.hpp"
 #include <ostream>
 
 namespace saga::desktop {
@@ -15,8 +16,10 @@ struct TownBackgroundContext {
     BitmapCamera projection{0,1500100,-1};
     std::int32_t depth_bits=24;
     bool depth_step=true;
+    bool scenery=false;
+    std::int32_t app_seed=42,lib_seed=42; // Separate provisional streams at the cloud-init boundary.
 };
-class TownBackground final:private core::SelectBackgroundHost,private core::SelectActiveAreaHost,private core::SelectCameraHost {
+class TownBackground final:private core::SelectBackgroundHost,private core::SelectActiveAreaHost,private core::SelectCameraHost,private core::SelectSceneryHost {
 public:
     TownBackground(ResourceArchive& tables,const GameArchiveEntry& selected,ResourceProfile,std::int32_t capacity,TownBackgroundContext);
     void draw(BitmapBackend&);
@@ -29,6 +32,13 @@ private:
     core::SelectCameraState camera_;
     TownBackgroundContext context_;
     std::int32_t camera_x_=0,camera_y_=0;
+    core::SelectSceneryState scenery_{std::make_shared<std::vector<core::EventInstruction>>(),nullptr,nullptr,camera_.left_extent,camera_.right_extent};
+    struct Random final:core::RandomSource {
+        explicit Random(std::int32_t seed):source(seed){}
+        core::LegacySystemRandom source;std::uint64_t draws=0;
+        std::int32_t next()override{++draws;return source.next();}
+    };
+    Random app_random_,lib_random_;
     core::AreaTable areas_;
     std::vector<std::optional<core::AreaProgressState>> progress_;
     std::shared_ptr<core::CameraAreas> camera_areas_;
@@ -43,6 +53,8 @@ private:
     std::uint32_t color_=0;
     std::array<std::int32_t,2> fill_{};
     std::vector<Draw> draws_;
+    struct SceneryDraw {std::int32_t clip,frame;float x,y;std::int32_t layer,anchor,reverse;};
+    std::vector<SceneryDraw> scenery_draws_;
     std::size_t quads_=0;
     std::shared_ptr<core::EventIntegers> normal_save_integers()override{return save_integers_;}
     std::shared_ptr<core::CameraAreas> camera_areas()override{return camera_areas_;}
@@ -59,5 +71,16 @@ private:
     std::int32_t background_view_height()override{return view_height();}
     std::int32_t background_clip()override{return 0;} // RESSELECT_SEB_BG; cctor 0x11192b0.
     void draw_background(core::SelectBackgroundResource,std::int32_t,std::int32_t,float,float)override;
+    std::int32_t raw_view_height()override{return view_height();}
+    std::int32_t cloud_right_edge()override{return 490+240;} // Init +0x160; AppData.VIEW_W.
+    std::int32_t scenery_clip(std::int32_t)override;
+    std::int32_t app_random(std::int32_t bound)override{return core::app_random_bounded(app_random_,bound);}
+    std::int32_t lib_random(std::int32_t bound)override{return core::lib_random_bounded(lib_random_,bound);}
+    std::int32_t lib_random(std::int32_t low,std::int32_t high)override{return core::random_inclusive(lib_random_,low,high);}
+    core::SelectBackgroundResource scenery_resource()override{return &manager_.drawing();}
+    std::array<std::int32_t,4> scenery_bounds(std::int32_t,std::int32_t)override;
+    void scenery_reverse(std::int32_t value)override{backend_->graphics().reverse=value;}
+    void scenery_draw(core::SelectBackgroundResource,std::int32_t,std::int32_t,float,float,std::int32_t)override;
+    void scenery_draw_indexed(core::SelectBackgroundResource,std::int32_t,std::int32_t,float,float,std::int32_t,std::int32_t)override;
 };
 } // namespace saga::desktop

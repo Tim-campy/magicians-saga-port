@@ -332,7 +332,7 @@ void BitmapBackend::draw_bitmap(PixelImage& image,float x,float y,float width,fl
     RenderImageDraw draw;draw.image=&image;draw.x=x;draw.y=y;draw.width=width;draw.height=height;draw.scaled=true;
     draw.u=draw.v=0;draw.source_width=image.width;draw.source_height=image.height;impl_->draw_image(draw);
 }
-void BitmapBackend::draw_seb_anchor_frame(RenderDrawResource* manager,std::int32_t clip,std::int32_t raw,float x,float y,std::int32_t anchor){
+void BitmapBackend::draw_seb_anchor_frame(RenderDrawResource* manager,std::int32_t clip,std::int32_t raw,float x,float y,std::int32_t anchor,std::int32_t layer){
     // ResourceManager.DrawSebAnchor 0x1ba8f78: explicit frame, no automatic-image registration.
     const auto current=[&]()->SharedAnimationClip&{
         if(!manager||!manager->animations||!manager->animations->clips)throw std::invalid_argument("missing notice SEB resource");
@@ -342,7 +342,7 @@ void BitmapBackend::draw_seb_anchor_frame(RenderDrawResource* manager,std::int32
     const auto frame=seb_frame(raw,current().max_frame);
     const auto offset=seb_anchor_position(*current().sprites,frame,0,0,anchor);
     set_seb_draw_offset(*current().sprites,offset[0],offset[1]);
-    try{draw_seb_from(manager,clip,frame,x,y);}catch(...){clear_seb_draw_offset(*current().sprites);throw;}
+    try{draw_seb_from(manager,clip,frame,x,y,layer);}catch(...){clear_seb_draw_offset(*current().sprites);throw;}
     clear_seb_draw_offset(*current().sprites);
 }
 std::int64_t BitmapBackend::draw_number_value(const BitmapApplication& app,std::int32_t clip,std::int64_t value,
@@ -384,7 +384,7 @@ void BitmapBackend::draw_seb_anchor(std::int32_t resource,std::int32_t clip,floa
     }catch(...){clear_seb_draw_offset(*current().sprites);throw;}
     clear_seb_draw_offset(*current().sprites);
 }
-void BitmapBackend::draw_seb_from(RenderDrawResource* manager,std::int32_t clip,std::optional<std::int32_t> requested,float x,float y){
+void BitmapBackend::draw_seb_from(RenderDrawResource* manager,std::int32_t clip,std::optional<std::int32_t> requested,float x,float y,std::int32_t selected_layer){
     // ResourceManager.DrawSeb 0x1ba8c10 -> Seb._draw 0x1bb4140 ->
     // Seb.Draw 0x1bb740c. Fresh prepared SEBs have zero +0x98 draw offsets.
     auto& s=*impl_;
@@ -394,11 +394,8 @@ void BitmapBackend::draw_seb_from(RenderDrawResource* manager,std::int32_t clip,
     const auto raw=requested.value_or(clock->frame),maximum=clock->max_frame;
     const auto frame=maximum==0?raw:maximum==-1?0:raw%maximum;
     auto* payload=clock->sprites;
-    auto sprites=seb_sprites_local(*payload,s.seb_work,frame);
-    if(!sprites)return;
-    if(!payload->groups)throw std::invalid_argument("missing direct SEB layers");
-    for(std::size_t layer=0;layer<payload->groups->size();++layer){
-        auto sprite=sprites->at(layer);if(!sprite)continue;
+    const auto emit=[&](const SpriteArray& sprite){
+        if(!sprite)return;
         const auto texture=sprite->at(1),blend=sprite->at(10);
         if(!payload->draw_offset)throw std::invalid_argument("missing direct SEB draw offset");
         const float px=(payload->draw_offset->at(0)+static_cast<float>(sprite->at(6)))+x;
@@ -418,6 +415,12 @@ void BitmapBackend::draw_seb_from(RenderDrawResource* manager,std::int32_t clip,
             s.draw_image(d);if(reverse)s.reverse=0;
         }else if(texture== -2||texture== -3||texture== -4)throw std::invalid_argument("direct SEB primitive drawing is unbound");
         if(blend!=0)s.pop_render_mode();
+    };
+    if(selected_layer!=-1)emit(seb_sprite_local(*payload,s.seb_work,frame,selected_layer));
+    else{
+        auto sprites=seb_sprites_local(*payload,s.seb_work,frame);if(!sprites)return;
+        if(!payload->groups)throw std::invalid_argument("missing direct SEB layers");
+        for(std::size_t layer=0;layer<payload->groups->size();++layer)emit(sprites->at(layer));
     }
 }
 RenderMatrix& BitmapBackend::matrix(){return impl_->application_matrix;}

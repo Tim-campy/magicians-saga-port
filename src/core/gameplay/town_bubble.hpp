@@ -7,18 +7,22 @@ struct TownSpeaker {std::int32_t voice_id;std::int32_t living_id;std::int32_t re
 using TownVoices=std::vector<std::shared_ptr<TownVoice>>;
 using TownSpeakers=std::vector<std::shared_ptr<TownSpeaker>>;
 struct TownBubbleState {std::int32_t index;FormText text;std::int32_t frames;};
-class TownBubbleHost {
+class SelectViewportHost {
+public:
+    virtual ~SelectViewportHost() = default;
+    virtual std::int32_t game_width() = 0;
+    virtual std::int32_t game_height() = 0;
+};
+class TownBubbleHost:public SelectViewportHost {
 public:
     virtual ~TownBubbleHost() = default;
     virtual std::shared_ptr<TownHumanRows> town_humans() = 0;
     virtual std::shared_ptr<TownVoices> voices() = 0;
     virtual std::shared_ptr<TownSpeakers> speakers() = 0;
     // SelectForm.GetGameWidth/Height (scaled dimensions), not raw window pixels.
-    virtual std::int32_t game_width() = 0;
-    virtual std::int32_t game_height() = 0;
 };
 void set_town_bubble(TownBubbleState&,std::int32_t index,bool option,TownBubbleHost&);
-bool check_select_view_area(std::int32_t x,std::int32_t y,std::int32_t margin_x,std::int32_t margin_y,TownBubbleHost&);
+bool check_select_view_area(std::int32_t x,std::int32_t y,std::int32_t margin_x,std::int32_t margin_y,SelectViewportHost&);
 // Called at original late Update position 0x11ed538, not immediately after contact.
 void update_town_bubble_lifetime(TownBubbleState&,std::int32_t saved_camera_x,std::int32_t saved_view_x,TownBubbleHost&);
 class TownBubbleTouchHost final:public SelectTouchMoveHost {

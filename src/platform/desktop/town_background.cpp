@@ -9,6 +9,7 @@ namespace saga::desktop {
 using namespace core;
 TownBackground::TownBackground(ResourceArchive& tables,const GameArchiveEntry& selected,ResourceProfile profile,std::int32_t capacity,TownBackgroundContext context)
     :camera_{false,0,0,camera_x_,camera_y_,0,0},context_(context),
+     app_random_(context.app_seed),lib_random_(context.lib_seed),
      camera_areas_(std::make_shared<CameraAreas>()),save_integers_(std::make_shared<EventIntegers>(20)),
      archive_(read_game_archive(selected.path),std::move(profile)),manager_(archive_),images_(manager_,decode_png){
     if(context.width<1||context.height<2||context.width>8192||context.height>8192||static_cast<std::uint64_t>(context.width)*context.height>16U*1024U*1024U)
@@ -31,6 +32,7 @@ TownBackground::TownBackground(ResourceArchive& tables,const GameArchiveEntry& s
     solid_.pixels={1,1,{0,0,0,255}};solid_.image=std::make_unique<PixelImage>();
     solid_.image->width=solid_.image->height=solid_.image->standard_width=solid_.image->standard_height=1;
     textures_.bind(solid_);
+    if(context_.scenery){initialize_select_scenery_clouds(scenery_,*this);initialize_select_decorations(scenery_,*this);}
 }
 std::int32_t TownBackground::view_width(){return scaled_view_dimension(context_.width,context_.view_scale);}
 std::int32_t TownBackground::view_height(){return scaled_view_dimension(context_.height,context_.view_scale);}
@@ -58,10 +60,35 @@ void TownBackground::draw_background(SelectBackgroundResource resource,std::int3
     draws_.push_back({clip,frame,x,y});backend_->draw_seb_frame(static_cast<RenderDrawResource*>(resource),clip,frame,x,y);
 }
 void TownBackground::draw(BitmapBackend& backend){
-    backend_=&backend;draws_.clear();const auto before=backend.quads().size();
-    try{draw_select_background({camera_x_,camera_y_,camera_.left_extent,camera_.right_extent,context_.view_y},*this);}
+    backend_=&backend;draws_.clear();scenery_draws_.clear();const auto before=backend.quads().size();
+    try{
+        const auto origin=draw_select_background({camera_x_,camera_y_,camera_.left_extent,camera_.right_extent,context_.view_y,&context_.view_x},*this);
+        if(context_.scenery){
+            draw_select_decorations(scenery_,0,origin,*this);
+            draw_select_terrain(scenery_,origin,*this);
+        }
+    }
     catch(...){backend_=nullptr;throw;}
     quads_=backend.quads().size()-before;backend_=nullptr;
+}
+std::int32_t TownBackground::scenery_clip(std::int32_t field){
+    // AppData..cctor: BG0, GROUND4, CLOUD14, BIRD22 and LEAF23.
+    switch(field){case 0x164:return 0;case 0x174:return 4;case 0x19c:return 14;case 0x1bc:return 22;case 0x1c0:return 23;}
+    throw std::invalid_argument("unsupported town scenery selector");
+}
+std::array<std::int32_t,4> TownBackground::scenery_bounds(std::int32_t clip,std::int32_t frame){
+    auto* clock=manager_.animations().clips->at(static_cast<std::size_t>(clip));
+    if(!clock||!clock->sprites)throw std::invalid_argument("missing town scenery bounds");
+    return seb_bounding_rect(*clock->sprites,frame);
+}
+void TownBackground::scenery_draw(SelectBackgroundResource resource,std::int32_t clip,std::int32_t frame,float x,float y,std::int32_t anchor){
+    scenery_draws_.push_back({clip,frame,x,y,-1,anchor,backend_->graphics().reverse});
+    if(anchor)throw std::logic_error("unexpected terrain anchor");
+    backend_->draw_seb_frame(static_cast<RenderDrawResource*>(resource),clip,frame,x,y);
+}
+void TownBackground::scenery_draw_indexed(SelectBackgroundResource resource,std::int32_t clip,std::int32_t frame,float x,float y,std::int32_t layer,std::int32_t anchor){
+    scenery_draws_.push_back({clip,frame,x,y,layer,anchor,backend_->graphics().reverse});
+    backend_->draw_seb_anchor_frame(static_cast<RenderDrawResource*>(resource),clip,frame,x,y,anchor,layer);
 }
 void TownBackground::report(std::ostream& out)const{
     out<<std::setprecision(std::numeric_limits<float>::max_digits10)
@@ -73,6 +100,18 @@ void TownBackground::report(std::ostream& out)const{
     for(std::size_t i=0;i<progress_.size();++i){if(i)out<<',';if(progress_[i])out<<progress_[i]->discovery_state;else out<<"null";}
     out<<"],\"fill_color\":"<<color_<<",\"fill_size\":["<<fill_[0]<<','<<fill_[1]<<"],\"quads\":"<<quads_<<",\"draws\":[";
     for(std::size_t i=0;i<draws_.size();++i){if(i)out<<',';const auto& d=draws_[i];out<<'['<<d.clip<<','<<d.frame<<','<<d.x<<','<<d.y<<']';}
-    out<<"]}";
+    out<<']';
+    if(context_.scenery){
+        out<<",\"scenery\":{\"provisional_rng\":true,\"app_seed\":"<<context_.app_seed<<",\"lib_seed\":"<<context_.lib_seed
+           <<",\"app_draws\":"<<app_random_.draws<<",\"lib_draws\":"<<lib_random_.draws;
+        const auto rows=[&](const char* name,const EventScript& values){out<<",\""<<name<<"\":[";
+            for(std::size_t i=0;i<values->size();++i){if(i)out<<',';out<<'[';const auto& row=*values->at(i);
+                for(std::size_t j=0;j<row.size();++j){if(j)out<<',';out<<row[j];}out<<']';}out<<']';};
+        rows("clouds",scenery_.clouds);rows("birds",scenery_.birds);rows("leaves",scenery_.leaves);
+        out<<",\"draws\":[";
+        for(std::size_t i=0;i<scenery_draws_.size();++i){if(i)out<<',';const auto& d=scenery_draws_[i];
+            out<<'['<<d.clip<<','<<d.frame<<','<<d.x<<','<<d.y<<','<<d.layer<<','<<d.anchor<<','<<d.reverse<<']';}out<<"]}";
+    }
+    out<<'}';
 }
 } // namespace saga::desktop

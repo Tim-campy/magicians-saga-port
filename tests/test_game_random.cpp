@@ -19,6 +19,9 @@ struct Enemy final:EnemyRewardHost {
     void spawn_treasure_drop(std::int32_t id)override{treasures.push_back(id);}
 };
 int main(){
+    {Fixed source((-2147483647-1));check(app_random_bounded(source,0)==0&&lib_random_bounded(source,0)==0&&source.calls==0);
+        check(app_random_bounded(source,100)==48&&lib_random_bounded(source,100)==-48&&source.calls==2);
+        check(app_random_bounded(source,-1)==0&&lib_random_bounded(source,-1)==0&&source.calls==4);}
     // Public seeded System.Random reference vectors, also obtained through Windows PowerShell's System.Random.
     const std::array<std::int32_t,7> seeds{{0,1,-1,42,123456789,(-2147483647-1),2147483647}};
     const std::array<std::array<std::int32_t,6>,7> expected{{

@@ -34,6 +34,7 @@ int main(int argc,char** argv)try{
     if(argc==2&&std::string_view(argv[1])=="--help"){
         std::cout<<"Usage: saga_town --data extracted-root [--language English.lproj] [--dpi 1]\n"
             "Background prefix: --background or --capture new.bmp (viewer build).\n"
+            "Add --scenery for native birds, ground and clouds; --app-seed 42 --lib-seed 42 are separate provisional entry streams.\n"
             "Provisional desktop context: --width 600 --height 640 --view-x 0 --view-y 53; scales100.\n"
             "Camera requests: --camera-x 0 --camera-y -9999, clamped by native fresh Area/Town bounds.\n"
             "S2 data projection: fresh Town.Init, ResetBuildingList and GetBuildingList.\n"
@@ -45,8 +46,10 @@ int main(int argc,char** argv)try{
     std::set<std::string> options;
     for(int i=1;i<argc;++i){
         const std::string key=argv[i];
-        if(key=="--background"){if(!options.insert(key).second)throw std::invalid_argument("duplicate town background option");background=true;continue;}
-        const std::set<std::string> allowed{"--data","--language","--dpi","--capture","--width","--height","--view-x","--view-y","--camera-x","--camera-y"};
+        if(key=="--background"||key=="--scenery"){
+            if(!options.insert(key).second)throw std::invalid_argument("duplicate town drawing option");
+            background=true;if(key=="--scenery")context.scenery=true;continue;}
+        const std::set<std::string> allowed{"--data","--language","--dpi","--capture","--width","--height","--view-x","--view-y","--camera-x","--camera-y","--app-seed","--lib-seed"};
         if(!allowed.count(key)||i+1>=argc||!options.insert(key).second)throw std::invalid_argument("unsupported, incomplete or duplicate town option");
         const std::string value=argv[++i];
         if(key=="--data")root=std::filesystem::u8path(value);
@@ -57,9 +60,11 @@ int main(int argc,char** argv)try{
             if(key=="--dpi"){if(parsed<0)throw std::invalid_argument("town dpi requires nonnegative int32");dpi=parsed;}
             else if(key=="--width")context.width=parsed;else if(key=="--height")context.height=parsed;
             else if(key=="--view-x")context.view_x=parsed;else if(key=="--view-y")context.view_y=parsed;
-            else if(key=="--camera-x")context.camera_request_x=parsed;else context.camera_request_y=parsed;}
+            else if(key=="--camera-x")context.camera_request_x=parsed;else if(key=="--camera-y")context.camera_request_y=parsed;
+            else if(key=="--app-seed")context.app_seed=parsed;else context.lib_seed=parsed;}
     }
     if(!root)throw std::invalid_argument("town data root required; see --help");
+    if(!context.scenery&&(options.count("--app-seed")||options.count("--lib-seed")))throw std::invalid_argument("town RNG inputs require --scenery");
     if(!background)for(const auto& key:options)if(key!="--data"&&key!="--language"&&key!="--dpi")
         throw std::invalid_argument("town drawing context requires --background or --capture");
 #ifndef SAGA_TOWN_WINDOW
@@ -114,6 +119,6 @@ int main(int argc,char** argv)try{
     std::cout<<"],\"source_buildings\":";write_rows(std::cout,town.state.building_list);
     std::cout<<",\"buildings\":";write_rows(std::cout,buildings);
     if(backdrop)backdrop->report(std::cout);
-    std::cout<<",\"scope\":\""<<(backdrop?"Town data and native background prefix; decorations, buildings, residents, quest selection and mission return unbound":"Town data/cache projection; SelectForm drawing, residents, quest selection and mission return unbound")<<"\"}\n";
+    std::cout<<",\"scope\":\""<<(context.scenery?"Native cloud/decor initialization and drawing through ground/cloud prefix; floor, buildings, residents, quest selection and mission return unbound":backdrop?"Town data and native background prefix; decorations, buildings, residents, quest selection and mission return unbound":"Town data/cache projection; SelectForm drawing, residents, quest selection and mission return unbound")<<"\"}\n";
     return 0;
 }catch(const std::exception& error){std::cerr<<"saga_town: "<<error.what()<<'\n';return 1;}

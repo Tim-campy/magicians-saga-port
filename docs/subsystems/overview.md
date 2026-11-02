@@ -84,7 +84,7 @@ Manifest: portrait orientation (`1`), `hardwareAccelerated=false`, `resizeableAc
 
 ## Port
 
-Layout: `src/core` (portable rules), `src/assets` (JAR/OPT/SEB readers), `src/platform/desktop` (native hosts and SDL3/OpenGL adapters), `src/platform/n3ds` (reserved). C++17/CMake builds and CTest run on Windows and Linux. S1's selected fresh mission acceptance is complete with real extracted data and declared service boundaries; S2 has a [town data/cache and sky/sun background host](town.md), with decoration/building/resident layers and the town/mission loop still open. Full boot/save restoration, original-runtime verification and 3DS feasibility remain unproven. The native port does not require an Android runtime.
+Layout: `src/core` (portable rules), `src/assets` (JAR/OPT/SEB readers), `src/platform/desktop` (native hosts and SDL3/OpenGL adapters), `src/platform/n3ds` (reserved). C++17/CMake builds and CTest run on Windows and Linux. S1's selected fresh mission acceptance is complete with real extracted data and declared service boundaries; S2 has a [town data/cache and scenery host](town.md), with floor/building/resident/foreground layers and the town/mission loop still open. Full boot/save restoration, original-runtime verification and 3DS feasibility remain unproven. The native port does not require an Android runtime.
 
 ## Evidence
 

@@ -6,6 +6,7 @@
 #include "select_prelude.hpp"
 #include "select_touch_move.hpp"
 #include "select_triggers.hpp"
+#include "town_bubble.hpp"
 #include <array>
 namespace saga::core {
 struct SelectBackgroundState {
@@ -14,6 +15,7 @@ struct SelectBackgroundState {
     const std::int32_t& left_extent;
     const std::int32_t& right_extent;
     const std::int32_t& view_y;
+    const std::int32_t* view_x=nullptr; // Null selects the earlier zero-X profile.
 };
 using SelectBackgroundResource=void*; // Borrowed host drawing owner, captured after the fill.
 class SelectBackgroundHost {
@@ -31,7 +33,38 @@ public:
 };
 // SelectForm._Draw 0x11f0850..0x11f0a6c; stops before DrawDecoObject(0).
 // ResetTouchList/IsTopForm and all later town/resident/UI layers belong to the caller.
-void draw_select_background(const SelectBackgroundState&,SelectBackgroundHost&);
+struct SelectBackgroundOrigin {std::int32_t x,y;}; // Captured after the color fill, before tile callbacks.
+SelectBackgroundOrigin draw_select_background(const SelectBackgroundState&,SelectBackgroundHost&);
+struct SelectSceneryState {
+    EventScript clouds=std::make_shared<std::vector<EventInstruction>>(); // +0x108, eight-int rows.
+    EventScript birds,leaves; // +0x198/+0x1a0, six-int rows.
+    const std::int32_t& left_extent;
+    const std::int32_t& right_extent;
+};
+class SelectSceneryHost:public SelectViewportHost {
+public:
+    virtual std::int32_t raw_view_height()=0;
+    virtual std::int32_t cloud_right_edge()=0; // Live +0x160 + AppData.VIEW_W.
+    virtual std::int32_t scenery_clip(std::int32_t slot)=0; // AppData static field offset.
+    virtual std::int32_t app_random(std::int32_t bound)=0;
+    virtual std::int32_t lib_random(std::int32_t bound)=0;
+    virtual std::int32_t lib_random(std::int32_t minimum,std::int32_t maximum)=0;
+    virtual SelectBackgroundResource scenery_resource()=0;
+    virtual std::array<std::int32_t,4> scenery_bounds(std::int32_t clip,std::int32_t frame)=0;
+    virtual void scenery_reverse(std::int32_t)=0;
+    virtual void scenery_draw(SelectBackgroundResource,std::int32_t clip,std::int32_t frame,float x,float y,std::int32_t anchor)=0;
+    virtual void scenery_draw_indexed(SelectBackgroundResource,std::int32_t clip,std::int32_t frame,float x,float y,std::int32_t layer,std::int32_t anchor)=0;
+};
+// SelectForm.Init cloud subsequence, before ChangeState(0)/InitDecoObject.
+void initialize_select_scenery_clouds(SelectSceneryState&,SelectSceneryHost&);
+EventInstruction generate_select_bird(SelectSceneryState&,bool initial,SelectSceneryHost&);
+EventInstruction generate_select_leaf(SelectSceneryState&,bool initial,SelectSceneryHost&);
+void initialize_select_decorations(SelectSceneryState&,SelectSceneryHost&);
+// DrawDecoObject: types0 (birds) and2 (leaves); other types do not enumerate.
+void draw_select_decorations(SelectSceneryState&,std::int32_t type,SelectBackgroundOrigin,SelectSceneryHost&);
+// _Draw 0x11f0a80..0x11f0e10: two ground passes, then backward cloud drawing.
+// Caller runs DrawDecoObject(0) first; floor/buildings/residents are later layers.
+void draw_select_terrain(SelectSceneryState&,SelectBackgroundOrigin,SelectSceneryHost&);
 struct SelectFormPassState {
     std::int32_t state;
     bool captured;
