@@ -74,4 +74,20 @@ public:
 // required after the frame0/layer0 metric read; strings are not sanitized/formatted here.
 std::int32_t draw_number_images(NumberImageHost&,std::int32_t clip,const std::u16string* text,
     std::int32_t x,std::int32_t y,std::int32_t padding,std::int32_t anchor);
+class NumberValueImageHost:public NumberImageHost {
+public:
+    virtual std::int32_t number_max_frame(std::int32_t clip)=0; // Fresh captured-AppData resCom/SEB lookup.
+    // Graphics.PushLocalMatrix(Matrix.Scale(scale,scale,0,0)); not the global matrix stack.
+    virtual void push_number_scale(float scale)=0;
+    virtual void pop_number_scale()=0;
+    virtual void number_color(std::int32_t red,std::int32_t green,std::int32_t blue)=0;
+    virtual void number_minus_text(float x,float y)=0; // Graphics.DrawString("-") with the current font/color.
+};
+// AppData.DrawNumImage(header,int64,footer,...) 0x1105328. Explicit -1 dimensions
+// select the frame0/layer0 metric. The local matrix is popped only on success.
+// This numeric route does not use the string overload's special slash glyph.
+std::int64_t draw_number_value_images(NumberValueImageHost&,std::int32_t clip,
+    const std::u16string* header,std::int64_t value,const std::u16string* footer,
+    std::int32_t x,std::int32_t y,std::int32_t padding,std::int32_t anchor,
+    std::int32_t scale,std::int32_t width,std::int32_t height);
 } // namespace saga::core

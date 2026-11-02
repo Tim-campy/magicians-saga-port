@@ -10,6 +10,8 @@ template<class T>T& at(const std::shared_ptr<std::vector<T>>& p,std::int32_t i){
 std::int32_t word(std::uint32_t v){return static_cast<std::int32_t>(v<0x80000000U?static_cast<std::int64_t>(v):static_cast<std::int64_t>(v)-0x100000000LL);}
 std::int32_t add(std::int32_t a,std::int32_t b){return word(static_cast<std::uint32_t>(a)+static_cast<std::uint32_t>(b));}
 std::int32_t negate(std::int32_t a){return word(0U-static_cast<std::uint32_t>(a));}
+std::int64_t wide_word(std::uint64_t v){return v<0x8000000000000000ULL?static_cast<std::int64_t>(v):-1-static_cast<std::int64_t>(~v);}
+std::int32_t product(std::int32_t a,std::int32_t b){return word(static_cast<std::uint32_t>(a)*static_cast<std::uint32_t>(b));}
 std::int32_t number_length(const std::u16string* text){
     const auto n=required(text).size();
     if(n>static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max()))throw std::length_error("number image text exceeds int32");
@@ -108,5 +110,59 @@ std::int32_t draw_number_images(NumberImageHost& host,std::int32_t clip,const st
         x=add(x,stride);index=add(index,1);
     }while(index<number_length(text));
     return width;
+}
+std::int64_t draw_number_value_images(NumberValueImageHost& host,std::int32_t clip,
+        const std::u16string* header,std::int64_t value,const std::u16string* footer,
+        std::int32_t x,std::int32_t y,std::int32_t padding,std::int32_t anchor,
+        std::int32_t scale,std::int32_t width,std::int32_t height){
+    const auto metric=host.number_sprite(clip,0,0);
+    if(width==-1)width=at(metric,4);
+    if(height==-1)height=at(metric,5);
+    const auto scaled_width=product(width,scale)/100;
+    // Native CNEG wraps INT64_MIN. It consequently selects one digit and renders
+    // that digit from the low int32 of INT64_MIN/1, i.e. zero after the minus sign.
+    auto magnitude=value<0?wide_word(0ULL-static_cast<std::uint64_t>(value)):value;
+    std::int64_t digits=1,power=1;
+    for(auto remaining=magnitude;remaining>=10;remaining/=10){power*=10;++digits;}
+    const auto header_length=number_length(header),footer_length=number_length(footer);
+    const auto stride=add(scaled_width,padding);
+    const auto count=static_cast<std::uint64_t>(digits)+static_cast<std::uint64_t>(value<0)
+        +static_cast<std::uint32_t>(header_length)+static_cast<std::uint32_t>(footer_length);
+    // ADD W29 zero-extends the stride before the native 64-bit multiply; padding
+    // is also zero-extended by SUB X8,X8,W27,UXTW. Keep the full 64-bit return.
+    const auto extent=count*static_cast<std::uint32_t>(stride)-static_cast<std::uint32_t>(padding);
+    const auto low_extent=word(static_cast<std::uint32_t>(extent));
+    if(anchor&2)x=add(x,negate(low_extent/2));else if(anchor&4)x=add(x,negate(low_extent));
+    const auto vertical=product(height,scale);
+    if(anchor&32)y=add(y,vertical/-200);else if(anchor&64)y=add(y,vertical/-100);
+    host.push_number_scale(static_cast<float>(scale)/100.0F);
+    const auto float_y=static_cast<float>(y);
+    const auto draw_text=[&](const std::u16string* text){
+        for(std::int32_t i=0;i<number_length(text);i=add(i,1)){
+            const auto character=static_cast<std::uint16_t>(text->at(static_cast<std::size_t>(i)));
+            if(character!=0x20U)host.draw_number_frame(clip,add(static_cast<std::int32_t>(character),-0x30),static_cast<float>(x),float_y);
+            x=add(x,stride);
+        }
+    };
+    draw_text(header);
+    if(value<0){
+        if(host.number_max_frame(clip)>=46)host.draw_number_frame(clip,45,static_cast<float>(x),float_y);
+        else{
+            host.number_color(255,255,255);
+            host.number_minus_text(static_cast<float>(add(x,1)),static_cast<float>(add(y,1)));
+            host.number_color(0,0,0);
+            host.number_minus_text(static_cast<float>(x),float_y);
+        }
+        x=add(x,stride);
+    }
+    for(std::int64_t i=0;i<digits;++i){
+        const auto digit=magnitude/power;
+        host.draw_number_frame(clip,word(static_cast<std::uint32_t>(digit)),static_cast<float>(x),float_y);
+        magnitude=wide_word(static_cast<std::uint64_t>(magnitude)-static_cast<std::uint64_t>(digit)*static_cast<std::uint64_t>(power));
+        power/=10;x=add(x,stride);
+    }
+    draw_text(footer);
+    host.pop_number_scale();
+    return wide_word(extent);
 }
 } // namespace saga::core
