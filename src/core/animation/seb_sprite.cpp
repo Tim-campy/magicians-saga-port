@@ -176,6 +176,21 @@ SpriteArray seb_sprite(SebSpriteState& s,SebStaticWork& w,std::int32_t frame,std
     auto rows=instance_rows(s);
     return evaluate(s,w,rows,frame,layer);
 }
+SpriteRows seb_sprites(SebSpriteState& s,SebStaticWork& w,std::int32_t frame){
+    if(!s.work)s.work=std::make_shared<SebInstanceWork>();
+    auto owner=s.work;
+    const auto layers=length(required(s.groups.get()).size());
+    if(!owner->sprites)owner->sprites=matrix(layers);
+    auto output=owner->list;
+    if(!output){output=std::make_shared<std::vector<SpriteArray>>(static_cast<std::size_t>(layers));owner->list=output;}
+    for(std::int32_t layer=0;layer<layers;++layer){
+        auto sprite=seb_sprite(s,w,frame,layer);
+        // Evaluation precedes validation of the retained destination. The work owner and
+        // layer count are captured, while its list field is reread after each store.
+        at(output,layer)=sprite;output=owner->list;
+    }
+    return output;
+}
 SpriteArray seb_sprite_local(SebSpriteState& s,SebStaticWork& w,std::int32_t frame,std::int32_t layer){
     const auto layers=length(required(s.groups.get()).size());auto rows=local_rows(w,layers);
     return evaluate(s,w,rows,frame,layer);

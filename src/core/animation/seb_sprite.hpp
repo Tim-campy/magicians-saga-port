@@ -9,7 +9,7 @@ using SpriteArray=std::shared_ptr<SpriteValues>;
 using SpriteRows=std::shared_ptr<std::vector<SpriteArray>>;
 using SpriteCache=std::shared_ptr<std::vector<SpriteRows>>;
 // Managed array lengths stay fixed; replacement references and mutable elements are distinct.
-struct SebInstanceWork {SpriteRows sprites;}; // WorkValue +0x10.
+struct SebInstanceWork {SpriteRows sprites,list;}; // WorkValue +0x10 matrix, +0x18 retained GetSprites list.
 struct SebSpriteState {
     std::shared_ptr<std::vector<std::int32_t>> groups; // Seb +0x20, first record indices.
     std::shared_ptr<std::vector<std::int16_t>> frames; // +0x28.
@@ -37,6 +37,7 @@ SebSpriteState prepare_seb_sprites(const assets::Seb&);
 SebSpriteState clone_seb_sprites(const SebSpriteState&);
 void convert_seb_sprite(const SebSpriteState&,std::int32_t record,SpriteArray output,std::int32_t reverse); // 0x1bb2b5c.
 SpriteArray seb_sprite(SebSpriteState&,SebStaticWork&,std::int32_t frame,std::int32_t layer); // 0x1bb1900.
+SpriteRows seb_sprites(SebSpriteState&,SebStaticWork&,std::int32_t frame); // 0x1bb179c; retained instance list.
 SpriteArray seb_sprite_local(SebSpriteState&,SebStaticWork&,std::int32_t frame,std::int32_t layer); // 0x1bb2290.
 SpriteRows seb_sprites_local(SebSpriteState&,SebStaticWork&,std::int32_t frame); // 0x1bb0b90.
 void set_seb_cache_size(SebSpriteState&,std::int32_t size); // 0x1babbfc.

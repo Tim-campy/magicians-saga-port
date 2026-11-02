@@ -119,4 +119,29 @@ int main(){
      prepare_seb_bounds(s,work,0);check(s.bounds&&s.bounds->empty()&&!s.extended_bounds);fails([&]{seb_bounding_rect(s,0);});
      auto failure=prepare_seb_sprites(file({record(0,0)}));failure.groups.reset();
      fails([&]{prepare_seb_bounds(failure,work,2);});check(failure.bounds&&failure.bounds->size()==8);}
+    {SebStaticWork work;auto s=prepare_seb_sprites(layers({record(0,1),record(2,2)}));
+     auto output=seb_sprites(s,work,0);auto own=output->at(0);
+     check(output==s.work->list&&output!=s.work->sprites&&own==s.work->sprites->at(0)&&!output->at(1));
+     auto local=seb_sprites_local(s,work,0);check(local!=output&&local->at(0)!=own);
+     check(seb_sprites(s,work,2)==output&&!output->at(0)&&output->at(1)==s.work->sprites->at(1));
+     check(seb_sprites(s,work,0)==output&&output->at(0)==own&&!output->at(1));
+     auto clone=clone_seb_sprites(s);check(!clone.work->list&&seb_sprites(clone,work,0)!=output);}
+    {SebStaticWork work;auto s=prepare_seb_sprites(file({record(0,1),record(1,1)}));set_seb_cache_size(s,2);
+     auto output=seb_sprites(s,work,0);auto zero=output->at(0);check(s.work->sprites&&zero==s.cache->at(0)->at(0));
+     auto one=seb_sprite(s,work,1,0);check(one!=zero&&output->at(0)==zero);
+     check(seb_sprites(s,work,1)==output&&output->at(0)==one);
+     check(seb_sprites(s,work,0)==output&&output->at(0)==zero&&s.cache->at(0)->at(0)==zero);}
+    {SebStaticWork work;auto s=prepare_seb_sprites(layers({record(1,1),record(1,2)}));
+     s.work->list=std::make_shared<std::vector<SpriteArray>>(1);auto output=s.work->list;
+     fails([&]{seb_sprites(s,work,1);});check(s.work->list==output&&output->at(0)==s.work->sprites->at(0));
+     check(output->at(0)->at(0)==1&&s.work->sprites->at(1)->at(0)==1);}
+    {SebStaticWork work;auto s=prepare_seb_sprites(layers({record(1,1),record(1,2)}));
+     auto output=seb_sprites(s,work,0);auto marker=buffer();output->at(1)=marker;
+     s.work->sprites->at(1)->resize(1);fails([&]{seb_sprites(s,work,1);});
+     check(output->at(0)==s.work->sprites->at(0)&&output->at(0)->at(0)==1&&output->at(1)==marker);
+     check(s.work->sprites->at(1)->at(0)==1);}
+    {SebStaticWork work;auto s=prepare_seb_sprites(file({}));s.groups->clear();
+     auto output=seb_sprites(s,work,0);check(output&&output->empty()&&output==s.work->list&&s.work->sprites->empty());
+     auto bad=prepare_seb_sprites(file({record(0)}));bad.work.reset();bad.groups.reset();
+     fails([&]{seb_sprites(bad,work,0);});check(bad.work&&!bad.work->sprites&&!bad.work->list);}
 }
