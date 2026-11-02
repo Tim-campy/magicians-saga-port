@@ -174,7 +174,7 @@ kairo:0x060016fd	documented	docs/subsystems/ui.md	Current-frame anchor offset, d
 game:0x06000178	reimplemented	src/core/gameplay/render_draw.cpp	Int64 numeric glyph layout/header/footer, uint32 to uint64 extent, local scale, INT64_MIN and minus fallback; host-bound
 kairo:0x060016fe	reimplemented	src/platform/desktop/bitmap_backend.cpp	Explicit-frame DrawSebAnchor, signed remainder, captured manager, offset and success/exception clear; notice-host binding tested
 kairo:0x0600132b	traced	docs/subsystems/fonts.md	Selected TextFormat-null ASCII GUI/deferred-text branches, anchor/rectangle/color calls identified; original mission Graphics/task selection remains open
-game:0x0600080b	traced	docs/subsystems/town.md	Native scenery/floor/font scopes and initial building draw prefix bound; queued notices and text/input stubs; area/resident/foreground suffix unported
+game:0x0600080b	traced	docs/subsystems/town.md	Native scenery/building/area prefix bound; queued notices, explicit clock0 and text/input stubs; resident/foreground suffix unported
 game:0x06000825	reimplemented	src/core/gameplay/select_form_pass.cpp	Fresh bird/leaf list publication and captured append owners; ordered counts/generators, partial failures and town host binding tested
 game:0x06000827	reimplemented	src/core/gameplay/select_form_pass.cpp	Six-int bird generation, captured extents, native AppData/Lib call order and initial-X override; town initialization bound
 game:0x06000828	reimplemented	src/core/gameplay/select_form_pass.cpp	Six-int leaf generation, repeated raw heights, wrap32/truncation and consumed overwritten offset; town initialization bound
@@ -182,3 +182,6 @@ game:0x06000829	reimplemented	src/core/gameplay/select_form_pass.cpp	Bird/leaf l
 kairo:0x060016ff	reimplemented	src/platform/desktop/bitmap_backend.cpp	Explicit frame/layer anchored overload reuses native bounds/offset/draw/clear; selected layer vs all groups and failure cleanup tested
 kairo:0x060016fc	reimplemented	src/platform/desktop/bitmap_backend.cpp	Explicit frame remainder and unanchored selected layer; shared bitmap path, single vs all layer and native gate offset tested; saga_town gate bound
 game:0x0600080c	reimplemented	src/core/gameplay/select_form_pass.cpp	Fresh seven-int notice requests; default depth uses pre-append count; explicit depths/null failures tested; town prefix queues without premature flush.
+game:0x0600082b	reimplemented	src/core/gameplay/select_form_pass.cpp	Wrapped -160-129*index/rawHeight-157; caller height ordering and boundary arithmetic tested; saga_town areas bound.
+game:0x06000822	traced	docs/subsystems/town.md	Ordered materialized lane filter, coordinate/culling and DrawScaledHuman consumer; native Init and composition remain unported.
+game:0x0600080d	documented	docs/subsystems/town.md	Insertion-order queued rows, culling, resource and explicit-frame/layer draw; ignores row6; current queue clears only after successful enumeration; parent caller after residents/foreground.

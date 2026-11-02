@@ -9,6 +9,7 @@
 #include "town_bubble.hpp"
 #include "render_draw.hpp"
 #include <array>
+#include <optional>
 namespace saga::core {
 struct SelectBackgroundState {
     const std::int32_t& camera_x;
@@ -115,6 +116,34 @@ void queue_select_notice(EventScript&,std::int32_t resource,std::int32_t x,std::
 // _Draw 0x11f0fe4..0x11f1d98: building underlays, font scopes, sprites and notice requests.
 // Does not flush the notice stack or draw the later area/resident/foreground passes.
 void draw_select_town_buildings(const SelectTownDrawingState&,SelectBackgroundOrigin,SelectTownDrawingHost&);
+struct SelectAreaDrawingRecord {std::int32_t image=0,discovery=0;FormText name;};
+using SelectAreaDrawingRows=std::vector<std::shared_ptr<SelectAreaDrawingRecord>>;
+struct SelectAreaDrawingState {
+    const std::int32_t& frame;
+    const std::int32_t& selected;
+    const std::int32_t& form_state;
+    bool top_form;
+    EventInstruction& marks;
+    EventScript& notices;
+};
+class SelectAreaDrawingHost:public SelectViewportHost {
+public:
+    virtual std::shared_ptr<SelectAreaDrawingRows> drawing_areas()=0;
+    virtual std::int32_t area_view_height()=0;
+    virtual void area_push_font(std::int32_t)=0;
+    virtual void area_draw(std::int32_t resource,std::int32_t clip,std::optional<std::int32_t> frame,std::int32_t x,std::int32_t y)=0;
+    virtual std::int32_t area_clip(std::int32_t field)=0;
+    virtual std::int32_t area_clip_frames(std::int32_t resource,std::int32_t clip)=0;
+    virtual std::int32_t area_number()=0; // AppData.GetAreaNum: count(discovery==1)-1, not highest found ID.
+    virtual void area_label_color()=0; // AppData static+0x3b0.
+    virtual void area_label(FormText,std::int32_t x,std::int32_t y)=0;
+    virtual void area_touch(std::int32_t index,bool selected,bool locked,std::int32_t x,std::int32_t y)=0;
+};
+// GetAreaPos 0x11eb990; caller reads raw GameView height before coordinate calculation.
+std::array<std::int32_t,2> select_area_position(std::int32_t index,std::int32_t raw_height);
+// _Draw 0x11f1d9c..0x11f2324. Leaves font10 active and notices queued.
+// Inherited PopClip, resident drawing and the later stack flush belong to the caller.
+void draw_select_town_areas(const SelectAreaDrawingState&,SelectBackgroundOrigin,SelectAreaDrawingHost&);
 struct SelectFormPassState {
     std::int32_t state;
     bool captured;

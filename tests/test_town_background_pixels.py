@@ -14,6 +14,22 @@ from test_sprite_preview import bmp_pixels
 
 @unittest.skipUnless(EXE,'viewer saga_town supplied by CTest')
 class TownBackgroundPixels(unittest.TestCase):
+    def test_area_map_and_fence_use_distinct_native_resources(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);add_town_background(root,areas=True)
+            args=[str(EXE),'--data',str(root),'--areas','--width','600','--height','320','--camera-x','300']
+            def run(*extra):
+                value=subprocess.run([*args,*extra],capture_output=True,text=True,timeout=30)
+                self.assertEqual(value.returncode,0,value.stderr);return json.loads(value.stdout)
+            capture=root/'areas.bmp';report=run('--capture',str(capture));self.assertEqual(run(),report)
+            width,height,pixels=bmp_pixels(capture.read_bytes());self.assertEqual((width,height),(600,320))
+            for yy in (113,114):
+                for xx in (158,159,160):self.assertEqual(pixels[yy*width+xx],(10,200,100,255))
+            for yy in (136,137):
+                for xx in (11,12):self.assertEqual(pixels[yy*width+xx],(255,0,0,255))
+            second=root/'repeat.bmp';self.assertEqual(run('--capture',str(second)),report)
+            self.assertEqual(capture.read_bytes(),second.read_bytes())
+
     def test_building_texture_override_pixels_and_no_early_notice_flush(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);add_town_background(root,buildings=True)

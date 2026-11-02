@@ -241,6 +241,51 @@ void draw_select_town_buildings(const SelectTownDrawingState& state,SelectBackgr
     }
     host.town_pop_font();
 }
+std::array<std::int32_t,2> select_area_position(std::int32_t index,std::int32_t height){
+    const auto product=static_cast<std::uint32_t>(index)*129U;
+    const auto scaled=product<=0x7fffffffU?static_cast<std::int32_t>(product):-1-static_cast<std::int32_t>(0xffffffffU-product);
+    return {scenery_sub(-160,scaled),background_add(height,-157)};
+}
+void draw_select_town_areas(const SelectAreaDrawingState& state,SelectBackgroundOrigin origin,SelectAreaDrawingHost& host){
+    static_cast<void>(host.area_view_height());host.area_push_font(10);
+    for(std::int32_t index=0;;++index){
+        const auto rows=host.drawing_areas();
+        if(static_cast<std::size_t>(index)>=scenery_required(rows).size())break;
+        const auto record=rows->at(static_cast<std::size_t>(index));
+        const auto position=select_area_position(index,host.area_view_height());
+        const auto x=background_add(origin.x,position[0]);const auto height=host.game_height();
+        if(!check_select_view_area(x,background_add(height,-1),134,0,host))continue;
+        const bool found=scenery_required(scenery_required(host.drawing_areas()).at(static_cast<std::size_t>(index))).discovery==1;
+        const auto y=background_add(origin.y,position[1]);
+        const auto notice=[&](std::int32_t resource,std::int32_t clip,std::int32_t nx,std::int32_t ny,std::int32_t frame){
+            queue_select_notice(state.notices,resource,nx,ny,clip,frame,0);
+        };
+        const auto animated=[&](std::int32_t resource,std::int32_t clip,std::int32_t nx,std::int32_t ny,std::int32_t divisor){
+            const auto maximum=host.area_clip_frames(resource,clip);const auto frame=state.frame/divisor;
+            notice(resource,clip,nx,ny,town_remainder(frame,maximum));
+        };
+        if(!found){
+            if(background_add(host.area_number(),1)>static_cast<std::int64_t>(scenery_required(host.drawing_areas()).size()))continue;
+            if(index!=background_add(host.area_number(),1))continue;
+            host.area_draw(11,host.area_clip(0x194),std::nullopt,x,y);
+            if(state.form_state==0)host.area_touch(index,false,true,x,y);
+            continue;
+        }
+        host.area_draw(0,3,scenery_required(record).image,background_add(x,18),background_add(y,-23));
+        const auto label_x=background_add(x,64);const auto selected=state.selected;
+        const auto name_clip=host.area_clip(0x18c);
+        notice(11,name_clip,label_x,background_add(y,-5),index==selected?1:0);
+        if(index==selected){
+            const auto go_clip=host.area_clip(0x188);animated(11,go_clip,label_x,background_add(y,72),6);
+            host.area_touch(index,true,false,background_add(x,50),background_add(y,45));
+        }else host.area_touch(index,false,false,x,y);
+        host.area_label_color();
+        if(state.top_form)host.area_label(scenery_required(record).name,label_x,background_add(y,1));
+        if(scenery_required(state.marks).at(static_cast<std::size_t>(index))!=1)continue;
+        animated(2,15,background_add(x,50),background_add(y,-24),4);
+        const auto arrow_clip=host.area_clip(0x1a8);animated(11,arrow_clip,label_x,background_add(y,-28),1);
+    }
+}
 SelectUpdatePrefixResult update_select_form_prefix(SelectPreludeState& prelude,SelectPreludeHost& prelude_host,
     SelectFormPassState& state,SelectFormPassHost& host,SelectCloudHost& clouds,SelectMarkerHost& markers,
     EventDelayQueue& queue,EventExecutionHost& execution,EventConditionHost& conditions,

@@ -7,7 +7,18 @@
 
 namespace saga::desktop {
 using namespace core;
-TownBackground::TownBackground(ResourceArchive& tables,const GameArchiveEntry& selected,ResourceProfile profile,std::int32_t capacity,TownBackgroundContext context,EventScript buildings,std::shared_ptr<std::vector<std::uint8_t>> enabled)
+namespace {
+void json_text(std::ostream& out,const FormText& text){
+    if(!text){out<<"null";return;}
+    out<<'"';constexpr char hex[]="0123456789abcdef";
+    for(const auto raw:*text){const auto c=static_cast<unsigned char>(raw);
+        if(c=='"'||c=='\\')out<<'\\'<<raw;else if(c<32)out<<"\\u00"<<hex[c>>4]<<hex[c&15];else out<<raw;}
+    out<<'"';
+}
+}
+TownBackground::DrawingArchive::DrawingArchive(const GameArchiveEntry& entry,ResourceProfile profile)
+    :archive(read_game_archive(entry.path),std::move(profile)),manager(archive),images(manager,decode_png){}
+TownBackground::TownBackground(ResourceArchive& tables,const GameArchiveEntry& selected,ResourceProfile profile,std::int32_t capacity,TownBackgroundContext context,EventScript buildings,std::shared_ptr<std::vector<std::uint8_t>> enabled,const GameArchiveEntry* background,const GameArchiveEntry* common)
     :camera_{false,0,0,camera_x_,camera_y_,0,0},context_(context),
      app_random_(context.app_seed),lib_random_(context.lib_seed),
      camera_areas_(std::make_shared<CameraAreas>()),save_integers_(std::make_shared<EventIntegers>(20)),
@@ -57,6 +68,15 @@ TownBackground::TownBackground(ResourceArchive& tables,const GameArchiveEntry& s
         }
         image_clocks_=archive_.image_animation_infos();
     }
+    if(context_.areas){
+        if(context_.automatic_images)throw std::invalid_argument("automatic town render clocks are unbound; explicit --automatic-images 0 is supported");
+        if(!context_.buildings||!background||!common)throw std::invalid_argument("town areas require buildings, bg0 and com2 resources; regenerate --town-resources");
+        area_views_->resize(areas_.size());area_marks_=std::make_shared<EventIntegers>(areas_.size(),0); // Init +0x200.
+        for(std::size_t i=0;i<areas_.size();++i)if(areas_[i])area_views_->at(i)=std::make_shared<SelectAreaDrawingRecord>(SelectAreaDrawingRecord{areas_[i]->image,progress_[i]->discovery_state,std::make_shared<const std::string>(areas_[i]->name)});
+        area_background_=std::make_unique<DrawingArchive>(*background,archive_.selected_profile());
+        common_=std::make_unique<DrawingArchive>(*common,archive_.selected_profile());
+        textures_.bind(area_background_->images);textures_.bind(common_->images);
+    }
 }
 std::int32_t TownBackground::view_width(){return scaled_view_dimension(context_.width,context_.view_scale);}
 std::int32_t TownBackground::view_height(){return scaled_view_dimension(context_.height,context_.view_scale);}
@@ -86,6 +106,7 @@ void TownBackground::draw_background(SelectBackgroundResource resource,std::int3
 void TownBackground::draw(BitmapBackend& backend){
     backend_=&backend;draws_.clear();scenery_draws_.clear();floor_draws_.clear();floor_font_=0;
     fonts_.clear();font_requests_.clear();chip_draws_.clear();labels_.clear();touches_.clear();notices_->clear();king_queries_=0;
+    area_draws_.clear();area_labels_.clear();area_touches_.clear();area_color_requests_=0;
     const auto before=backend.quads().size();
     try{
         const auto origin=draw_select_background({camera_x_,camera_y_,camera_.left_extent,camera_.right_extent,context_.view_y,&context_.view_x},*this);
@@ -94,6 +115,7 @@ void TownBackground::draw(BitmapBackend& backend){
             draw_select_terrain(scenery_,origin,*this);
             draw_select_floor(scenery_,origin,*this);
             if(context_.buildings)draw_select_town_buildings({town_frame_,selected_chip_,context_.top_form,notices_},origin,*this);
+            if(context_.areas)draw_select_town_areas({town_frame_,selected_area_,form_state_,context_.top_form,area_marks_,notices_},origin,*this);
         }
     }
     catch(...){backend_=nullptr;throw;}
@@ -157,6 +179,25 @@ void TownBackground::town_touch(std::int32_t slot,bool selected,std::int32_t x,s
     // SAGA_STUB(town-building-touch): retain native requests; interactive hit registration is unbound.
     touches_.push_back({slot,selected?1:0,x,y});
 }
+void TownBackground::area_draw(std::int32_t resource,std::int32_t clip,std::optional<std::int32_t> frame,std::int32_t x,std::int32_t y){
+    area_draws_.push_back({resource,clip,frame,x,y});
+    auto* manager=resource==0?&area_background_->manager.drawing():resource==11?&manager_.drawing():nullptr;
+    if(!manager)throw std::invalid_argument("unsupported town area resource");
+    if(frame)backend_->draw_seb_frame(manager,clip,*frame,static_cast<float>(x),static_cast<float>(y));
+    else{
+        // Seb.PushThisFrameRender 0x1bb3790 returns false without mutation when
+        // the explicit AutoAnimation gate is off. Its true branch remains unbound.
+        backend_->draw_seb(resource,clip,std::nullopt,x,y);
+    }
+}
+std::int32_t TownBackground::area_clip(std::int32_t field){
+    switch(field){case 0x18c:return 10;case 0x194:return 12;case 0x188:return 9;case 0x1a8:return 17;}
+    throw std::invalid_argument("unsupported town area selector");
+}
+std::int32_t TownBackground::area_clip_frames(std::int32_t resource,std::int32_t clip){
+    auto& animations=resource==2?common_->manager.animations():resource==11?manager_.animations():throw std::invalid_argument("unsupported town area animation resource");
+    return animations.clips->at(static_cast<std::size_t>(clip))->max_frame;
+}
 void TownBackground::report(std::ostream& out)const{
     out<<std::setprecision(std::numeric_limits<float>::max_digits10)
        <<",\"background\":{\"resource\":11,\"image\":9,\"clip\":0,\"provisional_context\":true,\"viewport\":["<<context_.width<<','<<context_.height
@@ -195,13 +236,20 @@ void TownBackground::report(std::ostream& out)const{
         for(std::size_t i=0;i<notices_->size();++i){if(i)out<<',';out<<'[';const auto& row=*notices_->at(i);for(std::size_t j=0;j<row.size();++j){if(j)out<<',';out<<row[j];}out<<']';}
         out<<"],\"labels\":[";
         for(std::size_t i=0;i<labels_.size();++i){if(i)out<<',';const auto& label=labels_[i];out<<"{\"text\":";
-            if(!label.text)out<<"null";else{out<<'"';constexpr char hex[]="0123456789abcdef";
-                for(const auto raw:*label.text){const auto c=static_cast<unsigned char>(raw);
-                    if(c=='"'||c=='\\')out<<'\\'<<raw;else if(c<32)out<<"\\u00"<<hex[c>>4]<<hex[c&15];else out<<raw;}out<<'"';}
+            json_text(out,label.text);
             out<<",\"x\":"<<label.x<<",\"y\":"<<label.y<<",\"anchor\":34,\"font\":7}";}
         out<<"],\"touches\":[";
         for(std::size_t i=0;i<touches_.size();++i){if(i)out<<',';const auto& row=touches_[i];out<<'['<<row[0]<<','<<row[1]<<','<<row[2]<<','<<row[3]<<']';}
         out<<"]}";
+    }
+    if(context_.areas){
+        out<<",\"areas_draw\":{\"selected\":"<<selected_area_<<",\"form_state\":"<<form_state_<<",\"font\":10,\"automatic_images\":false,\"provisional_clock_gate\":true,\"color_source\":944,\"color_requests\":"<<area_color_requests_<<",\"marks\":[";
+        for(std::size_t i=0;i<area_marks_->size();++i){if(i)out<<',';out<<area_marks_->at(i);}out<<"],\"draws\":[";
+        for(std::size_t i=0;i<area_draws_.size();++i){if(i)out<<',';const auto& d=area_draws_[i];out<<'['<<d.resource<<','<<d.clip<<',';
+            if(d.frame)out<<*d.frame;else out<<"null";out<<','<<d.x<<','<<d.y<<']';}out<<"],\"labels\":[";
+        for(std::size_t i=0;i<area_labels_.size();++i){if(i)out<<',';const auto& d=area_labels_[i];out<<"{\"text\":";json_text(out,d.text);out<<",\"x\":"<<d.x<<",\"y\":"<<d.y<<",\"anchor\":34,\"font\":10}";}
+        out<<"],\"touches\":[";
+        for(std::size_t i=0;i<area_touches_.size();++i){if(i)out<<',';out<<'[';const auto& d=area_touches_[i];for(std::size_t j=0;j<d.size();++j){if(j)out<<',';out<<d[j];}out<<']';}out<<"]}";
     }
     out<<'}';
 }

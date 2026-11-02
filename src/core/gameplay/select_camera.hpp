@@ -27,6 +27,8 @@ public:
     virtual std::shared_ptr<CameraAreas> camera_areas() = 0; // Fresh Data.areaData each call.
 };
 void set_select_active_x(SelectCameraState&,SelectActiveAreaHost&);
+// AppData.GetAreaNum 0x111511c: count exactly-found rows, starting at -1.
+std::int32_t select_area_number(SelectActiveAreaHost&);
 std::int32_t camera_clamp(std::int32_t value,std::int32_t minimum,std::int32_t maximum);
 // GameView.GetGameWidth/Height; scaling uses wrapped int32 multiplication then binary32.
 std::int32_t scaled_view_dimension(std::int32_t pixels,float scale);

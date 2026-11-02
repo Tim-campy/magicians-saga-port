@@ -15,10 +15,11 @@ std::vector<std::uint8_t> read_game_archive(const std::filesystem::path& path){
 }
 GameResourceIndex read_game_resource_index(const std::filesystem::path& root,bool town){
     const auto v2=root/"mission-resources-v2.tsv";
-    const auto path=town?root/"town-resources.tsv":std::filesystem::exists(v2)?v2:root/"mission-resources.tsv";
+    const auto town_v2=root/"town-resources-v2.tsv";
+    const auto path=town?(std::filesystem::exists(town_v2)?town_v2:root/"town-resources.tsv"):std::filesystem::exists(v2)?v2:root/"mission-resources.tsv";
     if(std::filesystem::file_size(path)>16384)throw std::length_error("mission resource index exceeds16KiB");
     std::ifstream list(path);std::string signature;GameResourceIndex result{};
-    if(!(list>>signature>>result.version)||signature!=(town?"town_resources":"mission_resources")||(result.version!=1&&(town||result.version!=2)))throw std::invalid_argument(town?"invalid town resource index header":"invalid mission resource index header");
+    if(!(list>>signature>>result.version)||signature!=(town?"town_resources":"mission_resources")||(result.version!=1&&result.version!=2))throw std::invalid_argument(town?"invalid town resource index header":"invalid mission resource index header");
     for(std::string line;std::getline(list,line);){
         std::istringstream entry(line);std::string relative;GameArchiveEntry row{};
         entry>>std::ws;if(entry.eof())continue;

@@ -266,7 +266,7 @@ class TownResourceIndexTests(unittest.TestCase):
     def fixture(self,root):
         (root/'textassets').mkdir()
         entries=[]
-        for number,name in ((91,'xls'),(5,'resident'),(88,'select'),(2,'select_stage')):
+        for number,name in ((91,'xls'),(5,'resident'),(88,'select'),(2,'select_stage'),(3,'bg'),(7,'com')):
             payload=('synthetic archive: '+name).encode()
             relative=f'textassets/{number}_{name}.bin'
             (root/relative).write_bytes(payload)
@@ -284,13 +284,16 @@ class TownResourceIndexTests(unittest.TestCase):
             original=(root/'manifest.json').read_bytes()
             old=root/'mission-resources.tsv';old.write_bytes(b'legacy v1 retained')
             current=root/'mission-resources-v2.tsv';current.write_bytes(b'mission v2 retained')
-            expected=(b'town_resources\t1\n'
+            legacy_town=root/'town-resources.tsv';legacy_town.write_bytes(b'town v1 retained')
+            expected=(b'town_resources\t2\n'
                       b'tables\t-1\t"textassets/91_xls.bin"\t"xls"\n'
+                      b'resource\t0\t"textassets/3_bg.bin"\t"bg"\n'
+                      b'resource\t2\t"textassets/7_com.bin"\t"com"\n'
                       b'resource\t8\t"textassets/5_resident.bin"\t"resident"\n'
                       b'resource\t11\t"textassets/88_select.bin"\t"select"\n'
                       b'resource\t13\t"textassets/2_select_stage.bin"\t"select_stage"\n')
             output=extractor.write_town_index(root)
-            self.assertEqual(output,root/'town-resources.tsv')
+            self.assertEqual(output,root/'town-resources-v2.tsv')
             self.assertEqual(output.read_bytes(),expected)
             self.assertEqual(extractor.write_town_index(root).read_bytes(),expected)
             self.assertEqual((root/'manifest.json').read_bytes(),original)
@@ -298,6 +301,7 @@ class TownResourceIndexTests(unittest.TestCase):
             self.assertEqual(extractor.write_town_index(root).read_bytes(),expected)
             self.assertEqual(old.read_bytes(),b'legacy v1 retained')
             self.assertEqual(current.read_bytes(),b'mission v2 retained')
+            self.assertEqual(legacy_town.read_bytes(),b'town v1 retained')
 
     def test_missing_and_ambiguous_archives_never_publish_partial_output(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -306,12 +310,12 @@ class TownResourceIndexTests(unittest.TestCase):
                 manifest['files']=files;self.write_manifest(root,manifest)
                 with self.subTest(files=len(files)),self.assertRaisesRegex(ValueError,'missing or ambiguous'):
                     extractor.write_town_index(root)
-                self.assertFalse((root/'town-resources.tsv').exists())
+                self.assertFalse((root/'town-resources-v2.tsv').exists())
 
     def test_manifest_and_payload_hash_checks_precede_output_replacement(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);manifest=self.fixture(root)
-            output=root/'town-resources.tsv';output.write_bytes(b'keep local index')
+            output=root/'town-resources-v2.tsv';output.write_bytes(b'keep local index')
             for key,value in (('schema',1),('schema',4),('apk_sha256','different APK')):
                 changed=dict(manifest);changed[key]=value;self.write_manifest(root,changed)
                 with self.subTest(key=key,value=value),self.assertRaisesRegex(ValueError,'supported APK'):
@@ -330,7 +334,7 @@ class TownResourceIndexTests(unittest.TestCase):
                 manifest['files'][2]['output']=relative;self.write_manifest(root,manifest)
                 with self.subTest(relative=relative),self.assertRaisesRegex(ValueError,'direct textassets children'):
                     extractor.write_town_index(root)
-                self.assertFalse((root/'town-resources.tsv').exists())
+                self.assertFalse((root/'town-resources-v2.tsv').exists())
 
     def test_symlink_escape_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory,tempfile.TemporaryDirectory() as outside:
@@ -340,7 +344,7 @@ class TownResourceIndexTests(unittest.TestCase):
             try:path.symlink_to(target)
             except OSError:self.skipTest('File symlinks are unavailable on this host')
             with self.assertRaisesRegex(ValueError,'escapes destination'):extractor.write_town_index(root)
-            self.assertFalse((root/'town-resources.tsv').exists())
+            self.assertFalse((root/'town-resources-v2.tsv').exists())
 
     def test_differing_index_is_preserved(self):
         with tempfile.TemporaryDirectory() as directory:

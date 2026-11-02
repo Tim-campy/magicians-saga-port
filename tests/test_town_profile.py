@@ -128,6 +128,31 @@ class TownProfileTests(unittest.TestCase):
             self.assertIn('buildings, residents',report['scope'])
             self.assertNotEqual(self.run_host(root,'--background','--app-seed','42').returncode,0)
 
+    def test_area_maps_locked_fence_and_v2_preference(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);add_town_background(root,areas=True)
+            (root/'town-resources.tsv').write_text('invalid ignored legacy town index')
+            args=('--areas','--width','600','--height','320','--camera-x','300')
+            result=self.run_host(root,*args);self.assertEqual(result.returncode,0,result.stderr)
+            report=json.loads(result.stdout);area=report['background']['areas_draw']
+            self.assertEqual(area['draws'],[[0,3,0,158,113],[11,12,None,11,136]])
+            self.assertEqual((area['selected'],area['form_state'],area['marks']),(-1,0,[0,0]))
+            self.assertEqual(area['color_requests'],1)
+            self.assertFalse(area['automatic_images']);self.assertTrue(area['provisional_clock_gate'])
+            self.assertEqual(area['labels'],[{'text':'First','x':204,'y':137,'anchor':34,'font':10}])
+            self.assertEqual(area['touches'],[[0,0,0,140,136],[1,0,1,11,136]])
+            self.assertEqual(report['background']['buildings_draw']['notices'][-1],[11,204,131,10,0,0,1])
+            self.assertEqual(report['background']['buildings_draw']['font_requests'][-1],[1,10])
+            self.assertEqual(self.run_host(root,*args).stdout,result.stdout)
+            automatic=self.run_host(root,*args,'--automatic-images','1');self.assertNotEqual(automatic.returncode,0)
+            self.assertIn('automatic town render clocks are unbound',automatic.stderr)
+            covered=self.run_host(root,*args,'--top-form','0');self.assertEqual(covered.returncode,0,covered.stderr)
+            self.assertEqual(json.loads(covered.stdout)['background']['areas_draw']['labels'],[])
+            (root/'town-resources-v2.tsv').unlink()
+            (root/'town-resources.tsv').write_text('town_resources 1\ntables -1 "textassets/tables.bin" "xls"\nresource 11 "textassets/select.bin" "select"\n')
+            missing=self.run_host(root,*args);self.assertNotEqual(missing.returncode,0)
+            self.assertIn('regenerate --town-resources',missing.stderr)
+
     def test_buildings_use_real_catalog_contracts_and_keep_notices_queued(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);add_town_background(root,buildings=True)

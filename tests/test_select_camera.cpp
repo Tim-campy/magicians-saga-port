@@ -33,6 +33,13 @@ struct Fixture {
     void move(){move_select_camera(state,host);}
 };
 int main() {
+    {Host h;check(select_area_number(h)==-1&&h.area_calls==1);}
+    {Host h;for(auto state:{1,0,2,1})h.areas->push_back(std::make_shared<CameraAreaRecord>(CameraAreaRecord{state}));
+     check(select_area_number(h)==1&&h.area_calls==9);}
+    {Host h;h.areas->push_back(std::make_shared<CameraAreaRecord>(CameraAreaRecord{0}));
+     h.area_hook=[&](int n){if(n==2)h.areas->at(0)->state=1;};check(select_area_number(h)==0&&h.area_calls==3);}
+    {Host h;h.areas->push_back(nullptr);try{select_area_number(h);check(false);}catch(const std::invalid_argument&){}check(h.area_calls==2);}
+    {Host h;h.areas.reset();try{select_area_number(h);check(false);}catch(const std::invalid_argument&){}check(h.area_calls==1);}
     {Fixture f;f.host.save->at(19)=2;f.host.widths={320,330};set_select_active_x(f.state,f.host);check(f.state.right_extent==500 && f.state.left_extent==-459);check((f.host.calls==std::vector<std::string>{"save","vw","areas","vw"}));}
     {Fixture f;f.host.areas->resize(4);f.host.areas->at(1)=std::make_shared<CameraAreaRecord>(CameraAreaRecord{1});f.host.areas->at(3)=std::make_shared<CameraAreaRecord>(CameraAreaRecord{2});set_select_active_x(f.state,f.host);check(f.state.left_extent==-578 && f.host.area_calls==7);}
     {Fixture f;f.host.areas->push_back(std::make_shared<CameraAreaRecord>(CameraAreaRecord{1}));set_select_active_x(f.state,f.host);check(f.state.left_extent==-449);} // Clamp(1,1,0) returns 1.

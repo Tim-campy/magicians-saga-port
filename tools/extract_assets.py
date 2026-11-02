@@ -48,7 +48,7 @@ APK_SHA = 'd58943e6ed4137975a554f1e210853f4a7b41573a38dbb462f4f5e159bf6eead'
 MISSION_RESOURCES = ((1, 'chara'), (2, 'com'), (3, 'enemy'), (7, 'quest'), (18, 'chip'),
                      (19, 'bullet'), (20, 'effect'), (21, 'hat'), (22, 'weapon'), (23, 'gauge'))
 # RESOURCE row1 ordinals, independent of AppData.GetResourceManager's selected IDs.
-TOWN_RESOURCES = ((8, 'resident'), (11, 'select'), (13, 'select_stage'))
+TOWN_RESOURCES = ((0, 'bg'), (2, 'com'), (8, 'resident'), (11, 'select'), (13, 'select_stage'))
 
 
 def mission_default_arrays(metadata, layouts):
@@ -196,8 +196,8 @@ def write_mission_index(root):
 
 def write_town_index(root):
     """Index the reached SelectForm archives using their original RESOURCE ordinals."""
-    return write_resource_index(root, 'Town', 'town_resources\t1',
-                                'town-resources.tsv', TOWN_RESOURCES)
+    return write_resource_index(root, 'Town', 'town_resources\t2',
+                                'town-resources-v2.tsv', TOWN_RESOURCES)
 
 
 def write_mission_font(root):

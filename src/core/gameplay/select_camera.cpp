@@ -37,6 +37,15 @@ std::int32_t camera_clamp(std::int32_t value,std::int32_t minimum,std::int32_t m
     if(value<minimum)value=minimum;
     return value;
 }
+// AppData.GetAreaNum 0x111511c: count found rows rather than the greatest found ID.
+std::int32_t select_area_number(SelectActiveAreaHost& host){
+    std::int32_t count=-1;
+    for(std::int32_t index=0;index<area_count(host.camera_areas());++index){
+        const auto row=required(host.camera_areas()).at(static_cast<std::size_t>(index));
+        if(required(row).state==1)++count;
+    }
+    return count;
+}
 // SelectForm.SetActiveX 0x11eb234. The first extent write survives later failures.
 void set_select_active_x(SelectCameraState& state,SelectActiveAreaHost& host) {
     const auto capacity=required(host.normal_save_integers()).at(19);

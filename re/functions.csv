@@ -546,7 +546,7 @@ game:0x06000234,game:0x06000234,boot,,380,0x111464c
 game:0x06000235,game:0x06000235,boot,,460,0x1114cf4
 game:0x06000236,game:0x06000236,boot,,284,0x1114530
 game:0x06000237,game:0x06000237,boot,,604,0x1114ec0
-game:0x06000238,game:0x06000238,boot,,212,0x111511c
+game:0x06000238,main.AppData.GetAreaNum,boot,reimplemented,212,0x111511c
 game:0x06000239,game:0x06000239,boot,,444,0x11151f0
 game:0x0600023a,game:0x0600023a,boot,,48,0x11153ac
 game:0x0600023b,game:0x0600023b,boot,,32,0x11153dc
@@ -2015,7 +2015,7 @@ game:0x06000809,game:0x06000809,ui,,8,0x11eff8c
 game:0x0600080a,game:0x0600080a,ui,,300,0x11eff94
 game:0x0600080b,form.SelectForm._Draw,ui,traced,10820,0x11f0714
 game:0x0600080c,form.SelectForm.DrawSebStack,ui,reimplemented,404,0x11f3714
-game:0x0600080d,game:0x0600080d,ui,,624,0x11f417c
+game:0x0600080d,form.SelectForm.StackListDraw,ui,documented,624,0x11f417c
 game:0x0600080e,game:0x0600080e,ui,,276,0x11eb418
 game:0x0600080f,game:0x0600080f,ui,,16,0x11f4464
 game:0x06000810,game:0x06000810,ui,,84,0x11ef088
@@ -2036,7 +2036,7 @@ game:0x0600081e,form.SelectForm.GetGameHeight,ui,documented,52,0x11f31c8
 game:0x0600081f,form.SelectForm.CheckCollisionTownHuman,ui,reimplemented,252,0x11eecdc
 game:0x06000820,game:0x06000820,ui,,1060,0x11f4ad4
 game:0x06000821,game:0x06000821,ui,,640,0x11ee638
-game:0x06000822,game:0x06000822,ui,,2016,0x11f38a8
+game:0x06000822,form.SelectForm.DrawTownHuman,ui,traced,2016,0x11f38a8
 game:0x06000823,form.SelectForm.MoveCursor,ui,reimplemented,288,0x11ef0dc
 game:0x06000824,game:0x06000824,ui,,244,0x11f4088
 game:0x06000825,form.SelectForm.InitDecoObject,ui,reimplemented,488,0x11eb52c
@@ -2045,7 +2045,7 @@ game:0x06000827,form.SelectForm.GenerateObjBird,ui,reimplemented,596,0x11f4ef8
 game:0x06000828,form.SelectForm.GenerateLeaf,ui,reimplemented,504,0x11f514c
 game:0x06000829,form.SelectForm.DrawDecoObject,ui,reimplemented,800,0x11f33f4
 game:0x0600082a,game:0x0600082a,ui,,156,0x11eb8f4
-game:0x0600082b,game:0x0600082b,ui,,156,0x11eb990
+game:0x0600082b,form.SelectForm.GetAreaPos,ui,reimplemented,156,0x11eb990
 game:0x0600082c,form.SelectForm.CheckGuidArrow,ui,reimplemented,892,0x11ee8b8
 game:0x0600082d,form.SelectForm.SetReturnFlag,ui,documented,92,0x11f5344
 game:0x0600082e,game:0x0600082e,ui,,360,0x11eba2c

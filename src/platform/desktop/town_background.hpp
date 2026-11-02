@@ -22,11 +22,13 @@ struct TownBackgroundContext {
     bool scenery=false;
     std::int32_t app_seed=42,lib_seed=42; // Separate provisional streams at the cloud-init boundary.
     bool buildings=false,top_form=true; // Provisional standalone form-stack context.
+    bool areas=false;
+    bool automatic_images=false; // Provisional Seb.AutoAnimation gate; only its false branch is bound.
     std::int64_t high_score=0; // Provisional system-save slot8, independent of normal NewGame.
 };
-class TownBackground final:private core::SelectBackgroundHost,private core::SelectActiveAreaHost,private core::SelectCameraHost,private core::SelectSceneryHost,private core::SelectFloorHost,private core::SelectTownDrawingHost,private core::KingRewardAvailabilityHost {
+class TownBackground final:private core::SelectBackgroundHost,private core::SelectActiveAreaHost,private core::SelectCameraHost,private core::SelectSceneryHost,private core::SelectFloorHost,private core::SelectTownDrawingHost,private core::KingRewardAvailabilityHost,private core::SelectAreaDrawingHost {
 public:
-    TownBackground(ResourceArchive& tables,const GameArchiveEntry& selected,ResourceProfile,std::int32_t capacity,TownBackgroundContext,core::EventScript buildings=nullptr,std::shared_ptr<std::vector<std::uint8_t>> enabled=nullptr);
+    TownBackground(ResourceArchive& tables,const GameArchiveEntry& selected,ResourceProfile,std::int32_t capacity,TownBackgroundContext,core::EventScript buildings=nullptr,std::shared_ptr<std::vector<std::uint8_t>> enabled=nullptr,const GameArchiveEntry* background=nullptr,const GameArchiveEntry* common=nullptr);
     void draw(BitmapBackend&);
     void report(std::ostream&)const;
     BitmapApplication& application(){return application_;}
@@ -79,6 +81,21 @@ private:
     std::vector<ChipDraw> chip_draws_;
     struct Label {core::FormText text;std::int32_t x,y;};
     std::vector<Label> labels_;
+    std::shared_ptr<core::SelectAreaDrawingRows> area_views_=std::make_shared<core::SelectAreaDrawingRows>();
+    core::EventInstruction area_marks_;
+    std::int32_t selected_area_=-1,form_state_=0; // Native Init stores, before Update.
+    struct DrawingArchive {
+        ResourceArchive archive;
+        ArchiveResourceManager manager;
+        ArchiveImageSet images;
+        DrawingArchive(const GameArchiveEntry&,ResourceProfile);
+    };
+    std::unique_ptr<DrawingArchive> area_background_,common_;
+    struct AreaDraw {std::int32_t resource,clip;std::optional<std::int32_t> frame;std::int32_t x,y;};
+    std::vector<AreaDraw> area_draws_;
+    std::vector<Label> area_labels_;
+    std::vector<std::array<std::int32_t,5>> area_touches_;
+    std::int32_t area_color_requests_=0;
     std::vector<std::array<std::int32_t,4>> touches_;
     std::int32_t king_queries_=0;
     std::size_t quads_=0;
@@ -139,5 +156,15 @@ private:
     std::int32_t town_form_state()override{return 0;} // Native fresh SetState(0).
     void town_share_label(std::int32_t,std::int32_t)override{throw std::logic_error("share label provider is unbound");}
     void town_touch(std::int32_t,bool,std::int32_t,std::int32_t)override;
+    std::shared_ptr<core::SelectAreaDrawingRows> drawing_areas()override{return area_views_;}
+    std::int32_t area_view_height()override{return view_height();}
+    void area_push_font(std::int32_t value)override{town_push_font(value);}
+    void area_draw(std::int32_t,std::int32_t,std::optional<std::int32_t>,std::int32_t,std::int32_t)override;
+    std::int32_t area_clip(std::int32_t)override;
+    std::int32_t area_clip_frames(std::int32_t,std::int32_t)override;
+    std::int32_t area_number()override{return core::select_area_number(*this);}
+    void area_label_color()override{++area_color_requests_;} // Color output belongs to town-building-text stub.
+    void area_label(core::FormText text,std::int32_t x,std::int32_t y)override{area_labels_.push_back({std::move(text),x,y});}
+    void area_touch(std::int32_t index,bool selected,bool locked,std::int32_t x,std::int32_t y)override{area_touches_.push_back({index,selected?1:0,locked?1:0,x,y});}
 };
 } // namespace saga::desktop

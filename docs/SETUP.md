@@ -257,7 +257,7 @@ build/viewer/queue_capture.exe scene.txt 600 220 --run-frames 12
 
 `build/desktop/saga_town.exe --data extracted/full` reads the existing resource index and `new-game-save.tsv`, loads Town.txt and prints native fresh permissions and building-cache state. `--language English.lproj` and `--dpi 1` are declared defaults. It runs the Town data/cache subsequence without bootstrapping a mission or writing a save; see [town contracts and limits](subsystems/town.md).
 
-Index the existing extracted town archives before requesting the native sky/sun background prefix. This command checks the manifest and archive hashes without extracting Unity media again:
+Index the existing extracted town archives before requesting the native drawing prefix. This command writes `town-resources-v2.tsv`, checks the manifest/archive hashes and preserves the earlier v1/mission indices without extracting Unity media again:
 
 ```powershell
 python -I tools/extract_assets.py --town-resources --out extracted/full
@@ -279,6 +279,13 @@ build/viewer/saga_town.exe --data extracted/full --scenery --capture build/town-
 ```powershell
 build/desktop/saga_town.exe --data extracted/full --buildings
 build/viewer/saga_town.exe --data extracted/full --buildings --capture build/town-buildings.bmp
+```
+
+`--areas` implies buildings and adds found area maps from native bg0 plus the next locked fence from select11. The initial map is outside the default camera's culling margin; shift the camera to expose it. Selection-1, state0 and zero area markers are native Init values. `--automatic-images 0` is the declared provisional automatic-clock gate; true registration remains unbound and fails explicitly. Text/color and input requests are retained; inherited clip, residents, foreground and notice flushing remain separate.
+
+```powershell
+build/desktop/saga_town.exe --data extracted/full --areas --camera-x 300
+build/viewer/saga_town.exe --data extracted/full --areas --camera-x 300 --capture build/town-areas.bmp
 ```
 
 ### Headless mission host

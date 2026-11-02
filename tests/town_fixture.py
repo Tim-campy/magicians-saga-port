@@ -3,7 +3,8 @@ import struct
 from test_sprite_preview import jar,png,seb
 
 
-def add_town_background(root,scenery=False,buildings=False):
+def add_town_background(root,scenery=False,buildings=False,areas=False):
+    buildings=buildings or areas
     scenery=scenery or buildings
     if not (root/'textassets').exists():
         (root/'textassets').mkdir()
@@ -54,5 +55,15 @@ def add_town_background(root,scenery=False,buildings=False):
         for i,color in ((14,(210,100,10,255)),(17,(20,30,40,255)),(18,(40,50,60,255)),
                         (32,(80,90,10,255)),(33,(70,80,10,255)),(47,(10,100,210,255))):
             members.append((f'chip{i}.png',png(3,2,list(color)*6)))
+    if areas:
+        members[1]=('seb.inf',members[1][1]+b'10\tarea-name.seb\n12\tfence.seb\n')
+        members.extend([('area-name.seb',seb([(0,0,0,0,2,2,0,0,0,0),(1,0,2,0,2,2,0,0,0,0)])),
+                        ('fence.seb',seb([(0,0,0,0,2,2,0,0,0,0)]))])
+        (root/'textassets/bg.bin').write_bytes(jar([('img.inf',b'0\tmap.png,bin\n'),('seb.inf',b'3\tmap.seb\n'),
+            ('map.png',png(3,2,[10,200,100,255]*6)),('map.seb',seb([(0,0,0,0,3,2,0,0,0,0)]))]))
+        (root/'textassets/com.bin').write_bytes(jar([('img.inf',b'0\ticon.png,bin\n'),('seb.inf',b'15\ticon.seb\n'),
+            ('icon.png',png(2,2,[200,100,10,255]*4)),('icon.seb',seb([(0,0,0,0,2,2,0,0,0,0)]))]))
     (root/'textassets/select.bin').write_bytes(jar(members))
     (root/'town-resources.tsv').write_text('town_resources 1\ntables -1 "textassets/tables.bin" "xls"\nresource 11 "textassets/select.bin" "select"\n')
+    if areas:
+        (root/'town-resources-v2.tsv').write_text('town_resources 2\ntables -1 "textassets/tables.bin" "xls"\nresource 0 "textassets/bg.bin" "bg"\nresource 2 "textassets/com.bin" "com"\nresource 11 "textassets/select.bin" "select"\n')
