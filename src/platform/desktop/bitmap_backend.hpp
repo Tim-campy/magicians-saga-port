@@ -77,6 +77,8 @@ public:
     void resize_surface(std::int32_t height);
     // Selected direct SEB bitmap path; no AppData queue/depth/phase side effects.
     void draw_seb(std::int32_t resource,std::int32_t clip,std::optional<std::int32_t> frame,std::int32_t x,std::int32_t y);
+    // DrawSebEx(scale100,anchor17), selected nonanimated image path used by movement widgets.
+    void draw_seb_button(std::int32_t resource,std::int32_t clip,std::int32_t frame,std::int32_t x,std::int32_t y,core::ImageAnimationGroup*);
     void set_render_mode(std::int32_t mode,std::int32_t alpha);
 private:
     struct Impl;std::unique_ptr<Impl> impl_;

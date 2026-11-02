@@ -45,7 +45,7 @@ import wave
 APK_SHA = 'd58943e6ed4137975a554f1e210853f4a7b41573a38dbb462f4f5e159bf6eead'
 # AppData RESOURCE names row1 (cctor 0x11183c0..0x1118630), indexed by GetResourceId 0x11155dc.
 # Only resources reached by the mission host; the full application inventory stays local.
-MISSION_RESOURCES = ((1, 'chara'), (3, 'enemy'), (7, 'quest'), (18, 'chip'),
+MISSION_RESOURCES = ((1, 'chara'), (2, 'com'), (3, 'enemy'), (7, 'quest'), (18, 'chip'),
                      (19, 'bullet'), (20, 'effect'), (21, 'hat'), (22, 'weapon'), (23, 'gauge'))
 
 
@@ -132,7 +132,7 @@ def write_mission_index(root):
     manifest = json.loads((root / 'manifest.json').read_text(encoding='utf-8'))
     if manifest.get('schema') not in (2, 3) or manifest.get('apk_sha256') != APK_SHA:
         raise ValueError('Mission index requires the supported APK schema-2/3 manifest')
-    rows = ['mission_resources\t1']
+    rows = ['mission_resources\t2']
     for resource, name in ((-1, 'xls'), *MISSION_RESOURCES):
         entries = [entry for entry in manifest['files'] if entry['name'] == name]
         if len(entries) != 1:
@@ -145,7 +145,8 @@ def write_mission_index(root):
             raise ValueError('Mission archive hash mismatch: ' + name)
         kind = 'tables' if resource == -1 else 'resource'
         rows.append(f'{kind}\t{resource}\t{json.dumps(relative, ensure_ascii=False)}\t{json.dumps(name)}')
-    output = bounded(root, 'mission-resources.tsv');payload = ('\n'.join(rows) + '\n').encode('utf-8')
+    # Retain the v1 index for already isolated builds, whose loader knows nine resources.
+    output = bounded(root, 'mission-resources-v2.tsv');payload = ('\n'.join(rows) + '\n').encode('utf-8')
     if output.exists() and output.read_bytes() != payload:
         raise ValueError('Refusing to replace differing mission resource index')
     if not output.exists():

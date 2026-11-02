@@ -13,6 +13,7 @@ MISSION = Path(sys.argv.pop(1)).resolve() if len(sys.argv) > 1 else None
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from test_sprite_preview import png, seb, jar, bmp_pixels
 from mission_scene_fixture import make_table_scene, make_shoot_scene, with_mission_map, make_boss_scene, make_gauge_scene
+from mission_scene_fixture import with_common_resource
 
 
 def command(resource, clip, x, y, depth=0, texture=-1, image_resource=-1):
@@ -22,6 +23,26 @@ def command(resource, clip, x, y, depth=0, texture=-1, image_resource=-1):
 
 @unittest.skipUnless(EXE and VIEWER, 'viewer executables supplied by CTest')
 class QueuePixels(unittest.TestCase):
+    def test_movement_widgets_use_original_crop_and_held_frame_at_zoom(self):
+        if not MISSION:self.skipTest('mission executable required')
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);scene=root/'movement.txt';replay=root/'movement.replay'
+            text=with_common_resource(root,make_boss_scene(root))
+            scene.write_text('mission_presentation 600 640 100 0 1 0 1500100 -1\nsystem_init 1\nmaterial_policy native\ntick_ms 1\n'+
+                '\n'.join(line for line in text.splitlines() if not line.startswith(('world ','projection ','view ','slots ','animate ','simulate ','material ')))+'\n',encoding='utf8')
+            replay.write_text('1 camera 12 0 0 40\n1 camera 1 0 0 0\n2 control 0 25 570\n',encoding='ascii')
+            args=[str(MISSION),'--scene',str(scene),'--frames','5','--fps','25','--debug','0','--rng','system','--seed','42','--replay',str(replay)]
+            def run(extra):
+                r=subprocess.run([*args,*extra],capture_output=True,text=True,timeout=30)
+                self.assertEqual(r.returncode,0,r.stderr);return json.loads(r.stdout)
+            output=root/'held.bmp';capture=run(['--capture',str(output)]);headless=run(['--headless'])
+            for key,value in capture['state'].items():self.assertEqual(headless[key],value,key)
+            self.assertTrue(capture['state']['movement_pointer']['captured']);self.assertEqual(capture['surface_width'],500)
+            w,h,pixels=bmp_pixels(output.read_bytes());self.assertEqual((w,h),(600,640))
+            self.assertEqual(pixels[570*w+25],(0,255,0,255)) # Pressed front U80; physical coordinates survive zoom120.
+            self.assertEqual(pixels[625*w+25],(0,0,255,255)) # Unpressed back V50/U0.
+            again=root/'again.bmp';self.assertEqual(run(['--capture',str(again)]),capture);self.assertEqual(again.read_bytes(),output.read_bytes())
+
     def test_attack_widgets_stay_in_physical_pixels_at_zoom(self):
         if not MISSION:self.skipTest('mission executable required')
         with tempfile.TemporaryDirectory() as directory:

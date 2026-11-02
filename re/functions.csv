@@ -134,7 +134,7 @@ game:0x06000098,game:0x06000098,ui,,296,0x10fc770
 game:0x06000099,game:0x06000099,ui,,72,0x10fd9fc
 game:0x0600009a,game:0x0600009a,ui,,104,0x10fda44
 game:0x0600009b,game:0x0600009b,ui,,152,0x10fdd68
-game:0x0600009c,game:0x0600009c,ui,,480,0x10fde00
+game:0x0600009c,surface.GameView.OnTouchButton,ui,traced,480,0x10fde00
 game:0x0600009d,game:0x0600009d,ui,,292,0x10fdfe0
 game:0x0600009e,game:0x0600009e,ui,,100,0x10fc898
 game:0x0600009f,game:0x0600009f,ui,,100,0x10fc8fc
@@ -165,7 +165,7 @@ game:0x060000b7,game:0x060000b7,ui,,32,0x10fbd08
 game:0x060000b8,game:0x060000b8,ui,,32,0x10fbce8
 game:0x060000b9,game:0x060000b9,ui,,76,0x10fec90
 game:0x060000ba,game:0x060000ba,ui,,316,0x10fb1bc
-game:0x060000bb,game:0x060000bb,ui,,60,0x10fe104
+game:0x060000bb,surface.GameView.GetKey,ui,documented,60,0x10fe104
 game:0x060000bc,game:0x060000bc,ui,,248,0x10fb9a4
 game:0x060000bd,game:0x060000bd,ui,,3556,0x10fecdc
 game:0x060000be,game:0x060000be,ui,,8,0x11748dc
@@ -10184,8 +10184,8 @@ kairo:0x06001761,kairo.unity.ui.Seb._load,ui,traced,248,0x1bb0a98
 kairo:0x06001762,kairo.unity.ui.Seb._load,ui,documented,5368,0x1baf5a0
 kairo:0x06001763,kairo:0x06001763,ui,,184,0x1bb0f88
 kairo:0x06001764,kairo:0x06001764,ui,,100,0x1bb1040
-kairo:0x06001765,kairo.unity.ui.Seb.GetBoundingRect,ui,traced,200,0x1ba913c
-kairo:0x06001766,kairo.unity.ui.Seb.GetBRect,ui,traced,644,0x1bb0d04
+kairo:0x06001765,kairo.unity.ui.Seb.GetBoundingRect,ui,documented,200,0x1ba913c
+kairo:0x06001766,kairo.unity.ui.Seb.GetBRect,ui,reimplemented,644,0x1bb0d04
 kairo:0x06001767,kairo:0x06001767,ui,,424,0x1bb10f0
 kairo:0x06001768,kairo:0x06001768,ui,,340,0x1bb129c
 kairo:0x06001769,kairo:0x06001769,ui,,700,0x1bb13f0
@@ -10193,7 +10193,7 @@ kairo:0x0600176a,kairo.unity.ui.Seb.GetCurFrame,ui,traced,8,0x1bb16ac
 kairo:0x0600176b,kairo.unity.ui.Seb.SetCurFrame,ui,traced,8,0x1bb16b4
 kairo:0x0600176c,kairo.unity.ui.Seb.GetMaxFrame,ui,traced,8,0x1bb16bc
 kairo:0x0600176d,kairo.unity.ui.Seb.Frame,ui,reimplemented,216,0x1bb16c4
-kairo:0x0600176e,kairo:0x0600176e,ui,,328,0x1bb179c
+kairo:0x0600176e,kairo.unity.ui.Seb.GetSprites,ui,reimplemented,328,0x1bb179c
 kairo:0x0600176f,kairo:0x0600176f,ui,,328,0x1bb2144
 kairo:0x06001770,kairo:0x06001770,ui,,4,0x1bb228c
 kairo:0x06001771,kairo.unity.ui.Seb.GetSpritesLocal,ui,reimplemented,372,0x1bb0b90

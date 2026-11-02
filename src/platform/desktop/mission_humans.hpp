@@ -81,8 +81,12 @@ public:
     bool input_enabled()const{return static_cast<bool>(input_);}
     void advance_input(std::int32_t pass=0,bool enabled=true);
     void set_input_keys(std::uint32_t);
-    void set_input_movement(bool up,bool down){set_input_keys((held_keys_&~0xa0000U)|(up?0x20000U:0U)|(down?0x80000U:0U));}
-    void set_input_fast_forward(bool on){set_input_keys((held_keys_&~0x10U)|(on?0x10U:0U));}
+    void set_input_movement(bool up,bool down){if(!input_)throw std::logic_error("input fresh is required");input_->set_movement(up,down);}
+    void set_input_fast_forward(bool on){if(!input_)throw std::logic_error("input fresh is required");input_->set_fast_forward(on);}
+    core::InputControl* widget_control(std::int32_t value){return input_?input_->control(35,value):nullptr;}
+    void widget_key(std::int32_t type,std::uint32_t mask){if(!input_)throw std::logic_error("input fresh is required");input_->pointer_key(type,mask);}
+    bool keyboard_holds_widget(std::uint32_t mask)const{return input_&&input_->keyboard_holds(mask);}
+    void bind_movement_widgets(bool front,bool back){if(!input_)throw std::logic_error("input fresh is required");input_->bind_movement_widgets(front,back);}
     void select_input_attack(std::int32_t);
     void observe_input_touch(std::function<void(const core::InputTouch*)>);
     void send_logical_touch(std::int32_t type,std::int32_t group,std::int32_t value);
@@ -96,6 +100,7 @@ public:
     void construct_member_roster(){members_=core::MemberRoster{};} // MemberSystem ctor post-base lists/formation.
     std::int32_t stage_state()const{return stage_.state;}
     void draw_attack_controls(core::StageControlsHost& host){if(stage_.state==1)core::draw_stage_attack_controls(stage_,host);}
+    void draw_move_controls(core::StageControlsHost& host){if(stage_.state==1)core::draw_stage_move_controls(stage_,host);}
     bool exit_dialog_pending()const;
     bool has_stage_dialog()const{return static_cast<bool>(stage_.dialog);}
     bool stage_modal_pending()const{return !stage_modals_.empty();}

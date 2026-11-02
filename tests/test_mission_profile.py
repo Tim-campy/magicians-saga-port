@@ -11,10 +11,57 @@ EXE = Path(sys.argv.pop(1)).resolve() if len(sys.argv) > 1 else None
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from mission_scene_fixture import make_table_scene, make_shoot_scene, with_mission_map, make_boss_scene, make_gauge_scene, make_native_entry_scene, make_data_entry_fixture, make_combat_regression_scene
 from test_sprite_preview import jar,png,seb
+from mission_scene_fixture import with_common_resource
 
 
 @unittest.skipUnless(EXE, 'saga_mission supplied by CTest')
 class MissionProfileTests(unittest.TestCase):
+    def test_movement_widgets_hold_release_dash_and_keyboard_sources(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);scene=root/'movement.txt';replay=root/'movement.replay'
+            text=with_common_resource(root,make_boss_scene(root))
+            scene.write_text('mission_presentation 600 640 100 0 1 0 1500100 -1\nsystem_init 1\nmaterial_policy native\ntick_ms 1\n'+
+                '\n'.join(line for line in text.splitlines() if not line.startswith(('world ','projection ','view ','slots ','animate ','simulate ','material ')))+'\n',encoding='utf8')
+            def run(script,frames):
+                replay.write_text(script,encoding='ascii')
+                r=subprocess.run([str(EXE),'--scene',str(scene),'--headless','--frames',str(frames),'--fps','25','--debug','0','--rng','system','--seed','42','--replay',str(replay)],capture_output=True,text=True,timeout=30)
+                self.assertEqual(r.returncode,0,r.stderr);return json.loads(r.stdout)
+            held=run('2 control 0 25 570\n',45);keys=run('2 keys 131072\n',45)
+            self.assertTrue(held['movement_pointer']['captured']);self.assertEqual(held['input_held_keys'],131072)
+            self.assertEqual(held['last_down_frame'],1);self.assertGreater(held['positions'][0]['human_dash_speed'],0)
+            self.assertEqual(held['positions'],keys['positions']);self.assertEqual(held['rng_draws'],keys['rng_draws'])
+            self.assertEqual([r['bounds'] for r in held['movement_widgets']],[[0,547,87,59],[0,606,87,34]])
+            self.assertEqual(held['movement_widgets'][0]['frame'],1)
+            released=run('2 control 0 25 570\n46 control 1 5000 5000\n',50);keys=run('2 keys 131072\n46 keys 0\n',50)
+            self.assertEqual(released['positions'],keys['positions']);self.assertEqual(released['input_held_keys'],0)
+            self.assertEqual(released['movement_pointer'],{'captured':False,'value':None,'events':2,'cancellations':0})
+            mixed='2 keys 131072\n3 control 0 25 570\n5 control 1 -100 -100\n6 keys 0\n'
+            mixed_state=run(mixed,5);self.assertEqual(mixed_state['input_held_keys'],131072)
+            self.assertEqual(mixed_state['positions'],run('2 keys 131072\n',5)['positions'])
+            self.assertEqual(run(mixed,6)['input_held_keys'],0)
+            cancelled=run('2 control 0 25 625\n5 control cancel\n',10)
+            self.assertEqual(cancelled['input_held_keys'],0);self.assertEqual(cancelled['movement_pointer']['cancellations'],1)
+            paused=run('2 control 0 25 570\n5 pulse 33554432\n',10)
+            self.assertEqual(paused['stage_state'],2);self.assertEqual(paused['input_held_keys'],0)
+            self.assertFalse(paused['movement_pointer']['captured']);self.assertEqual(paused['movement_widgets'],[])
+            for bad in ('0 control cancel\n','1 control 2 0 0\n','1 control 0 0\n','1 control 0 2147483648 0\n','1 control cancel extra\n'):
+                replay.write_text(bad,encoding='ascii')
+                r=subprocess.run([str(EXE),'--scene',str(scene),'--headless','--frames','2','--fps','25','--debug','0','--rng','system','--seed','42','--replay',str(replay)],capture_output=True,text=True,timeout=30)
+                self.assertNotEqual(r.returncode,0)
+
+    @unittest.skipUnless(os.environ.get('SAGA_TEST_FONT'),'public font fixture supplied by CTest')
+    def test_fresh_stage_has_no_movement_control_before_state_one(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);make_data_entry_fixture(root,os.environ['SAGA_TEST_FONT']);replay=root/'early.replay'
+            replay.write_text('1 keys 131072\n',encoding='ascii')
+            args=[str(EXE),'--data',str(root),'--quest','2','--headless','--frames','10']
+            baseline=subprocess.run(args,capture_output=True,text=True,timeout=30)
+            held=subprocess.run([*args,'--replay',str(replay)],capture_output=True,text=True,timeout=30)
+            self.assertEqual(baseline.returncode,0,baseline.stderr);self.assertEqual(held.returncode,0,held.stderr)
+            a,b=json.loads(baseline.stdout),json.loads(held.stdout)
+            self.assertEqual(b['stage_state'],0);self.assertEqual(b['movement_widgets'],[])
+            self.assertEqual(a['positions'],b['positions']);self.assertEqual(b['last_down_frame'],-1)
+
     def test_native_attack_widget_hits_use_clipped_partitioned_regions(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);scene=root/'widgets.txt';replay=root/'widgets.replay'
@@ -80,9 +127,9 @@ class MissionProfileTests(unittest.TestCase):
             def run(frames):
                 result=subprocess.run([str(EXE),'--data',str(root),'--quest','2','--headless','--frames',str(frames)],capture_output=True,text=True,timeout=30)
                 self.assertEqual(result.returncode,0,result.stderr);return result.stdout,json.loads(result.stdout)
-            text,state=run(21);groups=state['image_animation_infos'];self.assertEqual(len(groups),9)
+            text,state=run(21);groups=state['image_animation_infos'];self.assertEqual(len(groups),10)
             self.assertEqual(state['image_clock_resets'],1);self.assertEqual(state['image_clock_updates'],21)
-            for index in (0,6,7):
+            for index in (0,7,8):
                 self.assertEqual(groups[index][0],[1,21]);self.assertEqual(groups[index][200],[0,21])
             for group in groups:
                 for _,tick in group:self.assertEqual(tick,21)

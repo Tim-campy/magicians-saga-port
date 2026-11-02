@@ -12,25 +12,29 @@ MissionInput::MissionInput(MissionHumans& owner,MissionInputScenario scenario,bo
     if(owner.notification_scenario_&&scenario_.held_keys!=owner.held_keys_)throw std::invalid_argument("input held keys conflict with stage_notifications");
     controls_[0].touch={35,0x10011};controls_[1].touch={35,0x10013};
     for(std::int32_t i=0;i<3;++i)controls_.at(static_cast<std::size_t>(i+2)).touch={10,0x230000|i};
-    owner.held_keys_=scenario_.held_keys;
+    keyboard_keys_=owner.held_keys_=scenario_.held_keys;
     if(!owner_.native_state_){
         owner.stage_.last_active_button=scenario_.last_active;owner.stage_.move_front_pushed=scenario_.front_pushed;
         owner.stage_.attack_buttons=std::make_shared<std::vector<AttackButtonState*>>();
         for(auto& button:scenario_.buttons)owner.stage_.attack_buttons->push_back(&button);
     }
     if(!defer){initialize();subscribe_input_touch([this](const InputTouch* e){stage_touch(owner_.stage_,e);});}
-} // SAGA_STUB(mission-control-surfaces): stable native IDs/lifetime; SDL supplies keys, no Surface widgets.
+} // SAGA_STUB(mission-control-surfaces): stable native IDs; Stage supplies selected visibility; full Surface queues remain external.
 void MissionInput::initialize(){initialize_input(state_,this,*this);}
 void MissionInput::apply_scenario(){
     if(owner_.native_state_)return;
-    owner_.held_keys_=scenario_.held_keys;owner_.stage_.last_active_button=scenario_.last_active;owner_.stage_.move_front_pushed=scenario_.front_pushed;
+    set_keys(scenario_.held_keys);owner_.stage_.last_active_button=scenario_.last_active;owner_.stage_.move_front_pushed=scenario_.front_pushed;
     auto& buttons=*owner_.stage_.attack_buttons;
     for(std::size_t i=0;i<scenario_.buttons.size();++i)*buttons.at(i)=scenario_.buttons.at(i);
 }
 EntitySubset* MissionInput::input_subset(const EventIntegers& slots){return owner_.world_.subset(slots);}
 void MissionInput::subscribe_input_touch(Receiver f){auto next=receivers_?std::make_shared<std::vector<Receiver>>(*receivers_):std::make_shared<std::vector<Receiver>>();next->push_back(std::move(f));receivers_=std::move(next);}
 bool MissionInput::input_key_state(std::int32_t mask){return (owner_.held_keys_&static_cast<std::uint32_t>(mask))!=0;}
-InputControl* MissionInput::input_control(std::int32_t group,std::int32_t value){for(auto& c:controls_)if(c.touch.group==group&&c.touch.value==value)return &c.touch;return nullptr;}
+InputControl* MissionInput::input_control(std::int32_t group,std::int32_t value){
+    for(std::size_t i=0;i<controls_.size();++i){auto& c=controls_[i];if(c.touch.group==group&&c.touch.value==value){
+        if(widget_lookup_&&i<2&&!widget_active_[i])return nullptr;return &c.touch;}}
+    return nullptr;
+}
 void MissionInput::send_input_touch(std::int32_t type,InputControl* c){InputTouch event{type,c};dispatch(&event);}
 void MissionInput::dispatch(const InputTouch* event){
     if(!event)throw std::invalid_argument("null mission touch event");
@@ -40,10 +44,17 @@ ComponentSlots* MissionInput::input_hero(){return member_hero(&owner_.world_.pla
 StageStartState* MissionInput::input_stage(){return &owner_.stage_;}
 std::int32_t MissionInput::input_frames_per_second(){return owner_.runtime_.fps;}
 void MissionInput::advance(std::int32_t pass,bool enabled){if(gameplay_needs_update(0,enabled,pass)){update_input(state_,*this);++steps_;}}
-void MissionInput::set_keys(std::uint32_t keys){owner_.held_keys_=keys;}
+void MissionInput::set_keys(std::uint32_t keys){keyboard_keys_=keys;owner_.held_keys_=keys|pointer_keys_;}
+void MissionInput::pointer_key(std::int32_t type,std::uint32_t mask){
+    // GameView.OnTouchButton 0x10fde00: world9 precedes Canvas.KeyDown/KeyUp.
+    if(type==2)pointer_keys_|=mask;
+    else if(type==1||type==3||type==6||type==10)pointer_keys_&=~mask;
+    owner_.held_keys_=keyboard_keys_|pointer_keys_;
+}
+void MissionInput::release_keys(std::uint32_t mask){keyboard_keys_&=~mask;pointer_keys_&=~mask;owner_.held_keys_=keyboard_keys_|pointer_keys_;}
 void MissionInput::select_attack(std::int32_t index){if(index<0||index>2)throw std::invalid_argument("attack control index0..2 required");send_input_touch(2,&controls_.at(static_cast<std::size_t>(index+2)).touch);}
 void MissionInput::logical_touch(std::int32_t type,std::int32_t group,std::int32_t value){InputControl control{group,value};send_input_touch(type,&control);}
-MovementControl* MissionInput::movement_control(std::int32_t group,std::int32_t value){for(auto& c:controls_)if(c.touch.group==group&&c.touch.value==value)return &c;return nullptr;}
+MovementControl* MissionInput::movement_control(std::int32_t group,std::int32_t value){if(!input_control(group,value))return nullptr;for(auto& c:controls_)if(c.touch.group==group&&c.touch.value==value)return &c;return nullptr;}
 void MissionInput::release(MovementControl& control,std::int32_t type,std::int32_t event_id){
     if(event_id!=9)throw std::logic_error("mission control event is unbound");
     for(auto& c:controls_)if(static_cast<MovementControl*>(&c)==&control){send_input_touch(type,&c.touch);return;}

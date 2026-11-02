@@ -46,7 +46,8 @@ void MissionHumans::boss_defeated(ComponentSlots& enemy){
     notify_boss_defeat(view,&enemy,records_,*this);
 }
 void MissionHumans::key_up(std::int32_t mask){
-    held_keys_&=~static_cast<std::uint32_t>(mask);notification_events_.push_back("key_up:"+std::to_string(mask));
+    if(input_)input_->release_keys(static_cast<std::uint32_t>(mask));else held_keys_&=~static_cast<std::uint32_t>(mask);
+    notification_events_.push_back("key_up:"+std::to_string(mask));
 }
 VictoryForm* MissionHumans::make_victory(std::int32_t enemy,bool completed){
     victory_forms_.push_back(std::make_unique<VictoryForm>());

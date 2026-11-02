@@ -63,9 +63,11 @@ std::int32_t animation_clip_max_frame(const ApplicationAnimationResources& app,s
 }
 PreparedAnimationResource::PreparedAnimationResource(const std::vector<const assets::Seb*>& files)
     :clocks_(files.size()),sprites_(files.size()),resource_{std::make_shared<std::vector<SharedAnimationClip*>>(files.size(),nullptr)} {
+    SebStaticWork loading_work;
     for(std::size_t i=0;i<files.size();++i)if(files[i]) {
         // _load first calls Dispose (frame=0), then stores the signed header short at +0x1c.
         sprites_[i]=prepare_seb_sprites(*files[i]);
+        prepare_seb_bounds(*sprites_[i],loading_work,files[i]->header_value);
         clocks_[i]=SharedAnimationClip{0,files[i]->header_value,&*sprites_[i]};
         resource_.clips->at(i)=&*clocks_[i];
     }

@@ -83,8 +83,12 @@ def make_shoot_scene(root, rewards=False, area=False, lethal_contact=False, trea
             ('a.png', png(2, 2, [0, 255, 0, 255] * 4))]))
     if rewards:
         (root / 'quest.bin').write_bytes(jar([
-            ('img.inf', b'77\ta.png,bin\n98\ta.png,bin\n99\ta.png,bin\n105\ta.png,bin'),
-            ('seb.inf', '\n'.join(f'{i}\ta.seb' for i in ([0, 41, 42, 43, 44] if boss_entry else [0, 41, 42, 43])).encode()),
+            ('img.inf', b'77\ta.png,bin\n98\ta.png,bin\n99\ta.png,bin\n105\ta.png,bin\n91\tmove.png,bin'),
+            ('seb.inf', ('\n'.join(f'{i}\ta.seb' for i in ([0, 41, 42, 43, 44] if boss_entry else [0, 41, 42, 43]))+'\n36\tfront.seb\n37\tback.seb').encode()),
+            ('front.seb',seb([(0,91,0,0,80,50,-5,-3,0,0),(1,91,80,0,80,50,-5,-3,0,0)])),
+            ('back.seb',seb([(0,91,0,50,80,50,-5,-3,0,0),(1,91,80,50,80,50,-5,-3,0,0)])),
+            ('move.png',png(160,100,[c for y in range(100) for x in range(160) for c in
+                ((255,0,0,255) if y<50 and x<80 else (0,255,0,255) if y<50 else (0,0,255,255) if x<80 else (255,0,255,255))])),
             ('a.seb', seb([(0, 98, 0, 0, 2, 2, 0, 0, 0, 0), (3, 98, 0, 0, 2, 2, 0, 0, 0, 0)])),
             ('a.png', png(2, 2, [255, 255, 0, 255] * 4))]))
         text += 'rewards 0 1 4\nresource 7 "quest.bin" "English.lproj" 0\nglobal_alias 7 7\n'
@@ -141,6 +145,13 @@ def make_gauge_scene(root, defeats=6):
     return text + 'resource 23 "gauges.bin" "English.lproj" 0\nglobal_alias 23 23\nruntime 25 0 system 42\nenemy_gauges\n'
 
 
+def with_common_resource(root, text):
+    """Synthetic resCom dependency of the original movement hint."""
+    (root/'common.bin').write_bytes(jar([('img.inf',b'4\tfinger.png,bin'),('seb.inf',b'4\tfinger.seb'),
+        ('finger.seb',seb([(0,4,0,0,2,2,0,0,0,0)])),('finger.png',png(2,2,[255,255,255,255]*4))]))
+    return text+'resource 2 "common.bin" "English.lproj" 0\nglobal_alias 2 2\n'
+
+
 def make_native_entry_scene(root, alternate_quest=False, talk_events=False, quest_time_limit=None):
     """Table-selected native Stage.Start with explicit decoded saved inputs."""
     text=make_boss_scene(root,stage_entry=True,alternate_quest=alternate_quest,talk_events=talk_events,quest_time_limit=quest_time_limit)
@@ -163,13 +174,13 @@ def make_native_entry_scene(root, alternate_quest=False, talk_events=False, ques
 def make_data_entry_fixture(root, font_file, quest_time_limit=None):
     """Native bootstrap data and an equivalent diagnostic control; only synthetic/public bytes."""
     from pathlib import Path
-    text=make_native_entry_scene(root,talk_events=True,quest_time_limit=quest_time_limit)
+    text=with_common_resource(root,make_native_entry_scene(root,talk_events=True,quest_time_limit=quest_time_limit))
     assets=root/'textassets';assets.mkdir()
     for archive in root.glob('*.bin'):(assets/archive.name).write_bytes(archive.read_bytes())
-    entries=[(-1,'tables','xls'),(1,'hero','chara'),(3,'enemy','enemy-book'),(7,'quest','quest'),
+    entries=[(-1,'tables','xls'),(1,'hero','chara'),(2,'common','com'),(3,'enemy','enemy-book'),(7,'quest','quest'),
              (18,'map','chip'),(19,'bullet','bullet'),(20,'effect','effect'),(21,'hero','hat'),
              (22,'hero','weapon'),(23,'effect','gauge')]
-    (root/'mission-resources.tsv').write_text('mission_resources 1\n'+''.join(
+    (root/'mission-resources-v2.tsv').write_text('mission_resources 2\n'+''.join(
         f'{"tables" if i==-1 else "resource"} {i} "textassets/{file}.bin" "{name}"\n' for i,file,name in entries),encoding='utf8')
     (root/'new-game-save.tsv').write_text('new_game_save 1\nselection 5 2\ntown_capacity 1\nwallet 37 43\n',encoding='ascii')
     (root/'mission-initialization.tsv').write_text('mission_initialization 1\nyugami 10000\norientation 0\nevent_arguments ""\n',encoding='ascii')

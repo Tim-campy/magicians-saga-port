@@ -17,6 +17,14 @@ public:
     void apply_scenario();
     void advance(std::int32_t pass=0,bool enabled=true);
     void set_keys(std::uint32_t);
+    void set_movement(bool up,bool down){set_keys((keyboard_keys_&~0xa0000U)|(up?0x20000U:0U)|(down?0x80000U:0U));}
+    void set_fast_forward(bool on){set_keys((keyboard_keys_&~0x10U)|(on?0x10U:0U));}
+    void pointer_key(std::int32_t type,std::uint32_t mask);
+    bool keyboard_holds(std::uint32_t mask)const{return (keyboard_keys_&mask)!=0;}
+    void release_keys(std::uint32_t mask);
+    void clear_keys(){keyboard_keys_=pointer_keys_=0;set_keys(0);}
+    core::InputControl* control(std::int32_t group,std::int32_t value){for(auto& c:controls_)if(c.touch.group==group&&c.touch.value==value)return &c.touch;return nullptr;}
+    void bind_movement_widgets(bool front,bool back){widget_lookup_=true;widget_active_={front,back};}
     void select_attack(std::int32_t);
     void observe_touch(std::function<void(const core::InputTouch*)> receiver){subscribe_input_touch(std::move(receiver));}
     void logical_touch(std::int32_t type,std::int32_t group,std::int32_t value);
@@ -40,5 +48,7 @@ private:
     using Receiver=std::function<void(const core::InputTouch*)>;
     std::shared_ptr<const std::vector<Receiver>> receivers_;
     std::uint64_t steps_=0,touches_=0;
+    std::uint32_t keyboard_keys_=0,pointer_keys_=0;
+    bool widget_lookup_=false;std::array<bool,2> widget_active_{};
 };
 }

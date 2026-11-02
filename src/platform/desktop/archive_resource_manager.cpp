@@ -11,12 +11,14 @@ ArchiveResourceManager::ArchiveResourceManager(ResourceArchive& archive):archive
     drawing_.animations=&animations_;
     drawing_.images=std::make_shared<std::vector<RenderImage*>>(archive.images().slots.size(),nullptr);
     std::map<std::string,std::size_t> first;
+    SebStaticWork loading_work;
     for(std::size_t i=0;i<slots.size();++i){
         if(!slots[i])continue;
         const auto& selected=archive.animation(static_cast<std::int32_t>(i));
         const auto old=first.find(selected.filename);
         auto state=old==first.end()?prepare_seb_sprites(selected.animation):clone_seb_sprites(*sprites_.at(old->second));
         const auto maximum=old==first.end()?selected.animation.header_value:clips_.at(old->second)->max_frame;
+        if(old==first.end())prepare_seb_bounds(state,loading_work,maximum);
         sprites_[i]=std::make_unique<SebSpriteState>(std::move(state));
         // LoadStart applies these after either fresh load or Seb(Seb), not only the fresh branch.
         reverse_seb(*sprites_[i],selected.reverse_u,selected.reverse_v);

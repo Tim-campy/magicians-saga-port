@@ -211,7 +211,10 @@ class MissionIndexTests(unittest.TestCase):
                 entries.append({'name':name,'output':relative,'sha256':hashlib.sha256(payload).hexdigest()})
             manifest = {'schema':2,'apk_sha256':extractor.APK_SHA,'files':entries}
             source = root/'manifest.json';source.write_text(json.dumps(manifest), encoding='utf-8')
+            legacy=root/'mission-resources.tsv';legacy.write_bytes(b'legacy index retained\n')
             output = extractor.write_mission_index(root);original = output.read_bytes()
+            self.assertEqual(output.name,'mission-resources-v2.tsv');self.assertTrue(original.startswith(b'mission_resources\t2\n'))
+            self.assertIn(b'resource\t2\t',original);self.assertEqual(legacy.read_bytes(),b'legacy index retained\n')
             self.assertIn(b'resource\t23\t', original)
             self.assertEqual(extractor.write_mission_index(root).read_bytes(), original)
             manifest['schema']=3;source.write_text(json.dumps(manifest), encoding='utf-8')

@@ -214,7 +214,7 @@ void MissionHumans::answer_stage_dialog(std::int32_t answer){
 }
 void MissionHumans::begin_stage_frame(std::uint64_t frame){if(!stage_loop_)throw std::logic_error("native quest frame requires stage_loop");stage_loop_->begin_frame(frame);}
 void MissionHumans::end_stage_frame(){stage_loop_->end_frame();}
-void MissionHumans::clear_form_input(){set_input_keys(0);if(stage_loop_)stage_loop_->clear_form_keys();}
+void MissionHumans::clear_form_input(){if(!input_)throw std::logic_error("input fresh is required");input_->clear_keys();if(stage_loop_)stage_loop_->clear_form_keys();}
 bool MissionHumans::stage_frame_pulse(std::uint32_t mask)const{return stage_loop_&&stage_loop_->frame_key_pulse(mask);}
 void MissionHumans::debug_show_result(){if(!results_)unavailable("DEBUG result providers");results_->grant();}
 void MissionHumans::debug_defeat_form(std::int32_t reason){auto form=make_defeat_form(reason);push(form.get());}

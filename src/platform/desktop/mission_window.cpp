@@ -136,7 +136,7 @@ int run_native_mission(MissionProfile& profile,std::int32_t width,std::int32_t h
             // QuestForm.Draw calls World.Draw after DrawOffscreen: HUD stays in GameView pixels.
             renderer.compose_target(width,height);backend.resize_surface(height);backend.set_matrix(nullptr);
             frame.begin_frame();auto* mesh=backend.graphics().mesh_manager();mesh->group=0;mesh->set_depth(0,0);
-            profile.draw_attack_controls(&backend);frame.finish();bind_bitmap_mesh_frame(bindings,frame);
+            profile.draw_stage_controls(&backend);frame.finish();bind_bitmap_mesh_frame(bindings,frame);
             s.cursors->at(0)=0;s.lengths->at(0)=frame.records().active_count;
             renderer.begin_frame(GlBitmapClear::depth,{0,0,0,0},profile.surface_projection(width,height));submit_mesh_streams(s,1,host);account();
             backend.set_matrix(&world);
@@ -176,7 +176,7 @@ int run_native_mission(MissionProfile& profile,std::int32_t width,std::int32_t h
                     int w=0,h=0;require(SDL_GetWindowSizeInPixels(window.get(),&w,&h),"SDL live pixel size");resize(w,h);
                 }
                 else if(interactive&&profile.accepts_live_input()&&event.type==SDL_EVENT_WINDOW_FOCUS_LOST&&event.window.windowID==SDL_GetWindowID(window.get())){
-                    profile.cancel_map_pointer();drag_x=drag_y=wheel_delta=0;
+                    profile.cancel_map_pointer();profile.cancel_control_pointer();drag_x=drag_y=wheel_delta=0;
                 }
                 else if(event.type==SDL_EVENT_KEY_DOWN&&!event.key.repeat){
                     if(event.key.key==SDLK_ESCAPE)running=false;
@@ -207,8 +207,11 @@ int run_native_mission(MissionProfile& profile,std::int32_t width,std::int32_t h
                     }
                 }
                 else if(interactive&&profile.accepts_live_gameplay_input()&&event.type==SDL_EVENT_MOUSE_BUTTON_DOWN&&event.button.button==SDL_BUTTON_LEFT){
-                    if(profile.attack_widgets_enabled()){if(const auto p=pointer_position(event.button.x,event.button.y))profile.attack_point(p->x,p->y);}
+                    if(profile.attack_widgets_enabled()){if(const auto p=pointer_position(event.button.x,event.button.y))profile.control_pointer(0,p->x,p->y);}
                     else profile.humans->select_input_attack(profile.humans->selected_attack());
+                }
+                else if(interactive&&profile.accepts_live_input()&&event.type==SDL_EVENT_MOUSE_BUTTON_UP&&event.button.button==SDL_BUTTON_LEFT){
+                    if(profile.attack_widgets_enabled())profile.control_pointer(1,0,0); // Captured control releases outside its rectangle too.
                 }
                 else if(interactive&&profile.accepts_live_gameplay_input()&&profile.spatial){
                     // Desktop policy: right drag is QuestForm group17; a wheel unit supplies20 raw pinch units.
@@ -249,7 +252,7 @@ int run_native_mission(MissionProfile& profile,std::int32_t width,std::int32_t h
             }
             submit();renderer.present();++rendered;const auto now=SDL_GetTicks();if(now<deadline)SDL_Delay(static_cast<Uint32>(deadline-now));
         }
-        if(interactive&&profile.accepts_live_input())profile.cancel_map_pointer();
+        if(interactive&&profile.accepts_live_input()){profile.cancel_map_pointer();profile.cancel_control_pointer();}
         if(!capture){std::cout<<"{\"entities\":"<<profile.selected_count<<",\"render_frames\":"<<rendered<<",\"logic_steps\":"<<logic_steps
                  <<',';write_state();
         std::cout<<",\"profile\":\"selected mission systems; full application entry, save restoration and complete-state hashes unbound\"}\n";return 0;}

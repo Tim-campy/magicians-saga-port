@@ -146,5 +146,8 @@ kairo:0x06001a14	traced	docs/subsystems/ui.md	Descending Finish4 then ascending 
 game:0x06000fc3	reimplemented	src/core/gameplay/stage_controls.cpp	Native attack easing/frame/mode/registration order; physical mission HUD and normalized hit adapter; synthetic contracts
 game:0x06000fc4	reimplemented	src/core/gameplay/stage_controls.cpp	Movement producer with original SEB/key/position/margins and boss/front gates; contract tested; desktop SEB widget adapter unbound
 game:0x06000fbd	traced	docs/subsystems/ui.md	State-dispatched Stage HUD after offscreen world; selected state1 attack helper bound; complete drawing unbound
-kairo:0x06001765	traced	docs/formats/seb.md	Frame bounds wrapper narrows GetBRect output into shared int16 scratch; movement widget dependency
-kairo:0x06001766	traced	docs/formats/seb.md	Reads loader-produced compact/extended frame bounds and applies reversal; movement widget dependency
+kairo:0x06001765	documented	docs/formats/seb.md	Load-snapshot bounds and shared int16 result; C++ value adapter bound; native result-array alias remains external
+kairo:0x06001766	reimplemented	src/core/animation/seb_sprite.cpp	Compact/extended snapshot bounds, uint8 index wrap and original reflection; mission movement hits and contracts
+kairo:0x0600176e	reimplemented	src/core/animation/seb_sprite.cpp	Retained instance list distinct from matrix; GetSprite/null/cache aliases; reached by movement DrawSebEx adapter
+game:0x0600009c	traced	docs/subsystems/ui.md	Type2 Canvas keydown and release keyup after world9; selected movement route bound, type5 animation remains external
+game:0x060000bb	documented	docs/subsystems/ui.md	Required control; nonempty option.keys first element else fallback; used by declared movement Keys masks

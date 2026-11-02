@@ -21,7 +21,7 @@ The plan in one page. Work happens in **vertical slices**: each ends in somethin
 Host: `saga_mission` (headless or SDL window; fresh --data/--quest entry or explicit diagnostic scenario). Acceptance, checked by running it on the maintainer's extracted data:
 
 - [x] A1. `saga_mission --data extracted --quest <id>` opens a window with the quest's map, party and enemies from the real tables.
-- [ ] A2. Mouse/keyboard moves the hero and triggers attacks through the ported Human/Shoot/Projectile passes.
+- [x] A2. Mouse/keyboard moves the hero and triggers attacks through the ported Human/Shoot/Projectile passes.
 - [ ] A3. The full system schedule runs each frame: enemies act, collisions, damage, defeat, drops, EXP.
 - [ ] A4. The stage ends (clear, game over, retreat) and prints the quest result (EXP, money, treasures, levels).
 - [ ] A5. `--replay <inputs> --frames N` prints a state hash; the same inputs give the same hash; one local golden run per quest is recorded in integration.md.
@@ -29,7 +29,6 @@ Host: `saga_mission` (headless or SDL window; fresh --data/--quest entry or expl
 
 Tasks:
 - [ ] (blocked on S3 selector13 decoding) Bind Continue world/party/systems before selecting loaded InitWorld in `saga_mission` (A1).
-- [ ] Bind Stage movement widget SEB bounds/DrawSebEx and held-pointer routing to SDL input (A2).
 - [ ] Bind DrawSebImg image-animation transforms, complete World.DynamicDraw order/gates and Human/Stage HUD to the existing bitmap backend (A3).
 - [ ] Add complete reached-world state hashing and record local per-quest golden replays (A5).
 - [ ] (deferred pending producer evidence) Locate indirect Cursor event2/4 or StartCatch producers before binding screen points; use an original runtime trace if static references remain absent (A2).

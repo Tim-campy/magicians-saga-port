@@ -203,7 +203,7 @@ For table-backed entity scenes, replace manual draw rows with tables, progress a
 | tick_ms | diagnostic animation/render interval1..1000; required for loop modes |
 | simulate | initial selected logic passes0..10000; enables optional Human/Enemy/Projectile -> Move -> Collision -> Emitter -> Modifier -> Animation -> Render -> Garbage on every loop step; absent means animation-only |
 | mission_presentation | width height initial-form-scale automatic0/1 application-update0/1 near far camera-Z; native identity/slots/margins/depth-rate and no pre-roll; exclusive with world/projection/view/slots/animate/simulate; requires system_init and mission_map |
-| mission_resources | quoted language and DPI; requires --data and generated mission-resources.tsv; binds tables, nine mission archives, global aliases and resource names |
+| mission_resources | quoted language and DPI; requires --data and generated mission-resources-v2.tsv; binds tables, ten mission archives (legacy v1/nine accepted), global aliases and resource names |
 | material_policy | literal native; ordinary image/shader/queue material cache; exclusive with explicit material rows |
 | runtime | FPS1..1000 or initial, numeric-damage DEBUG0/1 or initial, backend system and seed int32; initial selects MyConfig30/0; must agree with CLI values |
 | mission_map | fresh plus four int32 chip IDs (start/middle/end/background); requires human_system, one player, AppData18 chips and geometry312/312/(distance+2); native map/camera/cells/culling; distance0..1022 diagnostic allocation bound |

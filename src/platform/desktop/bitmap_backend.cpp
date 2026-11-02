@@ -223,6 +223,30 @@ RenderDrawHost& BitmapBackend::resources(){return *impl_;}
 void BitmapBackend::set_render_mode(std::int32_t mode,std::int32_t alpha){
     core::set_render_mode(impl_->colors,mode,alpha,mode==0?0:255-alpha);
 }
+void BitmapBackend::draw_seb_button(std::int32_t resource,std::int32_t clip,std::int32_t raw,std::int32_t x,std::int32_t y,ImageAnimationGroup* clocks){
+    // ResourceManagerExtension.DrawSebEx 0x10edd2c -> DrawSebImg 0x10ede1c.
+    auto& s=*impl_;auto* manager=s.resource(resource);
+    if(!manager||!manager->animations||!manager->animations->clips||!manager->images)throw std::invalid_argument("missing button SEB resource");
+    auto* clock=manager->animations->clips->at(static_cast<std::size_t>(clip));
+    if(!clock||!clock->sprites)throw std::invalid_argument("missing button SEB clip");
+    const auto maximum=clock->max_frame,frame=maximum==0?raw:maximum==-1?0:raw%maximum;
+    auto rows=seb_sprites(*clock->sprites,s.seb_work,frame);
+    if(!rows)throw std::invalid_argument("missing button SEB rows");
+    const auto add=[](std::int32_t a,std::int32_t b){const auto v=static_cast<std::uint32_t>(a)+static_cast<std::uint32_t>(b);return static_cast<std::int32_t>(v<=0x7fffffffU?static_cast<std::int64_t>(v):static_cast<std::int64_t>(v)-0x100000000LL);};
+    for(const auto& sprite:*rows){
+        if(!sprite)throw std::invalid_argument("missing button SEB sprite");
+        const auto texture=static_cast<std::size_t>(sprite->at(1));RenderImageDraw d;d.image=manager->images->at(texture);
+        if(clocks){
+            const auto pair=clocks->at(texture);if(!pair)throw std::invalid_argument("missing button image clock");
+            const auto mode=pair->at(0);static_cast<void>(pair->at(1));
+            if(mode==1||mode==2)throw std::logic_error("animated DrawSebImg transforms are unbound");
+        }
+        if(sprite->at(8)!=0)s.reverse=1;
+        d.x=static_cast<float>(add(x,sprite->at(6)));d.y=static_cast<float>(add(y,sprite->at(7)));
+        d.u=sprite->at(2);d.v=sprite->at(3);d.source_width=sprite->at(4);d.source_height=sprite->at(5);
+        s.draw_image(d);if(sprite->at(8)!=0)s.reverse=0;
+    }
+}
 void BitmapBackend::draw_seb(std::int32_t resource,std::int32_t clip,std::optional<std::int32_t> requested,std::int32_t x,std::int32_t y){
     // ResourceManager.DrawSeb 0x1ba8c10 -> Seb._draw 0x1bb4140 ->
     // Seb.Draw 0x1bb740c. Fresh prepared SEBs have zero +0x98 draw offsets.

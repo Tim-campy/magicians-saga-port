@@ -265,6 +265,7 @@ AppData.GetResourceId (game:0x0600023d, ELF0x11155dc,240 bytes) searches row1 of
 | ID | TextAsset name |
 | --- | --- |
 | 1 | chara |
+| 2 | com |
 | 3 | enemy |
 | 7 | quest |
 | 18 | chip |
@@ -274,9 +275,9 @@ AppData.GetResourceId (game:0x0600023d, ELF0x11155dc,240 bytes) searches row1 of
 | 22 | weapon |
 | 23 | gauge |
 
-`python -I tools/extract_assets.py --out extracted/full --mission-index` writes a local mission-resources.tsv from an existing schema2/3 manifest of the supported APK. It selects those names plus the existing xls table archive, requires one matching entry each and verifies every decoded file hash. Numeric filename prefixes come from the manifest, not guesses. Existing differing indices are preserved and reported. No APK re-extraction or additional package is needed for this command.
+`python -I tools/extract_assets.py --out extracted/full --mission-index` writes a local mission-resources-v2.tsv from an existing schema2/3 manifest of the supported APK. It selects those names plus the existing xls table archive, requires one matching entry each and verifies every decoded file hash. Numeric filename prefixes come from the manifest, not guesses. Existing differing indices are preserved and reported; generating v2 leaves the v1 index intact for isolated older executables. No APK re-extraction or additional package is needed for this command.
 
-The native `mission_resources "English.lproj" 1` scenario row requires `--data`, reads that small version1 index and supplies tables, application/global aliases and resource-name lookups through the existing synchronous archive owners. It rejects duplicate/missing IDs, non-child paths and mixed prior bindings. Language/DPI remain explicit; saved inputs and full async/locale/pack selection remain separate. Synthetic tests verify equivalent domain output against manual bindings, schema variants, hashes, missing entries and path rejection. Local evidence: mission-resource-entry/{GetResourceId.asm,AppDataCtor.asm,resource-names.json} and appdata-constants/AppData_cctor.asm; all native addresses use the ELF base and source hash recorded in coverage.tsv.
+The native `mission_resources "English.lproj" 1` scenario row requires `--data`, prefers that small version2 index (ten resources including resCom) and accepts the legacy mission-resources.tsv/version1 index with nine resources and supplies tables, application/global aliases and resource-name lookups through the existing synchronous archive owners. It rejects duplicate/missing IDs, non-child paths and mixed prior bindings. Language/DPI remain explicit; saved inputs and full async/locale/pack selection remain separate. Synthetic tests verify equivalent domain output against manual bindings, schema variants, hashes, missing entries and path rejection. Local evidence: mission-resource-entry/{GetResourceId.asm,AppDataCtor.asm,resource-names.json} and appdata-constants/AppData_cctor.asm; all native addresses use the ELF base and source hash recorded in coverage.tsv.
 
 ## Evidence
 
