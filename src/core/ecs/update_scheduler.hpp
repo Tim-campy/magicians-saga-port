@@ -25,6 +25,38 @@ struct UpdateSchedule {
 // SystemManager.Update 0x113c7d0. No manager-wide enabled or pause test.
 void update_systems(UpdateSchedule&,std::int32_t pass);
 
+class DynamicDrawSystem {
+public:
+    virtual ~DynamicDrawSystem()=default;
+    virtual bool needs_dynamic_draw()=0;
+    virtual void dynamic_draw()=0;
+    virtual const void* base_identity()const=0; // BaseSystem identity; null represents a failed reference cast.
+};
+class DynamicDrawDepthHost {
+public:
+    virtual ~DynamicDrawDepthHost()=default;
+    virtual void set_dynamic_depth_layer(std::int32_t)=0;
+};
+struct DynamicDrawSchedule {
+    std::vector<DynamicDrawSystem*>* systems=nullptr; // Manager +0x40; captured once after setting depth.
+    std::vector<const void*>* all_systems=nullptr; // +0x20; fresh after each successful Stop.
+    UpdateStopwatch* stopwatch=nullptr; // +0x68; fresh for Reset, Start and Stop.
+};
+// SystemManager.DynamicDraw 0x113ca88 and shared _draw 0x130b790/callback 0x113d2d8.
+// No pause gate, sorting or exceptional stopwatch cleanup; indexed traversal rereads live Count.
+void draw_dynamic_systems(DynamicDrawSchedule&,DynamicDrawDepthHost*);
+inline constexpr std::array<std::int32_t,9> gameplay_dynamic_draw_order{{3,4,5,16,22,23,24,26,30}};
+class GameplayDynamicDraw final:public DynamicDrawSystem {
+public:
+    GameplayDynamicDraw(const bool& enabled,std::function<void()> body,const void* identity);
+    bool needs_dynamic_draw()override{return enabled_;}
+    void dynamic_draw()override{body_();}
+    const void* base_identity()const override{return identity_;}
+private:
+    const bool& enabled_;std::function<void()> body_;const void* identity_;
+};
+std::vector<DynamicDrawSystem*> make_gameplay_dynamic_draw_list(const std::array<DynamicDrawSystem*,32>& factory);
+
 // Factory indices in IUpdateSystem append order. Other factory entries do not update.
 inline constexpr std::array<std::int32_t,26> gameplay_update_order{{
     0,2,3,4,5,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,30,31

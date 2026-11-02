@@ -16,6 +16,29 @@ void update_systems(UpdateSchedule& schedule,std::int32_t pass){
         if(pass==0)require(schedule.stopwatch).stop(); // Not a finally block.
     }
 }
+void draw_dynamic_systems(DynamicDrawSchedule& schedule,DynamicDrawDepthHost* depth){
+    require(depth).set_dynamic_depth_layer(99);
+    auto& systems=require(schedule.systems);
+    for(std::size_t index=0;index<systems.size();++index){
+        auto* current=systems.at(index); // Retain the entry even if a stopwatch callback replaces it.
+        require(schedule.stopwatch).reset();require(schedule.stopwatch).start();
+        if(current&&current->needs_dynamic_draw())current->dynamic_draw();
+        require(schedule.stopwatch).stop(); // Native failure does not run this as a finally block.
+        const auto& all=require(schedule.all_systems);
+        const auto identity=current?current->base_identity():nullptr;
+        // Public List<BaseSystem>.IndexOf: identity search with discarded result; no bookkeeping writes.
+        static_cast<void>(std::find(all.begin(),all.end(),identity));
+    }
+}
+GameplayDynamicDraw::GameplayDynamicDraw(const bool& enabled,std::function<void()> body,const void* identity)
+    :enabled_(enabled),body_(std::move(body)),identity_(identity){
+    if(!body_)throw std::invalid_argument("missing gameplay dynamic draw body");
+}
+std::vector<DynamicDrawSystem*> make_gameplay_dynamic_draw_list(const std::array<DynamicDrawSystem*,32>& factory){
+    std::vector<DynamicDrawSystem*> result;result.reserve(gameplay_dynamic_draw_order.size());
+    for(const auto index:gameplay_dynamic_draw_order)result.push_back(&require(factory[static_cast<std::size_t>(index)]));
+    return result;
+}
 void set_system_enabled(GameplaySystemState& system,bool value){
     if(system.enabled==value)return;
     system.enabled=value;
