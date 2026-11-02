@@ -1,5 +1,6 @@
 #pragma once
 #include "assets/seb.hpp"
+#include <array>
 #include <memory>
 
 namespace saga::core {
@@ -16,6 +17,8 @@ struct SebSpriteState {
     std::shared_ptr<std::vector<std::int16_t>> extended; // +0x38, seven shorts per entry.
     std::uint8_t reverse=0; // +0x40: horizontal bit1, vertical bit0.
     SpriteCache cache; // +0x48: age columns -> layers -> twelve-cell sprites.
+    std::shared_ptr<std::vector<std::uint8_t>> bounds; // +0x58, four signed bytes per frame; X=-128 marks extended.
+    std::shared_ptr<std::vector<std::int16_t>> extended_bounds; // +0x60, four signed shorts; byte-sized entry indices.
     std::shared_ptr<SebInstanceWork> work=std::make_shared<SebInstanceWork>(); // +0xa8.
     bool flip=false; // +0xb0, final ReverseU toggle; does not invalidate cache.
 };
@@ -27,7 +30,7 @@ struct SebStaticWork {
     SebStaticWork();
 };
 // Desktop preparation of _load's record normalization/packing slice 0x1baf850..0x1bb02c4.
-// Input is the existing disk reader's output; bounding boxes/extension blocks are not synthesized.
+// Input is the existing disk reader's output; prepare_seb_bounds supplies the separate load-time bounds.
 SebSpriteState prepare_seb_sprites(const assets::Seb&);
 // Sprite-evaluation projection of Seb(Seb) 0x1bab9fc: shared record arrays,
 // fresh work, zero reversal/flip and no cache. Clock construction is separate.
@@ -38,4 +41,11 @@ SpriteArray seb_sprite_local(SebSpriteState&,SebStaticWork&,std::int32_t frame,s
 SpriteRows seb_sprites_local(SebSpriteState&,SebStaticWork&,std::int32_t frame); // 0x1bb0b90.
 void set_seb_cache_size(SebSpriteState&,std::int32_t size); // 0x1babbfc.
 void reverse_seb(SebSpriteState&,std::int32_t horizontal,std::int32_t vertical); // 0x1babb5c.
+// _load 0x1bb02c4..0x1bb0854: snapshot each frame through GetSpritesLocal before resource options.
+// Preserves compact/extended packing and local work/cache effects; aggregate bounds at +0x50 and
+// optional trailing extension blocks remain outside this selected loader projection.
+void prepare_seb_bounds(SebSpriteState&,SebStaticWork&,std::int32_t max_frame);
+// GetBRect 0x1bb0d04 + GetBoundingRect 0x1ba913c; returns the four narrowed values by value,
+// without reproducing the native thread-static short-array result alias.
+std::array<std::int32_t,4> seb_bounding_rect(const SebSpriteState&,std::int32_t frame);
 } // namespace saga::core

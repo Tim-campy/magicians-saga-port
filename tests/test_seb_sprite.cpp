@@ -13,6 +13,12 @@ saga::assets::SebRecord record(std::int16_t frame,std::int16_t tex=0,std::int16_
 saga::assets::Seb file(std::vector<saga::assets::SebRecord> records){
     const auto count=static_cast<std::uint16_t>(records.size());return {0,10,{{0,count,std::int16_t{0}}},std::move(records)};
 }
+saga::assets::Seb layers(std::vector<saga::assets::SebRecord> records){
+    auto source=file(std::move(records));source.groups.clear();
+    for(std::uint32_t i=0;i<source.records.size();++i)source.groups.push_back({i,1,std::int16_t{0}});
+    return source;
+}
+bool rect(const SebSpriteState& s,std::int32_t frame,std::array<std::int32_t,4> expected){return seb_bounding_rect(s,frame)==expected;}
 SpriteArray buffer(){return std::make_shared<SpriteValues>(12,0);}
 }
 int main(){
@@ -65,4 +71,52 @@ int main(){
      auto out=buffer();fails([&]{convert_seb_sprite(s,0,out,0);});
      s=prepare_seb_sprites(file({record(0,5)}));auto short_out=std::make_shared<SpriteValues>(2,99);fails([&]{convert_seb_sprite(s,0,short_out,0);});
      check(short_out->at(0)==0&&short_out->at(1)==5);s.groups.reset();fails([&]{seb_sprite(s,work,0,0);});}
+    {SebStaticWork work;auto a=record(0,0,-10,20),b=record(0,-7,20,-5);
+     auto s=prepare_seb_sprites(layers({a,b,record(0,-9,-120,-120),record(0,-8,120,120),record(0,-1,100,100)}));
+     prepare_seb_bounds(s,work,2);check(rect(s,0,{-10,-5,35,32})&&rect(s,1,{0,0,0,0}));
+     check(s.bounds->size()==8&&!s.extended_bounds&&!s.work->sprites&&work.lists->size()==6);
+     // Bounds are a retained load-time snapshot, independent of later packed records/work.
+     s.packed->at(1)=77;seb_sprites_local(s,work,0);check(rect(s,0,{-10,-5,35,32}));
+     auto clone=clone_seb_sprites(s);check(clone.bounds==s.bounds&&clone.extended_bounds==s.extended_bounds);
+     reverse_seb(clone,1,1);check(rect(clone,0,{-24,-27,35,32})&&rect(s,0,{-10,-5,35,32}));}
+    {SebStaticWork work;auto s=prepare_seb_sprites(layers({record(0,-9),record(0,-8),record(0,-1)}));
+     prepare_seb_bounds(s,work,1);check(rect(s,0,{0,0,0,0}));
+     auto empty=prepare_seb_sprites(file({}));prepare_seb_bounds(empty,work,2);check(rect(empty,0,{0,0,0,0})&&rect(empty,1,{0,0,0,0}));}
+    {SebStaticWork work;auto r=record(0,0,10,20);r.values[4]=-3;r.values[5]=-5;
+     auto s=prepare_seb_sprites(file({r}));prepare_seb_bounds(s,work,1);check(rect(s,0,{10,20,-3,-5}));
+     reverse_seb(s,1,1);check(rect(s,0,{-8,-16,-3,-5}));check(rect(s,10000,{10,-16,-3,-5}));}
+    {SebStaticWork work;auto s=prepare_seb_sprites(file({record(0,0,2,3)}));prepare_seb_bounds(s,work,1);
+     check(rect(s,0,{2,3,5,7})&&rect(s,10000,{-6,3,5,7}));
+     reverse_seb(s,1,0);check(rect(s,0,{-6,3,5,7})&&rect(s,10000,{2,3,5,7}));
+     reverse_seb(s,0,1);check(rect(s,0,{2,-9,5,7})&&rect(s,10000,{-6,-9,5,7}));
+     s.flip=true;check(rect(s,0,{2,-9,5,7}));fails([&]{seb_bounding_rect(s,-1);});fails([&]{seb_bounding_rect(s,1);});}
+    {SebStaticWork work;auto s=prepare_seb_sprites(file({record(0,0,-128,0)}));prepare_seb_bounds(s,work,1);
+     check(s.bounds->at(0)==128&&s.extended_bounds&&rect(s,0,{-128,0,5,7}));
+     auto clone=clone_seb_sprites(s);check(clone.extended_bounds==s.extended_bounds);
+     const auto before=s.bounds;fails([&]{prepare_seb_bounds(s,work,-1);});check(s.bounds==before);}
+    {SebStaticWork work;auto a=record(0,0,-32768,0),b=record(0,0,32766,0);a.values[4]=b.values[4]=1;
+     auto s=prepare_seb_sprites(layers({a,b}));prepare_seb_bounds(s,work,1);
+     check(rect(s,0,{-32768,0,-1,7})); // Width65535 narrows in the loader before GetBRect reflection.
+     reverse_seb(s,1,0);check(rect(s,0,{-32768,0,-1,7}));}
+    {SebStaticWork work;auto s=prepare_seb_sprites(file({record(0,0,200,0),record(256,0,712,0)}));
+     prepare_seb_bounds(s,work,257);check(s.extended_bounds->size()==257*4);
+     check(rect(s,255,{710,0,5,7})&&rect(s,256,{200,0,5,7})); // Native uint8 extended index wraps.
+     check(seb_sprite_local(s,work,256,0)->at(6)==712);}
+    {SebStaticWork work;auto s=prepare_seb_sprites(file({record(0,0),record(2,0)}));set_seb_cache_size(s,2);
+     auto old_cache=s.cache;auto zero=seb_sprite_local(s,work,0,0);auto one=seb_sprite_local(s,work,1,0);
+     prepare_seb_bounds(s,work,3);check(s.cache==old_cache&&s.cache->at(0)->at(0)==zero&&s.cache->at(1)->at(0)==one);
+     check(zero->at(0)==2&&one->at(0)==1); // Loader warm-up retains the actual LRU row identities.
+     auto snapshot=s.bounds;zero->at(6)=1000;check(s.bounds==snapshot&&rect(s,2,{0,0,5,7}));
+     auto list=work.lists->at(1);check(list->at(0)==zero);}
+    {SebStaticWork work;auto s=prepare_seb_sprites(file({record(0,0)}));set_seb_cache_size(s,1);
+     auto cached=seb_sprite_local(s,work,0,0);cached->at(6)=std::numeric_limits<std::int32_t>::max();cached->at(4)=5;
+     prepare_seb_bounds(s,work,1);check(rect(s,0,{-1,0,5,7})); // X+W wraps before endpoint subtraction/narrowing.
+     auto other=record(0,0,-5,0);auto two=prepare_seb_sprites(layers({record(0,0),other}));set_seb_cache_size(two,1);
+     auto first=seb_sprite_local(two,work,0,0);first->at(6)=std::numeric_limits<std::int32_t>::max();first->at(4)=5;
+     prepare_seb_bounds(two,work,1);check(rect(two,0,{-5,0,5,7})); // Signed max prefers the other endpoint0 over wrapped INT32_MIN+4.
+    }
+    {SebStaticWork work;auto s=prepare_seb_sprites(file({record(0,0)}));fails([&]{seb_bounding_rect(s,0);});
+     prepare_seb_bounds(s,work,0);check(s.bounds&&s.bounds->empty()&&!s.extended_bounds);fails([&]{seb_bounding_rect(s,0);});
+     auto failure=prepare_seb_sprites(file({record(0,0)}));failure.groups.reset();
+     fails([&]{prepare_seb_bounds(failure,work,2);});check(failure.bounds&&failure.bounds->size()==8);}
 }

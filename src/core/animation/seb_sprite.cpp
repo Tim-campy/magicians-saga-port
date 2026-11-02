@@ -1,10 +1,12 @@
 #include "seb_sprite.hpp"
+#include <algorithm>
 #include <limits>
 
 namespace saga::core {
 SebSpriteState clone_seb_sprites(const SebSpriteState& source){
     SebSpriteState result;
     result.groups=source.groups;result.frames=source.frames;result.packed=source.packed;result.extended=source.extended;
+    result.bounds=source.bounds;result.extended_bounds=source.extended_bounds;
     return result;
 }
 namespace {
@@ -197,5 +199,53 @@ void set_seb_cache_size(SebSpriteState& s,std::int32_t size){
 void reverse_seb(SebSpriteState& s,std::int32_t horizontal,std::int32_t vertical){
     if(s.cache)for(auto& column:*s.cache)for(auto& sprite:required(column.get()))at(sprite,0)=-1;
     s.reverse=static_cast<std::uint8_t>(((static_cast<std::uint32_t>(horizontal)&1U)<<1U)|(static_cast<std::uint32_t>(vertical)&1U));
+}
+void prepare_seb_bounds(SebSpriteState& s,SebStaticWork& work,std::int32_t max_frame){
+    const auto bytes=word(static_cast<std::uint32_t>(max_frame)<<2U);
+    if(bytes<0)throw std::length_error("negative SEB bounding array size");
+    s.bounds=std::make_shared<std::vector<std::uint8_t>>(static_cast<std::size_t>(bytes),0);
+    std::vector<std::int16_t> extended;
+    for(std::int32_t frame=0;frame<max_frame;frame=add(frame,1)){
+        auto rows=seb_sprites_local(s,work,frame);
+        bool found=false;std::int32_t left=0,top=0,right=0,bottom=0;
+        for(const auto& sprite:required(rows.get())){
+            if(!sprite)continue;
+            const auto texture=at(sprite,1);if(texture==-9||texture==-8||texture==-1)continue;
+            const auto x=at(sprite,6),y=at(sprite,7);
+            const auto endpoint_x=add(x,at(sprite,4)),endpoint_y=add(y,at(sprite,5));
+            if(!found){left=x;top=y;right=endpoint_x;bottom=endpoint_y;found=true;}
+            else{left=std::min(left,x);top=std::min(top,y);right=std::max(right,endpoint_x);bottom=std::max(bottom,endpoint_y);}
+        }
+        const std::array<std::int32_t,4> rect{left,top,sub(right,left),sub(bottom,top)};
+        const auto offset=word(static_cast<std::uint32_t>(frame)<<2U);
+        bool large=left==-128;
+        for(std::int32_t i=0;i<4;++i){
+            const auto value=rect[static_cast<std::size_t>(i)];
+            at(s.bounds,add(offset,i))=static_cast<std::uint8_t>(value);
+            large=large||value< -128||value>127;
+        }
+        if(large){
+            at(s.bounds,offset)=128;
+            at(s.bounds,add(offset,1))=static_cast<std::uint8_t>(extended.size()/4);
+            for(const auto value:rect)extended.push_back(short_value(value));
+        }
+    }
+    s.extended_bounds=extended.empty()?nullptr:std::make_shared<std::vector<std::int16_t>>(std::move(extended));
+}
+std::array<std::int32_t,4> seb_bounding_rect(const SebSpriteState& s,std::int32_t raw){
+    const auto offset=word(static_cast<std::uint32_t>(raw%10000)<<2U);
+    std::array<std::int32_t,4> rect;
+    if(signed_byte(at(s.bounds,offset))==-128){
+        const auto extended_offset=static_cast<std::int32_t>(at(s.bounds,add(offset,1)))*4;
+        for(std::int32_t i=0;i<4;++i)rect[static_cast<std::size_t>(i)]=at(s.extended_bounds,add(extended_offset,i));
+    }else for(std::int32_t i=0;i<4;++i)rect[static_cast<std::size_t>(i)]=signed_byte(at(s.bounds,add(offset,i)));
+    const auto reflect_bound=[](std::int32_t size,std::int32_t position){
+        const auto rounded=size>0?sub(1,size):sub(0,size);
+        return short_value(sub(word(static_cast<std::uint32_t>(rounded)&0xfffeU),position));
+    };
+    if((raw>9999)!=((s.reverse&2U)!=0))rect[0]=reflect_bound(rect[2],rect[0]);
+    if((s.reverse&1U)!=0)rect[1]=reflect_bound(rect[3],rect[1]);
+    for(auto& value:rect)value=short_value(value);
+    return rect;
 }
 } // namespace saga::core
