@@ -194,3 +194,5 @@ game:0x0600002d	documented	docs/subsystems/assets.md	DrawScaledSeb forwards x/y/
 game:0x0600002e	documented	docs/subsystems/assets.md	DrawScaledSeb uses absolute frame remainder, layer filter, negative-texture skip and wrapped dimension/offset scaling
 kairo:0x060017b6	reimplemented	src/core/animation/seb_sprite.cpp	SetOffset writes X then Y in retained float array; partial short-array prefix tested
 kairo:0x060017b7	reimplemented	src/core/animation/seb_sprite.cpp	ClearOffset zeroes X then Y; null/short-array ordering tested
+game:0x060001de	reimplemented	src/core/gameplay/human_drawing.cpp	Five texture IDs with captured weapon catalog and live character/main equipment queries; tests; native town resident composition bound.
+game:0x060001df	reimplemented	src/core/gameplay/human_drawing.cpp	Scale matrix, instance SEB frames, fixed resource lanes, masks/sentinels, binary32 wrapped offsets, reversal and success-only cleanup; tests; town pixels bound.

@@ -34,6 +34,8 @@ int main(int argc,char** argv){
     auto characters=load_character_progression_table(character,false,parse_event_decimal);
     check(characters.size()==3&&!characters[1]&&characters[2]->required_experience_rate==150&&characters[2]->image==8);
     check(characters[2]->base_name&&*characters[2]->base_name=="Name");
+    check(characters[2]->resource=="res"&&characters[2]->secondary_resource=="res2");
+    check(characters[2]->voice_id==6&&characters[2]->town_id==7&&characters[2]->area_id==8&&characters[2]->appear_rate==9&&!characters[2]->resident_terms&&characters[2]->flags==10);
     const auto fails=[](auto action){bool caught=false;try{action();}catch(const std::exception&){caught=true;}check(caught);};
     {auto record=*characters[2];CharacterNewGameState state;state.discovery_state=7;state.is_new=true;
      state.level=99;state.experience=8;state.living_address=6;state.recruited=5;state.sorties=12;state.equipped_cane=4;

@@ -1,4 +1,4 @@
-// Initial S2 host: native fresh Town data and building-cache contracts.
+// Native fresh Town/Area data and selected SelectForm drawing contracts.
 #include "gameplay_catalog.hpp"
 #include "town_background.hpp"
 #ifdef SAGA_TOWN_WINDOW
@@ -37,23 +37,25 @@ int main(int argc,char** argv)try{
             "Add --scenery for native birds, ground, clouds, floor and gate; --app-seed 42 --lib-seed 42 are separate provisional entry streams.\n"
             "Add --buildings for initial construction sprites and queued notices (implies --scenery).\n"
             "Add --areas for native area maps and the next locked fence (implies --buildings); --camera-x 449 exposes the initial map.\n"
+            "Add --residents for native resident Init and lane0 drawing (implies --areas).\n"
+            "Resident context: --store-kairo-limit 0 --condition-characters 1 --debug 0; DEBUG1 requires --debug-rescue-count.\n"
             "Area clock context: --automatic-images 0 (provisional Seb.AutoAnimation gate; true branch unbound).\n"
             "Building context: --high-score 0 (provisional int64 system save), --top-form 1 (standalone form stack).\n"
             "Provisional desktop context: --width 600 --height 640 --view-x 0 --view-y 53; scales100.\n"
             "Camera requests: --camera-x 0 --camera-y -9999, clamped by native fresh Area/Town bounds.\n"
             "S2 data projection: fresh Town.Init, ResetBuildingList and GetBuildingList.\n"
             "Reads the existing resource index and APK-derived new-game defaults.\n"
-            "Full SelectForm drawing, residents, quest selection and mission return remain unbound.\n";return 0;
+            "Full SelectForm lifecycle, hero, quest selection and mission return remain unbound.\n";return 0;
     }
     std::optional<std::filesystem::path> root,capture;std::string language="English.lproj";std::int32_t dpi=1;
     bool background=false;TownBackgroundContext context;
     std::set<std::string> options;
     for(int i=1;i<argc;++i){
         const std::string key=argv[i];
-        if(key=="--background"||key=="--scenery"||key=="--buildings"||key=="--areas"){
+        if(key=="--background"||key=="--scenery"||key=="--buildings"||key=="--areas"||key=="--residents"){
             if(!options.insert(key).second)throw std::invalid_argument("duplicate town drawing option");
-            background=true;if(key!="--background")context.scenery=true;if(key=="--buildings"||key=="--areas")context.buildings=true;if(key=="--areas")context.areas=true;continue;}
-        const std::set<std::string> allowed{"--data","--language","--dpi","--capture","--width","--height","--view-x","--view-y","--camera-x","--camera-y","--app-seed","--lib-seed","--high-score","--top-form","--automatic-images"};
+            background=true;if(key!="--background")context.scenery=true;if(key=="--buildings"||key=="--areas"||key=="--residents")context.buildings=true;if(key=="--areas"||key=="--residents")context.areas=true;if(key=="--residents")context.residents=true;continue;}
+        const std::set<std::string> allowed{"--data","--language","--dpi","--capture","--width","--height","--view-x","--view-y","--camera-x","--camera-y","--app-seed","--lib-seed","--high-score","--top-form","--automatic-images","--store-kairo-limit","--condition-characters","--debug","--debug-rescue-count"};
         if(!allowed.count(key)||i+1>=argc||!options.insert(key).second)throw std::invalid_argument("unsupported, incomplete or duplicate town option");
         const std::string value=argv[++i];
         if(key=="--data")root=std::filesystem::u8path(value);
@@ -69,10 +71,14 @@ int main(int argc,char** argv)try{
             else if(key=="--view-x")context.view_x=parsed;else if(key=="--view-y")context.view_y=parsed;
             else if(key=="--camera-x")context.camera_request_x=parsed;else if(key=="--camera-y")context.camera_request_y=parsed;
             else if(key=="--app-seed")context.app_seed=parsed;else if(key=="--lib-seed")context.lib_seed=parsed;
+            else if(key=="--store-kairo-limit")context.store_limit=parsed;
+            else if(key=="--debug-rescue-count")context.debug_rescue_count=parsed;
+            else if(key=="--condition-characters"){if(parsed<0)throw std::invalid_argument("negative condition context count");context.condition_character_count=parsed;}
             else{if(parsed!=0&&parsed!=1)throw std::invalid_argument("town boolean option requires 0 or 1");
-                if(key=="--top-form")context.top_form=parsed!=0;else context.automatic_images=parsed!=0;}}
+                if(key=="--top-form")context.top_form=parsed!=0;else if(key=="--debug")context.debug=parsed!=0;else context.automatic_images=parsed!=0;}}
     }
     if(!root)throw std::invalid_argument("town data root required; see --help");
+    if(!context.residents)for(const auto* key:{"--store-kairo-limit","--condition-characters","--debug","--debug-rescue-count"})if(options.count(key))throw std::invalid_argument("town resident context requires --residents");
     if(!context.areas&&options.count("--automatic-images"))throw std::invalid_argument("town render-clock context requires --areas");
     if(!context.buildings&&(options.count("--high-score")||options.count("--top-form")))throw std::invalid_argument("town building context requires --buildings");
     if(!context.scenery&&(options.count("--app-seed")||options.count("--lib-seed")))throw std::invalid_argument("town RNG inputs require --scenery");
@@ -114,7 +120,7 @@ int main(int argc,char** argv)try{
                 throw std::invalid_argument("unexpected town background resource index entry");
         }
         if(!matching_tables||!selected)throw std::invalid_argument("town background requires matching tables and select resource");
-        backdrop=std::make_unique<TownBackground>(archive,*selected,ResourceProfile{language,dpi},town.capacity,context,buildings,town.state.build_enable,bg_entry,common_entry);
+        backdrop=std::make_unique<TownBackground>(archive,*selected,ResourceProfile{language,dpi},town.capacity,context,buildings,town.state.build_enable,bg_entry,common_entry,&index);
         if(capture){
 #ifdef SAGA_TOWN_WINDOW
             capture_town_background(*backdrop,*capture);
@@ -132,6 +138,6 @@ int main(int argc,char** argv)try{
     std::cout<<"],\"source_buildings\":";write_rows(std::cout,town.state.building_list);
     std::cout<<",\"buildings\":";write_rows(std::cout,buildings);
     if(backdrop)backdrop->report(std::cout);
-    std::cout<<",\"scope\":\""<<(context.areas?"Native drawing through town areas and locked fence; notices queued, text/input, inherited clip, residents, foreground, quest selection and mission return unbound":context.buildings?"Native drawing through initial buildings; notices queued, text/input services, residents, foreground, quest selection and mission return unbound":context.scenery?"Native cloud/decor initialization and drawing through floor/gate prefix; buildings, residents, quest selection and mission return unbound":backdrop?"Town data and native background prefix; decorations, buildings, residents, quest selection and mission return unbound":"Town data/cache projection; SelectForm drawing, residents, quest selection and mission return unbound")<<"\"}\n";
+    std::cout<<",\"scope\":\""<<(context.residents?"Native resident Init and lane0 composition; notices queued, glyph/input/clip services stubbed; hero, later lanes/foreground, quest selection and mission return unbound":context.areas?"Native drawing through town areas and locked fence; notices queued, text/input, inherited clip, residents, foreground, quest selection and mission return unbound":context.buildings?"Native drawing through initial buildings; notices queued, text/input services, residents, foreground, quest selection and mission return unbound":context.scenery?"Native cloud/decor initialization and drawing through floor/gate prefix; buildings, residents, quest selection and mission return unbound":backdrop?"Town data and native background prefix; decorations, buildings, residents, quest selection and mission return unbound":"Town data/cache projection; SelectForm drawing, residents, quest selection and mission return unbound")<<"\"}\n";
     return 0;
 }catch(const std::exception& error){std::cerr<<"saga_town: "<<error.what()<<'\n';return 1;}

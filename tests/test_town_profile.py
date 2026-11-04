@@ -128,6 +128,26 @@ class TownProfileTests(unittest.TestCase):
             self.assertIn('buildings, residents',report['scope'])
             self.assertNotEqual(self.run_host(root,'--background','--app-seed','42').returncode,0)
 
+    def test_native_resident_init_conditions_and_repeat(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);add_town_background(root,residents=True)
+            args=('--residents','--width','600','--height','320')
+            result=self.run_host(root,*args);self.assertEqual(result.returncode,0,result.stderr)
+            report=json.loads(result.stdout);rows=report['background']['residents']
+            self.assertEqual([r[0] for r in rows['rows']],[0])
+            self.assertEqual(rows['active_range'],[-639,900]);self.assertEqual(rows['rows'][0][1:3],[130,0])
+            self.assertEqual(rows['draws'],[[0,38,rows['rows'][0][9],130,201]])
+            self.assertEqual(self.run_host(root,*args).stdout,result.stdout)
+            empty=self.run_host(root,*args,'--condition-characters','0');self.assertNotEqual(empty.returncode,0)
+            self.assertIn('empty AppData characters storage',empty.stderr)
+            debug=self.run_host(root,*args,'--debug','1');self.assertNotEqual(debug.returncode,0)
+            self.assertIn('explicit --debug-rescue-count',debug.stderr)
+            bonus=self.run_host(root,*args,'--debug','1','--debug-rescue-count','1');self.assertEqual(bonus.returncode,0,bonus.stderr)
+            self.assertEqual([r[0] for r in json.loads(bonus.stdout)['background']['residents']['rows']],[0,2])
+            for resource in ('chara.bin','weapon.bin'):
+                path=root/'textassets'/resource;original=path.read_bytes();path.unlink()
+                self.assertNotEqual(self.run_host(root,*args).returncode,0);path.write_bytes(original)
+
     def test_area_maps_locked_fence_and_v2_preference(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);add_town_background(root,areas=True)

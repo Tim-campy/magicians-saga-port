@@ -144,6 +144,34 @@ std::array<std::int32_t,2> select_area_position(std::int32_t index,std::int32_t 
 // _Draw 0x11f1d9c..0x11f2324. Leaves font10 active and notices queued.
 // Inherited PopClip, resident drawing and the later stack flush belong to the caller.
 void draw_select_town_areas(const SelectAreaDrawingState&,SelectBackgroundOrigin,SelectAreaDrawingHost&);
+struct SelectResidentDrawingState {
+    const std::int32_t& camera_x;
+    const std::int32_t& camera_y;
+    const std::int32_t& view_x;
+    const std::int32_t& view_y;
+    const std::int32_t& frame;
+    EventScript& notices;
+};
+class SelectResidentDrawingHost:public SelectViewportHost {
+public:
+    virtual bool resident_top_form()=0;
+    virtual EventScript resident_rows()=0;
+    virtual std::int32_t resident_view_height()=0;
+    virtual void resident_draw_human(std::int32_t character,std::int32_t clip,std::int32_t frame,std::int32_t x,std::int32_t y)=0;
+    virtual std::int32_t resident_character_flags(std::int32_t character)=0;
+    virtual std::int32_t resident_arrow_clip()=0;
+    virtual std::int32_t resident_arrow_frames(std::int32_t clip)=0;
+    virtual void resident_push_font(std::int32_t)=0;
+    virtual void resident_pop_font()=0;
+    virtual void resident_touch(std::int32_t kind,std::int32_t x,std::int32_t y)=0;
+    virtual void resident_label_color()=0; // AppData static+0x34.
+    virtual void resident_special_label(std::int32_t x,std::int32_t y)=0;
+    virtual void resident_level_label(std::int32_t character,std::int32_t x,std::int32_t y)=0;
+    virtual void resident_attribute_label(std::int32_t character,std::int32_t x,std::int32_t y)=0;
+};
+// DrawTownHuman 0x11f38a8: materialize lane-filtered row aliases before drawing.
+// Labels and input registration remain narrow presentation services.
+void draw_select_resident_lane(const SelectResidentDrawingState&,std::int32_t lane,SelectResidentDrawingHost&);
 struct SelectFormPassState {
     std::int32_t state;
     bool captured;

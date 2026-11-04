@@ -7,6 +7,8 @@
 #include "core/gameplay/game_random.hpp"
 #include "core/gameplay/select_building.hpp"
 #include "core/gameplay/progression_tables.hpp"
+#include "core/gameplay/human_drawing.hpp"
+#include "core/gameplay/town_residents.hpp"
 #include <ostream>
 #include <stdexcept>
 
@@ -25,10 +27,13 @@ struct TownBackgroundContext {
     bool areas=false;
     bool automatic_images=false; // Provisional Seb.AutoAnimation gate; only its false branch is bound.
     std::int64_t high_score=0; // Provisional system-save slot8, independent of normal NewGame.
+    bool residents=false,debug=false;
+    std::int32_t store_limit=0,condition_character_count=1; // Provisional persisted/gateway inputs.
+    std::optional<std::int32_t> debug_rescue_count;
 };
-class TownBackground final:private core::SelectBackgroundHost,private core::SelectActiveAreaHost,private core::SelectCameraHost,private core::SelectSceneryHost,private core::SelectFloorHost,private core::SelectTownDrawingHost,private core::KingRewardAvailabilityHost,private core::SelectAreaDrawingHost {
+class TownBackground final:private core::SelectBackgroundHost,private core::SelectActiveAreaHost,private core::SelectCameraHost,private core::SelectSceneryHost,private core::SelectFloorHost,private core::SelectTownDrawingHost,private core::KingRewardAvailabilityHost,private core::SelectAreaDrawingHost,private core::TownResidentInitializationHost,private core::TownResidentGeometryHost,private core::ScaledHumanDrawingHost,private core::SelectResidentDrawingHost {
 public:
-    TownBackground(ResourceArchive& tables,const GameArchiveEntry& selected,ResourceProfile,std::int32_t capacity,TownBackgroundContext,core::EventScript buildings=nullptr,std::shared_ptr<std::vector<std::uint8_t>> enabled=nullptr,const GameArchiveEntry* background=nullptr,const GameArchiveEntry* common=nullptr);
+    TownBackground(ResourceArchive& tables,const GameArchiveEntry& selected,ResourceProfile,std::int32_t capacity,TownBackgroundContext,core::EventScript buildings=nullptr,std::shared_ptr<std::vector<std::uint8_t>> enabled=nullptr,const GameArchiveEntry* background=nullptr,const GameArchiveEntry* common=nullptr,const GameResourceIndex* actor_resources=nullptr);
     void draw(BitmapBackend&);
     void report(std::ostream&)const;
     BitmapApplication& application(){return application_;}
@@ -72,7 +77,7 @@ private:
     core::EventScript building_cache_,notices_=std::make_shared<std::vector<core::EventInstruction>>();
     std::shared_ptr<std::vector<std::uint8_t>> building_enabled_;
     std::vector<std::shared_ptr<core::TownBuildingView>> building_views_;
-    core::CharacterProgressionTable characters_;
+    std::shared_ptr<core::CharacterProgressionTable> characters_=std::make_shared<core::CharacterProgressionTable>();
     std::vector<std::shared_ptr<core::CharacterNewGameState>> character_states_;
     std::shared_ptr<core::KingRewardRows> king_rewards_=std::make_shared<core::KingRewardRows>();
     std::shared_ptr<core::ImageAnimationGroup> image_clocks_;
@@ -96,6 +101,22 @@ private:
     std::vector<Label> area_labels_;
     std::vector<std::array<std::int32_t,5>> area_touches_;
     std::int32_t area_color_requests_=0;
+    std::shared_ptr<core::EquipmentCombatTable> resident_weapons_=std::make_shared<core::EquipmentCombatTable>();
+    std::shared_ptr<core::TownResidentCharacters> resident_characters_=std::make_shared<core::TownResidentCharacters>();
+    core::TownResidentInitializationState residents_;
+    core::EventInstruction resident_active_range_;
+    core::DecodedEventConditionState resident_conditions_;
+    std::unique_ptr<core::DecodedEventConditionHost> resident_condition_host_;
+    std::int32_t resident_challenges_=0;
+    std::map<std::int32_t,GameArchiveEntry> actor_entries_;
+    std::map<std::int32_t,std::unique_ptr<DrawingArchive>> actor_archives_;
+    core::SebStaticWork human_work_;
+    struct ResidentDraw {std::int32_t character,clip,frame,x,y;};
+    std::vector<ResidentDraw> resident_draws_;
+    std::vector<std::array<std::int32_t,3>> resident_touches_;
+    std::vector<std::array<std::int32_t,5>> resident_labels_;
+    void initialize_resident_data(ResourceArchive&,const GameResourceIndex*);
+    core::RenderDrawResource* actor_resource(std::int32_t);
     std::vector<std::array<std::int32_t,4>> touches_;
     std::int32_t king_queries_=0;
     std::size_t quads_=0;
@@ -166,5 +187,38 @@ private:
     void area_label_color()override{++area_color_requests_;} // Color output belongs to town-building-text stub.
     void area_label(core::FormText text,std::int32_t x,std::int32_t y)override{area_labels_.push_back({std::move(text),x,y});}
     void area_touch(std::int32_t index,bool selected,bool locked,std::int32_t x,std::int32_t y)override{area_touches_.push_back({index,selected?1:0,locked?1:0,x,y});}
+    std::int32_t challenge_count()override{return resident_challenges_;}
+    std::int32_t store_limit()override{return context_.store_limit;}
+    std::shared_ptr<core::TownResidentCharacters> characters()override{return resident_characters_;}
+    std::shared_ptr<core::TownResidentCharacters> living_submembers()override;
+    core::EventInstruction active_range()override;
+    std::array<std::int32_t,2> building_position(std::int32_t index)override{return core::town_building_position(index,view_height());}
+    std::array<std::int32_t,2> area_position(std::int32_t index)override{return core::select_area_position(index,view_height());}
+    bool conditions(const core::EventScript& terms)override{return core::check_event_conditions(terms,*resident_condition_host_);}
+    std::int32_t resident_view_height()override{return view_height();}
+    std::int32_t resident_town_capacity()override{return town_count();}
+    std::int32_t resident_town_record_count()override{return static_cast<std::int32_t>(building_enabled_->size());}
+    std::shared_ptr<core::CameraAreas> resident_geometry_areas()override{return camera_areas_;}
+    std::shared_ptr<core::CharacterProgressionTable> human_characters()override{return characters_;}
+    std::shared_ptr<core::EquipmentCombatTable> human_weapons()override{return resident_weapons_;}
+    std::int32_t hero_cloth_image()override{throw std::logic_error("town hero equipment owner is unbound");}
+    std::int32_t hero_hat_image()override{throw std::logic_error("town hero equipment owner is unbound");}
+    std::int32_t hero_weapon_image()override{throw std::logic_error("town hero equipment owner is unbound");}
+    core::RenderMatrix& human_scale_matrix()override{return backend_->matrix();}
+    core::RenderDrawResource* human_character_resource()override{return actor_resource(1);}
+    core::RenderDrawResource* human_resource(std::int32_t resource)override{return actor_resource(resource);}
+    bool resident_top_form()override{return context_.top_form;}
+    core::EventScript resident_rows()override{return residents_.residents;}
+    void resident_draw_human(std::int32_t,std::int32_t,std::int32_t,std::int32_t,std::int32_t)override;
+    std::int32_t resident_character_flags(std::int32_t id)override{return characters_->at(static_cast<std::size_t>(id)).value().flags;}
+    std::int32_t resident_arrow_clip()override{return 17;}
+    std::int32_t resident_arrow_frames(std::int32_t clip)override{return town_clip_frames(clip);}
+    void resident_push_font(std::int32_t font)override{town_push_font(font);}
+    void resident_pop_font()override{town_pop_font();}
+    void resident_touch(std::int32_t kind,std::int32_t x,std::int32_t y)override{resident_touches_.push_back({kind,x,y});}
+    void resident_label_color()override{} // SAGA_STUB(town-building-text): native color+0x34, no glyph output.
+    void resident_special_label(std::int32_t x,std::int32_t y)override{resident_labels_.push_back({0,x,y,4,8});}
+    void resident_level_label(std::int32_t,std::int32_t,std::int32_t)override;
+    void resident_attribute_label(std::int32_t,std::int32_t,std::int32_t)override;
 };
 } // namespace saga::desktop

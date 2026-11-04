@@ -3,7 +3,8 @@ import struct
 from test_sprite_preview import jar,png,seb
 
 
-def add_town_background(root,scenery=False,buildings=False,areas=False):
+def add_town_background(root,scenery=False,buildings=False,areas=False,residents=False):
+    areas=areas or residents
     buildings=buildings or areas
     scenery=scenery or buildings
     if not (root/'textassets').exists():
@@ -20,6 +21,14 @@ def add_town_background(root,scenery=False,buildings=False,areas=False):
             ('English.lproj/Building.txt',b'4\tKing "Hall"\\Name\tselect\t14\t50\t7\t0\t0\tGift\t2\n12\tTree\tselect\t47\t-1\t8\t0\t0\tDecoration\t2'),
             ('English.lproj/KingReward.txt',b'0\tFirst\t10\t0\t0\t0\t0'),
             ('English.lproj/Chara.txt',b'0\tResident\t7\tres\t8\tres2\t1\t2\t3\t4\t5\t150\t1\t2\t11\t12\t6\t7\t8\t-1\t9\t5')])
+    if residents:
+        def character(index,town,terms,flags=32):
+            tokens=[index,'Person',0,'chara',10,'',0,0,0,1,0,100,0,0,town,-1,*terms,100,flags]
+            return '\t'.join(map(str,tokens))
+        tables[-1]=('English.lproj/Chara.txt','\n'.join([character(0,0,[0],96),character(1,-1,[1,2,4,1]),character(2,-1,[1,3,7,1,1])]).encode())
+        gear=['0','Wand','0','0','0','0','weapon','3']+['0']*13+['0','Description','0']
+        quest=[0,'Quest',0,'quest',0,'','',1,1,1,100,1,1,1,100,0,0,-1,0,0,0,-1,-1,1,0]
+        tables.extend([('English.lproj/Equipment.txt','\t'.join(gear).encode()),('English.lproj/Quest.txt','\t'.join(map(str,quest)).encode())])
     (root/'textassets/tables.bin').write_bytes(jar(tables))
     atlas=png(4,2,[c for _ in range(2) for p in [(255,0,0,255)]*2+[(0,255,0,255)]*2 for c in p])
     members=[
@@ -67,3 +76,13 @@ def add_town_background(root,scenery=False,buildings=False,areas=False):
     (root/'town-resources.tsv').write_text('town_resources 1\ntables -1 "textassets/tables.bin" "xls"\nresource 11 "textassets/select.bin" "select"\n')
     if areas:
         (root/'town-resources-v2.tsv').write_text('town_resources 2\ntables -1 "textassets/tables.bin" "xls"\nresource 0 "textassets/bg.bin" "bg"\nresource 2 "textassets/com.bin" "com"\nresource 11 "textassets/select.bin" "select"\n')
+    if residents:
+        animation=struct.pack('>hh',5,4)
+        for layer,offset in enumerate((0,2,5,0,8)):
+            size=1 if layer==0 else 2
+            animation+=struct.pack('>hh',4,0)+b''.join(struct.pack('>10h',frame,77,0,0,size,size,offset,0,0,0) for frame in range(4))
+        (root/'textassets/chara.bin').write_bytes(jar([('img.inf',b'10\tbody.png,bin\n200\tshadow.png,bin\n'),('seb.inf',b'38\thuman.seb\n'),
+            ('human.seb',animation),('body.png',png(2,2,[200,70,20,255]*4)),('shadow.png',png(1,1,[20,20,20,255]))]))
+        (root/'textassets/weapon.bin').write_bytes(jar([('img.inf',b'3\tweapon.png,bin\n'),('seb.inf',b''),('weapon.png',png(2,2,[20,70,200,255]*4))]))
+        with (root/'mission-resources.tsv').open('a') as out:
+            out.write('resource 1 "textassets/chara.bin" "chara"\nresource 22 "textassets/weapon.bin" "weapon"\n')

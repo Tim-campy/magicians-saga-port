@@ -456,8 +456,8 @@ game:0x060001da,game:0x060001da,boot,,196,0x110dd74
 game:0x060001db,game:0x060001db,boot,,36,0x110de38
 game:0x060001dc,game:0x060001dc,boot,,188,0x110e1dc
 game:0x060001dd,game:0x060001dd,boot,,168,0x110e654
-game:0x060001de,game:0x060001de,boot,,896,0x110de5c
-game:0x060001df,game:0x060001df,boot,,956,0x110e298
+game:0x060001de,main.AppData.DrawScaledHuman,boot,reimplemented,896,0x110de5c
+game:0x060001df,main.AppData.DrawScaledHuman,boot,reimplemented,956,0x110e298
 game:0x060001e0,game:0x060001e0,boot,,32,0x110e6fc
 game:0x060001e1,game:0x060001e1,boot,,488,0x110e71c
 game:0x060001e2,game:0x060001e2,boot,,68,0x110e904
@@ -2028,7 +2028,7 @@ game:0x06000816,game:0x06000816,ui,,1164,0x11f4518
 game:0x06000817,form.SelectForm.SetCameraPosition,ui,reimplemented,320,0x11f32b4
 game:0x06000818,game:0x06000818,ui,,12,0x11eb40c
 game:0x06000819,form.SelectForm.SetActiveX,ui,reimplemented,472,0x11eb234
-game:0x0600081a,game:0x0600081a,ui,,480,0x11eb714
+game:0x0600081a,form.SelectForm.GetActiveX,ui,reimplemented,480,0x11eb714
 game:0x0600081b,game:0x0600081b,ui,,24,0x11f49a4
 game:0x0600081c,game:0x0600081c,ui,,280,0x11f49bc
 game:0x0600081d,form.SelectForm.GetGameWidth,ui,documented,52,0x11f3194
@@ -2036,15 +2036,15 @@ game:0x0600081e,form.SelectForm.GetGameHeight,ui,documented,52,0x11f31c8
 game:0x0600081f,form.SelectForm.CheckCollisionTownHuman,ui,reimplemented,252,0x11eecdc
 game:0x06000820,game:0x06000820,ui,,1060,0x11f4ad4
 game:0x06000821,game:0x06000821,ui,,640,0x11ee638
-game:0x06000822,form.SelectForm.DrawTownHuman,ui,traced,2016,0x11f38a8
+game:0x06000822,form.SelectForm.DrawTownHuman,ui,reimplemented,2016,0x11f38a8
 game:0x06000823,form.SelectForm.MoveCursor,ui,reimplemented,288,0x11ef0dc
-game:0x06000824,game:0x06000824,ui,,244,0x11f4088
+game:0x06000824,form.SelectForm.GetPosObstacle,ui,reimplemented,244,0x11f4088
 game:0x06000825,form.SelectForm.InitDecoObject,ui,reimplemented,488,0x11eb52c
 game:0x06000826,game:0x06000826,ui,,2104,0x11ede00
 game:0x06000827,form.SelectForm.GenerateObjBird,ui,reimplemented,596,0x11f4ef8
 game:0x06000828,form.SelectForm.GenerateLeaf,ui,reimplemented,504,0x11f514c
 game:0x06000829,form.SelectForm.DrawDecoObject,ui,reimplemented,800,0x11f33f4
-game:0x0600082a,game:0x0600082a,ui,,156,0x11eb8f4
+game:0x0600082a,form.SelectForm.GetBuildingPos,ui,reimplemented,156,0x11eb8f4
 game:0x0600082b,form.SelectForm.GetAreaPos,ui,reimplemented,156,0x11eb990
 game:0x0600082c,form.SelectForm.CheckGuidArrow,ui,reimplemented,892,0x11ee8b8
 game:0x0600082d,form.SelectForm.SetReturnFlag,ui,documented,92,0x11f5344
@@ -3986,7 +3986,7 @@ game:0x06001063,data.BulletData.Load,data,reimplemented,264,0x116d414
 game:0x06001064,game:0x06001064,data,,4,0x116d51c
 game:0x06001065,game:0x06001065,data,,4,0x116d520
 game:0x06001066,game:0x06001066,data,,108,0x116d524
-game:0x06001067,game:0x06001067,data,,12,0x116d590
+game:0x06001067,data.CharaData.get_isMain,data,documented,12,0x116d590
 game:0x06001068,data.CharaData.get_isSub,data,reimplemented,12,0x116abdc
 game:0x06001069,game:0x06001069,data,,16,0x116abe8
 game:0x0600106a,game:0x0600106a,data,,16,0x116d59c

@@ -4,3 +4,4 @@ game:0x0600121d	reimplemented	src/core/gameplay/pass_initialization.cpp	TownData
 game:0x06001050	reimplemented	src/core/gameplay/select_building.cpp	Ordered ten-token Building loader; partial mutation, nullable input, IDs/gaps/duplicates tested; static catalog bound to saga_town.
 game:0x0600103d	reimplemented	src/core/gameplay/select_building.hpp	Decoration predicate accepts only types8/12; tested and used by the town drawing contract.
 game:0x0600118a	reimplemented	src/core/gameplay/select_building.cpp	KingReward scalar/script loader preserves received and partial writes; fresh table bound to saga_town read-only availability.
+game:0x06001067	documented	docs/subsystems/town.md	get_isMain returns flags bit1 from BaseData+0x1c; 12-byte body; portable human composition tests both override branches.

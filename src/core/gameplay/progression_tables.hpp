@@ -17,6 +17,9 @@ struct CharacterProgressionRecord {
     EventScript parameters;
     std::int32_t image=0;
     std::shared_ptr<const std::string> base_name; // UTF8 transport token; reset only copies its identity.
+    std::string resource,secondary_resource;
+    std::int32_t voice_id=0,town_id=0,area_id=0,appear_rate=0;
+    EventScript resident_terms;
 };
 struct CharacterNewGameState {
     std::shared_ptr<const std::string> name;

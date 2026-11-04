@@ -286,6 +286,44 @@ void draw_select_town_areas(const SelectAreaDrawingState& state,SelectBackground
         const auto arrow_clip=host.area_clip(0x1a8);animated(11,arrow_clip,label_x,background_add(y,-28),1);
     }
 }
+void draw_select_resident_lane(const SelectResidentDrawingState& state,std::int32_t lane,SelectResidentDrawingHost& host){
+    const auto origin_x=background_add(state.camera_x,state.view_x);
+    const auto origin_y=background_add(background_add(state.camera_y,state.view_y),-92);
+    const auto top=host.resident_top_form();const auto source=host.resident_rows();
+    std::vector<EventInstruction> rows;
+    for(const auto& row:scenery_required(source))if(scenery_required(row).at(2)==lane)rows.push_back(row);
+    for(const auto& row:rows){
+        const auto rx=scenery_required(row).at(1);const auto height=host.resident_view_height();const auto ry=row->at(2);
+        const auto x=background_add(origin_x,rx);const auto game_height=host.game_height();
+        if(!check_select_view_area(x,background_add(game_height,-1),60,0,host))continue;
+        const auto character=row->at(0);const auto clip=row->at(5);const auto frame=row->at(9);
+        const auto lane_offset=static_cast<std::uint32_t>(ry)*9U;
+        const auto signed_offset=lane_offset<=0x7fffffffU?static_cast<std::int32_t>(lane_offset):-1-static_cast<std::int32_t>(0xffffffffU-lane_offset);
+        const auto y=background_add(background_add(origin_y,height),signed_offset);
+        host.resident_draw_human(character,clip,frame,x,y);
+        const auto kind=row->at(8);
+        if(kind==1||kind==3){
+            host.resident_push_font(8);const auto arrow=host.resident_arrow_clip();const auto maximum=host.resident_arrow_frames(arrow);
+            queue_select_notice(state.notices,11,x,background_add(y,-24),arrow,town_remainder(state.frame,maximum),0);
+            if(row->at(8)==1){
+                queue_select_notice(state.notices,2,background_add(x,-14),background_add(y,-28),64,0,0);
+                host.resident_touch(1,background_add(x,-16),background_add(y,-32));
+            }
+            if(row->at(8)==3){
+                queue_select_notice(state.notices,2,background_add(x,-22),background_add(y,-28),73,0,0);
+                host.resident_touch(3,background_add(x,-16),background_add(y,-32));
+            }
+            host.resident_label_color();if(top)host.resident_special_label(background_add(x,16),background_add(y,-24));
+            host.resident_pop_font();
+        }else if((host.resident_character_flags(character)&4)!=0){
+            host.resident_push_font(8);host.resident_label_color();
+            if(top)host.resident_level_label(character,background_add(x,-12),background_add(y,-38));
+            host.resident_label_color();
+            if(top)host.resident_attribute_label(character,background_add(x,-12),background_add(y,-28));
+            host.resident_pop_font();
+        }
+    }
+}
 SelectUpdatePrefixResult update_select_form_prefix(SelectPreludeState& prelude,SelectPreludeHost& prelude_host,
     SelectFormPassState& state,SelectFormPassHost& host,SelectCloudHost& clouds,SelectMarkerHost& markers,
     EventDelayQueue& queue,EventExecutionHost& execution,EventConditionHost& conditions,

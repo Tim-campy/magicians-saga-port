@@ -288,6 +288,13 @@ build/desktop/saga_town.exe --data extracted/full --areas --camera-x 300
 build/viewer/saga_town.exe --data extracted/full --areas --camera-x 300 --capture build/town-areas.bmp
 ```
 
+`--residents` implies areas, initializes the actual resident candidates with the retained RNG streams and draws lane0 through native human composition. It reads Chara/Equipment/Quest tables and lazily selects actor resources1/21/22 from the existing mission index. No additional extraction/index format is required. Declared provisional inputs are `--store-kairo-limit 0 --condition-characters 1 --debug 0`; DEBUG1 requires an explicit `--debug-rescue-count`. The condition count supplies only the original nonempty-context gateway, not an instantiated Member world. Hero/later lanes, foreground, Update and queued notice flushing remain separate.
+
+```powershell
+build/desktop/saga_town.exe --data extracted/full --residents
+build/viewer/saga_town.exe --data extracted/full --residents --camera-x 300 --capture build/town-residents.bmp
+```
+
 ### Headless mission host
 
 With quest results enabled, terminal reports expose `quest_exit`: null before return, otherwise the typed native `code`, `outcome`, `handoff: "held"` and `rewards_granted`. Clear code0, main-character death1, timeout2 and retreat3 remain distinct. A granted `quest_result` includes EXP, money, crystals, prisoners, all weapon/character/cloth/hat grant lists and member records with `level_up_frame`; wallet, inventory, quest-record and member-writeback fields retain the actual in-memory effects. The held town callback and save-file persistence remain separate services. Native fresh replay commands and real-data outcomes are in [mission endings](subsystems/integration-endings.md).

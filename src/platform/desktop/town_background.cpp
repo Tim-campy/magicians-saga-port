@@ -1,6 +1,7 @@
 #include "town_background.hpp"
 #include "decoded_image.hpp"
 #include "core/gameplay/render_frame.hpp"
+#include "core/gameplay/quest_rewards.hpp"
 #include <iomanip>
 #include <limits>
 #include <stdexcept>
@@ -18,7 +19,7 @@ void json_text(std::ostream& out,const FormText& text){
 }
 TownBackground::DrawingArchive::DrawingArchive(const GameArchiveEntry& entry,ResourceProfile profile)
     :archive(read_game_archive(entry.path),std::move(profile)),manager(archive),images(manager,decode_png){}
-TownBackground::TownBackground(ResourceArchive& tables,const GameArchiveEntry& selected,ResourceProfile profile,std::int32_t capacity,TownBackgroundContext context,EventScript buildings,std::shared_ptr<std::vector<std::uint8_t>> enabled,const GameArchiveEntry* background,const GameArchiveEntry* common)
+TownBackground::TownBackground(ResourceArchive& tables,const GameArchiveEntry& selected,ResourceProfile profile,std::int32_t capacity,TownBackgroundContext context,EventScript buildings,std::shared_ptr<std::vector<std::uint8_t>> enabled,const GameArchiveEntry* background,const GameArchiveEntry* common,const GameResourceIndex* actor_resources)
     :camera_{false,0,0,camera_x_,camera_y_,0,0},context_(context),
      app_random_(context.app_seed),lib_random_(context.lib_seed),
      camera_areas_(std::make_shared<CameraAreas>()),save_integers_(std::make_shared<EventIntegers>(20)),
@@ -61,10 +62,10 @@ TownBackground::TownBackground(ResourceArchive& tables,const GameArchiveEntry& s
         for(std::size_t i=0;i<rewards.size();++i)if(rewards[i]){
             reset_king_reward_for_new_game(*rewards[i]);king_rewards_->at(i)=std::make_shared<KingRewardDefinition>(std::move(*rewards[i]));
         }
-        characters_=load_character_progression_table(text("Chara.txt"),false,parse_event_decimal);
-        character_states_.resize(characters_.size());
-        for(std::size_t i=0;i<characters_.size();++i)if(characters_[i]){
-            character_states_[i]=std::make_shared<CharacterNewGameState>();reset_character_for_new_game(*character_states_[i],*characters_[i]);
+        *characters_=load_character_progression_table(text("Chara.txt"),false,parse_event_decimal);
+        character_states_.resize(characters_->size());
+        for(std::size_t i=0;i<characters_->size();++i)if(characters_->at(i)){
+            character_states_[i]=std::make_shared<CharacterNewGameState>();reset_character_for_new_game(*character_states_[i],*characters_->at(i));
         }
         image_clocks_=archive_.image_animation_infos();
     }
@@ -77,8 +78,69 @@ TownBackground::TownBackground(ResourceArchive& tables,const GameArchiveEntry& s
         common_=std::make_unique<DrawingArchive>(*common,archive_.selected_profile());
         textures_.bind(area_background_->images);textures_.bind(common_->images);
     }
+    if(context_.residents)initialize_resident_data(tables,actor_resources);
 }
 std::int32_t TownBackground::view_width(){return scaled_view_dimension(context_.width,context_.view_scale);}
+void TownBackground::initialize_resident_data(ResourceArchive& tables,const GameResourceIndex* actors){
+    if(!context_.areas||!actors)throw std::invalid_argument("town residents require area context and actor resources");
+    if(context_.condition_character_count<0)throw std::invalid_argument("negative resident condition-context count");
+    if(context_.debug&&!context_.debug_rescue_count)throw std::invalid_argument("resident DEBUG requires explicit --debug-rescue-count");
+    const auto text=[&](const char* name){const auto data=tables.data(name);
+        if(!data)throw std::invalid_argument(std::string("town residents require ")+name);
+        return std::string(reinterpret_cast<const char*>(data->bytes.data()),data->bytes.size());};
+    *resident_weapons_=load_equipment_combat_table(text("Equipment.txt"),EquipmentTableKind::weapon_or_shield,false,parse_event_decimal);
+    resident_characters_->resize(characters_->size());
+    for(std::size_t i=0;i<characters_->size();++i)if(characters_->at(i))resident_characters_->at(i)=std::make_shared<TownResidentCharacter>(TownResidentCharacter{&*characters_->at(i),character_states_[i].get()});
+    resident_conditions_.context_present=true;resident_conditions_.context_character_count=static_cast<std::size_t>(context_.condition_character_count);
+    resident_conditions_.debug_enabled=context_.debug;resident_conditions_.debug_rescue_count=context_.debug_rescue_count;
+    resident_conditions_.area_states=std::make_shared<ConditionCatalog<std::int32_t>>(progress_.size());
+    for(std::size_t i=0;i<progress_.size();++i)if(progress_[i])resident_conditions_.area_states->at(i)=std::make_shared<std::int32_t>(progress_[i]->discovery_state);
+    auto quests=load_quest_table(text("Quest.txt"),false,parse_event_decimal);
+    resident_conditions_.quests=std::make_shared<ConditionCatalog<QuestConditionState>>(quests.size());
+    std::uint32_t challenges=0;
+    for(std::size_t i=0;i<quests.size();++i)if(quests[i]){
+        reset_quest_for_new_game(*quests[i]);const auto& q=*quests[i];const auto& r=*q.record;
+        resident_conditions_.quests->at(i)=std::make_shared<QuestConditionState>(QuestConditionState{static_cast<std::uint8_t>(q.stage.flags),q.stage.completed!=0,QuestConditionRecord{r.challenges,r.clears,r.rescued}});
+        challenges+=static_cast<std::uint32_t>(r.challenges);
+    }
+    resident_challenges_=challenges<=0x7fffffffU?static_cast<std::int32_t>(challenges):-1-static_cast<std::int32_t>(0xffffffffU-challenges);
+    resident_condition_host_=std::make_unique<DecodedEventConditionHost>(resident_conditions_);
+    for(const auto& entry:actors->entries)if(entry.kind=="resource"&&(entry.id==1||entry.id==21||entry.id==22)){
+        const auto* expected=entry.id==1?"chara":entry.id==21?"hat":"weapon";
+        if(entry.name!=expected)throw std::invalid_argument("resident actor resource identity mismatch");
+        actor_entries_.emplace(entry.id,entry);
+    }
+    initialize_town_residents(residents_,*this);
+}
+std::shared_ptr<TownResidentCharacters> TownBackground::living_submembers(){
+    auto rows=std::make_shared<TownResidentCharacters>(static_cast<std::size_t>(town_count()));
+    for(const auto& row:*resident_characters_)if(row&&(row->definition->flags&4)&&row->progress->living_address!=-1)
+        rows->at(static_cast<std::size_t>(row->progress->living_address))=row;
+    return rows;
+}
+EventInstruction TownBackground::active_range(){
+    const auto range=town_resident_active_range({camera_x_,camera_y_,camera_.left_extent,camera_.right_extent,context_.view_x,context_.view_y},*this);
+    resident_active_range_=std::make_shared<EventIntegers>(EventIntegers{range[0],range[1]});return resident_active_range_;
+}
+RenderDrawResource* TownBackground::actor_resource(std::int32_t id){
+    const auto ready=actor_archives_.find(id);if(ready!=actor_archives_.end())return &ready->second->manager.drawing();
+    const auto entry=actor_entries_.find(id);if(entry==actor_entries_.end())throw std::invalid_argument("missing reached resident actor resource "+std::to_string(id));
+    auto archive=std::make_unique<DrawingArchive>(entry->second,archive_.selected_profile());textures_.bind(archive->images);
+    auto* result=&archive->manager.drawing();actor_archives_.emplace(id,std::move(archive));return result;
+}
+void TownBackground::resident_draw_human(std::int32_t character,std::int32_t clip,std::int32_t frame,std::int32_t x,std::int32_t y){
+    resident_draws_.push_back({character,clip,frame,x,y});draw_scaled_human({x,y,clip,frame,character,100,0},&backend_->graphics(),*this,human_work_);
+}
+void TownBackground::resident_level_label(std::int32_t character,std::int32_t x,std::int32_t y){
+    // SAGA_STUB(town-building-text): native level and attribute text requests; glyph layout/output is unbound.
+    const auto index=static_cast<std::size_t>(character);const auto level=character_states_.at(index)->level;
+    resident_labels_.push_back({1,x,y,level,8});
+}
+void TownBackground::resident_attribute_label(std::int32_t character,std::int32_t x,std::int32_t y){
+    const auto weapon=characters_->at(static_cast<std::size_t>(character)).value().weapon_id;
+    const auto attribute=resident_weapons_->at(static_cast<std::size_t>(weapon)).value().attribute;
+    resident_labels_.push_back({2,x,y,attribute,8});
+}
 std::int32_t TownBackground::view_height(){return scaled_view_dimension(context_.height,context_.view_scale);}
 std::int32_t TownBackground::game_width(){return scaled_select_dimension(view_width(),context_.form_scale);}
 std::int32_t TownBackground::game_height(){return scaled_select_dimension(view_height(),context_.form_scale);}
@@ -107,6 +169,7 @@ void TownBackground::draw(BitmapBackend& backend){
     backend_=&backend;draws_.clear();scenery_draws_.clear();floor_draws_.clear();floor_font_=0;
     fonts_.clear();font_requests_.clear();chip_draws_.clear();labels_.clear();touches_.clear();notices_->clear();king_queries_=0;
     area_draws_.clear();area_labels_.clear();area_touches_.clear();area_color_requests_=0;
+    resident_draws_.clear();resident_touches_.clear();resident_labels_.clear();
     const auto before=backend.quads().size();
     try{
         const auto origin=draw_select_background({camera_x_,camera_y_,camera_.left_extent,camera_.right_extent,context_.view_y,&context_.view_x},*this);
@@ -116,6 +179,10 @@ void TownBackground::draw(BitmapBackend& backend){
             draw_select_floor(scenery_,origin,*this);
             if(context_.buildings)draw_select_town_buildings({town_frame_,selected_chip_,context_.top_form,notices_},origin,*this);
             if(context_.areas)draw_select_town_areas({town_frame_,selected_area_,form_state_,context_.top_form,area_marks_,notices_},origin,*this);
+            if(context_.residents){
+                // SAGA_STUB(town-inherited-clip): release the caller clip into the declared full-viewport desktop profile.
+                draw_select_resident_lane({camera_x_,camera_y_,context_.view_x,context_.view_y,town_frame_,notices_},0,*this);
+            }
         }
     }
     catch(...){backend_=nullptr;throw;}
@@ -154,7 +221,7 @@ void TownBackground::gate_draw(SelectBackgroundResource resource,std::int32_t cl
 std::shared_ptr<std::vector<EventObject>> TownBackground::town_occupants(){
     // GetLivingSubMemberArray 0x116a20c: indexed address projection, later rows win.
     auto result=std::make_shared<std::vector<EventObject>>(static_cast<std::size_t>(town_count()));
-    for(std::size_t i=0;i<characters_.size();++i)if(characters_[i]&&(characters_[i]->flags&4)&&character_states_[i]&&character_states_[i]->living_address!=-1)
+    for(std::size_t i=0;i<characters_->size();++i)if(characters_->at(i)&&(characters_->at(i)->flags&4)&&character_states_[i]&&character_states_[i]->living_address!=-1)
         result->at(static_cast<std::size_t>(character_states_[i]->living_address))=character_states_[i];
     return result;
 }
@@ -227,7 +294,7 @@ void TownBackground::report(std::ostream& out)const{
         out<<",\"buildings_draw\":{\"frame\":"<<town_frame_<<",\"selected\":"<<selected_chip_
            <<",\"provisional_context\":true,\"top_form\":"<<(context_.top_form?"true":"false")
            <<",\"high_score\":"<<context_.high_score<<",\"building_slots\":"<<building_records_.size()
-           <<",\"character_slots\":"<<characters_.size()<<",\"king_reward_slots\":"<<king_rewards_->size()<<",\"king_queries\":"<<king_queries_
+           <<",\"character_slots\":"<<characters_->size()<<",\"king_reward_slots\":"<<king_rewards_->size()<<",\"king_queries\":"<<king_queries_
            <<",\"font_requests\":[";
         for(std::size_t i=0;i<font_requests_.size();++i){if(i)out<<',';out<<'['<<font_requests_[i][0]<<','<<font_requests_[i][1]<<']';}
         out<<"],\"chips\":[";
@@ -250,6 +317,19 @@ void TownBackground::report(std::ostream& out)const{
         for(std::size_t i=0;i<area_labels_.size();++i){if(i)out<<',';const auto& d=area_labels_[i];out<<"{\"text\":";json_text(out,d.text);out<<",\"x\":"<<d.x<<",\"y\":"<<d.y<<",\"anchor\":34,\"font\":10}";}
         out<<"],\"touches\":[";
         for(std::size_t i=0;i<area_touches_.size();++i){if(i)out<<',';out<<'[';const auto& d=area_touches_[i];for(std::size_t j=0;j<d.size();++j){if(j)out<<',';out<<d[j];}out<<']';}out<<"]}";
+    }
+    if(context_.residents){
+        out<<",\"residents\":{\"lane\":0,\"provisional_context\":true,\"store_limit\":"<<context_.store_limit<<",\"condition_characters\":"<<context_.condition_character_count
+           <<",\"debug\":"<<(context_.debug?"true":"false")<<",\"debug_rescue_count\":";
+        if(context_.debug_rescue_count)out<<*context_.debug_rescue_count;else out<<"null";
+        out<<",\"present\":"<<residents_.present_value<<",\"active_range\":["<<resident_active_range_->at(0)<<','<<resident_active_range_->at(1)<<"],\"rows\":[";
+        for(std::size_t i=0;i<residents_.residents->size();++i){if(i)out<<',';out<<'[';const auto& row=*residents_.residents->at(i);for(std::size_t j=0;j<row.size();++j){if(j)out<<',';out<<row[j];}out<<']';}
+        out<<"],\"draws\":[";
+        for(std::size_t i=0;i<resident_draws_.size();++i){if(i)out<<',';const auto& d=resident_draws_[i];out<<'['<<d.character<<','<<d.clip<<','<<d.frame<<','<<d.x<<','<<d.y<<']';}
+        out<<"],\"touches\":[";
+        for(std::size_t i=0;i<resident_touches_.size();++i){if(i)out<<',';const auto& row=resident_touches_[i];out<<'['<<row[0]<<','<<row[1]<<','<<row[2]<<']';}
+        out<<"],\"label_requests\":[";
+        for(std::size_t i=0;i<resident_labels_.size();++i){if(i)out<<',';out<<'[';const auto& row=resident_labels_[i];for(std::size_t j=0;j<row.size();++j){if(j)out<<',';out<<row[j];}out<<']';}out<<"]}";
     }
     out<<'}';
 }
