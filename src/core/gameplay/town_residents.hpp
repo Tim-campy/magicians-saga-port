@@ -13,7 +13,7 @@ struct TownResidentCharacter {
 using TownResidentCharacters=std::vector<std::shared_ptr<TownResidentCharacter>>;
 struct TownResidentInitializationState {
     EventScript residents; // SelectForm +0x1d0; published before candidate work.
-    std::int32_t present_value=0; // +0x1f0; retained unless the final Hits(10) succeeds.
+    std::int32_t present_value=100; // Constructor +0x1f0; Init retains it unless the final Hits(10) succeeds.
 };
 class TownResidentInitializationHost {
 public:
@@ -35,6 +35,17 @@ public:
 // Lib.Shuffle(source,null) returns a shuffled COPY which this caller discards;
 // original candidate order survives, but all count-1 Lib draws still occur.
 void initialize_town_residents(TownResidentInitializationState&,TownResidentInitializationHost&);
+class TownResidentUpdateHost {
+public:
+    virtual ~TownResidentUpdateHost()=default;
+    virtual EventInstruction active_range()=0;
+    virtual EventScript resident_rows()=0;
+    virtual float resident_hero_x()=0;
+    virtual std::int32_t app_random(std::int32_t bound)=0;
+};
+// SelectForm.UpdateTownHuman 0x11ee638: live list/row aliases, facing/walking,
+// boundary clamps, ordered random velocity changes and the final type2 override.
+bool update_town_residents(TownResidentUpdateHost&); // Native normal completion returns true.
 
 struct TownResidentGeometryState {
     const std::int32_t& camera_x;

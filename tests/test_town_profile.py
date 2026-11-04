@@ -134,6 +134,7 @@ class TownProfileTests(unittest.TestCase):
             args=('--residents','--width','600','--height','320')
             result=self.run_host(root,*args);self.assertEqual(result.returncode,0,result.stderr)
             report=json.loads(result.stdout);rows=report['background']['residents']
+            self.assertEqual(rows['present'],100)
             self.assertEqual([r[0] for r in rows['rows']],[0])
             self.assertEqual(rows['active_range'],[-639,900]);self.assertEqual(rows['rows'][0][1:3],[130,0])
             self.assertEqual(rows['draws'],[[0,38,rows['rows'][0][9],130,201]])
@@ -147,6 +148,29 @@ class TownProfileTests(unittest.TestCase):
             for resource in ('chara.bin','weapon.bin'):
                 path=root/'textassets'/resource;original=path.read_bytes();path.unlink()
                 self.assertNotEqual(self.run_host(root,*args).returncode,0);path.write_bytes(original)
+
+    def test_selected_motion_passes_advance_native_state_without_claiming_full_update(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);add_town_background(root,motion=True)
+            base=('--foreground','--width','600','--height','320','--app-seed','0')
+            initial=self.run_host(root,*base,'--motion-passes','0');self.assertEqual(initial.returncode,0,initial.stderr)
+            first=self.run_host(root,*base,'--motion-passes','1');self.assertEqual(first.returncode,0,first.stderr)
+            later=self.run_host(root,*base,'--motion-passes','60');self.assertEqual(later.returncode,0,later.stderr)
+            start=json.loads(initial.stdout)['background'];one=json.loads(first.stdout)['background'];end=json.loads(later.stdout)['background']
+            self.assertEqual((start['motion']['passes'],one['motion']['passes'],end['motion']['passes']),(0,1,60))
+            self.assertEqual(end['motion']['counter'],60);self.assertEqual(end['motion']['hero_x'],40)
+            self.assertIn('full Update gates/events unbound',end['motion']['scope'])
+            self.assertEqual(end['motion']['wind'][1],1)
+            self.assertNotEqual(start['scenery']['leaves'],end['scenery']['leaves'])
+            self.assertGreater(end['scenery']['app_draws'],start['scenery']['app_draws'])
+            self.assertGreater(end['scenery']['lib_draws'],start['scenery']['lib_draws'])
+            for before,after in zip(start['residents']['rows'],end['residents']['rows']):
+                self.assertEqual(after[:5],before[:5]);self.assertEqual(after[7:9],before[7:9]);self.assertEqual(after[10],before[10])
+                self.assertEqual(after[9],before[9]+60)
+            self.assertEqual(self.run_host(root,*base,'--motion-passes','60').stdout,later.stdout)
+            self.assertEqual(end['foreground']['pending_notices'],0)
+            for args in (('--motion-passes','1'),('--foreground','--motion-passes','-1'),('--foreground','--motion-low-aspect','1'),('--foreground','--motion-passes','1','--motion-low-aspect','2')):
+                self.assertNotEqual(self.run_host(root,*args).returncode,0)
 
     def test_foreground_uses_native_defaults_and_flushes_notices(self):
         with tempfile.TemporaryDirectory() as directory:

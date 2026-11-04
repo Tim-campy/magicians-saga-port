@@ -2035,12 +2035,12 @@ game:0x0600081d,form.SelectForm.GetGameWidth,ui,documented,52,0x11f3194
 game:0x0600081e,form.SelectForm.GetGameHeight,ui,documented,52,0x11f31c8
 game:0x0600081f,form.SelectForm.CheckCollisionTownHuman,ui,reimplemented,252,0x11eecdc
 game:0x06000820,game:0x06000820,ui,,1060,0x11f4ad4
-game:0x06000821,game:0x06000821,ui,,640,0x11ee638
+game:0x06000821,form.SelectForm.UpdateTownHuman,ui,reimplemented,640,0x11ee638
 game:0x06000822,form.SelectForm.DrawTownHuman,ui,reimplemented,2016,0x11f38a8
 game:0x06000823,form.SelectForm.MoveCursor,ui,reimplemented,288,0x11ef0dc
 game:0x06000824,form.SelectForm.GetPosObstacle,ui,reimplemented,244,0x11f4088
 game:0x06000825,form.SelectForm.InitDecoObject,ui,reimplemented,488,0x11eb52c
-game:0x06000826,game:0x06000826,ui,,2104,0x11ede00
+game:0x06000826,form.SelectForm.UpdateDecoObject,ui,reimplemented,2104,0x11ede00
 game:0x06000827,form.SelectForm.GenerateObjBird,ui,reimplemented,596,0x11f4ef8
 game:0x06000828,form.SelectForm.GenerateLeaf,ui,reimplemented,504,0x11f514c
 game:0x06000829,form.SelectForm.DrawDecoObject,ui,reimplemented,800,0x11f33f4
@@ -3869,8 +3869,8 @@ game:0x06000fee,ecs.TownSystem.ResetBuildingList,ecs,reimplemented,604,0x1169e08
 game:0x06000fef,game:0x06000fef,ecs,,324,0x116a064
 game:0x06000ff0,game:0x06000ff0,ecs,,536,0x116a20c
 game:0x06000ff1,ecs.TownSystem.SetBuildingList,ecs,reimplemented,464,0x1169934
-game:0x06000ff2,game:0x06000ff2,ecs,,376,0x116a424
-game:0x06000ff3,game:0x06000ff3,ecs,,48,0x116a59c
+game:0x06000ff2,ecs.TownSystem.UpdateEnable,ecs,documented,376,0x116a424
+game:0x06000ff3,ecs.TownSystem.CheckEnable,ecs,documented,48,0x116a59c
 game:0x06000ff4,game:0x06000ff4,ecs,,164,0x116a5cc
 game:0x06000ff5,game:0x06000ff5,ecs,,352,0x116a6d4
 game:0x06000ff6,game:0x06000ff6,ecs,,492,0x116a834

@@ -92,6 +92,24 @@ class TownBackgroundPixels(unittest.TestCase):
             self.assertEqual(right_report['background']['camera'][0],-270)
             self.assertEqual(bmp_pixels(right.read_bytes())[2][73*width+217],(0,120,0,255))
 
+    def test_selected_motion_changes_pixels_and_retains_cpu_gl_parity(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);add_town_background(root,motion=True)
+            base=[str(EXE),'--data',str(root),'--foreground','--width','600','--height','320','--app-seed','0']
+            captures=[]
+            for passes in (0,1,60):
+                path=root/f'motion-{passes}.bmp'
+                command=[*base,'--motion-passes',str(passes)]
+                gpu=subprocess.run([*command,'--capture',str(path)],capture_output=True,text=True,timeout=30)
+                self.assertEqual(gpu.returncode,0,gpu.stderr)
+                cpu=subprocess.run(command,capture_output=True,text=True,timeout=30)
+                self.assertEqual(cpu.returncode,0,cpu.stderr);self.assertEqual(json.loads(cpu.stdout),json.loads(gpu.stdout))
+                repeat=root/f'repeat-{passes}.bmp'
+                again=subprocess.run([*command,'--capture',str(repeat)],capture_output=True,text=True,timeout=30)
+                self.assertEqual(again.returncode,0,again.stderr);self.assertEqual(again.stdout,gpu.stdout)
+                self.assertEqual(path.read_bytes(),repeat.read_bytes());captures.append(path.read_bytes())
+            self.assertNotEqual(captures[0],captures[1]);self.assertNotEqual(captures[1],captures[2])
+
     def test_foreground_and_final_notices_reach_pixels(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);add_town_background(root,foreground=True)

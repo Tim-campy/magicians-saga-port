@@ -47,6 +47,11 @@ struct Host final:TownResidentInitializationHost {
     }
     std::int32_t lib_random(std::int32_t low,std::int32_t high)override{call("R"+std::to_string(low)+":"+std::to_string(high));return range_value;}
 };
+void fresh_present_default(){
+    Host host;TownResidentInitializationState state;initialize_town_residents(state,host);
+    check(state.residents->empty()&&state.present_value==100,"fresh constructor present100 survives Init when the final gift probability misses");
+    check(host.log.back()=="L100","missing gift does not consume a replacement present amount draw");
+}
 void discarded_shuffle_order(){
     Host h;for(int id=0;id<3;++id){h.add(id);h.definitions.back().town_id=id;}
     h.lib_values={2,0,5,6,7,99};h.app_values={10,101,20,102,30,103};TownResidentInitializationState state{script(),777};
@@ -140,4 +145,4 @@ void geometry_contract(){
     check(town_building_position(max,min)==std::array<std::int32_t,2>{40,max-99},"building multiplication and height subtraction wrap32");
 }
 }
-int main(){discarded_shuffle_order();living_and_visitor();terms_and_store_gate();fallback_flags_and_gift();aliases_and_failure_prefixes();geometry_contract();return 0;}
+int main(){fresh_present_default();discarded_shuffle_order();living_and_visitor();terms_and_store_gate();fallback_flags_and_gift();aliases_and_failure_prefixes();geometry_contract();return 0;}

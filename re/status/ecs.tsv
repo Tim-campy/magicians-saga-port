@@ -275,3 +275,5 @@ game:0x06000e4f	reimplemented	src/core/gameplay/effect_frame.cpp	Jump captured r
 game:0x06000e51	reimplemented	src/core/gameplay/effect_frame.cpp	StringBackground native displacement/fade, captured manager/frame bounds, text identity and font/color/reset order; table-backed notice output bound
 game:0x06000fed	reimplemented	src/core/gameplay/pass_initialization.cpp	Native lazy capacity-indexed Town cache, cloned triples, last duplicate wins, published failure prefixes; saga_town bound
 game:0x06000fee	reimplemented	src/core/gameplay/pass_initialization.cpp	Native cache invalidation, unpublished projection and ordered deferred gap repairs; no entity rebuild; saga_town bound
+game:0x06000ff2	documented	docs/subsystems/town.md	Existing-byte skip, null/empty-term true without store, repeated catalogs/context ordering and current permission publication after CheckTerm; first2 Select updates trigger event1 on true.
+game:0x06000ff3	documented	docs/subsystems/town.md	Validate current permission array/index and return raw uint8; nonzero UpdateEnable skip differs from caller low-bit tests.

@@ -39,6 +39,40 @@ void consume_discarded_shuffle(const TownResidentCharacters& source,TownResident
     }
 }
 }
+bool update_town_residents(TownResidentUpdateHost& host){
+    const auto range=host.active_range();
+    for(std::int32_t index=0;;++index){
+        const auto source=host.resident_rows();
+        if(index>=count(required(source).size()))break;
+        const auto row=source->at(static_cast<std::size_t>(index));auto& fields=required(row);
+        static_cast<void>(fields.at(9));
+        auto x=fields.at(1);const auto type=fields.at(8);const auto frame=wrap(static_cast<std::int64_t>(fields.at(9))+1);
+        auto velocity=fields.at(3);x=wrap(static_cast<std::int64_t>(x)+velocity);
+        fields.at(9)=frame;fields.at(1)=x;
+        bool right_clamped=false;
+        if(type!=2){
+            const auto left=required(range).at(0);
+            if(x<left){velocity=0;x=left;fields.at(1)=left;fields.at(3)=0;}
+            const auto right=range->at(1);
+            if(x>right){x=right;fields.at(1)=right;fields.at(3)=0;right_clamped=true;}
+        }
+        const auto move=fields.at(7);
+        if(move==1){
+            if(!right_clamped&&velocity!=0){
+                const auto direction=velocity<1?2:1;fields.at(6)=direction;fields.at(5)=40|direction;
+            }else fields.at(5)=wrap(static_cast<std::int64_t>(fields.at(6))+36);
+            if(frame>=61&&host.app_random(100)==0){
+                const auto selected=host.app_random(5);fields.at(3)=selected<3?wrap(static_cast<std::int64_t>(selected)-1):0;
+                fields.at(9)=0;
+            }
+        }else if(move==0){
+            const auto hero=host.resident_hero_x();const auto direction=hero<static_cast<float>(x)?2:1;
+            fields.at(5)=36|direction;fields.at(6)=direction;
+        }
+        if(fields.at(8)==2){fields.at(3)=8;fields.at(5)=9;fields.at(6)=1;}
+    }
+    return true;
+}
 void initialize_town_residents(TownResidentInitializationState& state,TownResidentInitializationHost& host){
     const auto challenges=host.challenge_count();const auto store_limit=host.store_limit();
     state.residents=std::make_shared<std::vector<EventInstruction>>();

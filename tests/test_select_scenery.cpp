@@ -25,7 +25,7 @@ struct Host final:SelectSceneryHost {
     int token=0;
     SelectBackgroundResource resource=&token;
     void call(const std::string& name){log.push_back(name);if(action)action(name);}
-    std::int32_t rng(const std::string& name){call(name);check(!random.empty(),"unexpected RNG query");const auto next=random.front();random.pop_front();check(next.name==name,"RNG stream/bound/order mismatch");return next.value;}
+    std::int32_t rng(const std::string& name){call(name);check(!random.empty(),"unexpected RNG query");const auto next=random.front();random.pop_front();if(next.name!=name)std::cerr<<"expected "<<next.name<<", got "<<name<<'\n';check(next.name==name,"RNG stream/bound/order mismatch");return next.value;}
     std::int32_t app_random(std::int32_t n)override{return rng("A"+std::to_string(n));}
     std::int32_t lib_random(std::int32_t n)override{return rng("L"+std::to_string(n));}
     std::int32_t lib_random(std::int32_t a,std::int32_t b)override{return rng("L"+std::to_string(a)+":"+std::to_string(b));}
@@ -158,6 +158,76 @@ void terrain(){
     check(culled.host.draws.empty(),"both terrain passes culled");
     check(culled.host.log==std::vector<std::string>({"C372","B372:0","G","C372","B372:0","H","G"}),"left culling skips width, resource and draw-only height");
 }
+void motion_empty_and_wind(){
+    Fixture f;SelectDecorationMotionState motion;f.state.birds=rows();f.state.leaves=rows();
+    f.host.random={{"L100",99},{"A3",2},{"A60",59},{"L100",99}};
+    update_select_decorations(f.state,motion,f.host);
+    check(motion.wind_counter==1&&motion.wind->x==0&&motion.wind->y==1,"wind always consumes discarded A3 and advances counter before writing Y1");
+    check(f.host.log==std::vector<std::string>{"L100","A3","A60","L100"},"empty-list motion preserves bird/wind/leaf RNG order");
+    Fixture replaced;replaced.state.birds=rows();replaced.state.leaves=rows();SelectDecorationMotionState changed;
+    changed.wind_counter=20;changed.wind->x=2;const auto old=changed.wind;int a3=0;
+    replaced.host.random={{"L100",99},{"A3",0},{"A60",0},{"A3",2},{"L100",99}};
+    replaced.host.action=[&](const auto& name){if(name=="A3"&&++a3==2)changed.wind=std::make_shared<SelectDecorationWind>(SelectDecorationWind{9,7});};
+    update_select_decorations(replaced.state,changed,replaced.host);
+    check(changed.wind_counter==0&&old->x==3&&old->y==0&&changed.wind->x==4&&changed.wind->y==1,"wind modifies captured point, then clamps/requires current point and writes current Y");
+    Fixture failure;failure.state.birds=rows();failure.state.leaves=rows();SelectDecorationMotionState failed;
+    failure.host.random={{"L100",99},{"A3",0}};failure.host.action=[](const auto& name){if(name=="A60")throw std::runtime_error("wind RNG");};
+    fails([&]{update_select_decorations(failure.state,failed,failure.host);});
+    check(failed.wind_counter==1&&failed.wind->y==0,"wind threshold RNG failure retains counter publication");
+}
+void motion_birds(){
+    Fixture f;f.left=-10;f.right=10;auto removed=row({0,39,10,0,2,0});auto kept=row({1,0,10,4,1,0});
+    f.state.birds=rows({removed,kept});f.state.leaves=rows();SelectDecorationMotionState motion;
+    f.host.random={{"L100",0},{"A3",2},{"A3",0},{"L100",99},{"A3",1},{"A60",59},{"L100",99}};
+    update_select_decorations(f.state,motion,f.host);
+    check(f.state.birds->size()==1&&f.state.birds->at(0)==kept&&removed->at(1)==41,"out-of-bounds bird is updated then removed; shifted row is revisited");
+    check(*kept==EventIntegers({1,1,10,5,2,-1}),"bird movement uses old velocity before ordered nudge/clamp/Y RNG");
+    Fixture spawn;spawn.left=-10;spawn.right=100;spawn.state.birds=rows();spawn.state.leaves=rows();const auto captured=spawn.state.birds;
+    spawn.host.random={{"L100",0},{"A2",1},{"A3",2},{"A60",12},{"A3",0},{"L20:330",77},{"A10",8},{"A3",2},{"A3",0},{"A60",59},{"L100",99}};
+    spawn.host.action=[&](const auto& name){if(name=="A2")spawn.state.birds=rows();};
+    update_select_decorations(spawn.state,motion,spawn.host);
+    check(captured->size()==1&&spawn.state.birds->empty(),"bird append owner is captured before generator callbacks replace current list");
+    Fixture short_row;auto broken=row({0,10,20,0,2});short_row.state.birds=rows({broken});short_row.state.leaves=rows();
+    fails([&]{update_select_decorations(short_row.state,motion,short_row.host);});
+    check(broken->at(1)==12&&broken->at(2)==20&&broken->at(3)==0,"five-cell bird retains X before VY failure");
+}
+void motion_leaves(){
+    Fixture f;f.left=-100;f.right=100;f.state.birds=rows();auto leaf=row({0,10,0,0,0,0});f.state.leaves=rows({leaf});SelectDecorationMotionState motion;
+    f.host.random={{"L100",99},{"A3",0},{"A60",59},{"L100",99}};
+    update_select_decorations(f.state,motion,f.host);
+    check(*leaf==EventIntegers({0,12,1,1,2,1}),"zero wind leaf uses cosine amplitude2, vertical1 and frame increment without Lib frame RNG");
+    Fixture fresh;fresh.left=-100;fresh.right=100;fresh.state.birds=rows();auto turning=row({0,10,0,32,0,0});fresh.state.leaves=rows({turning});SelectDecorationMotionState wind;
+    wind.wind->x=3;
+    fresh.host.random={{"L100",99},{"A3",0},{"A60",59},{"A2",1},{"L4",2},{"L100",99}};
+    fresh.host.action=[&](const auto& name){if(name=="A2"){turning->at(3)=40;wind.wind=std::make_shared<SelectDecorationWind>(SelectDecorationWind{-4,7});}
+        if(name=="L4")turning->at(3)=999;};
+    update_select_decorations(fresh.state,wind,fresh.host);
+    check(*turning==EventIntegers({0,13,1,43,3,0}),"90-degree binary32 angle, post-jitter current wind and captured frame before Lib RNG");
+    Fixture removed;removed.left=-100;removed.right=100;removed.state.birds=rows();removed.state.leaves=rows({row({0,10,499,0,0,0})});SelectDecorationMotionState gravity;
+    removed.host.random={{"L100",99},{"A3",0},{"A60",59},{"A2",1},{"L100",99}};
+    update_select_decorations(removed.state,gravity,removed.host);check(removed.state.leaves->empty(),"height cull uses Y after the optional jitter");
+    Fixture partial;partial.state.birds=rows();auto broken=row({0,10,0,0,99});partial.state.leaves=rows({broken});SelectDecorationMotionState stopped;
+    partial.host.random={{"L100",99},{"A3",0},{"A60",59}};fails([&]{update_select_decorations(partial.state,stopped,partial.host);});
+    check(broken->at(4)==0&&stopped.wind->y==1,"five-cell leaf retains initial VX write after wind update");
+}
+void motion_generation_limits(){
+    Fixture spawn;spawn.state.birds=rows();spawn.state.leaves=rows();const auto destination=spawn.state.leaves;
+    SelectDecorationMotionState motion;int a3=0;
+    spawn.host.random={{"L100",99},{"A3",0},{"A60",59},{"L100",0},{"A3",2},{"L-100:100",42},{"L60",10},{"A10",3}};
+    spawn.host.action=[&](const auto& name){if(name=="A3"&&++a3==2)spawn.state.leaves=rows();};
+    update_select_decorations(spawn.state,motion,spawn.host);
+    check(destination->size()==1&&spawn.state.leaves->empty()&&*destination->at(0)==EventIntegers({2,42,-135,3,0,0}),"leaf generation uses false profile and captured append destination");
+    Fixture capped;capped.state.birds=rows();capped.state.leaves=rows();
+    for(int i=0;i<25;++i)capped.state.birds->push_back(row({0,0,0,0,0,0}));
+    for(int i=0;i<80;++i)capped.state.leaves->push_back(row({0,0,0,0,0,0}));
+    capped.host.random={{"A3",0},{"A60",59}};
+    update_select_decorations(capped.state,motion,capped.host);
+    check(capped.host.random.empty()&&capped.state.birds->size()==25&&capped.state.leaves->size()==80,"native population caps suppress both generation probability draws");
+    Fixture missing;missing.state.birds=rows();missing.state.leaves=rows();SelectDecorationMotionState invalid;
+    invalid.wind.reset();invalid.wind_counter=20;missing.host.random={{"L100",99},{"A3",0},{"A60",0}};
+    fails([&]{update_select_decorations(missing.state,invalid,missing.host);});
+    check(invalid.wind_counter==0,"wind change resets counter before requiring the captured point");
+}
 void front_ground(){
     Fixture f;f.left=-120;f.right=120;
     f.host.action=[&](const auto& name){if(name=="D"&&f.host.draws.size()==1){f.right=0;f.left=10000;}};
@@ -172,4 +242,4 @@ void front_ground(){
     check(wrap.host.draws.size()==1&&wrap.host.draws[0].x==-2&&wrap.host.draws[0].y==static_cast<float>(-2147483534),"front ground doubles and adds with native int32 wrapping");
 }
 }
-int main(){cloud_initialization();birds();leaves();decoration_initialization();decoration_drawing();terrain();front_ground();return 0;}
+int main(){cloud_initialization();birds();leaves();decoration_initialization();decoration_drawing();terrain();front_ground();motion_empty_and_wind();motion_birds();motion_leaves();motion_generation_limits();return 0;}

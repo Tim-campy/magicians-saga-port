@@ -43,6 +43,12 @@ struct SelectSceneryState {
     const std::int32_t& left_extent;
     const std::int32_t& right_extent;
 };
+struct SelectDecorationWind {std::int32_t x=0,y=0;};
+struct SelectDecorationMotionState {
+    // Fresh constructor Point(0,0); counter is zero from object allocation.
+    std::shared_ptr<SelectDecorationWind> wind=std::make_shared<SelectDecorationWind>();
+    std::int32_t wind_counter=0;
+};
 class SelectSceneryHost:public SelectViewportHost {
 public:
     virtual std::int32_t raw_view_height()=0;
@@ -62,6 +68,9 @@ void initialize_select_scenery_clouds(SelectSceneryState&,SelectSceneryHost&);
 EventInstruction generate_select_bird(SelectSceneryState&,bool initial,SelectSceneryHost&);
 EventInstruction generate_select_leaf(SelectSceneryState&,bool initial,SelectSceneryHost&);
 void initialize_select_decorations(SelectSceneryState&,SelectSceneryHost&);
+// UpdateDecoObject 0x11ede00: birds, generation, wind, leaves and generation.
+// Uses public binary64 cos/sin after the native binary32 degree multiplication.
+void update_select_decorations(SelectSceneryState&,SelectDecorationMotionState&,SelectSceneryHost&);
 // DrawDecoObject: types0 (birds) and2 (leaves); other types do not enumerate.
 void draw_select_decorations(SelectSceneryState&,std::int32_t type,SelectBackgroundOrigin,SelectSceneryHost&);
 // _Draw 0x11f0a80..0x11f0e10: two ground passes, then backward cloud drawing.

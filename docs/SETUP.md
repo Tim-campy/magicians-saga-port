@@ -310,6 +310,13 @@ build/viewer/saga_town.exe --data extracted/full --foreground --camera-x 300 --c
 build/viewer/saga_town.exe --data extracted/full --foreground --camera-x -300 --capture build/town-obstacle.bmp
 ```
 
+The explicit diagnostic `--foreground --motion-passes N` advances the native active counter/cloud/decor/resident blocks, then captures their resulting state. It preserves both Init RNG streams and the wind/list owners. It does not run complete SelectForm.Update or its event/form gates. The optional `--motion-low-aspect 0` is a declared provisional cloud-wrap input. Reports expose effective scope, passes/counter, wind and RNG totals.
+
+```powershell
+build/desktop/saga_town.exe --data extracted/full --foreground --motion-passes 60
+build/viewer/saga_town.exe --data extracted/full --foreground --motion-passes 300 --camera-x 300 --capture build/town-motion.bmp
+```
+
 ### Headless mission host
 
 With quest results enabled, terminal reports expose `quest_exit`: null before return, otherwise the typed native `code`, `outcome`, `handoff: "held"` and `rewards_granted`. Clear code0, main-character death1, timeout2 and retreat3 remain distinct. A granted `quest_result` includes EXP, money, crystals, prisoners, all weapon/character/cloth/hat grant lists and member records with `level_up_frame`; wallet, inventory, quest-record and member-writeback fields retain the actual in-memory effects. The held town callback and save-file persistence remain separate services. Native fresh replay commands and real-data outcomes are in [mission endings](subsystems/integration-endings.md).

@@ -30,12 +30,17 @@ struct TownBackgroundContext {
     bool residents=false,hero=false,foreground=false,debug=false;
     std::int32_t store_limit=0,condition_character_count=1; // Provisional persisted/gateway inputs.
     std::optional<std::int32_t> debug_rescue_count;
+    bool motion=false,motion_low_aspect=false; // Selected active-motion diagnostic; aspect gate is provisional.
+    std::int32_t motion_passes=0;
 };
-class TownBackground final:private core::SelectBackgroundHost,private core::SelectActiveAreaHost,private core::SelectCameraHost,private core::SelectSceneryHost,private core::SelectFloorHost,private core::SelectTownDrawingHost,private core::KingRewardAvailabilityHost,private core::SelectAreaDrawingHost,private core::TownResidentInitializationHost,private core::TownResidentGeometryHost,private core::ScaledHumanDrawingHost,private core::SelectResidentDrawingHost,private core::SelectHeroDrawingHost,private core::SelectForegroundDrawingHost,private core::SelectNoticeDrawingHost {
+class TownBackground final:private core::SelectBackgroundHost,private core::SelectActiveAreaHost,private core::SelectCameraHost,private core::SelectSceneryHost,private core::SelectFloorHost,private core::SelectTownDrawingHost,private core::KingRewardAvailabilityHost,private core::SelectAreaDrawingHost,private core::TownResidentInitializationHost,private core::TownResidentGeometryHost,private core::ScaledHumanDrawingHost,private core::SelectResidentDrawingHost,private core::SelectHeroDrawingHost,private core::SelectForegroundDrawingHost,private core::SelectNoticeDrawingHost,private core::TownResidentUpdateHost,private core::SelectCloudHost {
 public:
     TownBackground(ResourceArchive& tables,const GameArchiveEntry& selected,ResourceProfile,std::int32_t capacity,TownBackgroundContext,core::EventScript buildings=nullptr,std::shared_ptr<std::vector<std::uint8_t>> enabled=nullptr,const GameArchiveEntry* background=nullptr,const GameArchiveEntry* common=nullptr,const GameResourceIndex* actor_resources=nullptr);
     ~TownBackground();
     void draw(BitmapBackend&);
+    // Exact selected state0 counter/cloud/decor/resident blocks, not a complete
+    // Update: event/permission/form gates still need their persistent owners.
+    void advance_motion();
     void report(std::ostream&)const;
     BitmapApplication& application(){return application_;}
     BitmapTextures& textures(){return textures_;}
@@ -46,6 +51,8 @@ private:
     TownBackgroundContext context_;
     std::int32_t camera_x_=0,camera_y_=0;
     core::SelectSceneryState scenery_{std::make_shared<std::vector<core::EventInstruction>>(),nullptr,nullptr,camera_.left_extent,camera_.right_extent};
+    core::SelectDecorationMotionState decoration_motion_;
+    std::int32_t motion_passes_=0;
     struct Random final:core::RandomSource {
         explicit Random(std::int32_t seed):source(seed){}
         core::LegacySystemRandom source;std::uint64_t draws=0;
@@ -258,5 +265,11 @@ private:
     std::unique_ptr<core::SelectNoticeCursor> open_notice_cursor(core::EventScript)override;
     core::SelectBackgroundResource notice_resource(std::int32_t)override;
     void notice_draw(core::SelectBackgroundResource,std::int32_t,std::int32_t,std::int32_t,std::int32_t,std::int32_t)override;
+    float resident_hero_x()override{return hero_state_.current_x;}
+    std::shared_ptr<core::SelectClouds> clouds()override{return scenery_.clouds;}
+    std::int32_t right_edge()override{return cloud_right_edge();}
+    std::int32_t cloud_resource()override{return 14;}
+    bool low_aspect()override{return context_.motion_low_aspect;}
+    std::int32_t random(std::int32_t bound)override{return app_random(bound);}
 };
 } // namespace saga::desktop

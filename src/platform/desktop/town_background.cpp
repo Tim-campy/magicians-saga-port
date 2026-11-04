@@ -235,6 +235,14 @@ void TownBackground::fill_background(std::int32_t width,std::int32_t height){
 void TownBackground::draw_background(SelectBackgroundResource resource,std::int32_t clip,std::int32_t frame,float x,float y){
     draws_.push_back({clip,frame,x,y});backend_->draw_seb_frame(static_cast<RenderDrawResource*>(resource),clip,frame,x,y);
 }
+void TownBackground::advance_motion(){
+    if(!context_.foreground)throw std::logic_error("town motion requires --foreground");
+    town_frame_=advance_select_loop_counter(town_frame_);
+    update_select_clouds(town_frame_,*this);
+    update_select_decorations(scenery_,decoration_motion_,*this);
+    update_town_residents(*this);
+    ++motion_passes_;
+}
 void TownBackground::draw(BitmapBackend& backend){
     backend_=&backend;draws_.clear();scenery_draws_.clear();floor_draws_.clear();floor_font_=0;
     fonts_.clear();font_requests_.clear();chip_draws_.clear();labels_.clear();touches_.clear();notices_->clear();king_queries_=0;
@@ -466,6 +474,11 @@ void TownBackground::report(std::ostream& out)const{
         out<<"],\"notice_draws\":[";for(std::size_t i=0;i<notice_draws_.size();++i){if(i)out<<',';integers(notice_draws_[i]);}
         out<<"],\"pending_notices\":"<<notices_->size()<<",\"quads_before_notices\":"<<notice_quads_before_<<",\"quads_after_notices\":"<<notice_quads_after_<<",\"font_stack\":";
         integers(fonts_);out<<'}';
+    }
+    if(context_.motion){
+        out<<",\"motion\":{\"scope\":\"selected active counter/cloud/decor/resident blocks; full Update gates/events unbound\",\"passes\":"<<motion_passes_
+           <<",\"counter\":"<<town_frame_<<",\"hero_x\":"<<hero_state_.current_x<<",\"wind\":["<<decoration_motion_.wind->x<<','<<decoration_motion_.wind->y
+           <<"],\"wind_counter\":"<<decoration_motion_.wind_counter<<",\"low_aspect\":"<<(context_.motion_low_aspect?"true":"false")<<",\"provisional_aspect\":true}";
     }
     out<<'}';
 }

@@ -31,10 +31,10 @@ Host: `saga_mission` (headless or SDL window; fresh --data/--quest entry or expl
 
 Host: `saga_town`. Acceptance: SelectForm town runs with the real map and residents; choosing a quest starts S1's mission; the result returns to town and progression (EXP, money, levels, stock, quest record) is applied in memory; event scripts fire on return (event 31, 1133).
 
-- [ ] (blocking) Bind `update_select_form` to persistent `saga_town` with input, camera/orientation, image clocks, unlock-information scripts and form factories.
+- [ ] (blocking) Bind full `update_select_form` to persistent `saga_town` with shared saves/events/delays, permissions, image clocks and form owners; reproduce Event0 delay1 and Talk0/1 pause.
 - [ ] Bind Building/KingReward NewGame state to town menus and return consumers before those paths become reachable.
 - [ ] Connect town quest selection and retained mission return to one shared progression owner in `saga_town`.
-- [ ] Port decor/town/capture callbacks needed by the town host.
+- [ ] Bind native town permission refresh and capture callbacks to the town Update host.
 - [ ] Bind billing-item/catalog providers as stubs and the notification manager adapters, preserving task execution gates.
 - [ ] Find the consumer of `hour_ != -1`, the writer of `SubForm.delayEvent_` (`+0x1d0`) and the remaining effect opcodes of the table at `0x627b6e`.
 - [ ] Resolve event 1133.

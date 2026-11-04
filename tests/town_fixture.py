@@ -3,7 +3,8 @@ import struct
 from test_sprite_preview import jar,png,seb
 
 
-def add_town_background(root,scenery=False,buildings=False,areas=False,residents=False,hero=False,foreground=False):
+def add_town_background(root,scenery=False,buildings=False,areas=False,residents=False,hero=False,foreground=False,motion=False):
+    foreground=foreground or motion
     hero=hero or foreground
     residents=residents or hero
     areas=areas or residents
@@ -53,7 +54,8 @@ def add_town_background(root,scenery=False,buildings=False,areas=False,residents
         ('atlas.png',atlas),('background.png',png(1,2,[10,20,30,255,70,80,90,255]))]
     if scenery:
         def layers():
-            return struct.pack('>hh',3,10)+b''.join(struct.pack('>hh10h',1,0,0,2,i*2,0,2,2,0,0,0,0) for i in range(3))
+            count=10 if motion else 1
+            return struct.pack('>hh',3,10)+b''.join(struct.pack('>hh',count,0)+b''.join(struct.pack('>10h',frame,2,i*2,0,2,2,0,0,0,0) for frame in range(count)) for i in range(3))
         members[0]=('img.inf',b'0\tatlas.png,bin\n1\tground.png,bin\n2\tbirds.png,bin\n3\tfloor.png,bin\n4\tgate.png,bin\n9\tbackground.png,bin\n')
         members[1]=('seb.inf',b'0\tbackground.seb\n2\tfloor.seb\n3\tgate.seb\n4\tground.seb\n14\tcloud.seb\n22\tbirds.seb\n23\tleaves.seb\n')
         members[2]=('background.seb',seb([(0,0,0,0,2,2,0,0,0,0),(1,0,2,0,2,2,0,0,0,0),(3,0,0,0,2,2,0,0,0,0)]))
@@ -72,7 +74,7 @@ def add_town_background(root,scenery=False,buildings=False,areas=False,residents
         # Chip TexId77 deliberately has no image; every call must honor the override.
         members[0]=('img.inf',members[0][1]+b''.join(f'{i}\tchip{i}.png,bin\n'.encode() for i in (14,17,18,32,33,47)))
         members[1]=('seb.inf',members[1][1]+b'1\tchip.seb\n9\tbutton.seb\n11\tboard.seb\n17\tarrow.seb\n')
-        members.extend([('chip.seb',seb([(0,77,0,0,3,2,0,0,0,0)])),
+        members.extend([('chip.seb',seb([(frame,77,0,0,3,2,0,0,0,0) for frame in range(4 if motion else 1)])),
                         ('button.seb',seb([(0,0,0,0,2,2,0,0,0,0)])),
                         ('board.seb',seb([(0,0,0,0,2,2,0,0,0,0),(1,0,0,0,2,2,0,0,0,0)])),
                         ('arrow.seb',seb([(0,0,0,0,2,2,0,0,0,0)]))])

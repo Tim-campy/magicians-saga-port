@@ -188,4 +188,6 @@ game:0x0600080d	reimplemented	src/core/gameplay/select_form_pass.cpp	Captured in
 game:0x0600082a	reimplemented	src/core/gameplay/town_residents.cpp	GetBuildingPos: raw-height input, wrap32 90*index+130/height-100; tests; native resident Init host bound.
 game:0x0600081a	reimplemented	src/core/gameplay/town_residents.cpp	GetActiveX: captured camera/view, capacity gate, obstacle height side effect and two live area catalogs; callback/wrap/failure tests; resident Init bound.
 game:0x06000824	reimplemented	src/core/gameplay/town_residents.cpp	GetPosObstacle: camera/view capture, right-extent X before raw-height query, Y after; callback/wrap tests; resident active range bound.
-game:0x060007fe	traced	docs/subsystems/town.md	Constructor information-frame-1, zeroed bool2 guide array and empty notice-list stores established; complete constructor lifecycle is not ported.
+game:0x060007fe	traced	docs/subsystems/town.md	Constructor information-frame-1, present100, zeroed bool2 guides and empty notice-list stores established; complete constructor lifecycle is not ported.
+game:0x06000821	reimplemented	src/core/gameplay/town_residents.cpp	Captured active range, live row/list aliases, wrap32 position/frame, facing/walking RNG and clamp/type2 quirks; contract tests; real-data motion diagnostic bound.
+game:0x06000826	reimplemented	src/core/gameplay/select_form_pass.cpp	Ordered bird/wind/leaf motion and captured spawn owners, exact RNG, public double cos/sin after float angle; contract/pixel tests; real-data motion passes bound.

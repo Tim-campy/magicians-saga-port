@@ -3,6 +3,8 @@
 #include "select_building.hpp"
 #include <stdexcept>
 #include <limits>
+#include <cmath>
+#include <algorithm>
 namespace saga::core {
 namespace {
 std::int32_t background_add(std::int32_t a,std::int32_t b){
@@ -17,6 +19,16 @@ std::int32_t scenery_count(const EventScript& rows){
     const auto count=scenery_required(rows).size();
     if(count>static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max()))throw std::length_error("scenery list exceeds int32");
     return static_cast<std::int32_t>(count);
+}
+std::int32_t decoration_abs(std::int32_t value){return value<0?scenery_sub(0,value):value;}
+std::int32_t decoration_integer(double value){
+    if(value==std::numeric_limits<double>::infinity()||value<=-2147483648.0)return std::numeric_limits<std::int32_t>::min();
+    if(value>=2147483648.0)return std::numeric_limits<std::int32_t>::max();
+    return std::isnan(value)?0:static_cast<std::int32_t>(value);
+}
+double decoration_angle(std::int32_t frame){
+    const auto degrees=static_cast<float>(frame)*2.8125F;
+    return static_cast<double>(degrees)*0.017453292519943295;
 }
 }
 void draw_select_town_hero(const SelectHeroDrawingState& state,const std::int32_t& frame,SelectBackgroundOrigin origin,SelectHeroDrawingHost& host){
@@ -116,6 +128,72 @@ void initialize_select_decorations(SelectSceneryState& state,SelectSceneryHost& 
     const auto leaves=background_add(host.app_random(25),5);
     for(std::int32_t i=0;i<leaves;++i){const auto destination=state.leaves;
         auto row=generate_select_leaf(state,true,host);scenery_required(destination).push_back(std::move(row));}
+}
+void update_select_decorations(SelectSceneryState& state,SelectDecorationMotionState& motion,SelectSceneryHost& host){
+    for(std::int32_t index=0;index<scenery_count(state.birds);++index){
+        const auto row=state.birds->at(static_cast<std::size_t>(index));auto& fields=scenery_required(row);
+        const auto x=background_add(fields.at(1),fields.at(4));fields.at(1)=x;
+        const auto vy=fields.at(5);const auto y=background_add(fields.at(2),vy),frame=background_add(fields.at(3),1);
+        fields.at(2)=y;fields.at(3)=frame;
+        if(x<background_add(state.left_extent,-30)||x>background_add(state.right_extent,30)){
+            auto& current=scenery_required(state.birds);
+            if(static_cast<std::size_t>(index)>=current.size())throw std::out_of_range("bird removal index");
+            current.erase(current.begin()+index);--index;continue;
+        }
+        if(frame%5==0&&host.lib_random(100)<5){
+            const auto old=fields.at(4);const auto random=host.app_random(3);
+            fields.at(4)=background_add(background_add(old,random),-1);
+            if(old>0)fields.at(4)=std::clamp(fields.at(4),1,2);
+            else if(old<0)fields.at(4)=std::clamp(fields.at(4),-2,-1);
+            const auto old_y=fields.at(5);
+            const auto next_y=old_y>0?host.app_random(2):old_y==0?background_add(host.app_random(3),-1):background_add(host.app_random(2),-1);
+            fields.at(5)=next_y;
+        }
+    }
+    if(scenery_count(state.birds)<=24&&host.lib_random(100)<5){
+        const auto destination=state.birds;auto row=generate_select_bird(state,false,host);
+        scenery_required(destination).push_back(std::move(row));
+    }
+    static_cast<void>(host.app_random(3)); // Original consumes and discards this draw.
+    const auto counter=background_add(motion.wind_counter,1);motion.wind_counter=counter;
+    const auto random=host.app_random(60);
+    if(counter>background_add(random,20)){
+        const auto captured=motion.wind;motion.wind_counter=0;
+        const auto old=scenery_required(captured).x;const auto change=host.app_random(3);
+        captured->x=background_add(background_add(old,change),-1);
+        const auto current=motion.wind;auto& point=scenery_required(current);point.x=std::clamp(point.x,-4,4);
+    }
+    scenery_required(motion.wind).y=1;
+    for(std::int32_t index=0;index<scenery_count(state.leaves);++index){
+        const auto row=state.leaves->at(static_cast<std::size_t>(index));const auto point=motion.wind;
+        auto& initial=scenery_required(point);auto& fields=scenery_required(row);
+        fields.at(4)=initial.x;fields.at(5)=initial.y;
+        const auto cosine=std::cos(decoration_angle(fields.at(3)));
+        const auto captured=motion.wind;const auto wind_x=scenery_required(captured).x;
+        const auto amplitude=background_add(decoration_abs(wind_x),2);
+        fields.at(4)=background_add(fields.at(4),decoration_integer(cosine*static_cast<double>(amplitude)));
+        if(captured->x!=0){
+            const auto sine=std::sin(decoration_angle(fields.at(3)));
+            const auto vertical=std::max(background_add(decoration_abs(captured->x),-2),0);
+            fields.at(5)=scenery_sub(fields.at(5),decoration_integer(sine*static_cast<double>(vertical)));
+        }
+        fields.at(1)=background_add(fields.at(1),fields.at(4));
+        const auto y=background_add(fields.at(2),fields.at(5));fields.at(2)=y;
+        if(y%5==0){const auto jitter=host.app_random(2);fields.at(2)=background_add(y,jitter);}
+        const auto current_wind=motion.wind;const auto velocity=scenery_required(current_wind).x;
+        const auto frame=fields.at(3);
+        if(velocity!=0){const auto increment=host.lib_random(decoration_abs(velocity));fields.at(3)=background_add(background_add(frame,increment),1);}
+        else fields.at(3)=background_add(frame,1);
+        const auto x=fields.at(1);bool remove=x<background_add(state.left_extent,-30)||x>background_add(state.right_extent,30);
+        if(!remove){const auto current_y=fields.at(2);const auto height=host.raw_view_height();remove=current_y>height;}
+        if(remove){auto& current=scenery_required(state.leaves);
+            if(static_cast<std::size_t>(index)>=current.size())throw std::out_of_range("leaf removal index");
+            current.erase(current.begin()+index);--index;}
+    }
+    if(scenery_count(state.leaves)<=79&&host.lib_random(100)<25){
+        const auto destination=state.leaves;auto row=generate_select_leaf(state,false,host);
+        scenery_required(destination).push_back(std::move(row));
+    }
 }
 void draw_select_decorations(SelectSceneryState& state,std::int32_t type,SelectBackgroundOrigin origin,SelectSceneryHost& host){
     if(type!=0&&type!=2)return;
