@@ -27,13 +27,14 @@ struct TownBackgroundContext {
     bool areas=false;
     bool automatic_images=false; // Provisional Seb.AutoAnimation gate; only its false branch is bound.
     std::int64_t high_score=0; // Provisional system-save slot8, independent of normal NewGame.
-    bool residents=false,debug=false;
+    bool residents=false,hero=false,debug=false;
     std::int32_t store_limit=0,condition_character_count=1; // Provisional persisted/gateway inputs.
     std::optional<std::int32_t> debug_rescue_count;
 };
-class TownBackground final:private core::SelectBackgroundHost,private core::SelectActiveAreaHost,private core::SelectCameraHost,private core::SelectSceneryHost,private core::SelectFloorHost,private core::SelectTownDrawingHost,private core::KingRewardAvailabilityHost,private core::SelectAreaDrawingHost,private core::TownResidentInitializationHost,private core::TownResidentGeometryHost,private core::ScaledHumanDrawingHost,private core::SelectResidentDrawingHost {
+class TownBackground final:private core::SelectBackgroundHost,private core::SelectActiveAreaHost,private core::SelectCameraHost,private core::SelectSceneryHost,private core::SelectFloorHost,private core::SelectTownDrawingHost,private core::KingRewardAvailabilityHost,private core::SelectAreaDrawingHost,private core::TownResidentInitializationHost,private core::TownResidentGeometryHost,private core::ScaledHumanDrawingHost,private core::SelectResidentDrawingHost,private core::SelectHeroDrawingHost {
 public:
     TownBackground(ResourceArchive& tables,const GameArchiveEntry& selected,ResourceProfile,std::int32_t capacity,TownBackgroundContext,core::EventScript buildings=nullptr,std::shared_ptr<std::vector<std::uint8_t>> enabled=nullptr,const GameArchiveEntry* background=nullptr,const GameArchiveEntry* common=nullptr,const GameResourceIndex* actor_resources=nullptr);
+    ~TownBackground();
     void draw(BitmapBackend&);
     void report(std::ostream&)const;
     BitmapApplication& application(){return application_;}
@@ -111,6 +112,11 @@ private:
     std::map<std::int32_t,GameArchiveEntry> actor_entries_;
     std::map<std::int32_t,std::unique_ptr<DrawingArchive>> actor_archives_;
     core::SebStaticWork human_work_;
+    struct HeroOwner;
+    std::unique_ptr<HeroOwner> hero_owner_;
+    core::SelectHeroDrawingState hero_state_;
+    std::vector<std::array<std::int32_t,5>> hero_draws_;
+    std::int32_t hero_equipment_image(core::EquipmentSlot);
     struct ResidentDraw {std::int32_t character,clip,frame,x,y;};
     std::vector<ResidentDraw> resident_draws_;
     std::vector<std::array<std::int32_t,3>> resident_touches_;
@@ -201,9 +207,9 @@ private:
     std::shared_ptr<core::CameraAreas> resident_geometry_areas()override{return camera_areas_;}
     std::shared_ptr<core::CharacterProgressionTable> human_characters()override{return characters_;}
     std::shared_ptr<core::EquipmentCombatTable> human_weapons()override{return resident_weapons_;}
-    std::int32_t hero_cloth_image()override{throw std::logic_error("town hero equipment owner is unbound");}
-    std::int32_t hero_hat_image()override{throw std::logic_error("town hero equipment owner is unbound");}
-    std::int32_t hero_weapon_image()override{throw std::logic_error("town hero equipment owner is unbound");}
+    std::int32_t hero_cloth_image()override{return hero_equipment_image(core::EquipmentSlot::cloth);}
+    std::int32_t hero_hat_image()override{return hero_equipment_image(core::EquipmentSlot::hat);}
+    std::int32_t hero_weapon_image()override{return hero_equipment_image(core::EquipmentSlot::weapon);}
     core::RenderMatrix& human_scale_matrix()override{return backend_->matrix();}
     core::RenderDrawResource* human_character_resource()override{return actor_resource(1);}
     core::RenderDrawResource* human_resource(std::int32_t resource)override{return actor_resource(resource);}
@@ -220,5 +226,12 @@ private:
     void resident_special_label(std::int32_t x,std::int32_t y)override{resident_labels_.push_back({0,x,y,4,8});}
     void resident_level_label(std::int32_t,std::int32_t,std::int32_t)override;
     void resident_attribute_label(std::int32_t,std::int32_t,std::int32_t)override;
+    core::SelectBackgroundResource hero_marker_resource()override{return &manager_.drawing();}
+    std::int32_t hero_view_height()override{return view_height();}
+    std::int32_t hero_marker_clip()override{return 16;} // AppData cctor +0x1a4.
+    void hero_target_marker(core::SelectBackgroundResource,std::int32_t,std::int32_t,std::int32_t,std::int32_t)override;
+    void hero_target_effect(std::int32_t,std::int32_t,std::int32_t)override;
+    core::ComponentSlots* town_hero()override;
+    void hero_draw(core::ComponentSlots*,std::int32_t,std::int32_t,std::int32_t,std::int32_t,std::int32_t)override;
 };
 } // namespace saga::desktop

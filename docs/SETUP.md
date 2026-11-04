@@ -295,6 +295,13 @@ build/desktop/saga_town.exe --data extracted/full --residents
 build/viewer/saga_town.exe --data extracted/full --residents --camera-x 300 --capture build/town-residents.bmp
 ```
 
+`--hero` implies residents, reuses native Member/hero creation, and draws the hero followed by resident lanes1/2. It additionally reads Hat/Cloth tables; the hero's initial position40/direction1 and frame0 come from native Init. Reports expose entity/character IDs, live level/EXP, initial image/equipment arrays and formation. The owner is a fresh snapshot; persistent town Update, foreground, notice flushing and shared mission-return progression remain separate.
+
+```powershell
+build/desktop/saga_town.exe --data extracted/full --hero
+build/viewer/saga_town.exe --data extracted/full --hero --camera-x 300 --capture build/town-hero.bmp
+```
+
 ### Headless mission host
 
 With quest results enabled, terminal reports expose `quest_exit`: null before return, otherwise the typed native `code`, `outcome`, `handoff: "held"` and `rewards_granted`. Clear code0, main-character death1, timeout2 and retreat3 remain distinct. A granted `quest_result` includes EXP, money, crystals, prisoners, all weapon/character/cloth/hat grant lists and member records with `level_up_frame`; wallet, inventory, quest-record and member-writeback fields retain the actual in-memory effects. The held town callback and save-file persistence remain separate services. Native fresh replay commands and real-data outcomes are in [mission endings](subsystems/integration-endings.md).

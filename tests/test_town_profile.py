@@ -148,6 +148,32 @@ class TownProfileTests(unittest.TestCase):
                 path=root/'textassets'/resource;original=path.read_bytes();path.unlink()
                 self.assertNotEqual(self.run_host(root,*args).returncode,0);path.write_bytes(original)
 
+    def test_native_hero_owner_uses_factory_images_and_formation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);add_town_background(root,hero=True)
+            args=('--hero','--width','600','--height','320','--camera-x','300','--app-seed','0')
+            result=self.run_host(root,*args);self.assertEqual(result.returncode,0,result.stderr)
+            report=json.loads(result.stdout);hero=report['background']['hero']
+            self.assertEqual((hero['entity'],hero['character'],hero['level'],hero['experience']),(0,3,1,0))
+            self.assertEqual(hero['textures'],[200,10,10,7,3])
+            self.assertEqual(hero['equipment'],[0,0,0,0])
+            self.assertEqual(hero['formation'],[-1]*10+[3]+[-1]*5)
+            self.assertEqual((hero['current_x'],hero['target_x'],hero['direction']),(40,40,1))
+            self.assertEqual(hero['draws'],[[340,209,36,1,0]])
+            self.assertEqual(hero['resident_lanes'],[0,1,2])
+            self.assertEqual(report['background']['residents']['lanes'],[0,1,2])
+            self.assertEqual([row[0] for row in report['background']['residents']['draws']],[0,5,6])
+            self.assertEqual([row[4] for row in report['background']['residents']['draws']],[201,210,219])
+            self.assertEqual(self.run_host(root,*args).stdout,result.stdout)
+            legacy=self.run_host(root,'--residents','--width','600','--height','320','--camera-x','300','--app-seed','0')
+            self.assertEqual(legacy.returncode,0,legacy.stderr)
+            old=json.loads(legacy.stdout)['background']
+            self.assertEqual(report['background']['residents']['rows'],old['residents']['rows'])
+            self.assertEqual(report['background']['scenery']['app_draws'],old['scenery']['app_draws'])
+            self.assertEqual(report['background']['scenery']['lib_draws'],old['scenery']['lib_draws'])
+            (root/'textassets/hat.bin').unlink()
+            self.assertNotEqual(self.run_host(root,*args).returncode,0)
+
     def test_area_maps_locked_fence_and_v2_preference(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);add_town_background(root,areas=True)

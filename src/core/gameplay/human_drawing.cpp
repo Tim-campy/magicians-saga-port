@@ -1,4 +1,7 @@
 #include "human_drawing.hpp"
+#include "combat_records.hpp"
+#include "visual_components.hpp"
+#include "image_draw.hpp"
 #include <array>
 #include <limits>
 #include <stdexcept>
@@ -73,5 +76,43 @@ void draw_human_images(const HumanDrawingRequest& request,EventInstruction image
 void draw_scaled_human(const HumanDrawingRequest& request,RenderGraphics* graphics,ScaledHumanDrawingHost& host,SebStaticWork& work){
     auto images=resolve_human_images(request.character,host);
     draw_human_images(request,std::move(images),graphics,host,work);
+}
+void draw_entity_human(HumanDrawingRequest request,std::int32_t direction,ComponentSlots* entity,RenderGraphics* graphics,ScaledHumanDrawingHost& host,SebStaticWork& work){
+    auto& actor=required(entity);
+    required(dynamic_cast<HumanRecordLink*>(actor.get(14)));
+    auto textures=required(dynamic_cast<EntityImage*>(actor.get(7))).arrays.textures;
+    const auto clip=static_cast<std::uint32_t>(request.clip)+static_cast<std::uint32_t>(direction);
+    request.clip=clip<=0x7fffffffU?static_cast<std::int32_t>(clip):-1-static_cast<std::int32_t>(0xffffffffU-clip);
+    request.mask=0;
+    draw_human_images(request,std::move(textures),graphics,host,work);
+}
+void draw_human_target_effect(const HumanTargetEffectRequest& request,RenderGraphics* graphics,ScaledHumanDrawingHost& host){
+    auto* resource=host.human_resource(20);
+    if(request.image<0)return;
+    const auto images=required(resource).images;
+    const auto& rows=required(images);
+    if(rows.size()>static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max()))throw std::length_error("effect image count exceeds int32");
+    if(static_cast<std::int32_t>(rows.size())<=request.image)return;
+    if(request.frame<0)return;
+    auto* image=rows.at(static_cast<std::size_t>(request.image));if(!image)return;
+    auto& pixels=required(dynamic_cast<PixelImage*>(image));
+    const auto divide=[](std::int32_t value,std::int32_t count){
+        if(count==0)return std::int32_t{0};
+        if(value==std::numeric_limits<std::int32_t>::min()&&count==-1)return value;
+        return value/count;
+    };
+    const auto sub=[](std::int32_t a,std::int32_t b){
+        const auto bits=static_cast<std::uint32_t>(a)-static_cast<std::uint32_t>(b);
+        return bits<=0x7fffffffU?static_cast<std::int32_t>(bits):-1-static_cast<std::int32_t>(0xffffffffU-bits);
+    };
+    const auto width=divide(pixels.width,request.frame_count);
+    const auto x=sub(request.x,(request.anchor&2)!=0?width/2:(request.anchor&4)!=0?width:0);
+    const auto height=pixels.height;
+    const auto y=sub(request.y,(request.anchor&32)!=0?height/2:(request.anchor&64)!=0?height:0);
+    auto& target=required(graphics);
+    const auto frame=sub(request.frame,product(divide(request.frame,request.frame_count),request.frame_count));
+    RenderImageDraw draw;draw.image=image;draw.u=product(frame,width);draw.v=0;
+    draw.source_width=width;draw.source_height=height;draw.x=static_cast<float>(x);draw.y=static_cast<float>(y);
+    target.draw_image(draw);
 }
 } // namespace saga::core

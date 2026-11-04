@@ -33,7 +33,7 @@ game:0x06000223	documented	docs/subsystems/events.md	GetStamina: SecureLong slot
 game:0x06000266	documented	docs/subsystems/events.md	town LINQ predicate: null faults; BaseData.Check(1); condition 21
 game:0x06001039	documented	docs/subsystems/events.md	BaseData.Check: flags +0x1c bitmask nonzero; called by condition 21
 game:0x0600106b	documented	docs/subsystems/events.md	CharaData.get_level returns int32 +0x40; condition 5 reads the same field directly
-game:0x060007ff	traced	docs/subsystems/events.md	Init cloud/decor and full resident subsections bound to town; discarded-copy shuffle retains candidate order with consumed Lib draws; complete form/hero lifecycle remains unbound
+game:0x060007ff	traced	docs/subsystems/events.md	Init cloud/decor and full resident subsections bound to town; discarded-copy shuffle retains candidate order with consumed Lib draws; fresh hero owner bound separately; complete form lifecycle remains unbound
 game:0x06000800	traced	docs/subsystems/events.md	update_select_form composes recovered flow through late camera/lifetime/review/BGM; tests/test_select_form_pass.cpp and test_select_late.cpp; concrete callbacks and live data bindings unresolved; selArea writes normal-save slot8 at 0x11ecf78, linked cache evidence in data.md
 game:0x0600031a	traced	docs/subsystems/events.md	currency response passes incoming amount to AddBalance; SDK side effects unported
 game:0x06000747	reimplemented	src/core/gameplay/select_prelude.cpp	MyFormBase.Update counter and orientation/view call order; tests/test_select_prelude.cpp; host keeps system-save slot12 separate from application SetOrientation output

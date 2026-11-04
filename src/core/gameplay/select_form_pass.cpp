@@ -19,6 +19,27 @@ std::int32_t scenery_count(const EventScript& rows){
     return static_cast<std::int32_t>(count);
 }
 }
+void draw_select_town_hero(const SelectHeroDrawingState& state,const std::int32_t& frame,SelectBackgroundOrigin origin,SelectHeroDrawingHost& host){
+    auto target=state.target_x;auto current=state.current_x;
+    if(target!=current){
+        auto* resource=host.hero_marker_resource();
+        const auto height=host.hero_view_height();
+        if(!resource)throw std::invalid_argument("missing town hero marker resource");
+        const auto counter=frame;const auto clip=host.hero_marker_clip();
+        const auto y=background_add(origin.y,-89);
+        host.hero_target_marker(resource,clip,counter,background_add(factory_cell_coordinate(target,1),origin.x),background_add(y,height));
+        target=state.target_x;
+        const auto effect_height=host.hero_view_height();
+        const auto effect_frame=(frame/3)%8-3;
+        host.hero_target_effect(background_add(factory_cell_coordinate(target,1),origin.x),background_add(y,effect_height),effect_frame);
+        target=state.target_x;current=state.current_x;
+    }
+    const auto clip=target==current?36:40;
+    const auto height=host.hero_view_height();
+    const auto direction=state.direction;const auto counter=frame;
+    auto* hero=host.town_hero();
+    host.hero_draw(hero,background_add(factory_cell_coordinate(current,1),origin.x),background_add(background_add(origin.y,height),-84),clip,direction,counter);
+}
 SelectBackgroundOrigin draw_select_background(const SelectBackgroundState& state,SelectBackgroundHost& host){
     const auto pixel=host.background_pixel();
     host.background_color(factory_cell_coordinate(pixel[0]*255.0F,1),factory_cell_coordinate(pixel[1]*255.0F,1),factory_cell_coordinate(pixel[2]*255.0F,1),255);

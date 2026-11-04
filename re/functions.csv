@@ -455,7 +455,7 @@ game:0x060001d9,game:0x060001d9,boot,,248,0x110dc7c
 game:0x060001da,game:0x060001da,boot,,196,0x110dd74
 game:0x060001db,game:0x060001db,boot,,36,0x110de38
 game:0x060001dc,game:0x060001dc,boot,,188,0x110e1dc
-game:0x060001dd,game:0x060001dd,boot,,168,0x110e654
+game:0x060001dd,main.AppData.DrawScaledHuman,boot,reimplemented,168,0x110e654
 game:0x060001de,main.AppData.DrawScaledHuman,boot,reimplemented,896,0x110de5c
 game:0x060001df,main.AppData.DrawScaledHuman,boot,reimplemented,956,0x110e298
 game:0x060001e0,game:0x060001e0,boot,,32,0x110e6fc
@@ -3456,7 +3456,7 @@ game:0x06000e51,ecs.EffectSystem.DrawStrWithBgEffect,ecs,reimplemented,664,0x114
 game:0x06000e52,game:0x06000e52,ecs,,248,0x114b268
 game:0x06000e53,game:0x06000e53,ecs,,824,0x114b368
 game:0x06000e54,ecs.EffectSystem.ToScreenPos,ecs,reimplemented,364,0x114b0fc
-game:0x06000e55,game:0x06000e55,ecs,,348,0x114b6a0
+game:0x06000e55,ecs.EffectSystem.DrawEffectImg,ecs,reimplemented,348,0x114b6a0
 game:0x06000e56,game:0x06000e56,ecs,,52,0x114b7fc
 game:0x06000e57,game:0x06000e57,ecs,,4,0x114b830
 game:0x06000e58,game:0x06000e58,ecs,,4,0x114b834

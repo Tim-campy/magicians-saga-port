@@ -1,6 +1,7 @@
 #pragma once
 #include "combat_tables.hpp"
 #include "render_draw.hpp"
+#include "../ecs/component_slots.hpp"
 
 namespace saga::core {
 struct HumanDrawingRequest {
@@ -27,4 +28,12 @@ EventInstruction resolve_human_images(std::int32_t character,ScaledHumanDrawingH
 void draw_human_images(const HumanDrawingRequest&,EventInstruction images,RenderGraphics*,ScaledHumanDrawingHost&,SebStaticWork&);
 // The 0x110de38 wrapper supplies mask0; unused native scalar arguments are omitted.
 void draw_scaled_human(const HumanDrawingRequest&,RenderGraphics*,ScaledHumanDrawingHost&,SebStaticWork&);
+// AppData.DrawScaledHuman 0x110e654: require Human then Image on the same entity,
+// add direction to the base clip and draw the captured texture-array alias.
+// This overload does not resolve CharaData or live equipment records.
+void draw_entity_human(HumanDrawingRequest,std::int32_t direction,ComponentSlots*,RenderGraphics*,ScaledHumanDrawingHost&,SebStaticWork&);
+struct HumanTargetEffectRequest {std::int32_t x,y,image,frame,frame_count,anchor;};
+// EffectSystem.DrawEffectImg 0x114b6a0, used by SelectForm's moving target.
+// Resolve resource20 before image/frame gates; retain native signed division.
+void draw_human_target_effect(const HumanTargetEffectRequest&,RenderGraphics*,ScaledHumanDrawingHost&);
 } // namespace saga::core

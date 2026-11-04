@@ -172,6 +172,22 @@ public:
 // DrawTownHuman 0x11f38a8: materialize lane-filtered row aliases before drawing.
 // Labels and input registration remain narrow presentation services.
 void draw_select_resident_lane(const SelectResidentDrawingState&,std::int32_t lane,SelectResidentDrawingHost&);
+// SelectForm.Init stores at +0x124/+0x128/+0x164; animation counter is shared
+// with the other town passes, rather than a separate hero clock.
+struct SelectHeroDrawingState {float current_x=40.0F;std::int32_t direction=1;float target_x=40.0F;};
+class SelectHeroDrawingHost {
+public:
+    virtual ~SelectHeroDrawingHost()=default;
+    virtual SelectBackgroundResource hero_marker_resource()=0;
+    virtual std::int32_t hero_view_height()=0;
+    virtual std::int32_t hero_marker_clip()=0;
+    virtual void hero_target_marker(SelectBackgroundResource,std::int32_t clip,std::int32_t frame,std::int32_t x,std::int32_t y)=0;
+    virtual void hero_target_effect(std::int32_t x,std::int32_t y,std::int32_t frame)=0;
+    virtual ComponentSlots* town_hero()=0;
+    virtual void hero_draw(ComponentSlots*,std::int32_t x,std::int32_t y,std::int32_t clip,std::int32_t direction,std::int32_t frame)=0;
+};
+// _Draw 0x11f2348..0x11f2528; call between resident lane0 and lanes1/2.
+void draw_select_town_hero(const SelectHeroDrawingState&,const std::int32_t& frame,SelectBackgroundOrigin,SelectHeroDrawingHost&);
 struct SelectFormPassState {
     std::int32_t state;
     bool captured;

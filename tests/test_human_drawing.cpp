@@ -1,4 +1,7 @@
 #include "core/gameplay/human_drawing.hpp"
+#include "core/gameplay/combat_records.hpp"
+#include "core/gameplay/visual_components.hpp"
+#include "core/gameplay/image_draw.hpp"
 #include <array>
 #include <cstdlib>
 #include <functional>
@@ -71,6 +74,58 @@ struct Host final:ScaledHumanDrawingHost {
         if(id==1)return &chara;if(id==21)return &hats;if(id==22)return &arms;throw std::logic_error("unexpected human resource");}
 };
 EventInstruction images(){return std::make_shared<EventIntegers>(EventIntegers{200,10,11,7,13});}
+void entity_wrapper(){
+    Host h;Graphics g;SebStaticWork work;ComponentSlots entity(35);HumanRecordLink human;EntityImage image;
+    human.character_id=-123;image.arrays.textures=images();entity.add(14,&human);entity.add(7,&image);
+    auto captured=image.arrays.textures;
+    h.on_call=[&](const auto& name){if(name=="matrix"){
+        image.arrays.textures=std::make_shared<EventIntegers>(5,-1);captured->at(1)=11;}};
+    const auto minimum=std::numeric_limits<std::int32_t>::min();
+    draw_entity_human({100,200,minimum,0,999,100,3},minimum,&entity,&g,h,work);
+    check(g.draws.size()==5&&g.draws[1].image==&h.second_body,"entity wrapper adds clip/direction with wrapping, forces mask0 and retains the texture alias");
+    check(h.character_reads==0&&h.cloth_reads==0,"entity overload does not resolve character or live gear");
+    Host absent;Graphics no_draw;ComponentSlots invalid(35);EntityImage unused;invalid.add(7,&unused);
+    fails<std::invalid_argument>([&]{draw_entity_human({},0,nullptr,&no_draw,absent,work);});
+    fails<std::invalid_argument>([&]{draw_entity_human({},0,&invalid,&no_draw,absent,work);});
+    invalid.add(14,&human);invalid.remove(7);
+    fails<std::invalid_argument>([&]{draw_entity_human({},0,&invalid,&no_draw,absent,work);});
+    check(absent.log.empty()&&no_draw.pushes==0,"both component gates precede all drawing queries");
+    invalid.add(7,&unused);
+    fails<std::invalid_argument>([&]{draw_entity_human({},0,&invalid,&no_draw,absent,work);});
+    check(no_draw.pushes==1&&no_draw.pops==0,"null entity textures fail in the inner draw after matrix/source preparation");
+}
+void target_effect(){
+    struct EffectHost final:ScaledHumanDrawingHost {
+        PixelImage image;RenderDrawResource resource{nullptr,std::make_shared<std::vector<RenderImage*>>(29,nullptr)};
+        std::vector<std::int32_t> calls;
+        EffectHost(){image.width=55;image.height=9;resource.images->at(28)=&image;}
+        std::shared_ptr<CharacterProgressionTable> human_characters()override{throw std::logic_error("unexpected character");}
+        std::shared_ptr<EquipmentCombatTable> human_weapons()override{throw std::logic_error("unexpected weapon");}
+        std::int32_t hero_cloth_image()override{throw std::logic_error("unexpected cloth");}
+        std::int32_t hero_hat_image()override{throw std::logic_error("unexpected hat");}
+        std::int32_t hero_weapon_image()override{throw std::logic_error("unexpected weapon");}
+        RenderMatrix& human_scale_matrix()override{throw std::logic_error("unexpected matrix");}
+        RenderDrawResource* human_character_resource()override{throw std::logic_error("unexpected chara resource");}
+        RenderDrawResource* human_resource(std::int32_t id)override{calls.push_back(id);return &resource;}
+    } h;
+    Graphics g;
+    draw_human_target_effect({100,200,28,7,5,34},&g,h);
+    check(h.calls==std::vector<std::int32_t>{20}&&g.draws.size()==1,"target effect resolves resource20");
+    const auto& draw=g.draws[0];
+    check(draw.image==&h.image&&draw.u==22&&draw.v==0&&draw.source_width==11&&draw.source_height==9&&draw.x==95&&draw.y==196,"effect frame, odd dimensions and center anchor use signed integer arithmetic");
+    draw_human_target_effect({100,200,28,0,5,68},&g,h);
+    check(g.draws.back().x==89&&g.draws.back().y==191,"right and bottom anchors subtract full dimensions");
+    draw_human_target_effect({100,200,28,2,0,0},&g,h);
+    check(g.draws.back().source_width==0&&g.draws.back().u==0,"ARM64 division by zero gives zero cell width");
+    const auto before=g.draws.size();
+    draw_human_target_effect({0,0,-1,0,5,0},nullptr,h);
+    draw_human_target_effect({0,0,29,0,5,0},nullptr,h);
+    draw_human_target_effect({0,0,28,-1,5,0},nullptr,h);
+    h.resource.images->at(28)=nullptr;draw_human_target_effect({0,0,28,0,5,0},nullptr,h);
+    check(h.calls.size()==7&&g.draws.size()==before,"resource query precedes every skip and null graphics is not required on skipped paths");
+    h.resource.images.reset();
+    fails<std::invalid_argument>([&]{draw_human_target_effect({0,0,28,-1,5,0},nullptr,h);});
+}
 void resolver(){
     Host normal;const auto result=resolve_human_images(0,normal);
     check(*result==EventIntegers({200,10,10,-1,13}),"ordinary images include shadow, body twice, no hat and base weapon");
@@ -152,6 +207,6 @@ void reversal_and_failures(){
 }
 int main(){
     const char* stage="resolver";
-    try{resolver();stage="drawing";drawing();stage="masks";masks_and_skips();stage="reversal";reversal_and_failures();return 0;}
+    try{resolver();stage="drawing";drawing();stage="masks";masks_and_skips();stage="reversal";reversal_and_failures();stage="entity";entity_wrapper();stage="target effect";target_effect();return 0;}
     catch(const std::exception& error){std::cerr<<stage<<": "<<error.what()<<'\n';return 1;}
 }

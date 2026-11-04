@@ -3,7 +3,8 @@ import struct
 from test_sprite_preview import jar,png,seb
 
 
-def add_town_background(root,scenery=False,buildings=False,areas=False,residents=False):
+def add_town_background(root,scenery=False,buildings=False,areas=False,residents=False,hero=False):
+    residents=residents or hero
     areas=areas or residents
     buildings=buildings or areas
     scenery=scenery or buildings
@@ -29,6 +30,18 @@ def add_town_background(root,scenery=False,buildings=False,areas=False,residents
         gear=['0','Wand','0','0','0','0','weapon','3']+['0']*13+['0','Description','0']
         quest=[0,'Quest',0,'quest',0,'','',1,1,1,100,1,1,1,100,0,0,-1,0,0,0,-1,-1,1,0]
         tables.extend([('English.lproj/Equipment.txt','\t'.join(gear).encode()),('English.lproj/Quest.txt','\t'.join(map(str,quest)).encode())])
+        if hero:
+            # Initial saved level7 deliberately differs from World.CreateHero's live level1.
+            main=[3,'Hero',0,'chara',10,'',0,0,0,7,0,100,13,*([2,10,20]*13),0,-1,-1,0,100,2]
+            for i,(name,data) in enumerate(tables):
+                if name.endswith('/Chara.txt'):
+                    extra=['\t'.join(map(str,main)),*[character(index,-1,[0],96) for index in range(4,10)]]
+                    tables[i]=(name,data+b'\n'+'\n'.join(extra).encode())
+            def wearable(index,image,flags):
+                return '\t'.join(map(str,[index,'Gear',0,'hat',image,0,0,1,0,0,'Description',flags]))
+            # First main hat is image7, while equipped hat ID0 would resolve image5.
+            tables.extend([('English.lproj/Hat.txt',(wearable(0,5,0)+'\n'+wearable(1,7,2)).encode()),
+                           ('English.lproj/Cloth.txt',wearable(0,12,0).encode())])
     (root/'textassets/tables.bin').write_bytes(jar(tables))
     atlas=png(4,2,[c for _ in range(2) for p in [(255,0,0,255)]*2+[(0,255,0,255)]*2 for c in p])
     members=[
@@ -81,8 +94,12 @@ def add_town_background(root,scenery=False,buildings=False,areas=False,residents
         for layer,offset in enumerate((0,2,5,0,8)):
             size=1 if layer==0 else 2
             animation+=struct.pack('>hh',4,0)+b''.join(struct.pack('>10h',frame,77,0,0,size,size,offset,0,0,0) for frame in range(4))
-        (root/'textassets/chara.bin').write_bytes(jar([('img.inf',b'10\tbody.png,bin\n200\tshadow.png,bin\n'),('seb.inf',b'38\thuman.seb\n'),
+        (root/'textassets/chara.bin').write_bytes(jar([('img.inf',b'10\tbody.png,bin\n200\tshadow.png,bin\n'),('seb.inf',b'38\thuman.seb\n'+(b'37\thuman.seb\n' if hero else b'')),
             ('human.seb',animation),('body.png',png(2,2,[200,70,20,255]*4)),('shadow.png',png(1,1,[20,20,20,255]))]))
         (root/'textassets/weapon.bin').write_bytes(jar([('img.inf',b'3\tweapon.png,bin\n'),('seb.inf',b''),('weapon.png',png(2,2,[20,70,200,255]*4))]))
         with (root/'mission-resources.tsv').open('a') as out:
             out.write('resource 1 "textassets/chara.bin" "chara"\nresource 22 "textassets/weapon.bin" "weapon"\n')
+            if hero:out.write('resource 21 "textassets/hat.bin" "hat"\n')
+        if hero:
+            (root/'textassets/hat.bin').write_bytes(jar([('img.inf',b'5\twrong.png,bin\n7\that.png,bin\n'),('seb.inf',b''),
+                ('wrong.png',png(2,2,[255,0,0,255]*4)),('hat.png',png(2,2,[40,190,80,255]*4))]))

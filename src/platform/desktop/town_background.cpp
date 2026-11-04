@@ -2,6 +2,8 @@
 #include "decoded_image.hpp"
 #include "core/gameplay/render_frame.hpp"
 #include "core/gameplay/quest_rewards.hpp"
+#include "mission_entities.hpp"
+#include "core/gameplay/hero_bootstrap.hpp"
 #include <iomanip>
 #include <limits>
 #include <stdexcept>
@@ -17,6 +19,44 @@ void json_text(std::ostream& out,const FormText& text){
     out<<'"';
 }
 }
+// Reuse the same entity ownership/factories as missions, without creating a
+// Stage, map, enemies or mission system schedule. MemberSystem.Init owns entry.
+struct TownBackground::HeroOwner final:HeroBootstrapHost,PartyHumanFactory {
+    GameplayCatalog catalog;
+    MissionProgress progress;
+    MemberRoster roster;
+    std::unique_ptr<MissionEntities> entities;
+    EnemyTable unused_enemies; // CombatRecordTables requires an enemy catalog; hero getters never read it.
+    HeroOwner(TownBackground& owner,ResourceArchive& tables){
+        catalog.characters=*owner.characters_;catalog.equipment=*owner.resident_weapons_;
+        const auto load=[&](const char* name){const auto data=tables.data(name);
+            if(!data)throw std::invalid_argument(std::string("town hero requires ")+name);
+            return load_equipment_combat_table(std::string_view(reinterpret_cast<const char*>(data->bytes.data()),data->bytes.size()),EquipmentTableKind::cloth_or_hat,false,parse_event_decimal);};
+        catalog.hats=load("Hat.txt");catalog.cloth=load("Cloth.txt");
+        for(std::size_t i=0;i<owner.character_states_.size();++i)if(owner.character_states_[i]){
+            const auto& state=*owner.character_states_[i];
+            progress.characters.emplace(static_cast<std::int32_t>(i),SavedCharacterProgression{state.level,state.experience});
+        }
+        entities=std::make_unique<MissionEntities>(catalog,progress,35,nullptr,
+            [&owner](std::int32_t id){return owner.actor_resource(id)->animations;},
+            [&owner](std::string_view name){for(const auto& entry:owner.actor_entries_)if(entry.second.name==name)return entry.first;
+                throw std::invalid_argument("missing town actor resource name");});
+        initialize_member_system(roster,&entities->player_world(),*this);
+    }
+    PartyCharacters character_table()override{return entities->character_table();}
+    PartyHumanFactory* human_factory_world()override{return this;}
+    PlayerWorldState* current_world()override{return &entities->player_world();}
+    PartyHumanFactory* world_factory(PlayerWorldState&)override{return this;}
+    Component* player_marker()override{return entities->shared_player_marker();}
+    PartyCharacter* character(HumanRecordLink& human)override{return character_table()->at(static_cast<std::size_t>(human.character_id));}
+    ComponentSlots* create_human(const HumanCreation& args)override{return &entities->human(args);}
+    ComponentSlots& hero(){auto* value=member_hero(&entities->player_world());if(!value)throw std::invalid_argument("missing town hero");return *value;}
+    const EquipmentCombatRecord& equipment(EquipmentSlot slot){
+        const auto* row=resolve_combat_equipment(hero(),slot,{catalog.characters,unused_enemies,catalog.equipment,catalog.hats,catalog.cloth});
+        if(!row)throw std::invalid_argument("missing town hero equipment record");return *row;
+    }
+};
+TownBackground::~TownBackground()=default;
 TownBackground::DrawingArchive::DrawingArchive(const GameArchiveEntry& entry,ResourceProfile profile)
     :archive(read_game_archive(entry.path),std::move(profile)),manager(archive),images(manager,decode_png){}
 TownBackground::TownBackground(ResourceArchive& tables,const GameArchiveEntry& selected,ResourceProfile profile,std::int32_t capacity,TownBackgroundContext context,EventScript buildings,std::shared_ptr<std::vector<std::uint8_t>> enabled,const GameArchiveEntry* background,const GameArchiveEntry* common,const GameResourceIndex* actor_resources)
@@ -105,12 +145,30 @@ void TownBackground::initialize_resident_data(ResourceArchive& tables,const Game
     }
     resident_challenges_=challenges<=0x7fffffffU?static_cast<std::int32_t>(challenges):-1-static_cast<std::int32_t>(0xffffffffU-challenges);
     resident_condition_host_=std::make_unique<DecodedEventConditionHost>(resident_conditions_);
-    for(const auto& entry:actors->entries)if(entry.kind=="resource"&&(entry.id==1||entry.id==21||entry.id==22)){
-        const auto* expected=entry.id==1?"chara":entry.id==21?"hat":"weapon";
+    for(const auto& entry:actors->entries)if(entry.kind=="resource"&&(entry.id==1||entry.id==21||entry.id==22||(context_.hero&&entry.id==20))){
+        const auto* expected=entry.id==1?"chara":entry.id==21?"hat":entry.id==20?"effect":"weapon";
         if(entry.name!=expected)throw std::invalid_argument("resident actor resource identity mismatch");
         actor_entries_.emplace(entry.id,entry);
     }
+    if(context_.hero)hero_owner_=std::make_unique<HeroOwner>(*this,tables);
     initialize_town_residents(residents_,*this);
+}
+std::int32_t TownBackground::hero_equipment_image(EquipmentSlot slot){
+    if(!hero_owner_)throw std::logic_error("town hero equipment owner requires --hero");
+    return hero_owner_->equipment(slot).image;
+}
+ComponentSlots* TownBackground::town_hero(){
+    if(!hero_owner_)throw std::logic_error("town hero owner is unbound");return &hero_owner_->hero();
+}
+void TownBackground::hero_target_marker(SelectBackgroundResource resource,std::int32_t clip,std::int32_t frame,std::int32_t x,std::int32_t y){
+    backend_->draw_seb_frame(static_cast<RenderDrawResource*>(resource),clip,frame,static_cast<float>(x),static_cast<float>(y));
+}
+void TownBackground::hero_target_effect(std::int32_t x,std::int32_t y,std::int32_t frame){
+    draw_human_target_effect({x,y,28,frame,5,34},&backend_->graphics(),*this);
+}
+void TownBackground::hero_draw(ComponentSlots* hero,std::int32_t x,std::int32_t y,std::int32_t clip,std::int32_t direction,std::int32_t frame){
+    hero_draws_.push_back({x,y,clip,direction,frame});
+    draw_entity_human({x,y,clip,frame,0,100,0},direction,hero,&backend_->graphics(),*this,human_work_);
 }
 std::shared_ptr<TownResidentCharacters> TownBackground::living_submembers(){
     auto rows=std::make_shared<TownResidentCharacters>(static_cast<std::size_t>(town_count()));
@@ -169,7 +227,7 @@ void TownBackground::draw(BitmapBackend& backend){
     backend_=&backend;draws_.clear();scenery_draws_.clear();floor_draws_.clear();floor_font_=0;
     fonts_.clear();font_requests_.clear();chip_draws_.clear();labels_.clear();touches_.clear();notices_->clear();king_queries_=0;
     area_draws_.clear();area_labels_.clear();area_touches_.clear();area_color_requests_=0;
-    resident_draws_.clear();resident_touches_.clear();resident_labels_.clear();
+    resident_draws_.clear();resident_touches_.clear();resident_labels_.clear();hero_draws_.clear();
     const auto before=backend.quads().size();
     try{
         const auto origin=draw_select_background({camera_x_,camera_y_,camera_.left_extent,camera_.right_extent,context_.view_y,&context_.view_x},*this);
@@ -182,6 +240,11 @@ void TownBackground::draw(BitmapBackend& backend){
             if(context_.residents){
                 // SAGA_STUB(town-inherited-clip): release the caller clip into the declared full-viewport desktop profile.
                 draw_select_resident_lane({camera_x_,camera_y_,context_.view_x,context_.view_y,town_frame_,notices_},0,*this);
+                if(context_.hero){
+                    draw_select_town_hero(hero_state_,town_frame_,origin,*this);
+                    for(std::int32_t lane=1;lane<3;++lane)
+                        draw_select_resident_lane({camera_x_,camera_y_,context_.view_x,context_.view_y,town_frame_,notices_},lane,*this);
+                }
             }
         }
     }
@@ -319,7 +382,7 @@ void TownBackground::report(std::ostream& out)const{
         for(std::size_t i=0;i<area_touches_.size();++i){if(i)out<<',';out<<'[';const auto& d=area_touches_[i];for(std::size_t j=0;j<d.size();++j){if(j)out<<',';out<<d[j];}out<<']';}out<<"]}";
     }
     if(context_.residents){
-        out<<",\"residents\":{\"lane\":0,\"provisional_context\":true,\"store_limit\":"<<context_.store_limit<<",\"condition_characters\":"<<context_.condition_character_count
+        out<<",\"residents\":{"<<(context_.hero?"\"lanes\":[0,1,2]":"\"lane\":0")<<",\"provisional_context\":true,\"store_limit\":"<<context_.store_limit<<",\"condition_characters\":"<<context_.condition_character_count
            <<",\"debug\":"<<(context_.debug?"true":"false")<<",\"debug_rescue_count\":";
         if(context_.debug_rescue_count)out<<*context_.debug_rescue_count;else out<<"null";
         out<<",\"present\":"<<residents_.present_value<<",\"active_range\":["<<resident_active_range_->at(0)<<','<<resident_active_range_->at(1)<<"],\"rows\":[";
@@ -330,6 +393,16 @@ void TownBackground::report(std::ostream& out)const{
         for(std::size_t i=0;i<resident_touches_.size();++i){if(i)out<<',';const auto& row=resident_touches_[i];out<<'['<<row[0]<<','<<row[1]<<','<<row[2]<<']';}
         out<<"],\"label_requests\":[";
         for(std::size_t i=0;i<resident_labels_.size();++i){if(i)out<<',';out<<'[';const auto& row=resident_labels_[i];for(std::size_t j=0;j<row.size();++j){if(j)out<<',';out<<row[j];}out<<']';}out<<"]}";
+    }
+    if(context_.hero){
+        auto& hero=hero_owner_->hero();const auto* human=dynamic_cast<HumanRecordLink*>(hero.get(14));
+        const auto* image=dynamic_cast<EntityImage*>(hero.get(7));const auto* equipment=dynamic_cast<EquipmentRecordLinks*>(hero.get(8));
+        out<<",\"hero\":{\"entity\":"<<hero_owner_->entities->id(hero)<<",\"character\":"<<human->character_id
+           <<",\"level\":"<<human->level<<",\"experience\":"<<human->experience<<",\"current_x\":"<<hero_state_.current_x<<",\"target_x\":"<<hero_state_.target_x
+           <<",\"direction\":"<<hero_state_.direction<<",\"resident_lanes\":[0,1,2]";
+        const auto array=[&](const char* name,const EventInstruction& values){out<<",\""<<name<<"\":[";for(std::size_t i=0;i<values->size();++i){if(i)out<<',';out<<values->at(i);}out<<']';};
+        array("textures",image->arrays.textures);array("equipment",equipment->ids);array("formation",hero_owner_->roster.formation);
+        out<<",\"draws\":[";for(std::size_t i=0;i<hero_draws_.size();++i){if(i)out<<',';out<<'[';for(std::size_t j=0;j<5;++j){if(j)out<<',';out<<hero_draws_[i][j];}out<<']';}out<<"]}";
     }
     out<<'}';
 }

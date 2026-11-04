@@ -54,6 +54,7 @@ add_executable(saga_town saga_town.cpp)
 saga_library(town_background town_background.cpp)
 target_link_libraries(town_background PUBLIC gameplay_catalog archive_image_set bitmap_backend decoded_image select_form_pass select_building select_camera render_frame render_draw game_random)
 target_link_libraries(town_background PUBLIC human_drawing town_residents event_conditions)
+target_link_libraries(town_background PRIVATE mission_entities hero_bootstrap)
 target_link_libraries(saga_town PRIVATE town_background)
 project_warnings(saga_town)
 

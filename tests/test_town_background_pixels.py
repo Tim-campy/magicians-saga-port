@@ -92,6 +92,26 @@ class TownBackgroundPixels(unittest.TestCase):
             self.assertEqual(right_report['background']['camera'][0],-270)
             self.assertEqual(bmp_pixels(right.read_bytes())[2][73*width+217],(0,120,0,255))
 
+    def test_hero_factory_hat_and_all_resident_lanes_reach_pixels(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);add_town_background(root,hero=True)
+            base=[str(EXE),'--data',str(root),'--hero','--width','600','--height','320','--app-seed','0']
+            first=root/'hero.bmp'
+            result=subprocess.run([*base,'--capture',str(first)],capture_output=True,text=True,timeout=30)
+            self.assertEqual(result.returncode,0,result.stderr);report=json.loads(result.stdout)
+            width,height,pixels=bmp_pixels(first.read_bytes());self.assertEqual((width,height),(600,320))
+            self.assertEqual(pixels[209*width+40],(40,190,80,255)) # First main hat image7, not equipment hat0/image5.
+            self.assertEqual(pixels[209*width+42],(200,70,20,255))
+            self.assertEqual(pixels[209*width+48],(20,70,200,255))
+            for x,y in ((132,201),(431,210),(261,219)):
+                self.assertEqual(pixels[y*width+x],(200,70,20,255))
+            second=root/'repeat.bmp'
+            repeat=subprocess.run([*base,'--capture',str(second)],capture_output=True,text=True,timeout=30)
+            self.assertEqual(repeat.returncode,0,repeat.stderr)
+            self.assertEqual(json.loads(repeat.stdout),report);self.assertEqual(first.read_bytes(),second.read_bytes())
+            cpu=subprocess.run(base,capture_output=True,text=True,timeout=30)
+            self.assertEqual(cpu.returncode,0,cpu.stderr);self.assertEqual(json.loads(cpu.stdout),report)
+
     def test_fill_tiles_parallax_repeat_and_headless_parity(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);add_town_background(root)
