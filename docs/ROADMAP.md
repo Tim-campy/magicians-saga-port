@@ -31,10 +31,10 @@ Host: `saga_mission` (headless or SDL window; fresh --data/--quest entry or expl
 
 Host: `saga_town`. Acceptance: SelectForm town runs with the real map and residents; choosing a quest starts S1's mission; the result returns to town and progression (EXP, money, levels, stock, quest record) is applied in memory; event scripts fire on return (event 31, 1133).
 
-- [ ] (blocking) Bind full `update_select_form` to persistent `saga_town` with shared saves/events/delays, permissions, image clocks and form owners; reproduce Event0 delay1 and Talk0/1 pause.
+- [ ] (blocking) Bind interactive town input, menu/form factories and resident bubbles to persistent `saga_town`; preserve shared event/save owners and modal pause.
 - [ ] Bind Building/KingReward NewGame state to town menus and return consumers before those paths become reachable.
 - [ ] Connect town quest selection and retained mission return to one shared progression owner in `saga_town`.
-- [ ] Bind native town permission refresh and capture callbacks to the town Update host.
+- [ ] Bind capture callbacks to the town Update host.
 - [ ] Bind billing-item/catalog providers as stubs and the notification manager adapters, preserving task execution gates.
 - [ ] Find the consumer of `hour_ != -1`, the writer of `SubForm.delayEvent_` (`+0x1d0`) and the remaining effect opcodes of the table at `0x627b6e`.
 - [ ] Resolve event 1133.
@@ -69,6 +69,7 @@ Host: `saga`. Acceptance: talk and event forms show their text with the correct 
 - [ ] Decide the audio path (FSB5 Vorbis from the extractor output, streaming policy for 74 MB of PCM) and play BGM/SE through SDL.
 
 ## Backlog (pull into a slice only when it is on its critical path)
+
 
 - [ ] (deferred pending producer evidence) Locate indirect Cursor event2/4 or StartCatch producers before binding screen points; use an original runtime trace if static references remain absent (A2).
 - [ ] Group `src/core/gameplay/` (138 files) into subdirectories by subsystem (`combat/`, `mission/`, `town/`, `render/`, `events/`, `text/`, `runtime/`) without behaviour changes; CMake targets and tests keep their names.

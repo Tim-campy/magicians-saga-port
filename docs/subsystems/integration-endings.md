@@ -63,20 +63,20 @@ build/desktop/saga_mission.exe --data extracted/full --quest 1 --headless --fram
 build/desktop/saga_mission.exe --data extracted/full --quest 75 --headless --frames 8000 --replay research/exports/mission-endings/defeat.replay
 ```
 
-The corresponding `*-final.json` reports retain the actual exits, all result grant lists and member result fields. Each headless report repeats identically; requesting10000 frames instead preserves the complete report except `frames_requested`, including both state digests and the actual terminal frame. Every previous report field also matches the control executable. `endings-final.json` pins executable, replay and report SHA256 values and checkpoint digests. These port runs establish reached endings without claiming Android equivalence, completed town return or persistence.
+Local `research/exports/town-update/mission-{retreat-intro,timeout,advance-fight,defeat}.json` retain the actual exits, grant lists and member fields. Compared with preserved playtest-1ce0a06 on identical data and an equivalent v1 initialization projection, all fields match except quest_form_update (+1 from its corrected native fresh0) and the two state digests. These port runs establish reached endings without claiming Android equivalence, completed town return or persistence.
 
 | Replay | Final logic hash |
 | --- | --- |
-| `retreat-intro.replay` | `f6f43c1594325ac9` |
-| `timeout.replay` | `de42cefea82100c4` |
-| `advance-fight.replay` | `458ccadef86ed635` |
-| `defeat.replay` | `1b929b4c325bba01` |
+| `retreat-intro.replay` | `e966f3ac5ac1a620` |
+| `timeout.replay` | `1d908f6a24b867db` |
+| `advance-fight.replay` | `ed73faa41faec4bb` |
+| `defeat.replay` | `e343445c96308865` |
 
-The summary SHA256 is `6b873d6cf468d932294ea80a739fb2db2772340b8881bfe7c462e8cad77273be`, pinning the headless executable `a103fbc3d36e55cbeaa953d00635a248f8abf2241fe60770ea9c3120d21383c1`. Hidden GPU captures (`*-window-final.json`/`*-final.bmp`) reach the same terminal tick and match every shared state field, including the logic digest/byte count; only presentation `state_hash`/`state_hash_bytes` may differ. The capture's nested `state` excludes nine headless CLI/report-envelope fields. Final captures retain the post-cleanup hero/HUD and remaining presentation objects; they do not draw the original result form or a town.
+The headless executable SHA256 is `a8dc06d654322787020947d1b26b9c37003e91d99f0556a5824fad02effae297`. The540-frame regression additionally compares CPU/GPU logic fields and retains byte-identical pixels from the preserved combat capture. Its final logic hash is `6c62139ed1bdd724`; see [replay checkpoints](integration-replay.md). Stage-result presentation remains a declared service boundary, not the original result form or a town.
 
 An unbounded window run with `retreat-intro.replay` and hidden Windows startup closes normally at202 logic steps, without a frame limit or close input. `retreat-unbounded-final.json` retains the matching exit and logic digest. This exercises the window's terminal branch separately from bounded replay execution.
 
-Windows Release builds pass196 desktop CTest contracts and200 viewer contracts, including the four GPU checks. All20 Python test files pass. The mission-profile contract covers native fresh retreat/timeout, null/pending exits, all four return labels, complete clear grants/member fields, stock/recruitment caps and stable held state across repeated/extended budgets. S1 A4 is checked on this evidence; original result-form pixels, town return and saves remain separate work.
+Windows Release builds pass209 desktop CTest contracts and214 viewer contracts. All23 Python test files pass. The mission-profile contract covers native fresh retreat/timeout, null/pending exits, all four return labels, complete clear grants/member fields, stock/recruitment caps and stable held state across repeated/extended budgets. S1 A4 is checked on this evidence; original result-form pixels, town return and saves remain separate work.
 
 ## Open questions
 

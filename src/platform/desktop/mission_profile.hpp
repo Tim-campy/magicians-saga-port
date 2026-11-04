@@ -154,7 +154,7 @@ private:
     std::optional<InitialMissionContext> initial_context_;
     std::optional<std::int32_t> application_orientation_; // Setter output, distinct from decoded system-save slot12.
     core::QuestFrameState quest_frame_state_; // SAGA_STUB(mission-form-fade-draw): timing is bound, fade overlay is not.
-    std::int32_t parent_update_counter_=-1; // MyFormBase.Init +0xc8.
+    std::int32_t parent_update_counter_=0; // Fresh update_ +0xb8; Init's -1 at+0xc8 is result_.
     std::shared_ptr<core::ImageAnimationValues> image_clocks_=std::make_shared<core::ImageAnimationValues>();
     std::uint64_t world_update_calls_=0,image_clock_resets_=0,image_clock_updates_=0;
     std::vector<std::int32_t> last_world_passes_;

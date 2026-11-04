@@ -81,12 +81,17 @@ EventObject MissionEvents::make_talk_form(std::int32_t id,EventObject args){
     talk->reveal.speed=configured_reveal_speed(1500,scenario_.short_words);
     set_page(*talk);creating_=talk;return talk;
 }
-void MissionEvents::push_form(EventObject form){push_base_form(root_,std::move(form));}
+void MissionEvents::push_form(EventObject form){
+    if(application_push_)application_push_(std::move(form));else push_base_form(root_,std::move(form));
+}
 void MissionEvents::push(EventObject parent,EventObject child,bool option){
     if(parent!=root_.identity||option||child!=creating_)throw std::invalid_argument("unsupported mission form push");
     // RunOnUiThread's same-UI-thread path invokes Push's callback synchronously.
     // The callback inserts state0; Init/Finish are owned by the next manager dispatch.
-    forms_.push_back(creating_);lifecycle_.push_back("push:"+std::to_string(creating_->id));creating_.reset();++opened_;
+    // Town's executing root stays pinned as GetCurrentForm for this dispatch;
+    // PushCallback inserts each child immediately after that parent (0x1be6acc).
+    if(application_push_)forms_.insert(forms_.begin(),creating_);else forms_.push_back(creating_);
+    lifecycle_.push_back("push:"+std::to_string(creating_->id));creating_.reset();++opened_;
 }
 bool MissionEvents::finish_talk(Talk& talk){
     // SubForm.Finish 0x120488c: this fresh factory owns no delay/share continuation.
@@ -123,8 +128,12 @@ std::int64_t MissionEvents::read_stamina(){unbound("saved stamina");}
 void MissionEvents::write_stamina(std::int64_t){unbound("saved stamina");}
 std::int32_t MissionEvents::identify_script(const EventScript& s){return executor_.identify_script(s);}
 EventScript MissionEvents::resolve_script(std::int32_t id){return executor_.resolve_script(id);}
-std::int32_t MissionEvents::read_talk_character(){unbound("saved talk character slot7");}
-void MissionEvents::restore_talk_character(std::size_t,std::int32_t){unbound("saved talk character slot7");}
+std::int32_t MissionEvents::read_talk_character(){
+    if(!normal_save_)unbound("saved talk character slot7");return normal_save_->at(7);
+}
+void MissionEvents::restore_talk_character(std::size_t index,std::int32_t value){
+    if(!normal_save_)unbound("saved talk character slot7");normal_save_->at(index)=value;
+}
 NullablePresentationText MissionEvents::translate_argument(const std::u16string& text){
     // SAGA_STUB(mission-text-translation): explicit invariant-language service, no translation/honorific rewriting.
     return text;

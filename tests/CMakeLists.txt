@@ -188,6 +188,8 @@ add_test(NAME input_frame_contract COMMAND test_input_frame)
 add_test(NAME mission_profile_contract COMMAND "${Python3_EXECUTABLE}" -I "${CMAKE_CURRENT_SOURCE_DIR}/test_mission_profile.py" "$<TARGET_FILE:saga_mission>")
 set_tests_properties(mission_profile_contract PROPERTIES ENVIRONMENT "SAGA_TEST_FONT=${SAGA_TEST_FONT}")
 add_test(NAME town_profile_contract COMMAND "${Python3_EXECUTABLE}" -I "${CMAKE_CURRENT_SOURCE_DIR}/test_town_profile.py" "$<TARGET_FILE:saga_town>")
+add_test(NAME town_update_contract COMMAND "${Python3_EXECUTABLE}" -I "${CMAKE_CURRENT_SOURCE_DIR}/test_town_update.py" "$<TARGET_FILE:saga_town>")
+set_tests_properties(town_update_contract PROPERTIES ENVIRONMENT "SAGA_TEST_FONT=${SAGA_TEST_FONT}")
 add_test(NAME event_scenario_integration COMMAND "${Python3_EXECUTABLE}" -I "${CMAKE_CURRENT_SOURCE_DIR}/test_event_scenario.py" "$<TARGET_FILE:event_trace>")
 
 add_executable(test_select_event_pass test_select_event_pass.cpp)

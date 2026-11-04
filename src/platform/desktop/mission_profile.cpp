@@ -21,22 +21,7 @@ struct SelectedDrop {std::int32_t type,value,scale;ProjectilePoint position;};
 struct SelectedFreshHero {};
 struct SelectedBubble {std::int32_t parent,data_id,type,maximum,resource,clip;ProjectilePoint initial;};
 struct SelectedGauge {std::uint64_t step=0;std::int32_t parent=0;GaugeCreation args;};
-std::filesystem::path mission_font_path(const std::filesystem::path& root){
-    const auto index=root/"mission-font.tsv";
-    if(std::filesystem::file_size(index)>4096)throw std::length_error("mission font index exceeds4KiB");
-    std::ifstream in(index);std::string signature,kind,path;std::int32_t version=0;std::uint64_t size=0;
-    if(!(in>>signature>>version>>kind>>std::quoted(path)>>size)||signature!="mission_font"||version!=1||kind!="font"||size==0)
-        throw std::invalid_argument("invalid mission font index");
-    in>>std::ws;if(!in.eof())throw std::invalid_argument("unexpected mission font index fields");
-    const auto relative=std::filesystem::u8path(path);
-    if(relative.is_absolute()||relative.has_root_name()||relative.parent_path()!=std::filesystem::path("unity")/"Font"||relative.filename().empty())
-        throw std::invalid_argument("mission font must be a direct unity/Font child");
-    const auto result=std::filesystem::canonical(root/relative);
-    const auto child=result.lexically_relative(std::filesystem::canonical(root));
-    if(child.empty()||child.is_absolute()||std::find(child.begin(),child.end(),std::filesystem::path(".."))!=child.end()||std::filesystem::file_size(result)!=size)
-        throw std::invalid_argument("mission font path escapes data root or size differs");
-    return result;
-}
+
 }
 SceneResource::SceneResource(const std::filesystem::path& path,ResourceProfile profile,ArchiveImageSet::Decoder decoder)
     :archive(read_game_archive(path),std::move(profile)),manager(archive),image_clocks(archive.image_animation_infos()){
@@ -808,16 +793,9 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     if(initial_context_requested){
         if(!selection.data_root||!new_game_save_||!fresh_hero_||!initialized_loaded_||*initialized_loaded_!=0||!construct_systems_)
             throw std::invalid_argument("mission_initialization requires --data/new_game_save/fresh hero/system_init0/system_construct");
-        const auto path=*selection.data_root/"mission-initialization.tsv";
-        if(std::filesystem::file_size(path)>4096)throw std::length_error("mission initialization exceeds4KiB");
-        std::ifstream data(path);data.imbue(std::locale::classic());std::string signature,yugami_label,orientation_label,args_label,args;
-        std::int32_t version=0;InitialMissionContext context{};
-        if(!(data>>signature>>version>>yugami_label>>context.yugami>>orientation_label>>context.orientation>>args_label)||
-           signature!="mission_initialization"||version!=1||yugami_label!="yugami"||orientation_label!="orientation"||args_label!="event_arguments")
-            throw std::invalid_argument("invalid mission initialization header or fields");
-        data>>std::ws;if(data.peek()!='"'||!(data>>std::quoted(args)))throw std::invalid_argument("initial event arguments require quoted UTF-8 text");
-        data>>std::ws;if(!data.eof())throw std::invalid_argument("unexpected mission initialization fields");
-        context.event_arguments=decode_mission_text(args);initial_context_=std::move(context);
+        const auto decoded=read_game_initialization(*selection.data_root);
+        InitialMissionContext context{};context.yugami=decoded.yugami;context.orientation=decoded.orientation;
+        context.event_arguments=decode_mission_text(decoded.event_arguments);initial_context_=std::move(context);
     }
     if((initial_yugami||initial_orientation||event_scenario.new_game_context)&&!initial_context_)
         throw std::invalid_argument("initial Yugami/orientation/new-game event context requires mission_initialization");

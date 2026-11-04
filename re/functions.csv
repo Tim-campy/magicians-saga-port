@@ -1819,7 +1819,7 @@ game:0x06000745,game:0x06000745,ui,,176,0x11cf8a4
 game:0x06000746,game:0x06000746,ui,,432,0x11d0548
 game:0x06000747,form.MyFormBase.Update,ui,reimplemented,252,0x11d1684
 game:0x06000748,game:0x06000748,ui,,44,0x11d1b00
-game:0x06000749,game:0x06000749,ui,,8,0x11d1f10
+game:0x06000749,form.MyFormBase.Resume,ui,documented,8,0x11d1f10
 game:0x0600074a,game:0x0600074a,ui,,48,0x11d1f44
 game:0x0600074b,game:0x0600074b,ui,,448,0x11d6fc0
 game:0x0600074c,game:0x0600074c,ui,,88,0x11d7180
@@ -2002,7 +2002,7 @@ game:0x060007fc,game:0x060007fc,ui,,376,0x11e97b4
 game:0x060007fd,game:0x060007fd,ui,,272,0x11e992c
 game:0x060007fe,form.SelectForm..ctor,ui,traced,492,0x11e9a3c
 game:0x060007ff,form.SelectForm.Init,ui,traced,5644,0x11e9c28
-game:0x06000800,form.SelectForm.Update,ui,traced,8068,0x11ebb94
+game:0x06000800,form.SelectForm.Update,ui,reimplemented,8068,0x11ebb94
 game:0x06000801,game:0x06000801,ui,,2704,0x11ef380
 game:0x06000802,form.SelectForm.UpdateNotifyValue,ui,traced,744,0x11edb18
 game:0x06000803,game:0x06000803,ui,,384,0x11f0594
@@ -2029,7 +2029,7 @@ game:0x06000817,form.SelectForm.SetCameraPosition,ui,reimplemented,320,0x11f32b4
 game:0x06000818,game:0x06000818,ui,,12,0x11eb40c
 game:0x06000819,form.SelectForm.SetActiveX,ui,reimplemented,472,0x11eb234
 game:0x0600081a,form.SelectForm.GetActiveX,ui,reimplemented,480,0x11eb714
-game:0x0600081b,game:0x0600081b,ui,,24,0x11f49a4
+game:0x0600081b,form.SelectForm.Resume,ui,documented,24,0x11f49a4
 game:0x0600081c,game:0x0600081c,ui,,280,0x11f49bc
 game:0x0600081d,form.SelectForm.GetGameWidth,ui,documented,52,0x11f3194
 game:0x0600081e,form.SelectForm.GetGameHeight,ui,documented,52,0x11f31c8
@@ -3869,8 +3869,8 @@ game:0x06000fee,ecs.TownSystem.ResetBuildingList,ecs,reimplemented,604,0x1169e08
 game:0x06000fef,game:0x06000fef,ecs,,324,0x116a064
 game:0x06000ff0,game:0x06000ff0,ecs,,536,0x116a20c
 game:0x06000ff1,ecs.TownSystem.SetBuildingList,ecs,reimplemented,464,0x1169934
-game:0x06000ff2,ecs.TownSystem.UpdateEnable,ecs,documented,376,0x116a424
-game:0x06000ff3,ecs.TownSystem.CheckEnable,ecs,documented,48,0x116a59c
+game:0x06000ff2,ecs.TownSystem.UpdateEnable,ecs,reimplemented,376,0x116a424
+game:0x06000ff3,ecs.TownSystem.CheckEnable,ecs,reimplemented,48,0x116a59c
 game:0x06000ff4,game:0x06000ff4,ecs,,164,0x116a5cc
 game:0x06000ff5,game:0x06000ff5,ecs,,352,0x116a6d4
 game:0x06000ff6,game:0x06000ff6,ecs,,492,0x116a834
@@ -10888,7 +10888,7 @@ kairo:0x06001a2a,kairo:0x06001a2a,ui,,4,0x1be2540
 kairo:0x06001a2b,kairo:0x06001a2b,ui,,200,0x1be2478
 kairo:0x06001a2c,kairo:0x06001a2c,ui,,300,0x1be1678
 kairo:0x06001a2d,kairo:0x06001a2d,ui,,20,0x1be2544
-kairo:0x06001a2e,kairo:0x06001a2e,ui,,20,0x1bdd06c
+kairo:0x06001a2e,kairo.unity.form.FormManagerBase.GetCurrentForm,ui,documented,20,0x1bdd06c
 kairo:0x06001a2f,kairo:0x06001a2f,ui,,212,0x1be2558
 kairo:0x06001a30,kairo:0x06001a30,ui,,332,0x1be262c
 kairo:0x06001a31,kairo:0x06001a31,ui,,108,0x1be2778

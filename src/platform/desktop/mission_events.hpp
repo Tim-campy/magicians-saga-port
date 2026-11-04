@@ -24,6 +24,14 @@ class MissionEvents final:private core::EventEffectsHost,private core::EventFlow
 public:
     MissionEvents(ResourceArchive&,MissionEventScenario,std::function<void()> clear_input);
     bool execute(std::int32_t);
+    core::EventDelayQueue& delays(){return delays_;}
+    const core::EventDelayQueue& delays()const{return delays_;}
+    core::DecodedEventExecutionHost& executor(){return executor_;}
+    core::FormPushState form_owner()const{return root_;}
+    // The application dispatches Push through the current form's virtual method.
+    // Town supplies its SelectForm flag writes; mission retains its existing base Push.
+    void bind_application_push(std::function<void(core::EventObject)> callback){application_push_=std::move(callback);}
+    void bind_normal_save(core::EventInstruction values){normal_save_=std::move(values);}
     bool pending()const{return !forms_.empty();}
     // True when the selected modal consumes this dispatch; false permits the underlying Quest update.
     bool advance(std::uint64_t frame,std::int32_t tick_ms,bool pulse,bool held);
@@ -54,6 +62,8 @@ private:
     std::vector<std::int32_t> executed_;
     std::vector<std::string> lifecycle_;
     std::function<void()> clear_input_;
+    std::function<void(core::EventObject)> application_push_;
+    core::EventInstruction normal_save_;
     std::shared_ptr<DesktopTextFont> font_provider_;
     std::uint64_t layout_measurements_=0;
     struct LayoutSample {std::int32_t talk,page,length,height;std::size_t blocks;};

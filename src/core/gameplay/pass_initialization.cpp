@@ -46,6 +46,25 @@ void initialize_fresh_town(TownInitializationState& state,FreshTownHost& host){
     }
     if(first_count>host.saved_town_count())host.save_town_count(first_count);
 }
+bool update_town_permission(TownInitializationState& state,std::int32_t index,TownPermissionHost& host){
+    // TownSystem.UpdateEnable 0x116a424: a true empty-term result stores nothing.
+    const auto slot=static_cast<std::size_t>(index);
+    if(town_required(state.build_enable).at(slot)!=0)return false;
+    const auto term=town_record(host.town_records(),slot).open_term;
+    if(!term||term->empty())return true;
+    const auto context=host.condition_context();
+    const auto records=host.town_records();
+    auto& record=town_record(records,slot);
+    auto& conditions=town_required(context); // Native row validation precedes this context gate.
+    if(!check_event_conditions(record.open_term,conditions))return false;
+    // CheckTerm callbacks may replace the array; never write the captured old one.
+    town_required(state.build_enable).at(slot)=1;
+    return true;
+}
+std::uint8_t town_permission(const TownInitializationState& state,std::int32_t index){
+    // TownSystem.CheckEnable 0x116a59c.
+    return town_required(state.build_enable).at(static_cast<std::size_t>(index));
+}
 namespace {
 EventScript allocate_town_projection(FreshTownHost& host){
     const auto count=host.saved_town_count();

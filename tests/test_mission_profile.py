@@ -688,7 +688,7 @@ class MissionProfileTests(unittest.TestCase):
             intro=run(21);self.assertEqual(intro['stage_state'],1);self.assertEqual(intro['quest_form_fade_frame'],0)
             self.assertFalse(intro['quest_form_result']);self.assertEqual(intro['quest_form_fade_type'],-1)
             after=run(22);self.assertEqual(after['frames'],22);self.assertEqual(after['remaining_time'],4999)
-            self.assertEqual(after['quest_form_update'],21);self.assertEqual(after['quest_form_frame'],22)
+            self.assertEqual(after['quest_form_update'],22);self.assertEqual(after['quest_form_frame'],22)
             self.assertEqual(after['image_clock_resets'],1);self.assertEqual(after['image_clock_updates'],22)
             scene.write_text(text+'quest_frame 1 0\n',encoding='utf-8')
             fast=run(22)

@@ -1,0 +1,201 @@
+// Persistent SelectForm controller binding. Game rules remain in portable kernels.
+#include "town_background.hpp"
+#include "mission_events.hpp"
+#include "core/gameplay/quest_rewards.hpp"
+#include <stdexcept>
+
+namespace saga::desktop {
+using namespace core;
+namespace {
+[[noreturn]]void town_unbound(const char* what){throw std::logic_error(std::string("town path unbound: ")+what);}
+}
+struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,SelectMarkerHost,
+    SelectNavigationHost,SelectBuildingHost,SelectTownButtonsHost,SelectGuidanceSaveHost,
+    SelectReviewHost,SelectTriggerHost,SelectGuideHost,SelectNotificationHost,TownPermissionHost {
+    TownBackground& town;
+    GameInitialization initial;
+    MissionEvents events;
+    TownInitializationState permissions;
+    std::shared_ptr<TownTable> records;
+    EventInstruction system_save=std::make_shared<EventIntegers>(24);
+    std::shared_ptr<ImageAnimationValues> clocks;
+    std::shared_ptr<ConditionCatalog<AreaMarkerRecord>> marker_areas=std::make_shared<ConditionCatalog<AreaMarkerRecord>>();
+    std::shared_ptr<ConditionCatalog<AreaQuestState>> marker_quests=std::make_shared<ConditionCatalog<AreaQuestState>>();
+    std::array<std::shared_ptr<ConditionCatalog<EquipmentMarkerState>>,3> marker_items;
+    std::shared_ptr<GuideTowns> guide_towns=std::make_shared<GuideTowns>();
+    TownBubbleState bubble{-1,std::make_shared<const std::string>(),0};
+    TownBubbleTouchHost bubble_touch{bubble,*this};
+    std::shared_ptr<int> notification_owner=std::make_shared<int>(0);
+    std::uint64_t dispatches=0,updates=0,modal_dispatches=0,input_clears=0,save_requests=0,bgm_requests=0,notification_passes=0;
+    static MissionEventScenario scenario(const std::filesystem::path& root,const GameInitialization& seed){
+        if(!seed.town)throw std::invalid_argument("town Update requires v2 --mission-initialization extraction");
+        MissionEventScenario result;result.new_game_context=true;result.save_string0=decode_mission_text(seed.event_arguments);
+        // Same declared desktop font context as the mission; GUIStyle equivalence is unverified.
+        result.font=MissionFontScenario{mission_font_path(root),100,0,0,100.0F,100.0F,false,false};return result;
+    }
+    UpdateOwner(TownBackground& value,ResourceArchive& tables,const std::filesystem::path& root)
+        :town(value),initial(read_game_initialization(root)),events(tables,scenario(root,initial),[this]{++input_clears;}){
+        if(tables.selected_profile().language_folder!="English.lproj")throw std::invalid_argument("town Update font binding requires English/default skin");
+        const auto data=tables.data("Town.txt");if(!data)throw std::invalid_argument("town Update requires Town.txt");
+        records=std::make_shared<TownTable>(load_town_table(std::string_view(reinterpret_cast<const char*>(data->bytes.data()),data->bytes.size()),false,parse_event_decimal));
+        permissions.build_enable=town.building_enabled_;
+        const auto defaults=read_new_game_save_defaults(root);const auto& save=*initial.town;
+        town.save_integers_->at(0)=save.normal_flags;town.save_integers_->at(7)=save.talk_character;
+        town.save_integers_->at(8)=defaults.area8;town.save_integers_->at(9)=defaults.quest9;
+        system_save->at(1)=save.system_flags;system_save->at(21)=save.review_coin;system_save->at(22)=save.reviewed;
+        events.bind_normal_save(town.save_integers_);town.pass_->form=events.form_owner();
+        events.bind_application_push([this](EventObject child){
+            // FormManager._execute pins this current form until Update returns,
+            // even when an earlier synchronous Push has inserted another child.
+            push_select_form(town.pass_->form,std::move(child),town.pass_->auto_save,town.pass_->events.event_check_requested);
+        });
+        town.town_state_.resident_present_value=town.residents_.present_value;
+        auto& conditions=town.resident_conditions_;
+        conditions.money=defaults.money;conditions.crystals=defaults.crystals;conditions.stamina=save.stamina;
+        conditions.high_score=town.context_.high_score;conditions.town_capacity=town.save_integers_->at(19);
+        conditions.buildings=town.building_cache_;
+        conditions.town_flags=std::make_shared<ConditionCatalog<std::uint32_t>>(records->size());
+        guide_towns->resize(records->size());
+        for(std::size_t i=0;i<records->size();++i)if(records->at(i)){
+            const auto& row=*records->at(i);
+            conditions.town_flags->at(i)=std::make_shared<std::uint32_t>(static_cast<std::uint32_t>(row.flags));
+            guide_towns->at(i)=std::make_shared<GuideTownRecord>(GuideTownRecord{row.flags,row.id});
+        }
+        conditions.characters=std::make_shared<ConditionCatalog<CharacterConditionState>>(town.characters_->size());
+        for(std::size_t i=0;i<town.characters_->size();++i)if(town.characters_->at(i)){
+            const auto& row=*town.characters_->at(i);
+            conditions.characters->at(i)=std::make_shared<CharacterConditionState>(CharacterConditionState{town.character_states_[i]->recruited,static_cast<std::uint8_t>(row.flags)});
+        }
+        marker_areas->resize(town.areas_.size());
+        for(std::size_t i=0;i<town.areas_.size();++i)if(town.areas_[i])marker_areas->at(i)=std::make_shared<AreaMarkerRecord>(AreaMarkerRecord{town.areas_[i]->stages});
+        marker_quests->resize(town.quest_records_.size());
+        for(std::size_t i=0;i<town.quest_records_.size();++i)if(town.quest_records_[i]){
+            const auto& row=*town.quest_records_[i];marker_quests->at(i)=std::make_shared<AreaQuestState>(AreaQuestState{row.discovery_state,static_cast<std::uint8_t>(row.stage.flags),row.stage.completed!=0});
+        }
+        for(auto kind:{EquipmentMarkerKind::Equipment,EquipmentMarkerKind::Hat,EquipmentMarkerKind::Cloth}){
+            auto& projected=marker_items[static_cast<std::size_t>(kind)];const auto& items=town.marker_equipment(kind);
+            projected=std::make_shared<ConditionCatalog<EquipmentMarkerState>>(items.size());
+            for(std::size_t i=0;i<items.size();++i)if(items[i]){
+                EquipmentNewGameState state;reset_equipment_for_new_game(state,*items[i]);
+                projected->at(i)=std::make_shared<EquipmentMarkerState>(EquipmentMarkerState{state.inventory.stock,static_cast<std::uint32_t>(items[i]->flags),state.inventory.is_new});
+            }
+        }
+        // Retain actual row aliases in this host's explicit resource-registration
+        // order; no Update callback changes dictionary membership during a pass.
+        clocks=town.image_clock_values_;
+    }
+    bool top()const{return !events.pending();}
+    std::int32_t game_width()override{return town.game_width();}
+    std::int32_t game_height()override{return town.game_height();}
+    std::int32_t view_x()override{return town.context_.view_x;}
+    std::int32_t saved_orientation()override{return initial.orientation;}
+    bool enable_landscape()override{town_unbound("automatic landscape configuration");}
+    void set_orientation(std::int32_t)override{town_unbound("automatic landscape configuration");}
+    std::shared_ptr<ImageAnimationValues> image_animation_values()override{return clocks;}
+    bool capture_input(std::uint32_t)override{return false;} // Explicit neutral-input scenario.
+    bool pressed(std::uint32_t)override{return false;}
+    bool soft_label(std::int32_t)override{return false;}
+    void change_state(std::int32_t)override{town_unbound("capture-state labels");}
+    void finish_capture()override{town_unbound("capture finish");}
+    void capture()override{town_unbound("capture callback");}
+    void play_bgm()override{++bgm_requests; /* SAGA_STUB(town-update-bgm): audio output. */}
+    void update_notifications()override{update_select_notifications(*this);}
+    bool acquire_balance()override{return false;} // SAGA_STUB(town-update-balance): no online request in flight.
+    void set_active_x()override{set_select_active_x(town.camera_,town);}
+    void update_decorations()override{update_select_decorations(town.scenery_,town.decoration_motion_,town);}
+    void update_town_humans()override{update_town_residents(town);}
+    std::int32_t town_enable_count()override{return town.save_integers_->at(19);}
+    bool update_town_enable(std::int32_t index)override{return update_town_permission(permissions,index,*this);}
+    void check_guide_arrow(bool force)override{check_select_guide(town.guide_state_,force,*this);}
+    std::shared_ptr<TownTable> town_records()override{return records;}
+    std::shared_ptr<EventConditionHost> condition_context()override{return town.resident_condition_host_;}
+    bool is_top_form()override{return top();}
+    bool debug_enabled()override{return town.context_.debug;}
+    std::shared_ptr<ConditionCatalog<AreaMarkerRecord>> areas()override{return marker_areas;}
+    std::shared_ptr<AreaQuestState> quest(std::int32_t id)override{return marker_quests->at(static_cast<std::size_t>(id));}
+    std::shared_ptr<ConditionCatalog<EquipmentMarkerState>> equipment(EquipmentMarkerKind kind)override{return marker_items.at(static_cast<std::size_t>(kind));}
+    std::int64_t stamina()override{return *town.resident_conditions_.stamina;}
+    std::uint32_t system_flags()override{return static_cast<std::uint32_t>(system_save->at(1));}
+    EventInstruction save_integers()override{return town.save_integers_;}
+    EventInstruction system_save_integers()override{return system_save;}
+    std::shared_ptr<BuildingSlots> building_slots()override{return town.building_cache_;}
+    bool can_build(std::int32_t index)override{return (town_permission(permissions,index)&1U)!=0;}
+    std::int32_t sum_quest_challenges()override{return town.resident_challenges_;}
+    std::shared_ptr<GuideTowns> towns()override{return guide_towns;}
+    std::shared_ptr<TownHumanRows> town_humans()override{return town.residents_.residents;}
+    std::shared_ptr<TownVoices> voices()override{town_unbound("resident Voice table binding");}
+    std::shared_ptr<TownSpeakers> speakers()override{town_unbound("resident bubble speaker binding");}
+    void play_button_sound()override{ /* SAGA_STUB(town-update-button-sound): audio output. */ }
+    void make_transition(std::int32_t,bool,std::uint32_t,std::function<void()>)override{town_unbound("room transition");}
+    EventObject room_form()override{town_unbound("room form");}
+    EventObject make_shop(std::int32_t)override{town_unbound("shop form");}
+    std::shared_ptr<BuildingMenuCatalog> buildings()override{town_unbound("building menu records");}
+    std::shared_ptr<std::vector<EventObject>> living_members()override{town_unbound("building resident owners");}
+    std::int32_t system_share_value()override{town_unbound("share save slot");}
+    void set_shop_selection(EventObject,std::int32_t)override{town_unbound("shop selection");}
+    EventObject make_build_list(std::int32_t)override{town_unbound("build list form");}
+    EventObject make_human_house(EventObject,std::int32_t,bool)override{town_unbound("house form");}
+    EventObject make_subform(std::int32_t)override{town_unbound("subform factory");}
+    EventObject make_share_window(bool)override{town_unbound("share form");}
+    EventObject area_form()override{town_unbound("area selection form");}
+    EventObject make_obstacle(std::int32_t)override{town_unbound("obstacle form");}
+    EventObject make_store_invite()override{town_unbound("store form");}
+    std::int32_t store_limit_slot()override{town_unbound("store limit slot");}
+    void add_money(std::int32_t)override{town_unbound("present progression owner");}
+    FormText format_present_value(std::int32_t)override{town_unbound("present text");}
+    EventObject make_present_popup(FormText)override{town_unbound("present popup");}
+    void save_game(bool,bool)override{++save_requests; /* SAGA_STUB(town-update-save): save envelope deferred; memory retained. */}
+    void report_autosave_error(const SelectSaveError&)override{town_unbound("save error adapter");}
+    void save_system()override{ /* SAGA_STUB(town-update-save): persistence output. */ }
+    void show_offerwall()override{ /* SAGA_STUB(town-update-billing): external offers. */ }
+    bool print_enabled()override{return false;}
+    void report_offerwall_error(const SelectSaveError&)override{}
+    std::int32_t random(std::int32_t bound)override{return town.lib_random(bound);}
+    std::int32_t area_state(std::int32_t index)override{return town.progress_.at(static_cast<std::size_t>(index)).value().discovery_state;}
+    std::int32_t reviewed_slot()override{return 22;} // AppData.cctor +0x310, ELF0x1119744..0x1119764.
+    std::int32_t review_coin_slot()override{return 21;} // +0x30c.
+    std::int32_t platform_code()override{return 2;} // Config.cctor0x1bed2d4, ELF0x625fb0.
+    EventObject make_reviewed(bool)override{town_unbound("review form");}
+    EventObject notification_manager()override{++notification_passes;return notification_owner;}
+    std::int32_t value_count(EventObject)override{return 0;} // SAGA_STUB(town-update-notifications): no external producer.
+    NotificationText value(EventObject,std::int32_t)override{town_unbound("notification entry");}
+    bool starts_currency_sale(NotificationText)override{town_unbound("notification culture prefix");}
+    EventObject billing_manager()override{town_unbound("billing manager");}
+    std::shared_ptr<NotificationApplyTask> make_apply_task(NotificationText)override{town_unbound("billing task provider");}
+    void add_apply_task(EventObject,std::shared_ptr<NotificationApplyTask>,bool)override{town_unbound("billing task queue");}
+    void show_currency_sale(NotificationText)override{town_unbound("currency offer");}
+    void show_free_movie()override{town_unbound("movie offer");}
+    void remove_value(EventObject,std::int32_t)override{town_unbound("notification removal");}
+    void update_apply_tasks(EventObject,bool)override{town_unbound("billing tasks");}
+};
+void TownBackground::initialize_update(ResourceArchive& tables,const std::filesystem::path& root){
+    if(update_owner_||!context_.foreground||context_.motion||!context_.top_form)throw std::invalid_argument("full town Update requires fresh foreground/top form and excludes selected motion");
+    update_owner_=std::make_shared<UpdateOwner>(*this,tables,root);
+}
+void TownBackground::advance_update(std::uint64_t frame,bool pulse){
+    if(!update_owner_)throw std::logic_error("town Update not initialized");auto& owner=*update_owner_;++owner.dispatches;
+    if(owner.events.advance(frame,40,pulse,false)){++owner.modal_dispatches;context_.top_form=false;return;}
+    context_.top_form=true;
+    SelectRecoveredPassHost pass(owner,guide_state_,owner,camera_,*this,owner);
+    SelectUpdateBindings bindings{prelude_,owner,pass_,pass,*this,owner,owner.events.delays(),owner.events.executor(),*resident_condition_host_,movement_,owner.bubble_touch,owner,update_owner_};
+    update_select_form(bindings,building_state_,owner,town_state_,owner.bubble,owner,owner,camera_,*this,owner);
+    ++owner.updates;context_.top_form=owner.top();
+}
+void TownBackground::report_update(std::ostream& out)const{
+    const auto& owner=*update_owner_;
+    out<<",\"update\":{\"neutral_input\":true,\"tick_ms\":40,\"low_aspect\":"<<(context_.motion_low_aspect?"true":"false")
+       <<",\"provisional_font_context\":true,\"dispatches\":"<<owner.dispatches<<",\"calls\":"<<owner.updates<<",\"modal_dispatches\":"<<owner.modal_dispatches
+       <<",\"loop_counter\":"<<town_frame_<<",\"base_update_counter\":"<<prelude_.update_counter
+       <<",\"event_check_requested\":"<<(pass_->events.event_check_requested?"true":"false")<<",\"scene_resume\":"<<(pass_->markers.scene_resume?"true":"false")
+       <<",\"weapon_new\":"<<(pass_->markers.weapon_new?"true":"false")<<",\"auto_save\":"<<(pass_->auto_save?"true":"false")
+       <<",\"normal_talk_character\":"<<save_integers_->at(7)<<",\"system_flags\":"<<owner.system_save->at(1)<<",\"stamina\":"<<owner.initial.town->stamina
+       <<",\"platform_code\":2,\"review_coin\":"<<owner.system_save->at(21)<<",\"reviewed\":"<<owner.system_save->at(22)
+       <<",\"save_requests\":"<<owner.save_requests<<",\"bgm_requests\":"<<owner.bgm_requests<<",\"notification_passes\":"<<owner.notification_passes
+       <<",\"input_clears\":"<<owner.input_clears<<",\"delay_count\":"<<owner.events.delays().size()<<",\"delays\":[";
+    bool first=true;for(const auto& delay:owner.events.delays()){if(!first)out<<',';first=false;out<<delay->wait;}
+    out<<"],\"image_clock_ticks\":[";
+    for(std::size_t i=0;i<owner.clocks->size();++i){if(i)out<<',';out<<'[';const auto& group=owner.clocks->at(i);
+        for(std::size_t j=0;j<group->size();++j){if(j)out<<',';out<<group->at(j)->at(1);}out<<']';}
+    out<<']';owner.events.write_report(out);out<<'}';
+}
+} // namespace saga::desktop

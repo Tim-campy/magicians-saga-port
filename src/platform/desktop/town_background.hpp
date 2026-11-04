@@ -9,6 +9,8 @@
 #include "core/gameplay/progression_tables.hpp"
 #include "core/gameplay/human_drawing.hpp"
 #include "core/gameplay/town_residents.hpp"
+#include "core/gameplay/select_late.hpp"
+#include "core/gameplay/select_guide.hpp"
 #include <ostream>
 #include <stdexcept>
 
@@ -32,6 +34,7 @@ struct TownBackgroundContext {
     std::optional<std::int32_t> debug_rescue_count;
     bool motion=false,motion_low_aspect=false; // Selected active-motion diagnostic; aspect gate is provisional.
     std::int32_t motion_passes=0;
+    bool full_update=false;
 };
 class TownBackground final:private core::SelectBackgroundHost,private core::SelectActiveAreaHost,private core::SelectCameraHost,private core::SelectSceneryHost,private core::SelectFloorHost,private core::SelectTownDrawingHost,private core::KingRewardAvailabilityHost,private core::SelectAreaDrawingHost,private core::TownResidentInitializationHost,private core::TownResidentGeometryHost,private core::ScaledHumanDrawingHost,private core::SelectResidentDrawingHost,private core::SelectHeroDrawingHost,private core::SelectForegroundDrawingHost,private core::SelectNoticeDrawingHost,private core::TownResidentUpdateHost,private core::SelectCloudHost {
 public:
@@ -41,15 +44,27 @@ public:
     // Exact selected state0 counter/cloud/decor/resident blocks, not a complete
     // Update: event/permission/form gates still need their persistent owners.
     void advance_motion();
+    void initialize_update(ResourceArchive&,const std::filesystem::path& root);
+    void advance_update(std::uint64_t frame,bool talk_pulse=false);
     void report(std::ostream&)const;
     BitmapApplication& application(){return application_;}
     BitmapTextures& textures(){return textures_;}
     const TownBackgroundContext& context()const{return context_;}
 private:
     struct Draw {std::int32_t clip,frame;float x,y;};
+    core::SelectPreludeState prelude_{0,0,0,0};
+    core::SelectTouchMoveState movement_{false,40.0F,40.0F,1,0};
+    std::shared_ptr<core::SelectFormPassState> pass_=std::make_shared<core::SelectFormPassState>(core::SelectFormPassState{0,false,false,{}, {true,false,{}},{0,true}});
+    core::SelectBuildingState building_state_{-1,prelude_.camera_x,0,movement_.drag_distance,0,-1};
+    core::SelectTownButtonsState town_state_{-1,100};
+    core::SelectGuideState guide_state_{std::make_shared<std::vector<std::uint8_t>>(2,std::uint8_t{0})};
+    struct UpdateOwner;
+    std::shared_ptr<UpdateOwner> update_owner_;
+    void report_update(std::ostream&)const;
     core::SelectCameraState camera_;
     TownBackgroundContext context_;
-    std::int32_t camera_x_=0,camera_y_=0;
+    std::int32_t& camera_x_=prelude_.camera_x;
+    std::int32_t& camera_y_=building_state_.camera_y;
     core::SelectSceneryState scenery_{std::make_shared<std::vector<core::EventInstruction>>(),nullptr,nullptr,camera_.left_extent,camera_.right_extent};
     core::SelectDecorationMotionState decoration_motion_;
     std::int32_t motion_passes_=0;
@@ -89,18 +104,22 @@ private:
     std::vector<std::shared_ptr<core::CharacterNewGameState>> character_states_;
     std::shared_ptr<core::KingRewardRows> king_rewards_=std::make_shared<core::KingRewardRows>();
     std::shared_ptr<core::ImageAnimationGroup> image_clocks_;
-    std::int32_t town_frame_=0,selected_chip_=-1; // SelectForm.Init stores, before any Update.
+    std::shared_ptr<core::ImageAnimationValues> image_clock_values_=std::make_shared<core::ImageAnimationValues>();
+    std::int32_t& town_frame_=pass_->events.loop_counter;
+    std::int32_t& selected_chip_=building_state_.selected_chip;
     struct ChipDraw {std::int32_t clip,frame,image,x,y;};
     std::vector<ChipDraw> chip_draws_;
     struct Label {core::FormText text;std::int32_t x,y;};
     std::vector<Label> labels_;
     std::shared_ptr<core::SelectAreaDrawingRows> area_views_=std::make_shared<core::SelectAreaDrawingRows>();
-    core::EventInstruction area_marks_;
-    std::int32_t selected_area_=-1,form_state_=0; // Native Init stores, before Update.
+    core::EventInstruction& area_marks_=pass_->markers.area_marks;
+    std::int32_t& selected_area_=town_state_.selected_area;
+    std::int32_t& form_state_=pass_->state;
     struct DrawingArchive {
         ResourceArchive archive;
         ArchiveResourceManager manager;
         ArchiveImageSet images;
+        std::shared_ptr<core::ImageAnimationGroup> clocks;
         DrawingArchive(const GameArchiveEntry&,ResourceProfile);
     };
     std::unique_ptr<DrawingArchive> area_background_,common_;
@@ -114,17 +133,20 @@ private:
     core::TownResidentInitializationState residents_;
     core::EventInstruction resident_active_range_;
     core::DecodedEventConditionState resident_conditions_;
-    std::unique_ptr<core::DecodedEventConditionHost> resident_condition_host_;
+    std::shared_ptr<core::DecodedEventConditionHost> resident_condition_host_;
+    core::QuestTable quest_records_;
     std::int32_t resident_challenges_=0;
     std::map<std::int32_t,GameArchiveEntry> actor_entries_;
     std::map<std::int32_t,std::unique_ptr<DrawingArchive>> actor_archives_;
     core::SebStaticWork human_work_;
     struct HeroOwner;
     std::unique_ptr<HeroOwner> hero_owner_;
-    core::SelectHeroDrawingState hero_state_;
+    core::SelectHeroDrawingState hero_drawing_state()const{return {movement_.witch_x,movement_.direction,movement_.drag_distance};}
     std::vector<std::array<std::int32_t,5>> hero_draws_;
-    std::int32_t terrain_floor_y_=0,information_frame_=-1,information_number_=0; // Constructor +0x190=-1; +0x18c is zero.
-    std::shared_ptr<std::vector<std::uint8_t>> guides_=std::make_shared<std::vector<std::uint8_t>>(2,std::uint8_t{0}); // Constructor +0x1f8.
+    std::int32_t terrain_floor_y_=0;
+    std::int32_t& information_frame_=building_state_.unlock_info_frames;
+    std::int32_t& information_number_=building_state_.unlock_info_number;
+    std::shared_ptr<std::vector<std::uint8_t>>& guides_=guide_state_.flags;
     std::vector<std::array<std::int32_t,5>> foreground_draws_;
     std::vector<core::SelectForegroundImage> foreground_images_;
     std::vector<core::SelectForegroundTouch> foreground_touches_;
@@ -133,6 +155,7 @@ private:
     std::int32_t notice_resource_id_=0;
     std::size_t notice_quads_before_=0,notice_quads_after_=0;
     std::int32_t hero_equipment_image(core::EquipmentSlot);
+    const core::EquipmentCombatTable& marker_equipment(core::EquipmentMarkerKind);
     struct ResidentDraw {std::int32_t character,clip,frame,x,y;};
     std::vector<ResidentDraw> resident_draws_;
     std::vector<std::array<std::int32_t,3>> resident_touches_;
@@ -265,7 +288,7 @@ private:
     std::unique_ptr<core::SelectNoticeCursor> open_notice_cursor(core::EventScript)override;
     core::SelectBackgroundResource notice_resource(std::int32_t)override;
     void notice_draw(core::SelectBackgroundResource,std::int32_t,std::int32_t,std::int32_t,std::int32_t,std::int32_t)override;
-    float resident_hero_x()override{return hero_state_.current_x;}
+    float resident_hero_x()override{return movement_.witch_x;}
     std::shared_ptr<core::SelectClouds> clouds()override{return scenery_.clouds;}
     std::int32_t right_edge()override{return cloud_right_edge();}
     std::int32_t cloud_resource()override{return 14;}

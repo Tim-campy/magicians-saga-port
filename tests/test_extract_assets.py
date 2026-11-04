@@ -90,18 +90,19 @@ class NewGameSaveTests(unittest.TestCase):
 
 class MissionInitializationTests(unittest.TestCase):
     def metadata(self):
-        data=bytearray(608)
+        data=bytearray(724)
         struct.pack_into('<II',data,0,0xfab11baf,31)
         struct.pack_into('<IIII',data,8,300,8,308,0)
-        struct.pack_into('<IIII',data,64,256,12,512,96)
-        struct.pack_into('<iii',data,256,24300,77,0)
+        struct.pack_into('<IIII',data,64,256,24,512,212)
+        struct.pack_into('<iiiiii',data,256,24300,77,0,24359,88,96)
+        struct.pack_into('<29i',data,608,*range(29))
         values=list(range(24));values[12]=-2;values[23]=-2147483648
         struct.pack_into('<24i',data,512,*values)
         return data
 
     def test_system_slots_and_distinct_nonnull_empty_arguments(self):
         self.assertEqual(extractor.mission_initialization_payload(self.metadata()),
-                         b'mission_initialization\t1\nyugami\t-2147483648\norientation\t-2\nevent_arguments\t""\n')
+                         b'mission_initialization\t2\nyugami\t-2147483648\norientation\t-2\nevent_arguments\t""\ntown_normal\t0\t7\ntown_system\t1\t21\t22\t10\n')
 
     def test_initializer_and_empty_literal_bounds(self):
         for offset,value in ((4,30),(8,1),(12,7),(16,999),(300,1),(304,1),(264,-1),(256,1)):
@@ -120,6 +121,8 @@ class MissionInitializationTests(unittest.TestCase):
                 output=extractor.write_mission_initialization(apk,root)
                 self.assertEqual(output.read_bytes(),extractor.mission_initialization_payload(metadata))
                 self.assertEqual(extractor.write_mission_initialization(apk,root),output)
+                output.write_bytes(extractor.mission_initialization_payload(metadata,1))
+                self.assertEqual(extractor.write_mission_initialization(apk,root).read_bytes(),extractor.mission_initialization_payload(metadata))
                 output.write_bytes(b'keep user context')
                 with self.assertRaisesRegex(ValueError,'replace differing'):extractor.write_mission_initialization(apk,root)
                 self.assertEqual(output.read_bytes(),b'keep user context')

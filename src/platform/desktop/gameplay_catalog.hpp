@@ -22,6 +22,17 @@ struct NewGameSaveDefaults {
 std::vector<std::uint8_t> read_game_archive(const std::filesystem::path&);
 GameResourceIndex read_game_resource_index(const std::filesystem::path& root,bool town=false);
 NewGameSaveDefaults read_new_game_save_defaults(const std::filesystem::path& root);
+struct TownSaveInputs {
+    std::int32_t normal_flags,talk_character,system_flags,review_coin,reviewed;
+    std::int64_t stamina;
+};
+struct GameInitialization {
+    std::int32_t yugami,orientation;
+    std::string event_arguments;
+    std::optional<TownSaveInputs> town;
+};
+GameInitialization read_game_initialization(const std::filesystem::path& root);
+std::filesystem::path mission_font_path(const std::filesystem::path& root);
 // Selected synchronous table set, not the complete native Data.Load/bootstrap.
 // Loaded records/arrays outlive their entity factories; saved progression is supplied separately.
 struct GameplayCatalog {

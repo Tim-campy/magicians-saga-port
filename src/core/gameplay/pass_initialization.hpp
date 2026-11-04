@@ -4,6 +4,7 @@
 #include "combat_event_receivers.hpp"
 #include "../ecs/entity_events.hpp"
 #include "table_tokens.hpp"
+#include "event_conditions.hpp"
 #include <optional>
 
 namespace saga::core {
@@ -31,6 +32,16 @@ public:
 };
 void set_town_building(TownInitializationState&,std::int32_t town,std::int32_t building,std::int32_t value,bool deferred,FreshTownHost&);
 void initialize_fresh_town(TownInitializationState&,FreshTownHost&);
+class TownPermissionHost {
+public:
+    virtual ~TownPermissionHost()=default;
+    virtual std::shared_ptr<TownTable> town_records()=0;
+    // Captured before the second table query; null is validated after its row.
+    virtual std::shared_ptr<EventConditionHost> condition_context()=0;
+};
+bool update_town_permission(TownInitializationState&,std::int32_t index,TownPermissionHost&);
+// Native CheckEnable returns the complete byte, not its low bit or a bool.
+std::uint8_t town_permission(const TownInitializationState&,std::int32_t index);
 // TownSystem +0x30 is separate from Init's +0x20 list. Get publishes its cache
 // before filling it; Reset invalidates it and repairs missing source rows only.
 EventScript get_town_buildings(TownInitializationState&,EventScript& cache,FreshTownHost&);

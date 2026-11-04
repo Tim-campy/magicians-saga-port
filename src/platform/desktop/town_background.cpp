@@ -70,9 +70,9 @@ struct TownBackground::HeroOwner final:HeroBootstrapHost,PartyHumanFactory {
 };
 TownBackground::~TownBackground()=default;
 TownBackground::DrawingArchive::DrawingArchive(const GameArchiveEntry& entry,ResourceProfile profile)
-    :archive(read_game_archive(entry.path),std::move(profile)),manager(archive),images(manager,decode_png){}
+    :archive(read_game_archive(entry.path),std::move(profile)),manager(archive),images(manager,decode_png),clocks(archive.image_animation_infos()){}
 TownBackground::TownBackground(ResourceArchive& tables,const GameArchiveEntry& selected,ResourceProfile profile,std::int32_t capacity,TownBackgroundContext context,EventScript buildings,std::shared_ptr<std::vector<std::uint8_t>> enabled,const GameArchiveEntry* background,const GameArchiveEntry* common,const GameResourceIndex* actor_resources)
-    :camera_{false,0,0,camera_x_,camera_y_,0,0},context_(context),
+    :camera_{false,0,0,prelude_.camera_x,building_state_.camera_y,0,0},context_(context),
      app_random_(context.app_seed),lib_random_(context.lib_seed),
      camera_areas_(std::make_shared<CameraAreas>()),save_integers_(std::make_shared<EventIntegers>(20)),
      archive_(read_game_archive(selected.path),std::move(profile)),manager_(archive_),images_(manager_,decode_png){
@@ -120,6 +120,7 @@ TownBackground::TownBackground(ResourceArchive& tables,const GameArchiveEntry& s
             character_states_[i]=std::make_shared<CharacterNewGameState>();reset_character_for_new_game(*character_states_[i],*characters_->at(i));
         }
         image_clocks_=archive_.image_animation_infos();
+        image_clock_values_->push_back(image_clocks_);
     }
     if(context_.areas){
         if(context_.automatic_images)throw std::invalid_argument("automatic town render clocks are unbound; explicit --automatic-images 0 is supported");
@@ -128,6 +129,7 @@ TownBackground::TownBackground(ResourceArchive& tables,const GameArchiveEntry& s
         for(std::size_t i=0;i<areas_.size();++i)if(areas_[i])area_views_->at(i)=std::make_shared<SelectAreaDrawingRecord>(SelectAreaDrawingRecord{areas_[i]->image,progress_[i]->discovery_state,std::make_shared<const std::string>(areas_[i]->name)});
         area_background_=std::make_unique<DrawingArchive>(*background,archive_.selected_profile());
         common_=std::make_unique<DrawingArchive>(*common,archive_.selected_profile());
+        image_clock_values_->push_back(area_background_->clocks);image_clock_values_->push_back(common_->clocks);
         textures_.bind(area_background_->images);textures_.bind(common_->images);
     }
     if(context_.residents)initialize_resident_data(tables,actor_resources);
@@ -147,7 +149,7 @@ void TownBackground::initialize_resident_data(ResourceArchive& tables,const Game
     resident_conditions_.debug_enabled=context_.debug;resident_conditions_.debug_rescue_count=context_.debug_rescue_count;
     resident_conditions_.area_states=std::make_shared<ConditionCatalog<std::int32_t>>(progress_.size());
     for(std::size_t i=0;i<progress_.size();++i)if(progress_[i])resident_conditions_.area_states->at(i)=std::make_shared<std::int32_t>(progress_[i]->discovery_state);
-    auto quests=load_quest_table(text("Quest.txt"),false,parse_event_decimal);
+    quest_records_=load_quest_table(text("Quest.txt"),false,parse_event_decimal);auto& quests=quest_records_;
     resident_conditions_.quests=std::make_shared<ConditionCatalog<QuestConditionState>>(quests.size());
     std::uint32_t challenges=0;
     for(std::size_t i=0;i<quests.size();++i)if(quests[i]){
@@ -156,7 +158,7 @@ void TownBackground::initialize_resident_data(ResourceArchive& tables,const Game
         challenges+=static_cast<std::uint32_t>(r.challenges);
     }
     resident_challenges_=challenges<=0x7fffffffU?static_cast<std::int32_t>(challenges):-1-static_cast<std::int32_t>(0xffffffffU-challenges);
-    resident_condition_host_=std::make_unique<DecodedEventConditionHost>(resident_conditions_);
+    resident_condition_host_=std::make_shared<DecodedEventConditionHost>(resident_conditions_);
     for(const auto& entry:actors->entries)if(entry.kind=="resource"&&(entry.id==1||entry.id==21||entry.id==22||(context_.hero&&entry.id==20))){
         const auto* expected=entry.id==1?"chara":entry.id==21?"hat":entry.id==20?"effect":"weapon";
         if(entry.name!=expected)throw std::invalid_argument("resident actor resource identity mismatch");
@@ -168,6 +170,10 @@ void TownBackground::initialize_resident_data(ResourceArchive& tables,const Game
 std::int32_t TownBackground::hero_equipment_image(EquipmentSlot slot){
     if(!hero_owner_)throw std::logic_error("town hero equipment owner requires --hero");
     return hero_owner_->equipment(slot).image;
+}
+const EquipmentCombatTable& TownBackground::marker_equipment(EquipmentMarkerKind kind){
+    if(!hero_owner_)throw std::logic_error("town marker equipment requires hero owner");
+    return kind==EquipmentMarkerKind::Equipment?hero_owner_->catalog.equipment:kind==EquipmentMarkerKind::Hat?hero_owner_->catalog.hats:hero_owner_->catalog.cloth;
 }
 ComponentSlots* TownBackground::town_hero(){
     if(!hero_owner_)throw std::logic_error("town hero owner is unbound");return &hero_owner_->hero();
@@ -196,6 +202,7 @@ RenderDrawResource* TownBackground::actor_resource(std::int32_t id){
     const auto ready=actor_archives_.find(id);if(ready!=actor_archives_.end())return &ready->second->manager.drawing();
     const auto entry=actor_entries_.find(id);if(entry==actor_entries_.end())throw std::invalid_argument("missing reached resident actor resource "+std::to_string(id));
     auto archive=std::make_unique<DrawingArchive>(entry->second,archive_.selected_profile());textures_.bind(archive->images);
+    image_clock_values_->push_back(archive->clocks);
     auto* result=&archive->manager.drawing();actor_archives_.emplace(id,std::move(archive));return result;
 }
 void TownBackground::resident_draw_human(std::int32_t character,std::int32_t clip,std::int32_t frame,std::int32_t x,std::int32_t y){
@@ -263,7 +270,7 @@ void TownBackground::draw(BitmapBackend& backend){
                 // SAGA_STUB(town-inherited-clip): release the caller clip into the declared full-viewport desktop profile.
                 draw_select_resident_lane({camera_x_,camera_y_,context_.view_x,context_.view_y,town_frame_,notices_},0,*this);
                 if(context_.hero){
-                    draw_select_town_hero(hero_state_,town_frame_,origin,*this);
+                    draw_select_town_hero(hero_drawing_state(),town_frame_,origin,*this);
                     for(std::int32_t lane=1;lane<3;++lane)
                         draw_select_resident_lane({camera_x_,camera_y_,context_.view_x,context_.view_y,town_frame_,notices_},lane,*this);
                     if(context_.foreground){
@@ -453,8 +460,8 @@ void TownBackground::report(std::ostream& out)const{
         auto& hero=hero_owner_->hero();const auto* human=dynamic_cast<HumanRecordLink*>(hero.get(14));
         const auto* image=dynamic_cast<EntityImage*>(hero.get(7));const auto* equipment=dynamic_cast<EquipmentRecordLinks*>(hero.get(8));
         out<<",\"hero\":{\"entity\":"<<hero_owner_->entities->id(hero)<<",\"character\":"<<human->character_id
-           <<",\"level\":"<<human->level<<",\"experience\":"<<human->experience<<",\"current_x\":"<<hero_state_.current_x<<",\"target_x\":"<<hero_state_.target_x
-           <<",\"direction\":"<<hero_state_.direction<<",\"resident_lanes\":[0,1,2]";
+           <<",\"level\":"<<human->level<<",\"experience\":"<<human->experience<<",\"current_x\":"<<movement_.witch_x<<",\"target_x\":"<<movement_.drag_distance
+           <<",\"direction\":"<<movement_.direction<<",\"resident_lanes\":[0,1,2]";
         const auto array=[&](const char* name,const EventInstruction& values){out<<",\""<<name<<"\":[";for(std::size_t i=0;i<values->size();++i){if(i)out<<',';out<<values->at(i);}out<<']';};
         array("textures",image->arrays.textures);array("equipment",equipment->ids);array("formation",hero_owner_->roster.formation);
         out<<",\"draws\":[";for(std::size_t i=0;i<hero_draws_.size();++i){if(i)out<<',';out<<'[';for(std::size_t j=0;j<5;++j){if(j)out<<',';out<<hero_draws_[i][j];}out<<']';}out<<"]}";
@@ -477,9 +484,10 @@ void TownBackground::report(std::ostream& out)const{
     }
     if(context_.motion){
         out<<",\"motion\":{\"scope\":\"selected active counter/cloud/decor/resident blocks; full Update gates/events unbound\",\"passes\":"<<motion_passes_
-           <<",\"counter\":"<<town_frame_<<",\"hero_x\":"<<hero_state_.current_x<<",\"wind\":["<<decoration_motion_.wind->x<<','<<decoration_motion_.wind->y
+           <<",\"counter\":"<<town_frame_<<",\"hero_x\":"<<movement_.witch_x<<",\"wind\":["<<decoration_motion_.wind->x<<','<<decoration_motion_.wind->y
            <<"],\"wind_counter\":"<<decoration_motion_.wind_counter<<",\"low_aspect\":"<<(context_.motion_low_aspect?"true":"false")<<",\"provisional_aspect\":true}";
     }
+    if(update_owner_)report_update(out);
     out<<'}';
 }
 } // namespace saga::desktop

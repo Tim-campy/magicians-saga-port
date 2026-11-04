@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <locale>
 #include <sstream>
+#include <algorithm>
 
 namespace saga::desktop {
 std::vector<std::uint8_t> read_game_archive(const std::filesystem::path& path){
@@ -39,6 +40,41 @@ NewGameSaveDefaults read_new_game_save_defaults(const std::filesystem::path& roo
     if(!(seeds>>signature>>version>>selection>>result.area8>>result.quest9>>town>>result.town_capacity>>wallet>>result.money>>result.crystals)||
        signature!="new_game_save"||version!=1||selection!="selection"||town!="town_capacity"||wallet!="wallet")throw std::invalid_argument("invalid new-game save defaults");
     seeds>>std::ws;if(!seeds.eof())throw std::invalid_argument("unexpected new-game default fields");return result;
+}
+GameInitialization read_game_initialization(const std::filesystem::path& root){
+    const auto path=root/"mission-initialization.tsv";
+    if(std::filesystem::file_size(path)>4096)throw std::length_error("mission initialization exceeds4KiB");
+    std::ifstream data(path);data.imbue(std::locale::classic());
+    std::string signature,label;std::int32_t version=0;GameInitialization result{};
+    const auto expect=[&](const char* expected){if(!(data>>label)||label!=expected)throw std::invalid_argument("invalid mission initialization field");};
+    if(!(data>>signature>>version)||signature!="mission_initialization"||(version!=1&&version!=2))throw std::invalid_argument("invalid mission initialization header");
+    expect("yugami");if(!(data>>result.yugami))throw std::invalid_argument("invalid initial Yugami");
+    expect("orientation");if(!(data>>result.orientation))throw std::invalid_argument("invalid initial orientation");
+    expect("event_arguments");data>>std::ws;
+    if(data.peek()!='"'||!(data>>std::quoted(result.event_arguments)))throw std::invalid_argument("initial event arguments require quoted UTF-8 text");
+    if(version==2){
+        TownSaveInputs town{};expect("town_normal");
+        if(!(data>>town.normal_flags>>town.talk_character))throw std::invalid_argument("invalid initial town normal save");
+        expect("town_system");if(!(data>>town.system_flags>>town.review_coin>>town.reviewed>>town.stamina))throw std::invalid_argument("invalid initial town system save");
+        result.town=town;
+    }
+    data>>std::ws;if(!data.eof())throw std::invalid_argument("unexpected mission initialization fields");return result;
+}
+std::filesystem::path mission_font_path(const std::filesystem::path& root){
+    const auto index=root/"mission-font.tsv";
+    if(std::filesystem::file_size(index)>4096)throw std::length_error("mission font index exceeds4KiB");
+    std::ifstream in(index);std::string signature,kind,path;std::int32_t version=0;std::uint64_t size=0;
+    if(!(in>>signature>>version>>kind>>std::quoted(path)>>size)||signature!="mission_font"||version!=1||kind!="font"||size==0)
+        throw std::invalid_argument("invalid mission font index");
+    in>>std::ws;if(!in.eof())throw std::invalid_argument("unexpected mission font index fields");
+    const auto relative=std::filesystem::u8path(path);
+    if(relative.is_absolute()||relative.has_root_name()||relative.parent_path()!=std::filesystem::path("unity")/"Font"||relative.filename().empty())
+        throw std::invalid_argument("mission font must be a direct unity/Font child");
+    const auto result=std::filesystem::canonical(root/relative);
+    const auto child=result.lexically_relative(std::filesystem::canonical(root));
+    if(child.empty()||child.is_absolute()||std::find(child.begin(),child.end(),std::filesystem::path(".."))!=child.end()||std::filesystem::file_size(result)!=size)
+        throw std::invalid_argument("mission font path escapes data root or size differs");
+    return result;
 }
 GameplayCatalog load_gameplay_catalog(ResourceArchive& archive,bool normalize,const core::EventIntegerParser& parser,bool include_rewards,bool include_results,bool include_quests,bool include_areas,bool include_towns){
     GameplayCatalog result;

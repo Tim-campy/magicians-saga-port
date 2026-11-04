@@ -3,7 +3,8 @@ import struct
 from test_sprite_preview import jar,png,seb
 
 
-def add_town_background(root,scenery=False,buildings=False,areas=False,residents=False,hero=False,foreground=False,motion=False):
+def add_town_background(root,scenery=False,buildings=False,areas=False,residents=False,hero=False,foreground=False,motion=False,update=False):
+    motion=motion or update
     foreground=foreground or motion
     hero=hero or foreground
     residents=residents or hero
@@ -45,6 +46,14 @@ def add_town_background(root,scenery=False,buildings=False,areas=False,residents
             # First main hat is image7, while equipped hat ID0 would resolve image5.
             tables.extend([('English.lproj/Hat.txt',(wearable(0,5,0)+'\n'+wearable(1,7,2)).encode()),
                            ('English.lproj/Cloth.txt',wearable(0,12,0).encode())])
+    if update:
+        tables[0]=(tables[0][0],tables[0][1].replace(b'1\t1\t99',b'1\t3\t7\t1\t1'))
+        # Synthetic Event0 has delay1 followed by two single-page talks. Later
+        # events are ineligible; this tests the full selector rather than injection.
+        event='0\tIntro\t0\t1\t3\t2\t0\t1\t3\t3\t10\t1\t-1\t2\t8\t0\t2\t8\t1'
+        tables.extend([('English.lproj/Event.txt',event.encode()),
+                       ('English.lproj/Talk.txt',b'0\t0\t1\tFirst<br>page\n1\t1\t1\tSecond<co=4a86e8>page</co>')])
+        (root/'mission-initialization.tsv').write_text('mission_initialization 2\nyugami 10000\norientation 0\nevent_arguments ""\ntown_normal 0 -7\ntown_system 0 0 0 10\n')
     (root/'textassets/tables.bin').write_bytes(jar(tables))
     atlas=png(4,2,[c for _ in range(2) for p in [(255,0,0,255)]*2+[(0,255,0,255)]*2 for c in p])
     members=[
@@ -86,6 +95,9 @@ def add_town_background(root,scenery=False,buildings=False,areas=False,residents
             members[1]=('seb.inf',members[1][1]+b'26\tboundary.seb\n')
             members.extend([('obstacle.png',png(3,2,[150,70,190,255]*6)),
                             ('boundary.seb',seb([(0,33,0,0,3,2,0,0,0,0),(1,33,0,0,3,2,-80,0,0,0)]))])
+        if update:
+            members[1]=('seb.inf',members[1][1]+b'29\tguide.seb\n30\tguide.seb\n')
+            members.append(('guide.seb',seb([(frame,0,0,0,2,2,0,0,0,0) for frame in range(4)])))
     if areas:
         members[1]=('seb.inf',members[1][1]+b'10\tarea-name.seb\n12\tfence.seb\n')
         members.extend([('area-name.seb',seb([(0,0,0,0,2,2,0,0,0,0),(1,0,2,0,2,2,0,0,0,0)])),

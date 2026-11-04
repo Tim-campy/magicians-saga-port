@@ -85,11 +85,12 @@ def new_game_save_payload(metadata):
             f'town_capacity\t{integers[19]}\nwallet\t{longs[0]}\t{longs[1]}\n').encode('ascii')
 
 
-def mission_initialization_payload(metadata):
+def mission_initialization_payload(metadata, version=2):
     """InitSystemSaveData: int slots12/23 from cctor field24300 (ELF0x272ff20).
 
     Normal-save string0 references literal0 (GOT0x272ee88), an empty string.
-    Export only those three reached inputs; no keys or unused save sections.
+    Version2 adds reached town flags/int7, review flags and fresh system stamina.
+    No keys or unused save sections are exported.
     """
     integers = mission_default_arrays(metadata, {24300:'<24i'})[24300]
     table, table_size, data, data_size = struct.unpack_from('<IIII', metadata, 8)
@@ -99,11 +100,19 @@ def mission_initialization_payload(metadata):
     length, offset = struct.unpack_from('<II', metadata, table)
     if length != 0 or offset > data_size:
         raise ValueError('Unexpected initial event argument literal')
-    return (f'mission_initialization\t1\nyugami\t{integers[23]}\n'
-            f'orientation\t{integers[12]}\nevent_arguments\t""\n').encode('ascii')
+    payload = (f'mission_initialization\t{version}\nyugami\t{integers[23]}\n'
+               f'orientation\t{integers[12]}\nevent_arguments\t""\n')
+    if version == 2:
+        normal = mission_default_arrays(metadata, {24359:'<29i'})[24359]
+        # AppData.cctor ELF0x1119794..0x11197c0 stores10 in system long[1].
+        payload += (f'town_normal\t{normal[0]}\t{normal[7]}\n'
+                    f'town_system\t{integers[1]}\t{integers[21]}\t{integers[22]}\t10\n')
+    elif version != 1:
+        raise ValueError('Unsupported mission initialization version')
+    return payload.encode('ascii')
 
 
-def write_mission_seed(apk, root, name, reader):
+def write_mission_seed(apk, root, name, reader, previous_reader=None):
     """Derive a bounded seed without re-extracting media or changing the manifest."""
     manifest = json.loads((root / 'manifest.json').read_text(encoding='utf-8'))
     if manifest.get('schema') not in (2, 3) or manifest.get('apk_sha256') != APK_SHA:
@@ -112,10 +121,13 @@ def write_mission_seed(apk, root, name, reader):
         if hashlib.file_digest(source, 'sha256').hexdigest() != APK_SHA:
             raise ValueError('New-game defaults require the supported APK')
     with zipfile.ZipFile(apk) as archive:
-        payload = reader(archive.read(METADATA))
+        metadata = archive.read(METADATA)
+        payload = reader(metadata)
     output = bounded(root, name)
     if output.exists() and output.read_bytes() != payload:
-        raise ValueError('Refusing to replace differing new-game defaults')
+        if previous_reader is None or output.read_bytes() != previous_reader(metadata):
+            raise ValueError('Refusing to replace differing new-game defaults')
+        output.write_bytes(payload) # Exact verified v1 projection upgrades to v2 only.
     if not output.exists():
         output.write_bytes(payload)
     return output
@@ -126,7 +138,8 @@ def write_new_game_save(apk, root):
 
 
 def write_mission_initialization(apk, root):
-    return write_mission_seed(apk, root, 'mission-initialization.tsv', mission_initialization_payload)
+    return write_mission_seed(apk, root, 'mission-initialization.tsv', mission_initialization_payload,
+                              lambda metadata: mission_initialization_payload(metadata, 1))
 
 
 def debug_drawing_payload(metadata):
@@ -822,7 +835,7 @@ def main():
     p.add_argument('--town-resources', action='store_true', help='Index existing decoded town archives for the native host; no APK re-extraction')
     p.add_argument('--mission-font', action='store_true', help='Index the existing hash-checked LegacyRuntime font for English/default-skin mission entry')
     p.add_argument('--new-game-save', action='store_true', help='Export the reached normal-save NewGame seeds from the supported APK metadata only')
-    p.add_argument('--mission-initialization', action='store_true', help='Export initial system Yugami/orientation and normal event-argument seeds from the supported APK metadata')
+    p.add_argument('--mission-initialization', action='store_true', help='Export reached initial system/event/town save inputs from the supported APK metadata')
     p.add_argument('--debug-drawing', action='store_true', help='Export only reached debug parameter/state labels and format strings from supported APK metadata')
     p.add_argument('--collation-indexers', action='store_true', help='Include native indexer configurations and collation resources')
     p.add_argument('--collation', action='store_true', help='Include seven original version-3 collation resources')

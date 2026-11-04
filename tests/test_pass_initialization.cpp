@@ -43,6 +43,94 @@ TownInitializationState town_state(EventScript source){
     TownInitializationState state;state.building_list=std::move(source);
     state.build_enable=std::make_shared<std::vector<std::uint8_t>>(std::initializer_list<std::uint8_t>{0,1});return state;
 }
+struct PermissionConditions final:EventConditionHost {
+    std::vector<std::string>& calls;std::int64_t money=5;std::function<void()> on_money;
+    explicit PermissionConditions(std::vector<std::string>& trace):calls(trace){}
+    void require_condition_context()override{calls.push_back("require");}
+    std::int64_t scalar(ConditionScalar kind)override{check(kind==ConditionScalar::Money);calls.push_back("money");if(on_money)on_money();return money;}
+    const ConditionCatalog<QuestConditionState>* quests()override{throw std::logic_error("unexpected quests");}
+    std::int32_t rescue_adjustment()override{throw std::logic_error("unexpected rescue");}
+    const ConditionCatalog<std::uint32_t>* town_flags()override{throw std::logic_error("unexpected towns");}
+    std::int32_t town_capacity()override{throw std::logic_error("unexpected capacity");}
+    const ConditionCatalog<std::int32_t>* area_states()override{throw std::logic_error("unexpected areas");}
+    const ConditionCatalog<CharacterConditionState>* characters()override{throw std::logic_error("unexpected characters");}
+    EventScript buildings()override{throw std::logic_error("unexpected buildings");}
+    bool evaluate_other_condition(const EventInstruction&)override{throw std::logic_error("unexpected condition");}
+};
+struct Permissions final:TownPermissionHost {
+    std::vector<std::string> calls;
+    std::shared_ptr<TownTable> records=std::make_shared<TownTable>(1);
+    std::shared_ptr<EventConditionHost> context;
+    std::shared_ptr<PermissionConditions> conditions=std::make_shared<PermissionConditions>(calls);
+    std::function<void()> on_query,on_context;int queries=0;
+    Permissions(){records->at(0).emplace();records->at(0)->open_term=std::make_shared<std::vector<EventInstruction>>(1,building_row({1,5,1}));context=conditions;}
+    std::shared_ptr<TownTable> town_records()override{calls.push_back("catalog");++queries;if(on_query)on_query();return records;}
+    std::shared_ptr<EventConditionHost> condition_context()override{calls.push_back("context");if(on_context)on_context();return context;}
+};
+void test_town_permissions(){
+    {Permissions h;auto state=town_state(nullptr);state.build_enable.reset();
+     fails_with<std::invalid_argument>([&]{update_town_permission(state,-1,h);});
+     fails_with<std::invalid_argument>([&]{town_permission(state,0);});check(h.calls.empty());
+     state.build_enable=std::make_shared<std::vector<std::uint8_t>>(1,std::uint8_t{0});
+     for(const auto index:{-1,1}){fails_with<std::out_of_range>([&]{update_town_permission(state,index,h);});
+         fails_with<std::out_of_range>([&]{town_permission(state,index);});}check(h.calls.empty());}
+    for(const auto byte:{std::uint8_t{1},std::uint8_t{2},std::uint8_t{255}}){
+        Permissions h;auto state=town_state(nullptr);state.build_enable->at(0)=byte;h.records.reset();h.context.reset();
+        check(town_permission(state,0)==byte&&!update_town_permission(state,0,h)&&h.calls.empty());
+    }
+    for(const bool empty:{false,true}){
+        Permissions h;auto state=town_state(nullptr);h.context.reset();
+        h.records->at(0)->open_term=empty?std::make_shared<std::vector<EventInstruction>>():nullptr;
+        const auto old=state.build_enable;check(update_town_permission(state,0,h));
+        check(state.build_enable==old&&old->at(0)==0&&h.calls==std::vector<std::string>{"catalog"});
+    }
+    {Permissions h;auto state=town_state(nullptr);h.conditions->money=4;
+     check(!update_town_permission(state,0,h)&&state.build_enable->at(0)==0);
+     check(h.calls==std::vector<std::string>({"catalog","context","catalog","require","money"}));}
+    {Permissions h;auto state=town_state(nullptr);const auto old=state.build_enable;
+     h.conditions->on_money=[&]{state.build_enable=std::make_shared<std::vector<std::uint8_t>>(1,2);};
+     check(update_town_permission(state,0,h)&&state.build_enable->at(0)==1&&old->at(0)==0);
+     check(h.calls==std::vector<std::string>({"catalog","context","catalog","require","money"}));}
+    // The second lookup supplies the tested terms, and captures a different table.
+    {Permissions h;auto state=town_state(nullptr);const auto old=h.records;
+     h.on_context=[&]{h.records=std::make_shared<TownTable>(*old);h.records->at(0)->open_term=std::make_shared<std::vector<EventInstruction>>(1,building_row({1,6,1}));};
+     check(!update_town_permission(state,0,h)&&state.build_enable->at(0)==0);
+     check(old->at(0)->open_term->at(0)->at(1)==5&&h.queries==2);}
+    // Capture the context owner before the second catalog query replaces it.
+    {Permissions h;auto state=town_state(nullptr);auto replacement=std::make_shared<PermissionConditions>(h.calls);replacement->money=0;
+     h.on_query=[&]{if(h.queries==2)h.context=replacement;};
+     check(update_town_permission(state,0,h)&&state.build_enable->at(0)==1);}
+    for(const bool empty:{false,true}){
+        Permissions h;auto state=town_state(nullptr);
+        h.on_query=[&]{if(h.queries==2)h.records->at(0)->open_term=empty?std::make_shared<std::vector<EventInstruction>>():nullptr;};
+        check(!update_town_permission(state,0,h)&&state.build_enable->at(0)==0);
+        check(h.calls==std::vector<std::string>({"catalog","context","catalog"}));
+    }
+    // Missing context is checked after the second catalog's bounds and row.
+    for(const int failure:{0,1,2,3}){
+        Permissions h;auto state=town_state(nullptr);h.context.reset();
+        h.on_query=[&]{if(h.queries==2){
+            if(failure==0)h.records.reset();else if(failure==1)h.records->clear();
+            else if(failure==2)h.records->at(0).reset();else h.records->at(0)->open_term.reset();}};
+        if(failure==1)fails_with<std::out_of_range>([&]{update_town_permission(state,0,h);});
+        else fails_with<std::invalid_argument>([&]{update_town_permission(state,0,h);});
+        check(state.build_enable->at(0)==0&&h.calls==std::vector<std::string>({"catalog","context","catalog"}));
+    }
+    // Requiring a zero-length replacement still fails after a successful term;
+    // earlier callback mutations remain visible, and the old array is untouched.
+    for(const bool absent:{false,true}){
+        Permissions h;auto state=town_state(nullptr);const auto old=state.build_enable;
+        h.conditions->on_money=[&]{old->at(1)=7;state.build_enable=absent?nullptr:std::make_shared<std::vector<std::uint8_t>>();};
+        if(absent)fails_with<std::invalid_argument>([&]{update_town_permission(state,0,h);});
+        else fails_with<std::out_of_range>([&]{update_town_permission(state,0,h);});
+        check(old->at(0)==0&&old->at(1)==7);
+    }
+    for(const int failure:{0,1,2}){
+        Permissions h;auto state=town_state(nullptr);
+        if(failure==0)h.records.reset();else if(failure==1)h.records->clear();else h.records->at(0).reset();
+        fails([&]{update_town_permission(state,0,h);});check(h.calls==std::vector<std::string>{"catalog"});
+    }
+}
 void test_town_building_cache(){
     {FreshTown h;h.saved=4;
      auto first=building_row({2,8,3,99}),zero=building_row({0,4,5}),last=building_row({2,9,6});
@@ -143,6 +231,7 @@ void test_town_building_cache(){
      check(!cache&&h.reads==1&&h.queries==0&&h.writes==0&&h.rebuilds==0);}
 }
 int main(){
+    test_town_permissions();
     test_town_building_cache();
     {FreshTown h;TownInitializationState s;s.building_list=std::make_shared<std::vector<EventInstruction>>();
      initialize_fresh_town(s,h);check(*s.build_enable==std::vector<std::uint8_t>({1,0,1}));

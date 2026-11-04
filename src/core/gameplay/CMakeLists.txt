@@ -241,7 +241,7 @@ else()
 endif()
 
 saga_library(pass_initialization pass_initialization.cpp)
-target_link_libraries(pass_initialization PUBLIC motion_pass collision_pass combat_event_receivers entity_events)
+target_link_libraries(pass_initialization PUBLIC motion_pass collision_pass combat_event_receivers entity_events event_conditions)
 
 saga_library(effect_factory effect_factory.cpp)
 target_link_libraries(effect_factory PUBLIC projectile_launch garbage_lifetime entity_creation)

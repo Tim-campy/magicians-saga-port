@@ -41,6 +41,8 @@ int main(int argc,char** argv)try{
             "Add --hero for native Member/hero creation, hero drawing and resident lanes1/2 (implies --residents).\n"
             "Add --foreground for the native fresh foreground, leaves and final notice flush (implies --hero).\n"
             "Diagnostic --motion-passes N advances selected counter/cloud/decor/resident blocks (requires --foreground); this is not full Update.\n"
+            "Full controller: --update-passes N --foreground; optional --talk-pulse-every N supplies explicit dialogue inputs.\n"
+            "Requires v2 --mission-initialization and --mission-font extraction; default talk input is neutral.\n"
             "Motion context: --motion-low-aspect 0 supplies the provisional cloud-wrap aspect gate.\n"
             "Resident context: --store-kairo-limit 0 --condition-characters 1 --debug 0; DEBUG1 requires --debug-rescue-count.\n"
             "Area clock context: --automatic-images 0 (provisional Seb.AutoAnimation gate; true branch unbound).\n"
@@ -49,10 +51,10 @@ int main(int argc,char** argv)try{
             "Camera requests: --camera-x 0 --camera-y -9999, clamped by native fresh Area/Town bounds.\n"
             "S2 data projection: fresh Town.Init, ResetBuildingList and GetBuildingList.\n"
             "Reads the existing resource index and APK-derived new-game defaults.\n"
-            "Persistent SelectForm Update, unlock information, quest selection and mission return remain unbound.\n";return 0;
+            "Full Update supports neutral town input and explicit dialogue pulses; unlock information, menu factories and quest/mission return remain unbound.\n";return 0;
     }
     std::optional<std::filesystem::path> root,capture;std::string language="English.lproj";std::int32_t dpi=1;
-    bool background=false;TownBackgroundContext context;
+    bool background=false;TownBackgroundContext context;std::int32_t update_passes=0,talk_pulse_every=0;
     std::set<std::string> options;
     for(int i=1;i<argc;++i){
         const std::string key=argv[i];
@@ -64,7 +66,7 @@ int main(int argc,char** argv)try{
             if(key=="--residents"||key=="--hero"||key=="--foreground")context.residents=true;
             if(key=="--hero"||key=="--foreground")context.hero=true;
             if(key=="--foreground")context.foreground=true;continue;}
-        const std::set<std::string> allowed{"--data","--language","--dpi","--capture","--width","--height","--view-x","--view-y","--camera-x","--camera-y","--app-seed","--lib-seed","--high-score","--top-form","--automatic-images","--store-kairo-limit","--condition-characters","--debug","--debug-rescue-count","--motion-passes","--motion-low-aspect"};
+        const std::set<std::string> allowed{"--data","--language","--dpi","--capture","--width","--height","--view-x","--view-y","--camera-x","--camera-y","--app-seed","--lib-seed","--high-score","--top-form","--automatic-images","--store-kairo-limit","--condition-characters","--debug","--debug-rescue-count","--motion-passes","--motion-low-aspect","--update-passes","--talk-pulse-every"};
         if(!allowed.count(key)||i+1>=argc||!options.insert(key).second)throw std::invalid_argument("unsupported, incomplete or duplicate town option");
         const std::string value=argv[++i];
         if(key=="--data")root=std::filesystem::u8path(value);
@@ -82,6 +84,8 @@ int main(int argc,char** argv)try{
             else if(key=="--app-seed")context.app_seed=parsed;else if(key=="--lib-seed")context.lib_seed=parsed;
             else if(key=="--store-kairo-limit")context.store_limit=parsed;
             else if(key=="--debug-rescue-count")context.debug_rescue_count=parsed;
+            else if(key=="--update-passes"){if(parsed<0)throw std::invalid_argument("negative town update passes");context.full_update=true;update_passes=parsed;}
+            else if(key=="--talk-pulse-every"){if(parsed<1)throw std::invalid_argument("talk pulse period must be positive");talk_pulse_every=parsed;}
             else if(key=="--motion-passes"){if(parsed<0)throw std::invalid_argument("negative town motion passes");context.motion=true;context.motion_passes=parsed;}
             else if(key=="--motion-low-aspect"){if(parsed!=0&&parsed!=1)throw std::invalid_argument("motion aspect requires 0 or 1");context.motion_low_aspect=parsed!=0;}
             else if(key=="--condition-characters"){if(parsed<0)throw std::invalid_argument("negative condition context count");context.condition_character_count=parsed;}
@@ -89,8 +93,10 @@ int main(int argc,char** argv)try{
                 if(key=="--top-form")context.top_form=parsed!=0;else if(key=="--debug")context.debug=parsed!=0;else context.automatic_images=parsed!=0;}}
     }
     if(!root)throw std::invalid_argument("town data root required; see --help");
+    if(context.full_update&&(!context.foreground||context.motion))throw std::invalid_argument("full town Update requires --foreground and excludes --motion-passes");
+    if(options.count("--talk-pulse-every")&&!context.full_update)throw std::invalid_argument("talk pulses require --update-passes");
     if(context.motion&&!context.foreground)throw std::invalid_argument("town motion requires --foreground");
-    if(options.count("--motion-low-aspect")&&!context.motion)throw std::invalid_argument("motion aspect requires --motion-passes");
+    if(options.count("--motion-low-aspect")&&!context.motion&&!context.full_update)throw std::invalid_argument("motion aspect requires --motion-passes or --update-passes");
     if(!context.residents)for(const auto* key:{"--store-kairo-limit","--condition-characters","--debug","--debug-rescue-count"})if(options.count(key))throw std::invalid_argument("town resident context requires --residents");
     if(!context.areas&&options.count("--automatic-images"))throw std::invalid_argument("town render-clock context requires --areas");
     if(!context.buildings&&(options.count("--high-score")||options.count("--top-form")))throw std::invalid_argument("town building context requires --buildings");
@@ -135,6 +141,17 @@ int main(int argc,char** argv)try{
         if(!matching_tables||!selected)throw std::invalid_argument("town background requires matching tables and select resource");
         backdrop=std::make_unique<TownBackground>(archive,*selected,ResourceProfile{language,dpi},town.capacity,context,buildings,town.state.build_enable,bg_entry,common_entry,&index);
         for(std::int32_t pass=0;pass<context.motion_passes;++pass)backdrop->advance_motion();
+        if(context.full_update){
+            backdrop->initialize_update(archive,*root);
+            SpriteMatrix matrix;reset_matrix(matrix);auto& application=backdrop->application();
+            BitmapBackend cpu_draw(application,application,backdrop->textures(),context.height,matrix);
+            // Explicit desktop dispatch cadence: one draw after each selected
+            // form update, including modal waits; resources register live clocks.
+            for(std::uint64_t frame=1;frame<=static_cast<std::uint64_t>(update_passes);++frame){
+                backdrop->advance_update(frame,talk_pulse_every>0&&frame%static_cast<std::uint64_t>(talk_pulse_every)==0);
+                backdrop->draw(cpu_draw);
+            }
+        }
         if(capture){
 #ifdef SAGA_TOWN_WINDOW
             capture_town_background(*backdrop,*capture);
@@ -152,6 +169,6 @@ int main(int argc,char** argv)try{
     std::cout<<"],\"source_buildings\":";write_rows(std::cout,town.state.building_list);
     std::cout<<",\"buildings\":";write_rows(std::cout,buildings);
     if(backdrop)backdrop->report(std::cout);
-    std::cout<<",\"scope\":\""<<(context.motion?"Selected native active-motion subsequence and town drawing; full Update permission/event/form gates remain unbound":context.foreground?"Native fresh town drawing through foreground and notice flush; glyph/input/clip services stubbed; persistent Update, unlock information, quest selection and mission return unbound":context.hero?"Native Member/hero Init and drawing through resident lanes1/2; notices queued, glyph/input/clip services stubbed; foreground, quest selection and mission return unbound":context.residents?"Native resident Init and lane0 composition; notices queued, glyph/input/clip services stubbed; hero, later lanes/foreground, quest selection and mission return unbound":context.areas?"Native drawing through town areas and locked fence; notices queued, text/input, inherited clip, residents, foreground, quest selection and mission return unbound":context.buildings?"Native drawing through initial buildings; notices queued, text/input services, residents, foreground, quest selection and mission return unbound":context.scenery?"Native cloud/decor initialization and drawing through floor/gate prefix; buildings, residents, quest selection and mission return unbound":backdrop?"Town data and native background prefix; decorations, buildings, residents, quest selection and mission return unbound":"Town data/cache projection; SelectForm drawing, residents, quest selection and mission return unbound")<<"\"}\n";
+    std::cout<<",\"scope\":\""<<(context.full_update?"Persistent full town Update with real event selection/delays and modal pause; neutral town input, provisional font metrics, dialogue drawing and quest/return forms unbound":context.motion?"Selected native active-motion subsequence and town drawing; full Update permission/event/form gates remain unbound":context.foreground?"Native fresh town drawing through foreground and notice flush; glyph/input/clip services stubbed; persistent Update, unlock information, quest selection and mission return unbound":context.hero?"Native Member/hero Init and drawing through resident lanes1/2; notices queued, glyph/input/clip services stubbed; foreground, quest selection and mission return unbound":context.residents?"Native resident Init and lane0 composition; notices queued, glyph/input/clip services stubbed; hero, later lanes/foreground, quest selection and mission return unbound":context.areas?"Native drawing through town areas and locked fence; notices queued, text/input, inherited clip, residents, foreground, quest selection and mission return unbound":context.buildings?"Native drawing through initial buildings; notices queued, text/input services, residents, foreground, quest selection and mission return unbound":context.scenery?"Native cloud/decor initialization and drawing through floor/gate prefix; buildings, residents, quest selection and mission return unbound":backdrop?"Town data and native background prefix; decorations, buildings, residents, quest selection and mission return unbound":"Town data/cache projection; SelectForm drawing, residents, quest selection and mission return unbound")<<"\"}\n";
     return 0;
 }catch(const std::exception& error){std::cerr<<"saga_town: "<<error.what()<<'\n';return 1;}

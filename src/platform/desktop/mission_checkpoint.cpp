@@ -226,7 +226,9 @@ struct MissionCheckpoint {
             x.form_touches_,x.scale_events_,x.last_scale_event_,x.observed_,x.notifications_.events);
         archive.count(x.observers_.size());for(const auto& observer:x.observers_)fields(observer.adding,observer.callback);
     });}
-    void value(const MissionEvents& x){object("mission-events",x,[&]{fields(x.scenario_,x.talks_,x.execution_,x.delays_,x.forms_,x.creating_,x.updating_,x.root_,
+    void value(const MissionEvents& x){
+        if(x.application_push_||x.normal_save_)throw std::logic_error("mission checkpoint does not cover town event bindings");
+        object("mission-events",x,[&]{fields(x.scenario_,x.talks_,x.execution_,x.delays_,x.forms_,x.creating_,x.updating_,x.root_,
         x.ticks_,x.opened_,x.closed_,x.flushes_,x.pages_,x.now_,x.total_frames_,x.pulse_,x.held_,x.executed_,x.lifecycle_,x.layout_measurements_);
         archive.count(x.layout_samples_.size());for(const auto& sample:x.layout_samples_){fields(sample.talk,sample.page,sample.length,sample.height);archive.count(sample.blocks);}
     });}
