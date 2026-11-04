@@ -302,6 +302,14 @@ build/desktop/saga_town.exe --data extracted/full --hero
 build/viewer/saga_town.exe --data extracted/full --hero --camera-x 300 --capture build/town-hero.bmp
 ```
 
+`--foreground` implies hero and completes the fresh frame through gate layer1, expansion obstacle, boundaries, leaves, front ground and the final insertion-order notice flush. The report exposes pending notices0 and font stack[10]. Constructor defaults keep unlock information disabled and both guide flags false. The mode remains a single frame; persistent Update, unlock-information scripts, input, quest selection and mission return are separate.
+
+```powershell
+build/desktop/saga_town.exe --data extracted/full --foreground
+build/viewer/saga_town.exe --data extracted/full --foreground --camera-x 300 --capture build/town-foreground.bmp
+build/viewer/saga_town.exe --data extracted/full --foreground --camera-x -300 --capture build/town-obstacle.bmp
+```
+
 ### Headless mission host
 
 With quest results enabled, terminal reports expose `quest_exit`: null before return, otherwise the typed native `code`, `outcome`, `handoff: "held"` and `rewards_granted`. Clear code0, main-character death1, timeout2 and retreat3 remain distinct. A granted `quest_result` includes EXP, money, crystals, prisoners, all weapon/character/cloth/hat grant lists and member records with `level_up_frame`; wallet, inventory, quest-record and member-writeback fields retain the actual in-memory effects. The held town callback and save-file persistence remain separate services. Native fresh replay commands and real-data outcomes are in [mission endings](subsystems/integration-endings.md).

@@ -39,6 +39,7 @@ int main(int argc,char** argv)try{
             "Add --areas for native area maps and the next locked fence (implies --buildings); --camera-x 449 exposes the initial map.\n"
             "Add --residents for native resident Init and lane0 drawing (implies --areas).\n"
             "Add --hero for native Member/hero creation, hero drawing and resident lanes1/2 (implies --residents).\n"
+            "Add --foreground for the native fresh foreground, leaves and final notice flush (implies --hero).\n"
             "Resident context: --store-kairo-limit 0 --condition-characters 1 --debug 0; DEBUG1 requires --debug-rescue-count.\n"
             "Area clock context: --automatic-images 0 (provisional Seb.AutoAnimation gate; true branch unbound).\n"
             "Building context: --high-score 0 (provisional int64 system save), --top-form 1 (standalone form stack).\n"
@@ -46,20 +47,21 @@ int main(int argc,char** argv)try{
             "Camera requests: --camera-x 0 --camera-y -9999, clamped by native fresh Area/Town bounds.\n"
             "S2 data projection: fresh Town.Init, ResetBuildingList and GetBuildingList.\n"
             "Reads the existing resource index and APK-derived new-game defaults.\n"
-            "Full SelectForm lifecycle, foreground, quest selection and mission return remain unbound.\n";return 0;
+            "Persistent SelectForm Update, unlock information, quest selection and mission return remain unbound.\n";return 0;
     }
     std::optional<std::filesystem::path> root,capture;std::string language="English.lproj";std::int32_t dpi=1;
     bool background=false;TownBackgroundContext context;
     std::set<std::string> options;
     for(int i=1;i<argc;++i){
         const std::string key=argv[i];
-        if(key=="--background"||key=="--scenery"||key=="--buildings"||key=="--areas"||key=="--residents"||key=="--hero"){
+        if(key=="--background"||key=="--scenery"||key=="--buildings"||key=="--areas"||key=="--residents"||key=="--hero"||key=="--foreground"){
             if(!options.insert(key).second)throw std::invalid_argument("duplicate town drawing option");
             background=true;if(key!="--background")context.scenery=true;
-            if(key=="--buildings"||key=="--areas"||key=="--residents"||key=="--hero")context.buildings=true;
-            if(key=="--areas"||key=="--residents"||key=="--hero")context.areas=true;
-            if(key=="--residents"||key=="--hero")context.residents=true;
-            if(key=="--hero")context.hero=true;continue;}
+            if(key=="--buildings"||key=="--areas"||key=="--residents"||key=="--hero"||key=="--foreground")context.buildings=true;
+            if(key=="--areas"||key=="--residents"||key=="--hero"||key=="--foreground")context.areas=true;
+            if(key=="--residents"||key=="--hero"||key=="--foreground")context.residents=true;
+            if(key=="--hero"||key=="--foreground")context.hero=true;
+            if(key=="--foreground")context.foreground=true;continue;}
         const std::set<std::string> allowed{"--data","--language","--dpi","--capture","--width","--height","--view-x","--view-y","--camera-x","--camera-y","--app-seed","--lib-seed","--high-score","--top-form","--automatic-images","--store-kairo-limit","--condition-characters","--debug","--debug-rescue-count"};
         if(!allowed.count(key)||i+1>=argc||!options.insert(key).second)throw std::invalid_argument("unsupported, incomplete or duplicate town option");
         const std::string value=argv[++i];
@@ -143,6 +145,6 @@ int main(int argc,char** argv)try{
     std::cout<<"],\"source_buildings\":";write_rows(std::cout,town.state.building_list);
     std::cout<<",\"buildings\":";write_rows(std::cout,buildings);
     if(backdrop)backdrop->report(std::cout);
-    std::cout<<",\"scope\":\""<<(context.hero?"Native Member/hero Init and drawing through resident lanes1/2; notices queued, glyph/input/clip services stubbed; foreground, quest selection and mission return unbound":context.residents?"Native resident Init and lane0 composition; notices queued, glyph/input/clip services stubbed; hero, later lanes/foreground, quest selection and mission return unbound":context.areas?"Native drawing through town areas and locked fence; notices queued, text/input, inherited clip, residents, foreground, quest selection and mission return unbound":context.buildings?"Native drawing through initial buildings; notices queued, text/input services, residents, foreground, quest selection and mission return unbound":context.scenery?"Native cloud/decor initialization and drawing through floor/gate prefix; buildings, residents, quest selection and mission return unbound":backdrop?"Town data and native background prefix; decorations, buildings, residents, quest selection and mission return unbound":"Town data/cache projection; SelectForm drawing, residents, quest selection and mission return unbound")<<"\"}\n";
+    std::cout<<",\"scope\":\""<<(context.foreground?"Native fresh town drawing through foreground and notice flush; glyph/input/clip services stubbed; persistent Update, unlock information, quest selection and mission return unbound":context.hero?"Native Member/hero Init and drawing through resident lanes1/2; notices queued, glyph/input/clip services stubbed; foreground, quest selection and mission return unbound":context.residents?"Native resident Init and lane0 composition; notices queued, glyph/input/clip services stubbed; hero, later lanes/foreground, quest selection and mission return unbound":context.areas?"Native drawing through town areas and locked fence; notices queued, text/input, inherited clip, residents, foreground, quest selection and mission return unbound":context.buildings?"Native drawing through initial buildings; notices queued, text/input services, residents, foreground, quest selection and mission return unbound":context.scenery?"Native cloud/decor initialization and drawing through floor/gate prefix; buildings, residents, quest selection and mission return unbound":backdrop?"Town data and native background prefix; decorations, buildings, residents, quest selection and mission return unbound":"Town data/cache projection; SelectForm drawing, residents, quest selection and mission return unbound")<<"\"}\n";
     return 0;
 }catch(const std::exception& error){std::cerr<<"saga_town: "<<error.what()<<'\n';return 1;}

@@ -3,7 +3,8 @@ import struct
 from test_sprite_preview import jar,png,seb
 
 
-def add_town_background(root,scenery=False,buildings=False,areas=False,residents=False,hero=False):
+def add_town_background(root,scenery=False,buildings=False,areas=False,residents=False,hero=False,foreground=False):
+    hero=hero or foreground
     residents=residents or hero
     areas=areas or residents
     buildings=buildings or areas
@@ -18,6 +19,7 @@ def add_town_background(root,scenery=False,buildings=False,areas=False,residents
     if buildings:
         (root/'new-game-save.tsv').write_text('new_game_save 1\nselection 0 -1\ntown_capacity 4\nwallet 37 43\n')
         tables[0]=('English.lproj/Town.txt',b'0\t12\t0\t-1\t1\n1\t4\t0\t-1\t1\n2\t-1\t1\t1\t99\t-1\t0\n3\t-1\t1\t1\t99\t-1\t0')
+        if foreground:tables[0]=(tables[0][0],tables[0][1]+b'\n4\t-1\t0\t-1\t0')
         tables.extend([
             ('English.lproj/Building.txt',b'4\tKing "Hall"\\Name\tselect\t14\t50\t7\t0\t0\tGift\t2\n12\tTree\tselect\t47\t-1\t8\t0\t0\tDecoration\t2'),
             ('English.lproj/KingReward.txt',b'0\tFirst\t10\t0\t0\t0\t0'),
@@ -56,7 +58,7 @@ def add_town_background(root,scenery=False,buildings=False,areas=False,residents
         members[1]=('seb.inf',b'0\tbackground.seb\n2\tfloor.seb\n3\tgate.seb\n4\tground.seb\n14\tcloud.seb\n22\tbirds.seb\n23\tleaves.seb\n')
         members[2]=('background.seb',seb([(0,0,0,0,2,2,0,0,0,0),(1,0,2,0,2,2,0,0,0,0),(3,0,0,0,2,2,0,0,0,0)]))
         members.extend([
-            ('ground.seb',seb([(0,1,0,0,40,8,0,0,0,0),(1,1,0,0,40,8,0,0,0,0)])),
+            ('ground.seb',seb([(0,1,0,0,40,8,0,0,0,0),(1,1,0,0,40,8,0,0,0,0)]+([(2,1,0,0,40,8,0,-100,0,0)] if foreground else []))),
             ('cloud.seb',seb([(0,0,0,0,2,2,0,0,0,0)])),
             # TexId77 deliberately has no image slot; the floor helper must use Image3.
             ('floor.seb',seb([(frame,77,frame*32,0,32,6,0,0,0,0) for frame in range(3)])),
@@ -77,6 +79,11 @@ def add_town_background(root,scenery=False,buildings=False,areas=False,residents
         for i,color in ((14,(210,100,10,255)),(17,(20,30,40,255)),(18,(40,50,60,255)),
                         (32,(80,90,10,255)),(33,(70,80,10,255)),(47,(10,100,210,255))):
             members.append((f'chip{i}.png',png(3,2,list(color)*6)))
+        if foreground:
+            members[0]=('img.inf',members[0][1]+b'31\tobstacle.png,bin\n')
+            members[1]=('seb.inf',members[1][1]+b'26\tboundary.seb\n')
+            members.extend([('obstacle.png',png(3,2,[150,70,190,255]*6)),
+                            ('boundary.seb',seb([(0,33,0,0,3,2,0,0,0,0),(1,33,0,0,3,2,-80,0,0,0)]))])
     if areas:
         members[1]=('seb.inf',members[1][1]+b'10\tarea-name.seb\n12\tfence.seb\n')
         members.extend([('area-name.seb',seb([(0,0,0,0,2,2,0,0,0,0),(1,0,2,0,2,2,0,0,0,0)])),

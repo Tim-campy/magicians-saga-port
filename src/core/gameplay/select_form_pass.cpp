@@ -136,7 +136,7 @@ void draw_select_decorations(SelectSceneryState& state,std::int32_t type,SelectB
         if(row->at(5)<0)host.scenery_reverse(0);
     }
 }
-void draw_select_terrain(SelectSceneryState& state,SelectBackgroundOrigin origin,SelectSceneryHost& host){
+std::int32_t draw_select_terrain(SelectSceneryState& state,SelectBackgroundOrigin origin,SelectSceneryHost& host){
     const auto first_bounds=host.scenery_bounds(host.scenery_clip(0x174),0);
     const auto width=first_bounds[2];const auto limit=background_add(state.right_extent,width);
     for(auto tile=state.left_extent;tile<limit;tile=background_add(tile,width)){
@@ -168,6 +168,7 @@ void draw_select_terrain(SelectSceneryState& state,SelectBackgroundOrigin origin
         if(!resource)throw std::invalid_argument("missing SelectForm cloud resource");
         host.scenery_draw(resource,clip,frame,static_cast<float>(background_add(rx,origin.x/20)),static_cast<float>(background_add(ry,origin.y)),0);
     }
+    return floor_y;
 }
 void draw_select_floor(const SelectSceneryState& state,SelectBackgroundOrigin origin,SelectFloorHost& host){
     const auto start=background_add(state.left_extent,40);const auto end=background_add(state.right_extent,-72);
@@ -193,6 +194,106 @@ void queue_select_notice(EventScript& stack,std::int32_t resource,std::int32_t x
     if(depth==-99999)depth=scenery_count(stack);
     const auto target=stack;auto row=std::make_shared<EventIntegers>(EventIntegers{resource,x,y,clip,frame,layer,depth});
     scenery_required(target).push_back(std::move(row));
+}
+void draw_select_notices(EventScript& stack,SelectNoticeDrawingHost& host){
+    scenery_required(stack);
+    auto cursor=host.open_notice_cursor(stack);
+    if(!cursor)throw std::invalid_argument("missing SelectForm notice cursor");
+    try{
+        while(const auto entry=cursor->next()){
+            const auto row=*entry;auto& fields=scenery_required(row);
+            const auto x=fields.at(1),y=fields.at(2);
+            if(!check_select_view_area(x,y,60,0,host))continue;
+            const auto resource=host.notice_resource(fields.at(0));
+            static_cast<void>(fields.at(5));
+            if(!resource)throw std::invalid_argument("missing SelectForm notice resource");
+            host.notice_draw(resource,fields.at(3),fields.at(4),fields.at(5),fields.at(1),fields.at(2));
+        }
+    }catch(...){cursor->dispose();throw;}
+    cursor->dispose();
+    scenery_required(stack).clear();
+}
+void draw_select_town_foreground(const SelectForegroundDrawingState& state,SelectBackgroundOrigin origin,SelectForegroundDrawingHost& host){
+    const auto gate_height=host.foreground_view_height();
+    const auto gate_x=background_add(origin.x,40),gate_y=background_add(origin.y,-70);
+    const auto visible=[&](std::int32_t x,std::int32_t margin){
+        const auto height=host.game_height();return check_select_view_area(x,background_add(height,-1),margin,0,host);
+    };
+    if(visible(gate_x,60)){
+        const auto resource=host.foreground_resource();if(!resource)throw std::invalid_argument("missing SelectForm foreground gate");
+        const auto clip=host.foreground_clip(0x170);
+        host.foreground_draw(resource,clip,0,1,gate_x,background_add(gate_y,gate_height));
+    }
+    const auto capacity=host.foreground_capacity();const auto towns=host.foreground_town_count();
+    if(capacity<towns){
+        const auto x=host.foreground_obstacle_position()[0];const auto y=host.foreground_obstacle_position()[1];
+        if(visible(x,60)){
+            const auto resource=host.foreground_resource();const auto counter=state.frame;const auto clip=host.foreground_clip(0x168);
+            host.foreground_image(resource,{clip,counter,31,x,y,100,17,-1});
+        }
+        const auto selected=state.selected;
+        if(selected==999){
+            if(visible(x,60)){
+                const auto clip=host.foreground_clip(0x188);auto* animation=host.foreground_animation(clip);
+                if(!animation)throw std::invalid_argument("missing SelectForm foreground arrow clip");
+                const auto counter=state.frame;const auto maximum=animation->max_frame;
+                const auto divided=counter/6;const auto frame=maximum==0?divided:maximum==-1?0:divided%maximum;
+                queue_select_notice(state.notices,11,background_add(x,-5),background_add(y,-30),clip,frame,0);
+            }
+            if(visible(x,60)){
+                SelectForegroundTouch touch{4,29,{background_add(x,-40),background_add(y,-120),80,90},{-10,-10,-10,25}};
+                touch.scale=state.form_scale;host.foreground_touch(touch);
+            }
+        }else if(visible(x,60)){
+            SelectForegroundTouch touch{10,0x2203e7,{background_add(x,-40),background_add(y,-90),80,90},{-10,-10,-10,-10}};
+            touch.scale=state.form_scale;host.foreground_touch(touch);
+        }
+    }
+    if(state.information_frame>=1&&state.information_number!=-1)
+        host.foreground_information(state,capacity,towns,origin);
+    const auto areas=host.foreground_areas();const auto length_owner=host.foreground_areas();
+    const auto size=scenery_required(length_owner).size();
+    auto& last=scenery_required(scenery_required(areas).at(size-1));
+    if(last.discovery!=1){
+        const auto x=background_add(state.left_extent,origin.x);const auto height=host.foreground_view_height();
+        if(visible(x,80)){
+            const auto resource=host.foreground_resource();if(!resource)throw std::invalid_argument("missing SelectForm left boundary");
+            const auto clip=host.foreground_clip(0x1cc);
+            host.foreground_draw(resource,clip,0,-1,x,background_add(gate_y,height));
+        }
+    }
+    const auto current_capacity=host.foreground_capacity();const auto current_towns=host.foreground_town_count();
+    if(current_capacity<current_towns){
+        const auto x=background_add(state.right_extent,origin.x);const auto height=host.foreground_view_height();
+        if(visible(x,80)){
+            const auto resource=host.foreground_resource();if(!resource)throw std::invalid_argument("missing SelectForm right boundary");
+            const auto clip=host.foreground_clip(0x1cc);
+            host.foreground_draw(resource,clip,1,-1,x,background_add(gate_y,height));
+        }
+    }
+}
+void queue_select_town_guides(const std::shared_ptr<std::vector<std::uint8_t>>& guides,const std::int32_t& frame,std::int32_t terrain_floor_y,SelectBackgroundOrigin origin,EventScript& notices,SelectForegroundDrawingHost& host){
+    const auto& flags=scenery_required(guides);
+    if(flags.at(0)!=0){
+        const auto counter=frame;const auto clip=host.foreground_clip(0x1d8);
+        queue_select_notice(notices,11,origin.x,background_add(background_add(origin.y,terrain_floor_y),-160),clip,counter,0);
+    }else if(flags.at(1)!=0){
+        const auto width=host.foreground_view_width();const auto counter=frame;const auto clip=host.foreground_clip(0x1dc);
+        queue_select_notice(notices,11,background_add(background_add(origin.x,width),-20),background_add(background_add(origin.y,terrain_floor_y),-160),clip,counter,0);
+    }
+}
+void draw_select_front_ground(const SelectSceneryState& state,std::int32_t terrain_floor_y,SelectBackgroundOrigin origin,SelectSceneryHost& host){
+    auto tile=background_add(state.left_extent,state.left_extent);
+    auto limit=background_add(background_add(state.right_extent,state.right_extent),240);
+    if(tile>=limit)return;
+    const auto x=background_add(origin.x,origin.x);const auto y=background_add(background_add(terrain_floor_y,origin.y),95);
+    do{
+        const auto resource=host.scenery_resource();if(!resource)throw std::invalid_argument("missing SelectForm front ground");
+        const auto clip=host.scenery_clip(0x174);
+        host.scenery_draw(resource,clip,2,static_cast<float>(background_add(x,tile)),static_cast<float>(y),0);
+        tile=background_add(tile,240);
+        limit=background_add(background_add(state.right_extent,state.right_extent),240);
+    }while(tile<limit);
 }
 namespace {
 std::int32_t town_remainder(std::int32_t frame,std::int32_t maximum){

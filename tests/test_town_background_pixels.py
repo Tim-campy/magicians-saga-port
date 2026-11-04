@@ -92,6 +92,29 @@ class TownBackgroundPixels(unittest.TestCase):
             self.assertEqual(right_report['background']['camera'][0],-270)
             self.assertEqual(bmp_pixels(right.read_bytes())[2][73*width+217],(0,120,0,255))
 
+    def test_foreground_and_final_notices_reach_pixels(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);add_town_background(root,foreground=True)
+            base=[str(EXE),'--data',str(root),'--foreground','--width','600','--height','320','--app-seed','0']
+            path=root/'foreground.bmp'
+            result=subprocess.run([*base,'--capture',str(path)],capture_output=True,text=True,timeout=30)
+            self.assertEqual(result.returncode,0,result.stderr);report=json.loads(result.stdout)
+            width,height,pixels=bmp_pixels(path.read_bytes());self.assertEqual((width,height),(600,320))
+            self.assertEqual(pixels[281*width+230],(80,90,100,255)) # Front ground tile222, frame2 offset-100.
+            front=report['background']['foreground'];self.assertEqual(front['pending_notices'],0)
+            for resource,clip,frame,layer,x,y in front['notice_draws']:
+                self.assertEqual((resource,clip,layer),(11,11,0))
+                self.assertEqual(pixels[y*width+x],(255,0,0,255)) # Queued board reaches the final pass.
+            repeat=root/'repeat.bmp';again=subprocess.run([*base,'--capture',str(repeat)],capture_output=True,text=True,timeout=30)
+            self.assertEqual(again.returncode,0,again.stderr);self.assertEqual(json.loads(again.stdout),report)
+            self.assertEqual(repeat.read_bytes(),path.read_bytes())
+            cpu=subprocess.run(base,capture_output=True,text=True,timeout=30)
+            self.assertEqual(cpu.returncode,0,cpu.stderr);self.assertEqual(json.loads(cpu.stdout),report)
+            right=root/'obstacle.bmp';shifted=subprocess.run([*base,'--camera-x','-300','--capture',str(right)],capture_output=True,text=True,timeout=30)
+            self.assertEqual(shifted.returncode,0,shifted.stderr)
+            obstacle_pixels=bmp_pixels(right.read_bytes())[2]
+            self.assertEqual(obstacle_pixels[223*width+540],(150,70,190,255))
+
     def test_hero_factory_hat_and_all_resident_lanes_reach_pixels(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);add_town_background(root,hero=True)

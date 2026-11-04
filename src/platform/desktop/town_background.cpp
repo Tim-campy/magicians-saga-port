@@ -11,6 +11,18 @@
 namespace saga::desktop {
 using namespace core;
 namespace {
+class TownNoticeCursor final:public SelectNoticeCursor {
+    EventScript rows_;std::size_t index_=0,count_;const EventInstruction* storage_;
+public:
+    explicit TownNoticeCursor(EventScript rows):rows_(std::move(rows)),count_(rows_->size()),storage_(rows_->data()){}
+    std::optional<EventInstruction> next()override{
+        // Desktop draw/resource callbacks do not write this frame-owned list.
+        // Reject a structural change instead of following new rows mid-flush.
+        if(rows_->size()!=count_||rows_->data()!=storage_)throw std::logic_error("town notice list changed during drawing");
+        if(index_==count_)return std::nullopt;return rows_->at(index_++);
+    }
+    void dispose()override{}
+};
 void json_text(std::ostream& out,const FormText& text){
     if(!text){out<<"null";return;}
     out<<'"';constexpr char hex[]="0123456789abcdef";
@@ -228,12 +240,14 @@ void TownBackground::draw(BitmapBackend& backend){
     fonts_.clear();font_requests_.clear();chip_draws_.clear();labels_.clear();touches_.clear();notices_->clear();king_queries_=0;
     area_draws_.clear();area_labels_.clear();area_touches_.clear();area_color_requests_=0;
     resident_draws_.clear();resident_touches_.clear();resident_labels_.clear();hero_draws_.clear();
+    foreground_draws_.clear();foreground_images_.clear();foreground_touches_.clear();notice_draws_.clear();notice_rows_.reset();
+    notice_quads_before_=notice_quads_after_=0;
     const auto before=backend.quads().size();
     try{
         const auto origin=draw_select_background({camera_x_,camera_y_,camera_.left_extent,camera_.right_extent,context_.view_y,&context_.view_x},*this);
         if(context_.scenery){
             draw_select_decorations(scenery_,0,origin,*this);
-            draw_select_terrain(scenery_,origin,*this);
+            terrain_floor_y_=draw_select_terrain(scenery_,origin,*this);
             draw_select_floor(scenery_,origin,*this);
             if(context_.buildings)draw_select_town_buildings({town_frame_,selected_chip_,context_.top_form,notices_},origin,*this);
             if(context_.areas)draw_select_town_areas({town_frame_,selected_area_,form_state_,context_.top_form,area_marks_,notices_},origin,*this);
@@ -244,12 +258,45 @@ void TownBackground::draw(BitmapBackend& backend){
                     draw_select_town_hero(hero_state_,town_frame_,origin,*this);
                     for(std::int32_t lane=1;lane<3;++lane)
                         draw_select_resident_lane({camera_x_,camera_y_,context_.view_x,context_.view_y,town_frame_,notices_},lane,*this);
+                    if(context_.foreground){
+                        draw_select_town_foreground({town_frame_,selected_chip_,information_frame_,information_number_,context_.form_scale,camera_.left_extent,camera_.right_extent,notices_},origin,*this);
+                        draw_select_decorations(scenery_,2,origin,*this);
+                        queue_select_town_guides(guides_,town_frame_,terrain_floor_y_,origin,notices_,*this);
+                        draw_select_front_ground(scenery_,terrain_floor_y_,origin,*this);
+                        notice_rows_=std::make_shared<std::vector<EventInstruction>>(*notices_);
+                        notice_quads_before_=backend.quads().size()-before;
+                        draw_select_notices(notices_,*this);
+                        notice_quads_after_=backend.quads().size()-before;
+                    }
                 }
             }
         }
     }
     catch(...){backend_=nullptr;throw;}
     quads_=backend.quads().size()-before;backend_=nullptr;
+}
+std::int32_t TownBackground::foreground_clip(std::int32_t field){
+    switch(field){case 0x168:return 1;case 0x170:return 3;case 0x188:return 9;case 0x1cc:return 26;case 0x1d8:return 29;case 0x1dc:return 30;}
+    throw std::invalid_argument("unsupported town foreground selector");
+}
+void TownBackground::foreground_draw(SelectBackgroundResource resource,std::int32_t clip,std::int32_t frame,std::int32_t layer,std::int32_t x,std::int32_t y){
+    foreground_draws_.push_back({clip,frame,layer,x,y});
+    backend_->draw_seb_frame(static_cast<RenderDrawResource*>(resource),clip,frame,static_cast<float>(x),static_cast<float>(y),layer);
+}
+void TownBackground::foreground_image(SelectBackgroundResource resource,const SelectForegroundImage& request){
+    foreground_images_.push_back(request);
+    backend_->draw_seb_image(static_cast<RenderDrawResource*>(resource),request.clip,request.frame,request.x,request.y,request.scale,request.anchor,image_clocks_.get(),request.image,request.layer);
+}
+std::unique_ptr<SelectNoticeCursor> TownBackground::open_notice_cursor(EventScript rows){return std::make_unique<TownNoticeCursor>(std::move(rows));}
+SelectBackgroundResource TownBackground::notice_resource(std::int32_t id){
+    notice_resource_id_=id;
+    if(id==11)return &manager_.drawing();if(id==2)return common_?&common_->manager.drawing():nullptr;
+    if(actor_entries_.count(id))return actor_resource(id);
+    return nullptr; // Native GetResourceManager does not select bg0.
+}
+void TownBackground::notice_draw(SelectBackgroundResource resource,std::int32_t clip,std::int32_t frame,std::int32_t layer,std::int32_t x,std::int32_t y){
+    notice_draws_.push_back({notice_resource_id_,clip,frame,layer,x,y});
+    backend_->draw_seb_frame(static_cast<RenderDrawResource*>(resource),clip,frame,static_cast<float>(x),static_cast<float>(y),layer);
 }
 std::int32_t TownBackground::scenery_clip(std::int32_t field){
     // AppData..cctor: BG0, GROUND4, CLOUD14, BIRD22 and LEAF23.
@@ -403,6 +450,22 @@ void TownBackground::report(std::ostream& out)const{
         const auto array=[&](const char* name,const EventInstruction& values){out<<",\""<<name<<"\":[";for(std::size_t i=0;i<values->size();++i){if(i)out<<',';out<<values->at(i);}out<<']';};
         array("textures",image->arrays.textures);array("equipment",equipment->ids);array("formation",hero_owner_->roster.formation);
         out<<",\"draws\":[";for(std::size_t i=0;i<hero_draws_.size();++i){if(i)out<<',';out<<'[';for(std::size_t j=0;j<5;++j){if(j)out<<',';out<<hero_draws_[i][j];}out<<']';}out<<"]}";
+    }
+    if(context_.foreground){
+        out<<",\"foreground\":{\"terrain_floor_y\":"<<terrain_floor_y_<<",\"information_frame\":"<<information_frame_
+           <<",\"guide_flags\":["<<static_cast<int>(guides_->at(0))<<','<<static_cast<int>(guides_->at(1))<<"],\"draws\":[";
+        const auto integers=[&](const auto& values){out<<'[';for(std::size_t i=0;i<values.size();++i){if(i)out<<',';out<<values[i];}out<<']';};
+        for(std::size_t i=0;i<foreground_draws_.size();++i){if(i)out<<',';integers(foreground_draws_[i]);}
+        out<<"],\"images\":[";
+        for(std::size_t i=0;i<foreground_images_.size();++i){if(i)out<<',';const auto& d=foreground_images_[i];integers(std::array<std::int32_t,8>{d.clip,d.frame,d.image,d.x,d.y,d.scale,d.anchor,d.layer});}
+        out<<"],\"touches\":[";
+        for(std::size_t i=0;i<foreground_touches_.size();++i){if(i)out<<',';const auto& t=foreground_touches_[i];
+            out<<"{\"kind\":"<<t.kind<<",\"flags\":"<<t.flags<<",\"rectangle\":";integers(t.rectangle);
+            out<<",\"margins\":";integers(t.margins);out<<",\"option\":"<<t.option<<",\"scale\":"<<t.scale<<'}';}
+        out<<"],\"notice_rows\":[";for(std::size_t i=0;i<notice_rows_->size();++i){if(i)out<<',';integers(*notice_rows_->at(i));}
+        out<<"],\"notice_draws\":[";for(std::size_t i=0;i<notice_draws_.size();++i){if(i)out<<',';integers(notice_draws_[i]);}
+        out<<"],\"pending_notices\":"<<notices_->size()<<",\"quads_before_notices\":"<<notice_quads_before_<<",\"quads_after_notices\":"<<notice_quads_after_<<",\"font_stack\":";
+        integers(fonts_);out<<'}';
     }
     out<<'}';
 }

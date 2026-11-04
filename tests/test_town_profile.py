@@ -148,6 +148,27 @@ class TownProfileTests(unittest.TestCase):
                 path=root/'textassets'/resource;original=path.read_bytes();path.unlink()
                 self.assertNotEqual(self.run_host(root,*args).returncode,0);path.write_bytes(original)
 
+    def test_foreground_uses_native_defaults_and_flushes_notices(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);add_town_background(root,foreground=True)
+            args=('--foreground','--width','600','--height','320','--app-seed','0')
+            result=self.run_host(root,*args);self.assertEqual(result.returncode,0,result.stderr)
+            report=json.loads(result.stdout)['background'];front=report['foreground']
+            self.assertEqual((front['terrain_floor_y'],front['information_frame'],front['guide_flags']),(312,-1,[0,0]))
+            self.assertEqual(front['font_stack'],[10]);self.assertEqual(front['pending_notices'],0)
+            self.assertEqual(report['buildings_draw']['notices'],[])
+            prefix=self.run_host(root,'--hero','--width','600','--height','320','--app-seed','0')
+            self.assertEqual(prefix.returncode,0,prefix.stderr);old=json.loads(prefix.stdout)['background']
+            self.assertEqual(front['notice_rows'],old['buildings_draw']['notices'])
+            self.assertTrue(front['notice_draws']);self.assertGreater(front['quads_after_notices'],front['quads_before_notices'])
+            self.assertEqual(report['hero'],old['hero']);self.assertEqual(report['residents'],old['residents'])
+            self.assertEqual(self.run_host(root,*args).stdout,result.stdout)
+            right=self.run_host(root,*args,'--camera-x','-300');self.assertEqual(right.returncode,0,right.stderr)
+            right=json.loads(right.stdout)['background'];obstacle=right['foreground']['images'][0]
+            self.assertEqual((obstacle[0],obstacle[1],obstacle[2],obstacle[5:]),(1,0,31,[100,17,-1]))
+            self.assertEqual(right['foreground']['touches'][0]['kind'],10)
+            self.assertEqual(right['foreground']['touches'][0]['margins'],[-10]*4)
+
     def test_native_hero_owner_uses_factory_images_and_formation(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);add_town_background(root,hero=True)

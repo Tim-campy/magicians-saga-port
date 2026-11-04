@@ -143,7 +143,7 @@ void decoration_drawing(){
 void terrain(){
     Fixture f;f.left=0;f.right=0;f.host.height=200;f.host.heights={500,510};f.host.bounds={{{0,0,100,20}},{{0,0,80,20}}};
     f.state.clouds=rows({row({10,20,800,0,1,2}),row({40,80,900,0,1,8})});
-    draw_select_terrain(f.state,{-3,5},f.host);
+    check(draw_select_terrain(f.state,{-3,5},f.host)==490,"terrain returns the earlier captured floor baseline without another height query");
     check(f.host.draws.size()==4,"two ground passes precede clouds");
     const auto& a=f.host.draws[0];const auto& b=f.host.draws[1];const auto& c=f.host.draws[2];const auto& d=f.host.draws[3];
     check(!a.indexed&&a.clip==0x164&&a.frame==3&&a.anchor==0&&a.x==-1&&a.y==380,"ground pass uses half camera and fresh raw height");
@@ -158,5 +158,18 @@ void terrain(){
     check(culled.host.draws.empty(),"both terrain passes culled");
     check(culled.host.log==std::vector<std::string>({"C372","B372:0","G","C372","B372:0","H","G"}),"left culling skips width, resource and draw-only height");
 }
+void front_ground(){
+    Fixture f;f.left=-120;f.right=120;
+    f.host.action=[&](const auto& name){if(name=="D"&&f.host.draws.size()==1){f.right=0;f.left=10000;}};
+    draw_select_front_ground(f.state,490,{10,20},f.host);
+    check(f.host.draws.size()==2&&f.host.draws[0].x==-220&&f.host.draws[1].x==20,"front ground captures left and rereads right after each draw");
+    for(const auto& draw:f.host.draws)check(draw.clip==0x174&&draw.frame==2&&draw.y==605&&draw.anchor==0,"front ground uses explicit frame2 and captured terrain floor");
+    check(f.host.log==std::vector<std::string>{"R","C372","D","R","C372","D"},"front ground does not cull, query height or consume RNG");
+    Fixture empty;empty.left=120;empty.right=-120;
+    draw_select_front_ground(empty.state,490,{10,20},empty.host);check(empty.host.log.empty(),"empty front ground makes no provider calls");
+    Fixture wrap;wrap.left=std::numeric_limits<std::int32_t>::min();wrap.right=0;
+    draw_select_front_ground(wrap.state,std::numeric_limits<std::int32_t>::max(),{std::numeric_limits<std::int32_t>::max(),20},wrap.host);
+    check(wrap.host.draws.size()==1&&wrap.host.draws[0].x==-2&&wrap.host.draws[0].y==static_cast<float>(-2147483534),"front ground doubles and adds with native int32 wrapping");
 }
-int main(){cloud_initialization();birds();leaves();decoration_initialization();decoration_drawing();terrain();return 0;}
+}
+int main(){cloud_initialization();birds();leaves();decoration_initialization();decoration_drawing();terrain();front_ground();return 0;}

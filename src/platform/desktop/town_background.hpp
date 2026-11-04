@@ -27,11 +27,11 @@ struct TownBackgroundContext {
     bool areas=false;
     bool automatic_images=false; // Provisional Seb.AutoAnimation gate; only its false branch is bound.
     std::int64_t high_score=0; // Provisional system-save slot8, independent of normal NewGame.
-    bool residents=false,hero=false,debug=false;
+    bool residents=false,hero=false,foreground=false,debug=false;
     std::int32_t store_limit=0,condition_character_count=1; // Provisional persisted/gateway inputs.
     std::optional<std::int32_t> debug_rescue_count;
 };
-class TownBackground final:private core::SelectBackgroundHost,private core::SelectActiveAreaHost,private core::SelectCameraHost,private core::SelectSceneryHost,private core::SelectFloorHost,private core::SelectTownDrawingHost,private core::KingRewardAvailabilityHost,private core::SelectAreaDrawingHost,private core::TownResidentInitializationHost,private core::TownResidentGeometryHost,private core::ScaledHumanDrawingHost,private core::SelectResidentDrawingHost,private core::SelectHeroDrawingHost {
+class TownBackground final:private core::SelectBackgroundHost,private core::SelectActiveAreaHost,private core::SelectCameraHost,private core::SelectSceneryHost,private core::SelectFloorHost,private core::SelectTownDrawingHost,private core::KingRewardAvailabilityHost,private core::SelectAreaDrawingHost,private core::TownResidentInitializationHost,private core::TownResidentGeometryHost,private core::ScaledHumanDrawingHost,private core::SelectResidentDrawingHost,private core::SelectHeroDrawingHost,private core::SelectForegroundDrawingHost,private core::SelectNoticeDrawingHost {
 public:
     TownBackground(ResourceArchive& tables,const GameArchiveEntry& selected,ResourceProfile,std::int32_t capacity,TownBackgroundContext,core::EventScript buildings=nullptr,std::shared_ptr<std::vector<std::uint8_t>> enabled=nullptr,const GameArchiveEntry* background=nullptr,const GameArchiveEntry* common=nullptr,const GameResourceIndex* actor_resources=nullptr);
     ~TownBackground();
@@ -116,6 +116,15 @@ private:
     std::unique_ptr<HeroOwner> hero_owner_;
     core::SelectHeroDrawingState hero_state_;
     std::vector<std::array<std::int32_t,5>> hero_draws_;
+    std::int32_t terrain_floor_y_=0,information_frame_=-1,information_number_=0; // Constructor +0x190=-1; +0x18c is zero.
+    std::shared_ptr<std::vector<std::uint8_t>> guides_=std::make_shared<std::vector<std::uint8_t>>(2,std::uint8_t{0}); // Constructor +0x1f8.
+    std::vector<std::array<std::int32_t,5>> foreground_draws_;
+    std::vector<core::SelectForegroundImage> foreground_images_;
+    std::vector<core::SelectForegroundTouch> foreground_touches_;
+    core::EventScript notice_rows_;
+    std::vector<std::array<std::int32_t,6>> notice_draws_;
+    std::int32_t notice_resource_id_=0;
+    std::size_t notice_quads_before_=0,notice_quads_after_=0;
     std::int32_t hero_equipment_image(core::EquipmentSlot);
     struct ResidentDraw {std::int32_t character,clip,frame,x,y;};
     std::vector<ResidentDraw> resident_draws_;
@@ -233,5 +242,21 @@ private:
     void hero_target_effect(std::int32_t,std::int32_t,std::int32_t)override;
     core::ComponentSlots* town_hero()override;
     void hero_draw(core::ComponentSlots*,std::int32_t,std::int32_t,std::int32_t,std::int32_t,std::int32_t)override;
+    std::int32_t foreground_view_height()override{return view_height();}
+    std::int32_t foreground_view_width()override{return view_width();}
+    std::int32_t foreground_capacity()override{return save_integers_->at(19);}
+    std::int32_t foreground_town_count()override{return static_cast<std::int32_t>(building_enabled_->size());}
+    std::array<std::int32_t,2> foreground_obstacle_position()override{return core::town_obstacle_position({camera_x_,camera_y_,camera_.left_extent,camera_.right_extent,context_.view_x,context_.view_y},*this);}
+    std::shared_ptr<core::SelectAreaDrawingRows> foreground_areas()override{return area_views_;}
+    core::SelectBackgroundResource foreground_resource()override{return &manager_.drawing();}
+    std::int32_t foreground_clip(std::int32_t)override;
+    core::SharedAnimationClip* foreground_animation(std::int32_t clip)override{return manager_.animations().clips->at(static_cast<std::size_t>(clip));}
+    void foreground_draw(core::SelectBackgroundResource,std::int32_t,std::int32_t,std::int32_t,std::int32_t,std::int32_t)override;
+    void foreground_image(core::SelectBackgroundResource,const core::SelectForegroundImage&)override;
+    void foreground_touch(const core::SelectForegroundTouch& value)override{foreground_touches_.push_back(value);} // SAGA_STUB(town-building-touch).
+    void foreground_information(const core::SelectForegroundDrawingState&,std::int32_t,std::int32_t,core::SelectBackgroundOrigin)override{throw std::logic_error("town unlock-information game/script owner is unbound");}
+    std::unique_ptr<core::SelectNoticeCursor> open_notice_cursor(core::EventScript)override;
+    core::SelectBackgroundResource notice_resource(std::int32_t)override;
+    void notice_draw(core::SelectBackgroundResource,std::int32_t,std::int32_t,std::int32_t,std::int32_t,std::int32_t)override;
 };
 } // namespace saga::desktop

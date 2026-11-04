@@ -66,7 +66,8 @@ void initialize_select_decorations(SelectSceneryState&,SelectSceneryHost&);
 void draw_select_decorations(SelectSceneryState&,std::int32_t type,SelectBackgroundOrigin,SelectSceneryHost&);
 // _Draw 0x11f0a80..0x11f0e10: two ground passes, then backward cloud drawing.
 // Caller runs DrawDecoObject(0) first; floor/buildings/residents are later layers.
-void draw_select_terrain(SelectSceneryState&,SelectBackgroundOrigin,SelectSceneryHost&);
+// Returns the captured raw-height minus ground-bounds-height used by the tail.
+std::int32_t draw_select_terrain(SelectSceneryState&,SelectBackgroundOrigin,SelectSceneryHost&);
 class SelectFloorHost:public SelectViewportHost {
 public:
     virtual std::int32_t floor_view_height()=0;
@@ -113,6 +114,22 @@ public:
 };
 // DrawSebStack 0x11f3714: seven-int request; -99999 selects current list count.
 void queue_select_notice(EventScript&,std::int32_t resource,std::int32_t x,std::int32_t y,std::int32_t clip,std::int32_t frame,std::int32_t layer,std::int32_t depth=-99999);
+class SelectNoticeCursor {
+public:
+    virtual ~SelectNoticeCursor()=default;
+    // Native List enumeration order/invalidation, retaining each row's identity.
+    virtual std::optional<EventInstruction> next()=0;
+    virtual void dispose()=0;
+};
+class SelectNoticeDrawingHost:public SelectViewportHost {
+public:
+    virtual std::unique_ptr<SelectNoticeCursor> open_notice_cursor(EventScript)=0;
+    virtual SelectBackgroundResource notice_resource(std::int32_t)=0;
+    virtual void notice_draw(SelectBackgroundResource,std::int32_t clip,std::int32_t frame,std::int32_t layer,std::int32_t x,std::int32_t y)=0;
+};
+// StackListDraw 0x11f417c: enumerate captured owner; clear current owner only
+// after successful enumeration/disposal. Row6 is not read or used for sorting.
+void draw_select_notices(EventScript&,SelectNoticeDrawingHost&);
 // _Draw 0x11f0fe4..0x11f1d98: building underlays, font scopes, sprites and notice requests.
 // Does not flush the notice stack or draw the later area/resident/foreground passes.
 void draw_select_town_buildings(const SelectTownDrawingState&,SelectBackgroundOrigin,SelectTownDrawingHost&);
@@ -188,6 +205,49 @@ public:
 };
 // _Draw 0x11f2348..0x11f2528; call between resident lane0 and lanes1/2.
 void draw_select_town_hero(const SelectHeroDrawingState&,const std::int32_t& frame,SelectBackgroundOrigin,SelectHeroDrawingHost&);
+struct SelectForegroundImage {
+    std::int32_t clip,frame,image,x,y;
+    std::int32_t scale=100,anchor=17,layer=-1;
+};
+struct SelectForegroundTouch {
+    std::int32_t kind,flags;
+    std::array<std::int32_t,4> rectangle,margins;
+    std::int32_t option=9,scale=100;
+};
+struct SelectForegroundDrawingState {
+    const std::int32_t& frame;
+    const std::int32_t& selected;
+    const std::int32_t& information_frame;
+    const std::int32_t& information_number;
+    const std::int32_t& form_scale;
+    const std::int32_t& left_extent;
+    const std::int32_t& right_extent;
+    EventScript& notices;
+};
+class SelectForegroundDrawingHost:public SelectViewportHost {
+public:
+    virtual std::int32_t foreground_view_height()=0;
+    virtual std::int32_t foreground_view_width()=0;
+    virtual std::int32_t foreground_capacity()=0;
+    virtual std::int32_t foreground_town_count()=0;
+    virtual std::array<std::int32_t,2> foreground_obstacle_position()=0;
+    virtual std::shared_ptr<SelectAreaDrawingRows> foreground_areas()=0;
+    virtual SelectBackgroundResource foreground_resource()=0;
+    virtual std::int32_t foreground_clip(std::int32_t field)=0;
+    virtual SharedAnimationClip* foreground_animation(std::int32_t clip)=0;
+    virtual void foreground_draw(SelectBackgroundResource,std::int32_t clip,std::int32_t frame,std::int32_t layer,std::int32_t x,std::int32_t y)=0;
+    virtual void foreground_image(SelectBackgroundResource,const SelectForegroundImage&)=0;
+    virtual void foreground_touch(const SelectForegroundTouch&)=0;
+    // Update-produced unlock panel. Its owner must implement the game script/
+    // translation contract before exposing information_frame>=1 to this pass.
+    virtual void foreground_information(const SelectForegroundDrawingState&,std::int32_t capacity,std::int32_t towns,SelectBackgroundOrigin)=0;
+};
+// _Draw 0x11f254c..0x11f2fa4. Call after lane2 and before leaves.
+void draw_select_town_foreground(const SelectForegroundDrawingState&,SelectBackgroundOrigin,SelectForegroundDrawingHost&);
+// _Draw 0x11f2fb8..0x11f307c, after leaves; guide0 takes priority over guide1.
+void queue_select_town_guides(const std::shared_ptr<std::vector<std::uint8_t>>&,const std::int32_t& frame,std::int32_t terrain_floor_y,SelectBackgroundOrigin,EventScript&,SelectForegroundDrawingHost&);
+// _Draw 0x11f3080..0x11f3114; explicit frame2, no culling or height query.
+void draw_select_front_ground(const SelectSceneryState&,std::int32_t terrain_floor_y,SelectBackgroundOrigin,SelectSceneryHost&);
 struct SelectFormPassState {
     std::int32_t state;
     bool captured;

@@ -2000,7 +2000,7 @@ game:0x060007fa,game:0x060007fa,ui,,24,0x11e9458
 game:0x060007fb,game:0x060007fb,ui,,836,0x11e9470
 game:0x060007fc,game:0x060007fc,ui,,376,0x11e97b4
 game:0x060007fd,game:0x060007fd,ui,,272,0x11e992c
-game:0x060007fe,game:0x060007fe,ui,,492,0x11e9a3c
+game:0x060007fe,form.SelectForm..ctor,ui,traced,492,0x11e9a3c
 game:0x060007ff,form.SelectForm.Init,ui,traced,5644,0x11e9c28
 game:0x06000800,form.SelectForm.Update,ui,traced,8068,0x11ebb94
 game:0x06000801,game:0x06000801,ui,,2704,0x11ef380
@@ -2015,7 +2015,7 @@ game:0x06000809,game:0x06000809,ui,,8,0x11eff8c
 game:0x0600080a,game:0x0600080a,ui,,300,0x11eff94
 game:0x0600080b,form.SelectForm._Draw,ui,traced,10820,0x11f0714
 game:0x0600080c,form.SelectForm.DrawSebStack,ui,reimplemented,404,0x11f3714
-game:0x0600080d,form.SelectForm.StackListDraw,ui,documented,624,0x11f417c
+game:0x0600080d,form.SelectForm.StackListDraw,ui,reimplemented,624,0x11f417c
 game:0x0600080e,game:0x0600080e,ui,,276,0x11eb418
 game:0x0600080f,game:0x0600080f,ui,,16,0x11f4464
 game:0x06000810,game:0x06000810,ui,,84,0x11ef088
