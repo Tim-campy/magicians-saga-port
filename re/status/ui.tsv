@@ -156,7 +156,6 @@ kairo:0x0600092f	documented	docs/subsystems/ui.md	CheckFirstTouch(group) tests d
 kairo:0x06000954	reimplemented	src/core/gameplay/input_frame.cpp	Half-open signed rectangle predicate with wrapping right/bottom sums and no positive-size precheck; contract tests and native presentation pointer hit routing.
 kairo:0x060009d0	documented	docs/subsystems/ui.md	Drag(int32,int32,bool) obtains Create option, writes bool flags and binary32 converted factors; selected Draw registration uses1/1/false, full option lifetime unported.
 kairo:0x060009d5	documented	docs/subsystems/ui.md	Flag overwrites int32+0x10 and returns same option; TOP_PRIORITY8 plus CANCEL_SCREEN_LIMIT32 establish captured40 without bypassing component hit gate.
-game:0x0600084e	traced	docs/subsystems/data.md	SelectStageForm.Update writes selected QuestData.id into decoded normal-save integer slot9 at 0x1208078; UI/stamina flow remains unported.
 kairo:0x06001a71	traced	docs/subsystems/ui.md	Same-UI-thread Push callback inserts child state0 and manager link; current world pass ends before child Init.
 kairo:0x06001a73	traced	docs/subsystems/ui.md	Pop callback marks selected form4 and may change underlying3 to1; removal follows Finish, not this callback.
 kairo:0x06001a14	traced	docs/subsystems/ui.md	Descending Finish4 then ascending Init0 phase; narrow synchronous mission modal projection; full manager policy remains unbound.
@@ -199,3 +198,15 @@ game:0x06000814	reimplemented	src/core/gameplay/select_camera.cpp	Masked native 
 game:0x06000815	reimplemented	src/core/gameplay/select_camera.cpp	Required event/control, group17 camera routing and consumed return; native-event replay and tests.
 game:0x06000816	reimplemented	src/core/gameplay/select_camera.cpp	Complete down/up/long/drag/pinch control flow with scale/history/vector owners and callback failures; native-event walking/camera/bubble integration.
 game:0x06000801	traced	docs/subsystems/town.md	Selected viewport publication, non-top scene-resume and group17 registration traced and bound to SDL camera; remaining outer HUD/widget composition unestablished.
+game:0x0600084d	reimplemented	src/core/gameplay/stage_menu.cpp	Callback-based Init with reversed eligible global IDs, ordered system flag and scroll/renderer publication; host open/back and contract tests.
+game:0x0600084e	reimplemented	src/core/gameplay/stage_menu.cpp	Controller with save9 before stamina, same-pass continuation, production41 and delegated save-exception filter; live neutral menu and contract tests.
+game:0x06000851	reimplemented	src/core/gameplay/stage_menu.cpp	MAIN/PRODUCTION labels resolved before state publication; ordered failures tested.
+game:0x06000852	reimplemented	src/core/gameplay/stage_menu.cpp	Masked selected-stage and scroll-value stores with base fallback; contract tests.
+game:0x06000853	reimplemented	src/core/gameplay/stage_menu.cpp	Masked selected-stage and scroll-value getters with base fallback; contract tests.
+game:0x06000854	reimplemented	src/core/gameplay/stage_menu.cpp	Required event/control, nullable list forwarding for groups17/10 and consumed return; contract tests.
+game:0x06000855	reimplemented	src/core/gameplay/stage_menu.cpp	Ordered base Resume and true result without field writes; contract tests.
+game:0x06000856	reimplemented	src/core/gameplay/stage_menu.cpp	Base Finish before EndMainBlur, ordered callbacks and failures tested; touch-effect output is a declared host boundary.
+game:0x0600009a	documented	docs/subsystems/town.md	Required event; types1/2 invoke GameView.Set before confirmation/down pulse; area29 binding uses selected Margin-only options.
+game:0x060000a0	documented	docs/subsystems/town.md	Value0 substitutes20; type5 dispatches split selector or shifted Canvas pulse; selected GO28 binding tested.
+kairo:0x060009bf	documented	docs/subsystems/town.md	Signed base priority from component+0x48 and ordered optional flag2/4/8 overrides; area and GO default1.
+game:0x06000a0a	traced	docs/subsystems/town.md	Selected neutral fresh geometry, repeat/held query order, clamping and fade bound to retained stage menu; navigation/gestures remain unavailable.

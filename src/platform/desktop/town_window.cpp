@@ -60,10 +60,15 @@ void run_town_window(TownBackground& town,const TownWindowOptions& options){
             const auto deadline=SDL_GetTicks()+40;bool pulse=false;SDL_Event event;
             while(SDL_PollEvent(&event)){
                 if(event.type==SDL_EVENT_QUIT)running=false;
-                else if(event.type==SDL_EVENT_WINDOW_FOCUS_LOST&&!context.input_replay){town.cancel_camera_pointer();pending_x=pending_y=0;}
+                else if(event.type==SDL_EVENT_WINDOW_FOCUS_LOST&&!context.input_replay){town.cancel_camera_pointer();town.cancel_widget_pointer();pending_x=pending_y=0;}
                 else if(event.type==SDL_EVENT_KEY_DOWN&&!event.key.repeat){
                     if(event.key.key==SDLK_ESCAPE)running=false;
+                    else if(!context.input_replay&&event.key.key==SDLK_BACKSPACE)town.stage_back();
                     else if(!context.input_replay&&(event.key.key==SDLK_RETURN||event.key.key==SDLK_SPACE))pulse=true;
+                }else if(!context.input_replay&&event.type==SDL_EVENT_MOUSE_BUTTON_DOWN&&event.button.button==SDL_BUTTON_LEFT){
+                    const auto p=coordinates(event.button.x,event.button.y);town.widget_pointer(0,p[0],p[1]);
+                }else if(!context.input_replay&&event.type==SDL_EVENT_MOUSE_BUTTON_UP&&event.button.button==SDL_BUTTON_LEFT){
+                    const auto p=coordinates(event.button.x,event.button.y);town.widget_pointer(1,p[0],p[1]);
                 }else if(!context.input_replay&&event.type==SDL_EVENT_MOUSE_BUTTON_DOWN&&event.button.button==SDL_BUTTON_RIGHT){
                     pending_x=pending_y=0;const auto p=coordinates(event.button.x,event.button.y);town.camera_pointer(0,p[0],p[1],0,0);
                 }else if(!context.input_replay&&event.type==SDL_EVENT_MOUSE_BUTTON_UP&&event.button.button==SDL_BUTTON_RIGHT){
@@ -82,7 +87,7 @@ void run_town_window(TownBackground& town,const TownWindowOptions& options){
         }
         // A frame limit observes the same retained state as headless replay.
         // Only an actual close cancels live capture after the last dispatch.
-        if(!running&&!context.input_replay)town.cancel_camera_pointer();
+        if(!running&&!context.input_replay){town.cancel_camera_pointer();town.cancel_widget_pointer();}
         if(dispatch==0)submit();
     }else submit();
     if(options.capture){

@@ -22,6 +22,18 @@ bool input_hit_rectangle(const InputRectangle&,std::int32_t x,std::int32_t y);
 InputRectangle input_screen_rectangle(InputRectangle,std::array<std::int32_t,4> margins,std::int32_t width,std::int32_t height);
 // Equal-priority, mutually colliding registrations; preserves insertion order.
 void partition_input_rectangles(InputRectangle& earlier,InputRectangle& later);
+struct SelectAreaTouchRegion {InputRectangle bounds;InputControl control;};
+// Selected _Draw area29/GO4 registrations; host owns list lifetime/capture.
+SelectAreaTouchRegion select_area_touch_region(std::int32_t index,bool selected,bool locked,
+    std::int32_t x,std::int32_t y,std::int32_t width,std::int32_t height);
+class SelectWidgetHost {
+public:
+    virtual ~SelectWidgetHost()=default;
+    virtual void select_value(std::uint32_t,std::int32_t)=0;
+    virtual void click_key(std::uint32_t)=0;
+};
+// GameView.Set + StageSelect/KeyClick, selected Margin-only options (no extra selectors).
+void select_widget_touch(const InputTouch*,SelectWidgetHost&);
 struct InputFrameState {
     EntitySubset* subset=nullptr;bool old_up=false,old_down=false;
     std::int32_t frame=0,last_down_frame=0;

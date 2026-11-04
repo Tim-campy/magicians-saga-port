@@ -16,6 +16,27 @@ from test_sprite_preview import bmp_pixels
 @unittest.skipUnless(EXE,'viewer saga_town supplied by CTest')
 class TownBackgroundPixels(unittest.TestCase):
     @unittest.skipUnless(os.environ.get('SAGA_TEST_FONT'),'public CTest font required')
+    def test_hidden_area_menu_open_pause_and_back_match_cpu_and_still_capture(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);add_town_background(root,update=True)
+            font=root/'unity/Font/public.ttf';font.parent.mkdir(parents=True)
+            font.write_bytes(Path(os.environ['SAGA_TEST_FONT']).read_bytes())
+            (root/'mission-font.tsv').write_text(f'mission_font 1\nfont "unity/Font/public.ttf" {font.stat().st_size}\n')
+            replay=root/'menu.replay';replay.write_text('160 widget 0 200 450\n161 widget 1 200 450\n162 widget 0 200 480\n163 widget 1 200 480\n184 stage-back\n')
+            base=[str(EXE),'--data',str(root),'--foreground','--camera-x','300','--talk-pulse-every','10','--replay',str(replay)]
+            def run(*args):
+                result=subprocess.run([*base,*args],capture_output=True,text=True,timeout=45)
+                self.assertEqual(result.returncode,0,result.stderr);return json.loads(result.stdout)
+            for count in (163,183,184):
+                with self.subTest(count=count):
+                    args=['--update-passes',str(count)];cpu=run(*args,'--physical-input')
+                    still=root/f'still-{count}.bmp';window=root/f'window-{count}.bmp'
+                    self.assertEqual(run(*args,'--physical-input','--capture',str(still)),cpu)
+                    self.assertEqual(run(*args,'--interactive','--hidden','--capture',str(window)),cpu)
+                    self.assertEqual(still.read_bytes(),window.read_bytes())
+                    self.assertEqual(cpu['background']['update']['stage_menu']['pending'],count<184)
+
+    @unittest.skipUnless(os.environ.get('SAGA_TEST_FONT'),'public CTest font required')
     def test_hidden_interactive_loop_matches_physical_headless_state_and_pixels(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);add_town_background(root,update=True)

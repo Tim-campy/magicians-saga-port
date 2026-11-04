@@ -4,6 +4,7 @@
 #include "bitmap_backend.hpp"
 #include "core/gameplay/select_form_pass.hpp"
 #include "core/gameplay/select_camera.hpp"
+#include "core/gameplay/input_frame.hpp"
 #include "core/gameplay/game_random.hpp"
 #include "core/gameplay/select_building.hpp"
 #include "core/gameplay/progression_tables.hpp"
@@ -49,6 +50,9 @@ public:
     void initialize_update(ResourceArchive&,const std::filesystem::path& root);
     void advance_update(std::uint64_t frame,bool talk_pulse=false);
     bool camera_pointer(std::int32_t type,std::int32_t x,std::int32_t y,std::int32_t dx,std::int32_t dy);
+    bool widget_pointer(std::int32_t type,std::int32_t x,std::int32_t y);
+    void cancel_widget_pointer();
+    void stage_back();
     void cancel_camera_pointer();
     std::string window_title()const;
     void report(std::ostream&)const;
@@ -74,6 +78,7 @@ private:
     core::SelectDecorationMotionState decoration_motion_;
     std::int32_t motion_passes_=0;
     std::int32_t cloud_view_width_=240; // AppData.VIEW_W cctor, before outer Draw refresh.
+    std::vector<core::SelectAreaTouchRegion> area_pointer_regions_;
     struct Random final:core::RandomSource {
         explicit Random(std::int32_t seed):source(seed){}
         core::LegacySystemRandom source;std::uint64_t draws=0;
@@ -240,7 +245,7 @@ private:
     std::int32_t area_number()override{return core::select_area_number(*this);}
     void area_label_color()override{++area_color_requests_;} // Color output belongs to town-building-text stub.
     void area_label(core::FormText text,std::int32_t x,std::int32_t y)override{area_labels_.push_back({std::move(text),x,y});}
-    void area_touch(std::int32_t index,bool selected,bool locked,std::int32_t x,std::int32_t y)override{area_touches_.push_back({index,selected?1:0,locked?1:0,x,y});}
+    void area_touch(std::int32_t index,bool selected,bool locked,std::int32_t x,std::int32_t y)override;
     std::int32_t challenge_count()override{return resident_challenges_;}
     std::int32_t store_limit()override{return context_.store_limit;}
     std::shared_ptr<core::TownResidentCharacters> characters()override{return resident_characters_;}

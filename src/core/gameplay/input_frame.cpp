@@ -4,6 +4,28 @@
 #include <stdexcept>
 
 namespace saga::core {
+SelectAreaTouchRegion select_area_touch_region(std::int32_t index,bool selected,bool locked,
+    std::int32_t x,std::int32_t y,std::int32_t width,std::int32_t height){
+    const auto value=selected?28U:static_cast<std::uint32_t>(index)|0xc0000U;
+    const auto signed_value=value<=0x7fffffffU?static_cast<std::int32_t>(value):-1-static_cast<std::int32_t>(0xffffffffU-value);
+    const std::array<std::int32_t,4> margins=locked?std::array<std::int32_t,4>{5,5,20,5}:std::array<std::int32_t,4>{15,15,50,5};
+    return {input_screen_rectangle({x,y,selected?29:129,selected?37:82},margins,width,height),{selected?4:29,signed_value}};
+}
+void select_widget_touch(const InputTouch* event,SelectWidgetHost& host){
+    if(!event||!event->component)throw std::invalid_argument("missing town widget event/control");
+    const auto& control=*event->component;
+    auto encoded=static_cast<std::uint32_t>(control.value);
+    const auto set=[&]{const auto flags=encoded&0xffff0000U;const auto low=encoded&0xffffU;
+        if(flags)host.select_value(flags,low<=0x7fffU?static_cast<std::int32_t>(low):static_cast<std::int32_t>(low)-0x10000);};
+    if(control.group==29){
+        if(event->type!=1&&event->type!=2)return;
+        set();host.click_key(event->type==1?0x100000U:0x80000U);return;
+    }
+    if(control.group!=4)throw std::invalid_argument("unsupported town widget group");
+    if(encoded==0)encoded=20;
+    if(event->type!=5)return;
+    if(encoded&0xffff0000U)set();else host.click_key(1U<<(encoded&31U));
+}
 namespace {
 template<class T>T& required(T* p){if(!p)throw std::invalid_argument("missing input frame value");return *p;}
 template<class T>T& field(ComponentSlots& e,int slot){return required(dynamic_cast<T*>(e.get(slot)));}

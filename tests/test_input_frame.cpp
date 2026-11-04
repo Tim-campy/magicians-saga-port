@@ -78,5 +78,24 @@ int main()try{
      InputRectangle separate{100,100,10,10};partition_input_rectangles(left,separate);check(left.width==9&&separate.x==100);}
     {InputRectangle earlier{0,0,10,10},later=earlier;partition_input_rectangles(earlier,later);
      check(earlier.x==5&&earlier.width==5&&later.x==0&&later.width==5);}
+    {const auto area=select_area_touch_region(2,false,false,100,200,600,640);
+     check(area.control.group==29&&area.control.value==0xc0002);
+     check(area.bounds.x==85&&area.bounds.y==150&&area.bounds.width==159&&area.bounds.height==137);
+     const auto go=select_area_touch_region(2,true,false,150,245,600,640);
+     check(go.control.group==4&&go.control.value==28&&go.bounds.x==135&&go.bounds.y==195&&go.bounds.width==59&&go.bounds.height==92);
+     const auto locked=select_area_touch_region(3,false,true,100,200,600,640);
+     check(locked.bounds.x==95&&locked.bounds.y==180&&locked.bounds.width==139&&locked.bounds.height==107);}
+    {struct Widget final:SelectWidgetHost {
+         std::vector<std::int32_t> values;std::vector<std::uint32_t> keys;bool fail=false;
+         void select_value(std::uint32_t flags,std::int32_t value)override{check(flags==0xc0000U);values.push_back(value);if(fail)throw std::runtime_error("setter");}
+         void click_key(std::uint32_t mask)override{keys.push_back(mask);}
+     } widget;
+     InputControl area{29,0xcffff};InputTouch event{2,&area};select_widget_touch(&event,widget);
+     check(widget.values==std::vector<std::int32_t>({-1})&&widget.keys==std::vector<std::uint32_t>({0x80000U}));
+     event.type=1;select_widget_touch(&event,widget);check(widget.keys.back()==0x100000U);
+     widget.fail=true;widget.keys.clear();fails([&]{select_widget_touch(&event,widget);});check(widget.keys.empty());
+     InputControl go{4,28};event={2,&go};select_widget_touch(&event,widget);check(widget.keys.empty());
+     event.type=5;select_widget_touch(&event,widget);check(widget.keys.back()==0x10000000U);
+     go.value=0;select_widget_touch(&event,widget);check(widget.keys.back()==0x100000U);}
     return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

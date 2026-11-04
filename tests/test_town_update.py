@@ -180,9 +180,34 @@ class TownUpdateTests(unittest.TestCase):
     def test_replay_requires_ordered_bounded_native_records(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);self.fixture(root)
-            for text in ('0 pulse\n','-18446744073709551615 pulse\n','2147483648 pulse\n','2 pulse\n1 pulse\n','1 camera 0 40\n','1 camera 0 40 0 0 0 -1\n','1 select 0x 0\n','1 buttons 4294967296\n','1 unknown\n','1 pulse extra\n','1 pointer 12 0 0 0 0\n','1 pointer 0 40\n','1 pointer cancel extra\n'):
+            for text in ('0 pulse\n','-18446744073709551615 pulse\n','2147483648 pulse\n','2 pulse\n1 pulse\n','1 camera 0 40\n','1 camera 0 40 0 0 0 -1\n','1 select 0x 0\n','1 buttons 4294967296\n','1 unknown\n','1 pulse extra\n','1 pointer 12 0 0 0 0\n','1 pointer 0 40\n','1 pointer cancel extra\n','1 widget 0 200\n','1 widget 8 200 450\n','1 stage-back extra\n','1 stage-back\n'):
                 with self.subTest(text=text):
                     args=self.replay(root,text);self.assertNotEqual(self.run_host(root,1,*args).returncode,0)
+
+    def test_physical_area_go_opens_retained_menu_and_back_resumes_town(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);self.fixture(root)
+            text='3 widget 0 200 450\n160 widget 0 200 450\n161 widget 1 200 450\n162 widget 0 200 480\n163 widget 1 200 480\n184 stage-back\n'
+            args=(*self.replay(root,text),'--physical-input','--camera-x','300')
+            selected=self.state(root,160,*args)
+            self.assertEqual(selected['areas_draw']['selected'],0)
+            self.assertEqual(selected['update']['widgets']['regions'][0][:2],[4,28])
+            pushed=self.state(root,163,*args)['update']
+            self.assertTrue(pushed['stage_menu']['pending']);self.assertFalse(pushed['stage_menu']['initialized'])
+            opened=self.state(root,164,*args)['update']
+            self.assertEqual(opened['system_flags'],256)
+            self.assertEqual(opened['stage_menu']['normal_flags'],0)
+            self.assertEqual(opened['stage_menu']['selected'],-1)
+            paused=self.state(root,183,*args)['update'];menu=paused['stage_menu']
+            self.assertEqual(paused['calls'],pushed['calls'])
+            self.assertEqual((menu['frame'],menu['scroll_color'],menu['scroll_key_queries']),(20,128,120))
+            self.assertEqual(menu['entries'],[]) # Empty lists still execute native geometry/fade queries.
+            self.assertEqual(paused['widgets']['rejected'],1)
+            closed=self.state(root,184,*args)['update']
+            self.assertFalse(closed['stage_menu']['pending']);self.assertEqual(closed['stage_menu']['closed'],1)
+            self.assertEqual(closed['calls'],paused['calls']+1)
+            self.assertEqual(closed['save_requests'],paused['save_requests']+1)
+            self.assertEqual(closed,self.state(root,184,*args)['update'])
 
     def test_inputs_require_complete_typed_context(self):
         with tempfile.TemporaryDirectory() as directory:

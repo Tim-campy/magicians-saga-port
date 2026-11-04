@@ -43,3 +43,4 @@ game:0x0600013e	traced	docs/subsystems/ecs-lifecycle.md	AppData.Init copies init
 game:0x060001a9	reimplemented	src/core/gameplay/event_progression.cpp	Decoded CheckCrystal: signed64 request<=0 short-circuits, otherwise signed64 live balance threshold; 132-byte native body and boundary tests; Stage retry binds result wallet.
 game:0x0600015d	reimplemented	src/core/gameplay/game_random.cpp	AppData.Random zero skips draw; Abs after signed remainder; separate town stream and INT_MIN contract tested
 game:0x06000169	reimplemented	src/core/gameplay/render_draw.cpp	Raw instance Seb.GetSprites frame; retained live rows, negative TexId skip, explicit image override and wrapped positions; null/failure/alias contracts; saga_town floor bound
+game:0x060001b9	documented	docs/subsystems/town.md	System-save FlagOn captures destination and rereads source array, applies int32 OR at cctor slot1, then writes captured owner; native menu flag256 bound.

@@ -259,6 +259,7 @@ void TownBackground::draw(BitmapBackend& backend){
         static_cast<void>(view_height()); // VIEW_H has no reached consumer in this selected binding.
         if(!context_.top_form)pass_->markers.scene_resume=true; // 0x11ef580.
     }
+    area_pointer_regions_.clear();
     backend_=&backend;draws_.clear();scenery_draws_.clear();floor_draws_.clear();floor_font_=0;
     fonts_.clear();font_requests_.clear();chip_draws_.clear();labels_.clear();touches_.clear();notices_->clear();king_queries_=0;
     area_draws_.clear();area_labels_.clear();area_touches_.clear();area_color_requests_=0;
@@ -378,6 +379,15 @@ void TownBackground::town_label(FormText text,std::int32_t x,std::int32_t y){
 void TownBackground::town_touch(std::int32_t slot,bool selected,std::int32_t x,std::int32_t y){
     // SAGA_STUB(town-building-touch): retain native requests; interactive hit registration is unbound.
     touches_.push_back({slot,selected?1:0,x,y});
+}
+void TownBackground::area_touch(std::int32_t index,bool selected,bool locked,std::int32_t x,std::int32_t y){
+    area_touches_.push_back({index,selected?1:0,locked?1:0,x,y});
+    if(!context_.physical_input)return;
+    auto region=select_area_touch_region(index,selected,locked,x,y,context_.width,context_.height);
+    // Native group29 collision bit29, equal priority1; GO4 has no own collision bit.
+    if(region.control.group==29)for(auto& earlier:area_pointer_regions_)
+        if(earlier.control.group==29)partition_input_rectangles(earlier.bounds,region.bounds);
+    area_pointer_regions_.push_back(region);
 }
 void TownBackground::area_draw(std::int32_t resource,std::int32_t clip,std::optional<std::int32_t> frame,std::int32_t x,std::int32_t y){
     area_draws_.push_back({resource,clip,frame,x,y});

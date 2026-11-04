@@ -3,6 +3,7 @@
 #include "mission_events.hpp"
 #include "core/gameplay/quest_rewards.hpp"
 #include "core/gameplay/input_frame.hpp"
+#include "core/gameplay/stage_menu.hpp"
 #include <charconv>
 #include <fstream>
 #include <locale>
@@ -14,7 +15,7 @@ using namespace core;
 namespace {
 [[noreturn]]void town_unbound(const char* what){throw std::logic_error(std::string("town path unbound: ")+what);}
 struct TownReplayAction {
-    enum class Kind { Camera, Pointer, PointerCancel, Selection, Buttons, TalkPulse } kind;
+    enum class Kind { Camera, Pointer, PointerCancel, Widget, StageBack, Selection, Buttons, TalkPulse } kind;
     std::uint64_t frame=0;
     std::array<std::int32_t,6> camera{}; // type,x,dx,dy,pinch delta,pointer count.
     std::uint32_t mask=0;
@@ -51,7 +52,12 @@ std::vector<TownReplayAction> read_town_replay(const std::filesystem::path& path
                 if(action.camera[0]!=0&&action.camera[0]!=1&&action.camera[0]!=8)throw std::invalid_argument("town pointer supports down0/up1/drag8");
                 for(std::size_t i=1;i<5;++i)if(!(row>>action.camera[i]))throw std::invalid_argument("pointer requires type,x,y,dx,dy");
             }
-        }else if(command=="select"){
+        }else if(command=="widget"){
+            action.kind=TownReplayAction::Kind::Widget;
+            for(std::size_t i=0;i<3;++i)if(!(row>>action.camera[i]))throw std::invalid_argument("widget requires type,x,y");
+            if(action.camera[0]!=0&&action.camera[0]!=1&&action.camera[0]!=3)throw std::invalid_argument("widget supports down0/up1/cancel3");
+        }else if(command=="stage-back")action.kind=TownReplayAction::Kind::StageBack;
+        else if(command=="select"){
             action.kind=TownReplayAction::Kind::Selection;
             if(!(row>>mask>>action.value))throw std::invalid_argument("select requires flags and int32 value");action.mask=replay_mask(mask);
         }else if(command=="buttons"){
@@ -66,11 +72,16 @@ std::vector<TownReplayAction> read_town_replay(const std::filesystem::path& path
 }
 struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,SelectMarkerHost,
     SelectNavigationHost,SelectBuildingHost,SelectTownButtonsHost,SelectGuidanceSaveHost,
-    SelectReviewHost,SelectTriggerHost,SelectGuideHost,SelectNotificationHost,TownPermissionHost,SelectTouchHost {
+    SelectReviewHost,SelectTriggerHost,SelectGuideHost,SelectNotificationHost,TownPermissionHost,SelectTouchHost,SelectWidgetHost,FormStackHost {
     TownBackground& town;
     ResourceArchive& tables;
     GameInitialization initial;
     MissionEvents events;
+    FormStackHost* talk_manager=nullptr;
+    struct Stage;
+    std::shared_ptr<Stage> stage;
+    bool stage_pending=false,stage_initialized=false,stage_back_requested=false;
+    std::uint64_t stage_opened=0,stage_closed=0,stage_dispatches=0;
     TownInitializationState permissions;
     std::shared_ptr<TownTable> records;
     EventInstruction system_save=std::make_shared<EventIntegers>(24);
@@ -88,6 +99,34 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
     bool pointer_captured=false;
     std::uint64_t pointer_events=0,pointer_rejected=0,pointer_cancels=0;
     std::int32_t pointer_x=0,pointer_y=0;
+    std::optional<SelectAreaTouchRegion> widget_capture;
+    std::uint32_t pending_physical_pulses=0;
+    std::uint64_t widget_events=0,widget_rejected=0,widget_cancels=0;
+    void select_value(std::uint32_t flags,std::int32_t value)override{set_select_touch_value(touch,flags,value,*this);}
+    void click_key(std::uint32_t mask)override{pending_physical_pulses|=mask;}
+    bool widget(std::int32_t type,std::int32_t x,std::int32_t y){
+        if(!town.context_.physical_input)throw std::invalid_argument("town widget requires physical input");
+        if(type==3){cancel_widget();return true;}
+        if(type!=0&&type!=1)throw std::invalid_argument("unsupported town widget pointer type");
+        if(!top()){++widget_rejected;return false;}
+        if(type==0){
+            cancel_widget();
+            for(auto it=town.area_pointer_regions_.rbegin();it!=town.area_pointer_regions_.rend();++it)
+                if(input_hit_rectangle(it->bounds,x,y)){widget_capture=*it;break;}
+            if(!widget_capture){++widget_rejected;return false;}
+            InputTouch event{2,&widget_capture->control};select_widget_touch(&event,*this);++widget_events;return true;
+        }
+        if(!widget_capture){++widget_rejected;return false;}
+        const auto hit=input_hit_rectangle(widget_capture->bounds,x,y);
+        auto captured=*widget_capture;widget_capture.reset();
+        InputTouch event{hit?(captured.control.group==4?5:1):3,&captured.control};
+        select_widget_touch(&event,*this);++widget_events;return true;
+    }
+    void cancel_widget(){if(widget_capture){widget_capture.reset();++widget_cancels;}}
+    void clear_input(){++input_clears;button_pulses=pending_physical_pulses=0;stage_back_requested=false;cancel_pointer();cancel_widget();}
+    void push(EventObject,EventObject,bool)override;
+    bool advance_stage();
+    void report_stage(std::ostream&)const;
     bool pointer(std::int32_t type,std::int32_t x,std::int32_t y,std::int32_t dx,std::int32_t dy){
         if(!town.context_.physical_input)throw std::invalid_argument("town pointer requires --physical-input or --interactive");
         if(type!=0&&type!=1&&type!=8)throw std::invalid_argument("unsupported town camera pointer type");
@@ -112,12 +151,14 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
         while(replay_index<replay.size()&&replay[replay_index].frame<=frame){
             const auto& action=replay[replay_index++];
             if(action.kind==TownReplayAction::Kind::TalkPulse){pulse=true;++replay_applied;continue;}
+            if(action.kind==TownReplayAction::Kind::Widget){widget(action.camera[0],action.camera[1],action.camera[2]);++replay_applied;continue;}
+            if(action.kind==TownReplayAction::Kind::StageBack){if(!stage_pending)throw std::invalid_argument("stage-back requires selected menu");stage_back_requested=true;++replay_applied;continue;}
             if(action.kind==TownReplayAction::Kind::PointerCancel){cancel_pointer();++replay_applied;continue;}
             if(action.kind==TownReplayAction::Kind::Pointer){const auto& p=action.camera;
                 pointer(p[0],p[1],p[2],p[3],p[4]);++replay_applied;continue;}
             // Deliver raw town input only to the selected parent. Closing a
             // modal clears input; it cannot replay a hidden town click later.
-            if(events.pending()){++replay_modal_ignored;continue;}
+            if(!top()){++replay_modal_ignored;continue;}
             if(action.kind==TownReplayAction::Kind::Camera){
                 const auto& values=action.camera;pointer_count=values[5];InputControl control{17,0};
                 const SelectFormTouch event{values[0],values[1],values[2],values[3],values[4],&control};
@@ -126,7 +167,7 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
             else button_pulses|=action.mask;
             ++replay_applied;
         }
-        return pulse;
+        button_pulses|=pending_physical_pulses;pending_physical_pulses=0;return pulse;
     }
     std::shared_ptr<int> notification_owner=std::make_shared<int>(0);
     std::uint64_t dispatches=0,updates=0,modal_dispatches=0,input_clears=0,save_requests=0,bgm_requests=0,notification_passes=0;
@@ -137,7 +178,7 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
         result.font=MissionFontScenario{mission_font_path(root),100,0,0,100.0F,100.0F,false,false};return result;
     }
     UpdateOwner(TownBackground& value,ResourceArchive& data_tables,const std::filesystem::path& root)
-        :town(value),tables(data_tables),initial(read_game_initialization(root)),events(data_tables,scenario(root,initial),[this]{++input_clears;button_pulses=0;cancel_pointer();}){
+        :town(value),tables(data_tables),initial(read_game_initialization(root)),events(data_tables,scenario(root,initial),[this]{clear_input();}){
         if(town.context_.input_replay)replay=read_town_replay(*town.context_.input_replay);
         if(tables.selected_profile().language_folder!="English.lproj")throw std::invalid_argument("town Update font binding requires English/default skin");
         const auto data=tables.data("Town.txt");if(!data)throw std::invalid_argument("town Update requires Town.txt");
@@ -148,6 +189,7 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
         town.save_integers_->at(8)=defaults.area8;town.save_integers_->at(9)=defaults.quest9;
         system_save->at(1)=save.system_flags;system_save->at(21)=save.review_coin;system_save->at(22)=save.reviewed;
         events.bind_normal_save(town.save_integers_);town.pass_->form=events.form_owner();
+        talk_manager=town.pass_->form.manager;town.pass_->form.manager=this;
         events.bind_application_push([this](EventObject child){
             // FormManager._execute pins this current form until Update returns,
             // even when an earlier synchronous Push has inserted another child.
@@ -190,7 +232,7 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
         // order; no Update callback changes dictionary membership during a pass.
         clocks=town.image_clock_values_;
     }
-    bool top()const{return !events.pending();}
+    bool top()const{return !events.pending()&&!stage_pending;}
     std::int32_t game_width()override{return town.game_width();}
     std::int32_t game_height()override{return town.game_height();}
     std::int32_t view_x()override{return town.context_.view_x;}
@@ -261,7 +303,7 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
     EventObject make_human_house(EventObject,std::int32_t,bool)override{town_unbound("house form");}
     EventObject make_subform(std::int32_t)override{town_unbound("subform factory");}
     EventObject make_share_window(bool)override{town_unbound("share form");}
-    EventObject area_form()override{town_unbound("area selection form");}
+    EventObject area_form()override;
     EventObject make_obstacle(std::int32_t)override{town_unbound("obstacle form");}
     EventObject make_store_invite()override{town_unbound("store form");}
     std::int32_t store_limit_slot()override{town_unbound("store limit slot");}
@@ -292,6 +334,100 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
     void remove_value(EventObject,std::int32_t)override{town_unbound("notification removal");}
     void update_apply_tasks(EventObject,bool)override{town_unbound("billing tasks");}
 };
+struct TownBackground::UpdateOwner::Stage final:StageMenuHost {
+    UpdateOwner& owner;
+    StageMenuState state;
+    std::shared_ptr<StageNeutralScroll> scroll;
+    std::array<std::int32_t,2> labels{};
+    std::uint64_t blur_updates=0,blur_ends=0,key_queries=0;
+    explicit Stage(UpdateOwner& value):owner(value){}
+    void base_initialize()override{} // SAGA_STUB(town-stage-presentation): no Unity form/resource renderer.
+    void set_background_white()override{} // Same presentation boundary; native value is RGB255/255/255.
+    void prepare_resources()override{} // Offscreen/blur render targets stay behind the presentation boundary.
+    EventInstruction save_integers()override{return owner.town.save_integers_;}
+    void system_flag_on(std::uint32_t flags)override{
+        const auto bits=static_cast<std::uint32_t>(owner.system_save->at(1))|flags;
+        owner.system_save->at(1)=bits<=0x7fffffffU?static_cast<std::int32_t>(bits):-1-static_cast<std::int32_t>(0xffffffffU-bits);
+    }
+    std::shared_ptr<AreaTable> areas()override{return {owner.town.update_owner_,&owner.town.areas_};}
+    std::shared_ptr<QuestTable> quests()override{return {owner.town.update_owner_,&owner.town.quest_records_};}
+    bool debug()override{return owner.town.context_.debug;}
+    void set_soft_labels(std::int32_t left,std::int32_t right)override{labels={left,right};}
+    EventObject make_scroll(const StageMenuScrollParameters& spec)override{
+        const auto count=spec.integers[2];
+        if(spec.integers!=std::array<std::int32_t,8>{1,3,count,count,40,5,0x20000,0}||!spec.option||spec.listener)
+            town_unbound("non-fresh stage scroll configuration");
+        scroll=std::make_shared<StageNeutralScroll>();scroll->count=count;return scroll;
+    }
+    void scroll_element_size(const EventObject& value,std::int32_t width,std::int32_t height)override{
+        if(value!=scroll||width!=210||height!=40)town_unbound("stage scroll dimensions");
+    }
+    void scroll_touch_flags(const EventObject& value,std::int32_t flags)override{if(value!=scroll||flags!=17)town_unbound("stage scroll touch flags");}
+    EventObject make_renderer()override{return std::make_shared<int>(0);} // Opaque retained draw delegate identity; no invocation fabricated.
+    void base_update()override{update_my_form_base(state.base_update_counter,owner);}
+    void reset_image_clocks()override{reset_image_animations(*owner.clocks);}
+    void advance_image_clocks()override{advance_image_animations(*owner.clocks);}
+    void update_main_blur()override{++blur_updates;} // SAGA_STUB(town-stage-presentation).
+    void update_scroll(const EventObject& value,bool repeat)override{
+        if(value!=scroll)throw std::logic_error("stage scroll identity changed");
+        update_neutral_stage_scroll(*scroll,repeat,false,[this](std::uint32_t,bool){++key_queries;return false;});
+        // SAGA_STUB(town-stage-input): neutral scroll provider; gestures/navigation are not bound.
+    }
+    bool pressed(std::uint32_t mask)override{return owner.pressed(mask);}
+    void play_button_sound()override{owner.play_button_sound();}
+    std::int32_t stamina()override{town_unbound("stage live stamina provider");}
+    void use_stamina(std::int32_t)override{town_unbound("stage stamina mutation");}
+    EventObject make_stamina_dialog()override{town_unbound("stage insufficient-stamina form");}
+    void push_form(const EventObject&)override{town_unbound("stage child form");}
+    bool soft_label_pressed(std::int32_t id)override{return id==3&&owner.stage_back_requested;}
+    EventObject make_formation()override{town_unbound("stage formation form");}
+    bool pop_form()override{owner.stage_pending=false;return false;}
+    void play_bgm()override{++owner.bgm_requests;} // SAGA_STUB(town-update-bgm).
+    void save_game(std::int32_t,bool)override{++owner.save_requests;} // SAGA_STUB(town-update-save).
+    void save_system()override{} // SAGA_STUB(town-update-save).
+    bool recover_save_exception(std::exception_ptr)override{return false;}
+    void reset_town_camera()override{town_unbound("stage quest-entry camera reset");}
+    void change_to_quest()override{town_unbound("stage retained quest transition");}
+    void base_set_touch_value(std::uint32_t,std::int32_t)override{town_unbound("stage base touch selector");}
+    std::int32_t base_get_touch_value(std::uint32_t,std::int32_t)override{town_unbound("stage base touch selector");}
+    void scroll_camera_touch(const EventObject&,std::int32_t,std::int32_t,const StageMenuTouch&)override{town_unbound("stage scroll gesture");}
+    void scroll_list_touch(const EventObject&,std::int32_t,std::int32_t,const StageMenuTouch&)override{town_unbound("stage list touch");}
+    void base_resume()override{} // Native MyFormBase.Resume writes no fields.
+    void base_finish()override{} // SAGA_STUB(town-stage-touch-effects): native TouchEffectManager.RemoveSurface(view).
+    void end_main_blur()override{++blur_ends;} // SAGA_STUB(town-stage-presentation).
+};
+EventObject TownBackground::UpdateOwner::area_form(){if(!stage)stage=std::make_shared<Stage>(*this);return stage;}
+void TownBackground::UpdateOwner::push(EventObject parent,EventObject child,bool option){
+    if(stage&&child.get()==stage.get()){
+        if(parent!=town.pass_->form.identity||option||stage_pending||events.pending())throw std::invalid_argument("unsupported stage menu push");
+        stage_pending=true;stage_initialized=false;++stage_opened;cancel_pointer();cancel_widget();return;
+    }
+    talk_manager->push(std::move(parent),std::move(child),option);
+}
+bool TownBackground::UpdateOwner::advance_stage(){
+    if(!stage_pending)return false;
+    ++stage_dispatches;
+    if(!stage_initialized){clear_input();initialize_stage_menu(stage->state,*stage);resume_stage_menu(*stage);stage_initialized=true;}
+    update_stage_menu(stage->state,*stage,{1,0});stage_back_requested=false;
+    if(stage_pending)return true;
+    finish_stage_menu(*stage);stage_initialized=false;++stage_closed;clear_input();return false;
+}
+void TownBackground::UpdateOwner::report_stage(std::ostream& out)const{
+    out<<",\"widgets\":{\"captured\":"<<(widget_capture?"true":"false")<<",\"events\":"<<widget_events<<",\"rejected\":"<<widget_rejected
+       <<",\"cancels\":"<<widget_cancels<<",\"regions\":[";
+    for(std::size_t i=0;i<town.area_pointer_regions_.size();++i){if(i)out<<',';const auto& r=town.area_pointer_regions_[i];
+        out<<'['<<r.control.group<<','<<r.control.value<<','<<r.bounds.x<<','<<r.bounds.y<<','<<r.bounds.width<<','<<r.bounds.height<<']';}
+    out<<"]},\"stage_menu\":";
+    if(!stage){out<<"null";return;}
+    out<<"{\"pending\":"<<(stage_pending?"true":"false")<<",\"initialized\":"<<(stage_initialized?"true":"false")
+       <<",\"opened\":"<<stage_opened<<",\"closed\":"<<stage_closed<<",\"dispatches\":"<<stage_dispatches
+       <<",\"area\":"<<stage->state.area<<",\"state\":"<<stage->state.state<<",\"frame\":"<<stage->state.frame
+       <<",\"selected\":"<<stage->state.selected<<",\"production_frame\":"<<stage->state.production_frame
+       <<",\"base_update_counter\":"<<stage->state.base_update_counter<<",\"entries\":[";
+    if(stage->state.entries)for(std::size_t i=0;i<stage->state.entries->size();++i){if(i)out<<',';out<<stage->state.entries->at(i);}
+    out<<"],\"scroll_color\":"<<(stage->scroll?stage->scroll->color:255)<<",\"scroll_fade\":"<<(stage->scroll?stage->scroll->fade_progress:-10)
+       <<",\"scroll_key_queries\":"<<stage->key_queries<<",\"normal_flags\":"<<town.save_integers_->at(0)<<",\"saved_area\":"<<town.save_integers_->at(8)<<'}';
+}
 void TownBackground::initialize_update(ResourceArchive& tables,const std::filesystem::path& root){
     if(update_owner_||!context_.foreground||context_.motion||!context_.top_form)throw std::invalid_argument("full town Update requires fresh foreground/top form and excludes selected motion");
     update_owner_=std::make_shared<UpdateOwner>(*this,tables,root);
@@ -299,6 +435,7 @@ void TownBackground::initialize_update(ResourceArchive& tables,const std::filesy
 void TownBackground::advance_update(std::uint64_t frame,bool pulse){
     if(!update_owner_)throw std::logic_error("town Update not initialized");auto& owner=*update_owner_;++owner.dispatches;
     pulse=owner.apply_input(frame,pulse);
+    if(owner.advance_stage()){++owner.modal_dispatches;context_.top_form=false;return;}
     if(owner.events.advance(frame,40,pulse,false)){++owner.modal_dispatches;context_.top_form=false;return;}
     context_.top_form=true;
     SelectRecoveredPassHost pass(owner,guide_state_,owner,camera_,*this,owner);
@@ -309,10 +446,18 @@ void TownBackground::advance_update(std::uint64_t frame,bool pulse){
 bool TownBackground::camera_pointer(std::int32_t type,std::int32_t x,std::int32_t y,std::int32_t dx,std::int32_t dy){
     if(!update_owner_)throw std::logic_error("town pointer requires full Update");return update_owner_->pointer(type,x,y,dx,dy);
 }
+bool TownBackground::widget_pointer(std::int32_t type,std::int32_t x,std::int32_t y){
+    if(!update_owner_)throw std::logic_error("town widget requires full Update");return update_owner_->widget(type,x,y);
+}
+void TownBackground::cancel_widget_pointer(){if(update_owner_)update_owner_->cancel_widget();}
+void TownBackground::stage_back(){if(update_owner_&&update_owner_->stage_pending)update_owner_->stage_back_requested=true;}
 void TownBackground::cancel_camera_pointer(){if(update_owner_)update_owner_->cancel_pointer();}
 std::string TownBackground::window_title()const{
     if(update_owner_&&update_owner_->events.pending())return update_owner_->events.title();
-    return "Magician's Saga - Town | Right click walks; right drag pans";
+    if(update_owner_&&update_owner_->stage_pending&&!update_owner_->stage_initialized)return "SelectStage - opening";
+    if(update_owner_&&update_owner_->stage_pending)return "SelectStage - area "+std::to_string(update_owner_->stage->state.area)+" | "+
+        std::to_string(update_owner_->stage->state.entries?update_owner_->stage->state.entries->size():0)+" quests | Backspace returns; list input unbound";
+    return "Magician's Saga - Town | Right click walks; right drag pans; left click selects area/GO";
 }
 void TownBackground::report_update(std::ostream& out)const{
     const auto& owner=*update_owner_;
@@ -341,6 +486,6 @@ void TownBackground::report_update(std::ostream& out)const{
        <<",\"rejected\":"<<owner.pointer_rejected<<",\"cancels\":"<<owner.pointer_cancels
        <<",\"region\":["<<region.bounds.x<<','<<region.bounds.y<<','<<region.bounds.width<<','<<region.bounds.height<<"],\"flags\":"<<region.flags
        <<",\"outer_draw_prefix\":"<<(context_.physical_input?"true":"false")<<",\"view_content_width\":"<<cloud_view_width_<<'}';
-    owner.events.write_report(out);out<<'}';
+    owner.report_stage(out);owner.events.write_report(out);out<<'}';
 }
 } // namespace saga::desktop
