@@ -129,10 +129,58 @@ class TownUpdateTests(unittest.TestCase):
             self.assertFalse(released['update']['touch']['dragging'])
             self.assertEqual(released['update']['touch']['history'],2)
 
+    def test_physical_camera_region_capture_and_outside_release(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);self.fixture(root)
+            args=(*self.replay(root,'3 pointer 0 130 550 0 0\n160 pointer 0 -1 550 0 0\n161 pointer 8 130 550 0 0\n162 pointer 0 130 550 0 0\n163 pointer 8 1000 550 1 0\n164 pointer 1 5000 5000 0 0\n'),'--physical-input')
+            down=self.state(root,162,*args)
+            self.assertEqual(down['hero']['target_x'],130)
+            self.assertTrue(down['update']['pointer']['captured'])
+            self.assertEqual(down['update']['pointer']['region'],[-1000,-1000,2000,2000])
+            self.assertEqual(down['update']['pointer']['flags'],40)
+            released=self.state(root,176,*args)
+            pointer=released['update']['pointer']
+            self.assertEqual((pointer['events'],pointer['rejected']),(2,4))
+            self.assertFalse(pointer['captured']);self.assertEqual(pointer['region'],[0,0,600,640])
+            self.assertEqual(released['hero']['current_x'],130)
+            self.assertEqual(released['update']['bubble']['frames'],119)
+            self.assertEqual(pointer['view_content_width'],600)
+            self.assertEqual(released,self.state(root,176,*args))
+
+    def test_modal_and_focus_policy_cancel_physical_capture(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);self.fixture(root)
+            args=(*self.replay(root,'1 pointer 0 130 550 0 0\n'),'--physical-input')
+            modal=self.state(root,2,*args)['update']
+            self.assertTrue(modal['talk_pending']);self.assertFalse(modal['pointer']['captured'])
+            self.assertEqual(modal['pointer']['cancels'],1);self.assertFalse(modal['touch']['dragging'])
+            self.assertTrue(modal['touch']['enabled'])
+            self.assertTrue(modal['scene_resume']) # Outer Draw sets it while the parent is hidden.
+            args=(*self.replay(root,'160 pointer 0 130 550 0 0\n161 pointer cancel\n'),'--physical-input')
+            focused=self.state(root,161,*args)['update']
+            self.assertFalse(focused['pointer']['captured']);self.assertEqual(focused['pointer']['cancels'],1)
+            self.assertTrue(focused['touch']['enabled'])
+
+    def test_physical_drag_preserves_selection_sign_rule_and_release_inertia(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);self.fixture(root)
+            args=(*self.replay(root,'161 select 0x220000 1\n162 pointer 0 40 550 0 0\n163 pointer 8 30 550 -10 0\n164 pointer 8 36 550 6 0\n165 pointer 1 5000 5000 0 0\n'),'--physical-input')
+            left=self.state(root,163,*args)
+            self.assertEqual(left['camera'][0],-10)
+            self.assertEqual(left['buildings_draw']['selected'],1)
+            right=self.state(root,164,*args)
+            self.assertEqual(right['camera'][0],-4)
+            self.assertEqual(right['buildings_draw']['selected'],-1)
+            released=self.state(root,165,*args)
+            self.assertEqual(released['camera'][0],1) # Last delta6 decays to5.4 before int32 movement.
+            self.assertFalse(released['update']['pointer']['captured'])
+            self.assertEqual(released['update']['pointer']['events'],4)
+            self.assertEqual(released['update']['touch']['history'],2)
+
     def test_replay_requires_ordered_bounded_native_records(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);self.fixture(root)
-            for text in ('0 pulse\n','-18446744073709551615 pulse\n','2147483648 pulse\n','2 pulse\n1 pulse\n','1 camera 0 40\n','1 camera 0 40 0 0 0 -1\n','1 select 0x 0\n','1 buttons 4294967296\n','1 unknown\n','1 pulse extra\n'):
+            for text in ('0 pulse\n','-18446744073709551615 pulse\n','2147483648 pulse\n','2 pulse\n1 pulse\n','1 camera 0 40\n','1 camera 0 40 0 0 0 -1\n','1 select 0x 0\n','1 buttons 4294967296\n','1 unknown\n','1 pulse extra\n','1 pointer 12 0 0 0 0\n','1 pointer 0 40\n','1 pointer cancel extra\n'):
                 with self.subTest(text=text):
                     args=self.replay(root,text);self.assertNotEqual(self.run_host(root,1,*args).returncode,0)
 

@@ -14,7 +14,7 @@ using namespace core;
 namespace {
 [[noreturn]]void town_unbound(const char* what){throw std::logic_error(std::string("town path unbound: ")+what);}
 struct TownReplayAction {
-    enum class Kind { Camera, Selection, Buttons, TalkPulse } kind;
+    enum class Kind { Camera, Pointer, PointerCancel, Selection, Buttons, TalkPulse } kind;
     std::uint64_t frame=0;
     std::array<std::int32_t,6> camera{}; // type,x,dx,dy,pinch delta,pointer count.
     std::uint32_t mask=0;
@@ -42,6 +42,15 @@ std::vector<TownReplayAction> read_town_replay(const std::filesystem::path& path
             action.kind=TownReplayAction::Kind::Camera;
             for(auto& value:action.camera)if(!(row>>value))throw std::invalid_argument("camera requires type,x,dx,dy,pinch,pointers int32");
             if(action.camera[5]<0)throw std::invalid_argument("negative replay pointer count");
+        }else if(command=="pointer"){
+            std::string type;if(!(row>>type))throw std::invalid_argument("pointer requires type or cancel");
+            if(type=="cancel")action.kind=TownReplayAction::Kind::PointerCancel;
+            else{
+                action.kind=TownReplayAction::Kind::Pointer;
+                action.camera[0]=parse_event_decimal(type);
+                if(action.camera[0]!=0&&action.camera[0]!=1&&action.camera[0]!=8)throw std::invalid_argument("town pointer supports down0/up1/drag8");
+                for(std::size_t i=1;i<5;++i)if(!(row>>action.camera[i]))throw std::invalid_argument("pointer requires type,x,y,dx,dy");
+            }
         }else if(command=="select"){
             action.kind=TownReplayAction::Kind::Selection;
             if(!(row>>mask>>action.value))throw std::invalid_argument("select requires flags and int32 value");action.mask=replay_mask(mask);
@@ -76,6 +85,24 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
     TownBubbleTouchHost bubble_touch{bubble,*this};
     SelectTouchState touch{town.camera_,town.movement_,town.selected_chip_,town.selected_area_,town.form_state_,town.context_.form_scale};
     std::int32_t pointer_count=0;
+    bool pointer_captured=false;
+    std::uint64_t pointer_events=0,pointer_rejected=0,pointer_cancels=0;
+    std::int32_t pointer_x=0,pointer_y=0;
+    bool pointer(std::int32_t type,std::int32_t x,std::int32_t y,std::int32_t dx,std::int32_t dy){
+        if(!town.context_.physical_input)throw std::invalid_argument("town pointer requires --physical-input or --interactive");
+        if(type!=0&&type!=1&&type!=8)throw std::invalid_argument("unsupported town camera pointer type");
+        const auto region=camera_touch_region({0,0,town.context_.width,town.context_.height},pointer_captured);
+        pointer_x=x;pointer_y=y;
+        if((type==1||type==8)&&!pointer_captured){++pointer_rejected;return false;}
+        if(type!=1&&(!top()||!input_hit_rectangle(region.bounds,x,y))){++pointer_rejected;return false;}
+        InputControl control{17,0};const SelectFormTouch event{type,x,dx,dy,0,&control};pointer_count=type==1?0:1;
+        on_select_form_touch(touch,&event,*this);
+        pointer_captured=type!=1;++pointer_events;return true;
+    }
+    void cancel_pointer(){
+        if(!pointer_captured)return;
+        pointer(1,pointer_x,pointer_y,0,0);++pointer_cancels;
+    }
     std::vector<TownReplayAction> replay;
     std::size_t replay_index=0;
     std::uint32_t button_pulses=0;
@@ -85,6 +112,9 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
         while(replay_index<replay.size()&&replay[replay_index].frame<=frame){
             const auto& action=replay[replay_index++];
             if(action.kind==TownReplayAction::Kind::TalkPulse){pulse=true;++replay_applied;continue;}
+            if(action.kind==TownReplayAction::Kind::PointerCancel){cancel_pointer();++replay_applied;continue;}
+            if(action.kind==TownReplayAction::Kind::Pointer){const auto& p=action.camera;
+                pointer(p[0],p[1],p[2],p[3],p[4]);++replay_applied;continue;}
             // Deliver raw town input only to the selected parent. Closing a
             // modal clears input; it cannot replay a hidden town click later.
             if(events.pending()){++replay_modal_ignored;continue;}
@@ -107,7 +137,7 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
         result.font=MissionFontScenario{mission_font_path(root),100,0,0,100.0F,100.0F,false,false};return result;
     }
     UpdateOwner(TownBackground& value,ResourceArchive& data_tables,const std::filesystem::path& root)
-        :town(value),tables(data_tables),initial(read_game_initialization(root)),events(data_tables,scenario(root,initial),[this]{++input_clears;button_pulses=0;}){
+        :town(value),tables(data_tables),initial(read_game_initialization(root)),events(data_tables,scenario(root,initial),[this]{++input_clears;button_pulses=0;cancel_pointer();}){
         if(town.context_.input_replay)replay=read_town_replay(*town.context_.input_replay);
         if(tables.selected_profile().language_folder!="English.lproj")throw std::invalid_argument("town Update font binding requires English/default skin");
         const auto data=tables.data("Town.txt");if(!data)throw std::invalid_argument("town Update requires Town.txt");
@@ -274,11 +304,19 @@ void TownBackground::advance_update(std::uint64_t frame,bool pulse){
     SelectRecoveredPassHost pass(owner,guide_state_,owner,camera_,*this,owner);
     SelectUpdateBindings bindings{prelude_,owner,pass_,pass,*this,owner,owner.events.delays(),owner.events.executor(),*resident_condition_host_,movement_,owner.bubble_touch,owner,update_owner_};
     update_select_form(bindings,building_state_,owner,town_state_,owner.bubble,owner,owner,camera_,*this,owner);
-    ++owner.updates;context_.top_form=owner.top();
+    ++owner.updates;context_.top_form=owner.top();if(!context_.top_form)owner.cancel_pointer();
+}
+bool TownBackground::camera_pointer(std::int32_t type,std::int32_t x,std::int32_t y,std::int32_t dx,std::int32_t dy){
+    if(!update_owner_)throw std::logic_error("town pointer requires full Update");return update_owner_->pointer(type,x,y,dx,dy);
+}
+void TownBackground::cancel_camera_pointer(){if(update_owner_)update_owner_->cancel_pointer();}
+std::string TownBackground::window_title()const{
+    if(update_owner_&&update_owner_->events.pending())return update_owner_->events.title();
+    return "Magician's Saga - Town | Right click walks; right drag pans";
 }
 void TownBackground::report_update(std::ostream& out)const{
     const auto& owner=*update_owner_;
-    out<<",\"update\":{\"neutral_input\":"<<(context_.input_replay?"false":"true")<<",\"tick_ms\":40,\"low_aspect\":"<<(context_.motion_low_aspect?"true":"false")
+    out<<",\"update\":{\"neutral_input\":"<<((context_.input_replay||context_.physical_input)?"false":"true")<<",\"tick_ms\":40,\"low_aspect\":"<<(context_.motion_low_aspect?"true":"false")
        <<",\"provisional_font_context\":true,\"dispatches\":"<<owner.dispatches<<",\"calls\":"<<owner.updates<<",\"modal_dispatches\":"<<owner.modal_dispatches
        <<",\"loop_counter\":"<<town_frame_<<",\"base_update_counter\":"<<prelude_.update_counter
        <<",\"event_check_requested\":"<<(pass_->events.event_check_requested?"true":"false")<<",\"scene_resume\":"<<(pass_->markers.scene_resume?"true":"false")
@@ -298,6 +336,11 @@ void TownBackground::report_update(std::ostream& out)const{
        <<",\"velocity\":["<<camera_.velocity_x<<','<<camera_.velocity_y<<"],\"collision\":"<<movement_.collision_id
        <<"},\"bubble\":{\"index\":"<<owner.bubble.index<<",\"frames\":"<<owner.bubble.frames<<",\"text_bytes\":"<<(owner.bubble.text?owner.bubble.text->size():0)
        <<",\"text_present\":"<<(owner.bubble.text?"true":"false")<<",\"voice_catalog_bound\":"<<(owner.voice_rows?"true":"false")<<'}';
+    const auto region=camera_touch_region({0,0,context_.width,context_.height},owner.pointer_captured);
+    out<<",\"pointer\":{\"captured\":"<<(owner.pointer_captured?"true":"false")<<",\"events\":"<<owner.pointer_events
+       <<",\"rejected\":"<<owner.pointer_rejected<<",\"cancels\":"<<owner.pointer_cancels
+       <<",\"region\":["<<region.bounds.x<<','<<region.bounds.y<<','<<region.bounds.width<<','<<region.bounds.height<<"],\"flags\":"<<region.flags
+       <<",\"outer_draw_prefix\":"<<(context_.physical_input?"true":"false")<<",\"view_content_width\":"<<cloud_view_width_<<'}';
     owner.events.write_report(out);out<<'}';
 }
 } // namespace saga::desktop

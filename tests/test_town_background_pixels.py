@@ -1,5 +1,6 @@
 """Native Town background prefix through the existing GL mesh/bitmap adapters."""
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -14,6 +15,35 @@ from test_sprite_preview import bmp_pixels
 
 @unittest.skipUnless(EXE,'viewer saga_town supplied by CTest')
 class TownBackgroundPixels(unittest.TestCase):
+    @unittest.skipUnless(os.environ.get('SAGA_TEST_FONT'),'public CTest font required')
+    def test_hidden_interactive_loop_matches_physical_headless_state_and_pixels(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);add_town_background(root,update=True)
+            font=root/'unity/Font/public.ttf';font.parent.mkdir(parents=True)
+            font.write_bytes(Path(os.environ['SAGA_TEST_FONT']).read_bytes())
+            (root/'mission-font.tsv').write_text(f'mission_font 1\nfont "unity/Font/public.ttf" {font.stat().st_size}\n')
+            replay=root/'pointer.replay'
+            replay.write_text('160 pointer 0 130 550 0 0\n161 pointer 1 130 550 0 0\n')
+            base=[str(EXE),'--data',str(root),'--foreground','--talk-pulse-every','10','--replay',str(replay)]
+            def run(*args):
+                result=subprocess.run([*base,*args],capture_output=True,text=True,timeout=45)
+                self.assertEqual(result.returncode,0,result.stderr);return json.loads(result.stdout)
+            # Stop once while captured and once after reaching the resident.
+            for count in (160,174):
+                with self.subTest(count=count):
+                    args=['--update-passes',str(count)]
+                    cpu=run(*args,'--physical-input')
+                    still=root/f'still-{count}.bmp';window=root/f'window-{count}.bmp'
+                    self.assertEqual(run(*args,'--physical-input','--capture',str(still)),cpu)
+                    self.assertEqual(run(*args,'--interactive','--hidden','--capture',str(window)),cpu)
+                    self.assertEqual(still.read_bytes(),window.read_bytes())
+                    state=cpu['background']['update']
+                    self.assertEqual(state['pointer']['captured'],count==160)
+                    self.assertEqual(state['pointer']['cancels'],0)
+                    if count==174:
+                        self.assertEqual(cpu['background']['hero']['current_x'],130)
+                        self.assertEqual(state['bubble']['frames'],119)
+
     def test_resident_composition_uses_body_and_weapon_override_resources(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);add_town_background(root,residents=True)

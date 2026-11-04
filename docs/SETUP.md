@@ -327,7 +327,7 @@ build/desktop/saga_town.exe --data extracted/full --foreground --update-passes 3
 build/desktop/saga_town.exe --data extracted/full --foreground --update-passes 300 --talk-pulse-every 10 --camera-x 300
 ```
 
-Without dialogue pulses, Event0 opens Talk0/1 after delay1 and the town remains paused. Period10 supplies explicit synthetic advance input, closes the talks and permits town updates/autosave in memory. Each desktop dispatch uses40ms and one CPU draw; this is an explicit profile cadence, not recovered Unity timing. The mode excludes --motion-passes and requires top_form1/English/default skin. The existing native block builder/public FreeType font provider is reused. Dialogue window/glyph drawing, interactive town input/menu forms, persistence output and quest/mission return remain unbound; see [town](subsystems/town.md#persistent-full-controller-profile).
+Without dialogue pulses, Event0 opens Talk0/1 after delay1 and the town remains paused. Period10 supplies explicit synthetic advance input, closes the talks and permits town updates/autosave in memory. Each desktop dispatch uses40ms and one draw; this is an explicit profile cadence, not recovered Unity timing. The mode excludes --motion-passes and requires top_form1/English/default skin. The existing native block builder/public FreeType font provider is reused. Dialogue window/glyph drawing, widget/menu forms, persistence output and quest/mission return remain unbound; see [town](subsystems/town.md#persistent-full-controller-profile).
 
 `--replay file` adds ordered native town events to --update-passes. Records use positive dispatch frames, preserve same-frame order and accept masks in decimal or0x hex:
 
@@ -340,7 +340,17 @@ Without dialogue pulses, Event0 opens Talk0/1 after delay1 and the town remains 
 # frame buttons pulseMask; frame pulse (dialogue advance)
 ```
 
-At --camera-x300 the first pair sets world target130 and walks the hero from40 to resident0, selecting its actual Voice text. Town input during a modal is discarded; pulse commands are delivered to the selected talk. The optional --talk-pulse-every10 can close the intro before frame160. This is native-event replay, not recovered physical hit registration; the outer SelectForm.Draw/control17 registration and interactive menu factories remain open. Pinch/base-selector paths fail explicitly when reached. Replay reports include applied/ignored/remaining actions, camera touch state and bubble index/lifetime/text byte count; no speech text is copied into the repository. See [input contracts](subsystems/town.md#native-town-input-and-resident-speech).
+At --camera-x300 the first pair sets world target130 and walks the hero from40 to resident0, selecting its actual Voice text. Town input during a modal is discarded; pulse commands are delivered to the selected talk. The optional --talk-pulse-every10 can close the intro before frame160. Raw camera records bypass physical hit registration. The --physical-input profile binds the selected outer SelectForm.Draw viewport/top/control17 prefix and accepts pointer records; widget/menu factories remain open. Pinch/base-selector paths fail explicitly when reached. Replay reports include applied/ignored/remaining actions, camera touch state and bubble index/lifetime/text byte count; no speech text is copied into the repository. See [input contracts](subsystems/town.md#native-town-input-and-resident-speech).
+
+Viewer town window:
+
+```
+build/viewer/saga_town.exe --data extracted/full --foreground --interactive --camera-x 300
+```
+
+Right click requests walking; right drag pans. Enter/Space advances the talk named in the title, Escape closes. This is a fixed-size desktop profile; dialogue glyph/window drawing and left-button menus are unbound. `--interactive --hidden --update-passes N` runs a bounded automated window without sleeping. `--replay` disables live gameplay input; reaching a frame limit retains capture/state for comparison with headless output.
+
+Add `--physical-input` to a headless full Update command to exercise the same camera adapter. Pointer records use `frame pointer type x y dx dy` with signed-int32 coordinates, type0/down,8/drag or1/up; `frame pointer cancel` models capture cancellation. Example with cameraX300: `160 pointer 0 430 550 0 0`, then `161 pointer 1 430 550 0 0`. Down requires a native half-open viewport hit and no modal; captured drag uses(-1000,-1000,2000,2000)/flags40; release works outside. Modal/input-clear/focus loss release capture while preserving walking. Wheel/pinch is unbound. Physical-input Draw also publishes VIEW_W and the non-top scene-resume flag; raw diagnostic replay retains its earlier selected Draw behavior. JSON reports expose pointer counts/capture/region and the selected outer-prefix gate.
 
 ### Headless mission host
 

@@ -59,10 +59,7 @@ void set_quest_camera_position(QuestCameraForm*,std::int32_t x,std::int32_t y,Qu
 EventInstruction quest_form_scale_range(QuestCameraForm*); // GetScaleRange 0x11e1528.
 void set_quest_form_scale(QuestCameraForm*,std::int32_t,QuestFormCameraHost&); // SetScale 0x11deee8.
 struct QuestFormTouch {InputTouch input;std::int32_t dx=0,dy=0,pinch_delta=0;};
-struct QuestMapTouchRegion {
-    InputRectangle bounds;InputControl control{17,0};
-    float drag_x=1.0F,drag_y=1.0F;std::int32_t flags=0;
-};
+using QuestMapTouchRegion=CameraTouchRegion;
 // Selected QuestForm.Draw registration block, 0x11dde24..0x11ddf74.
 // The enclosing form draw and Surface touch-list lifetime remain host-owned.
 QuestMapTouchRegion quest_map_touch_region(InputRectangle view,bool first_touch);

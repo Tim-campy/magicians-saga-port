@@ -59,7 +59,7 @@ void set_camera_cursor(float x,float y,QuestCameraHost& host){
     auto& form=required(host.current_camera_form());set_quest_cursor(&form,factory_cell_coordinate(x,1),factory_cell_coordinate(y,1),host);
 }
 QuestMapTouchRegion quest_map_touch_region(InputRectangle view,bool first_touch){
-    return {first_touch?InputRectangle{-1000,-1000,2000,2000}:view,{17,0},1.0F,1.0F,first_touch?40:0};
+    return camera_touch_region(view,first_touch);
 }
 EventInstruction quest_form_scale_range(QuestCameraForm* input){
     auto& form=required(input);const auto values=form.form_scale_range;

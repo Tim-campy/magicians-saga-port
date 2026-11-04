@@ -8,6 +8,14 @@ namespace saga::core {
 struct InputControl {std::int32_t group=0,value=0;};
 struct InputTouch {std::int32_t type=0;InputControl* component=nullptr;};
 struct InputRectangle {std::int32_t x=0,y=0,width=0,height=0;};
+struct CameraTouchRegion {
+    InputRectangle bounds;InputControl control{17,0};
+    float drag_x=1.0F,drag_y=1.0F;std::int32_t flags=0;
+};
+// QuestForm.Draw0x11dde24 and SelectForm.Draw0x11ef4d4 use the same registration.
+inline CameraTouchRegion camera_touch_region(InputRectangle view,bool first_touch){
+    return {first_touch?InputRectangle{-1000,-1000,2000,2000}:view,{17,0},1.0F,1.0F,first_touch?40:0};
+}
 // SurfaceBase.CheckHitPointRect 0x1c47c30: half-open edges, wrapping int32 sums.
 bool input_hit_rectangle(const InputRectangle&,std::int32_t x,std::int32_t y);
 // Selected GameView._addTouch path: margin override, SCREEN=1, origin0/density100.

@@ -198,3 +198,4 @@ game:0x06000813	reimplemented	src/core/gameplay/select_camera.cpp	Masked native 
 game:0x06000814	reimplemented	src/core/gameplay/select_camera.cpp	Masked native chip/area getter and ignored fallback for recognized masks; contract tests.
 game:0x06000815	reimplemented	src/core/gameplay/select_camera.cpp	Required event/control, group17 camera routing and consumed return; native-event replay and tests.
 game:0x06000816	reimplemented	src/core/gameplay/select_camera.cpp	Complete down/up/long/drag/pinch control flow with scale/history/vector owners and callback failures; native-event walking/camera/bubble integration.
+game:0x06000801	traced	docs/subsystems/town.md	Selected viewport publication, non-top scene-resume and group17 registration traced and bound to SDL camera; remaining outer HUD/widget composition unestablished.

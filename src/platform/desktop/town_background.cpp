@@ -251,6 +251,14 @@ void TownBackground::advance_motion(){
     ++motion_passes_;
 }
 void TownBackground::draw(BitmapBackend& backend){
+    if(context_.physical_input){
+        // SelectForm.Draw0x11ef468..0x11ef4cc publishes VIEW_W/H before
+        // its top gate. The selected host consumes VIEW_W in cloud wrapping.
+        const auto bits=static_cast<std::uint32_t>(view_width())-static_cast<std::uint32_t>(context_.view_x);
+        cloud_view_width_=bits<=0x7fffffffU?static_cast<std::int32_t>(bits):-1-static_cast<std::int32_t>(0xffffffffU-bits);
+        static_cast<void>(view_height()); // VIEW_H has no reached consumer in this selected binding.
+        if(!context_.top_form)pass_->markers.scene_resume=true; // 0x11ef580.
+    }
     backend_=&backend;draws_.clear();scenery_draws_.clear();floor_draws_.clear();floor_font_=0;
     fonts_.clear();font_requests_.clear();chip_draws_.clear();labels_.clear();touches_.clear();notices_->clear();king_queries_=0;
     area_draws_.clear();area_labels_.clear();area_touches_.clear();area_color_requests_=0;

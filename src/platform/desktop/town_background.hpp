@@ -35,6 +35,7 @@ struct TownBackgroundContext {
     bool motion=false,motion_low_aspect=false; // Selected active-motion diagnostic; aspect gate is provisional.
     std::int32_t motion_passes=0;
     bool full_update=false;
+    bool physical_input=false; // Selected outer Draw prefix + control17 registration.
     std::optional<std::filesystem::path> input_replay;
 };
 class TownBackground final:private core::SelectBackgroundHost,private core::SelectActiveAreaHost,private core::SelectCameraHost,private core::SelectSceneryHost,private core::SelectFloorHost,private core::SelectTownDrawingHost,private core::KingRewardAvailabilityHost,private core::SelectAreaDrawingHost,private core::TownResidentInitializationHost,private core::TownResidentGeometryHost,private core::ScaledHumanDrawingHost,private core::SelectResidentDrawingHost,private core::SelectHeroDrawingHost,private core::SelectForegroundDrawingHost,private core::SelectNoticeDrawingHost,private core::TownResidentUpdateHost,private core::SelectCloudHost {
@@ -47,6 +48,9 @@ public:
     void advance_motion();
     void initialize_update(ResourceArchive&,const std::filesystem::path& root);
     void advance_update(std::uint64_t frame,bool talk_pulse=false);
+    bool camera_pointer(std::int32_t type,std::int32_t x,std::int32_t y,std::int32_t dx,std::int32_t dy);
+    void cancel_camera_pointer();
+    std::string window_title()const;
     void report(std::ostream&)const;
     BitmapApplication& application(){return application_;}
     BitmapTextures& textures(){return textures_;}
@@ -69,6 +73,7 @@ private:
     core::SelectSceneryState scenery_{std::make_shared<std::vector<core::EventInstruction>>(),nullptr,nullptr,camera_.left_extent,camera_.right_extent};
     core::SelectDecorationMotionState decoration_motion_;
     std::int32_t motion_passes_=0;
+    std::int32_t cloud_view_width_=240; // AppData.VIEW_W cctor, before outer Draw refresh.
     struct Random final:core::RandomSource {
         explicit Random(std::int32_t seed):source(seed){}
         core::LegacySystemRandom source;std::uint64_t draws=0;
@@ -182,7 +187,10 @@ private:
     std::int32_t background_clip()override{return 0;} // RESSELECT_SEB_BG; cctor 0x11192b0.
     void draw_background(core::SelectBackgroundResource,std::int32_t,std::int32_t,float,float)override;
     std::int32_t raw_view_height()override{return view_height();}
-    std::int32_t cloud_right_edge()override{return 490+240;} // Init +0x160; AppData.VIEW_W.
+    std::int32_t cloud_right_edge()override{ // Init +0x160; live AppData.VIEW_W, native ADD32.
+        const auto bits=490U+static_cast<std::uint32_t>(cloud_view_width_);
+        return bits<=0x7fffffffU?static_cast<std::int32_t>(bits):-1-static_cast<std::int32_t>(0xffffffffU-bits);
+    }
     std::int32_t scenery_clip(std::int32_t)override;
     std::int32_t app_random(std::int32_t bound)override{return core::app_random_bounded(app_random_,bound);}
     std::int32_t lib_random(std::int32_t bound)override{return core::lib_random_bounded(lib_random_,bound);}
