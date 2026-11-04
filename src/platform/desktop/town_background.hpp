@@ -35,6 +35,7 @@ struct TownBackgroundContext {
     bool motion=false,motion_low_aspect=false; // Selected active-motion diagnostic; aspect gate is provisional.
     std::int32_t motion_passes=0;
     bool full_update=false;
+    std::optional<std::filesystem::path> input_replay;
 };
 class TownBackground final:private core::SelectBackgroundHost,private core::SelectActiveAreaHost,private core::SelectCameraHost,private core::SelectSceneryHost,private core::SelectFloorHost,private core::SelectTownDrawingHost,private core::KingRewardAvailabilityHost,private core::SelectAreaDrawingHost,private core::TownResidentInitializationHost,private core::TownResidentGeometryHost,private core::ScaledHumanDrawingHost,private core::SelectResidentDrawingHost,private core::SelectHeroDrawingHost,private core::SelectForegroundDrawingHost,private core::SelectNoticeDrawingHost,private core::TownResidentUpdateHost,private core::SelectCloudHost {
 public:

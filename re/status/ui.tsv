@@ -194,3 +194,7 @@ game:0x06000826	reimplemented	src/core/gameplay/select_form_pass.cpp	Ordered bir
 kairo:0x06001a2e	documented	docs/subsystems/ui.md	GetCurrentForm returns pinned executing form at manager+0x28, else GetTopForm; repeated synchronous root pushes preserve parent and insert after it.
 game:0x0600081b	documented	docs/subsystems/ui.md	SelectForm.Resume calls MyFormBase.Resume then returns true; no field writes or scene-resume refresh.
 game:0x06000749	documented	docs/subsystems/ui.md	MyFormBase.Resume returns true without field writes; fresh modal manager resume remains distinct.
+game:0x06000813	reimplemented	src/core/gameplay/select_camera.cpp	Masked native chip/area selection and opposite clear; base fallback; contract tests and native-event town replay.
+game:0x06000814	reimplemented	src/core/gameplay/select_camera.cpp	Masked native chip/area getter and ignored fallback for recognized masks; contract tests.
+game:0x06000815	reimplemented	src/core/gameplay/select_camera.cpp	Required event/control, group17 camera routing and consumed return; native-event replay and tests.
+game:0x06000816	reimplemented	src/core/gameplay/select_camera.cpp	Complete down/up/long/drag/pinch control flow with scale/history/vector owners and callback failures; native-event walking/camera/bubble integration.

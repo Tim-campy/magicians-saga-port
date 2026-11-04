@@ -42,6 +42,7 @@ int main(int argc,char** argv)try{
             "Add --foreground for the native fresh foreground, leaves and final notice flush (implies --hero).\n"
             "Diagnostic --motion-passes N advances selected counter/cloud/decor/resident blocks (requires --foreground); this is not full Update.\n"
             "Full controller: --update-passes N --foreground; optional --talk-pulse-every N supplies explicit dialogue inputs.\n"
+            "Add --replay file for ordered native camera/selection/button/pulse input; default town input is neutral.\n"
             "Requires v2 --mission-initialization and --mission-font extraction; default talk input is neutral.\n"
             "Motion context: --motion-low-aspect 0 supplies the provisional cloud-wrap aspect gate.\n"
             "Resident context: --store-kairo-limit 0 --condition-characters 1 --debug 0; DEBUG1 requires --debug-rescue-count.\n"
@@ -51,7 +52,7 @@ int main(int argc,char** argv)try{
             "Camera requests: --camera-x 0 --camera-y -9999, clamped by native fresh Area/Town bounds.\n"
             "S2 data projection: fresh Town.Init, ResetBuildingList and GetBuildingList.\n"
             "Reads the existing resource index and APK-derived new-game defaults.\n"
-            "Full Update supports neutral town input and explicit dialogue pulses; unlock information, menu factories and quest/mission return remain unbound.\n";return 0;
+            "Full Update supports native-event replay or neutral town input and explicit dialogue pulses; physical hit registration, unlock information, menu factories and quest/mission return remain unbound.\n";return 0;
     }
     std::optional<std::filesystem::path> root,capture;std::string language="English.lproj";std::int32_t dpi=1;
     bool background=false;TownBackgroundContext context;std::int32_t update_passes=0,talk_pulse_every=0;
@@ -66,10 +67,11 @@ int main(int argc,char** argv)try{
             if(key=="--residents"||key=="--hero"||key=="--foreground")context.residents=true;
             if(key=="--hero"||key=="--foreground")context.hero=true;
             if(key=="--foreground")context.foreground=true;continue;}
-        const std::set<std::string> allowed{"--data","--language","--dpi","--capture","--width","--height","--view-x","--view-y","--camera-x","--camera-y","--app-seed","--lib-seed","--high-score","--top-form","--automatic-images","--store-kairo-limit","--condition-characters","--debug","--debug-rescue-count","--motion-passes","--motion-low-aspect","--update-passes","--talk-pulse-every"};
+        const std::set<std::string> allowed{"--data","--language","--dpi","--capture","--width","--height","--view-x","--view-y","--camera-x","--camera-y","--app-seed","--lib-seed","--high-score","--top-form","--automatic-images","--store-kairo-limit","--condition-characters","--debug","--debug-rescue-count","--motion-passes","--motion-low-aspect","--update-passes","--talk-pulse-every","--replay"};
         if(!allowed.count(key)||i+1>=argc||!options.insert(key).second)throw std::invalid_argument("unsupported, incomplete or duplicate town option");
         const std::string value=argv[++i];
         if(key=="--data")root=std::filesystem::u8path(value);
+        else if(key=="--replay")context.input_replay=std::filesystem::u8path(value);
         else if(key=="--language")language=value;
         else if(key=="--capture"){capture=std::filesystem::u8path(value);background=true;}
         else if(key=="--high-score"){
@@ -94,6 +96,7 @@ int main(int argc,char** argv)try{
     }
     if(!root)throw std::invalid_argument("town data root required; see --help");
     if(context.full_update&&(!context.foreground||context.motion))throw std::invalid_argument("full town Update requires --foreground and excludes --motion-passes");
+    if(context.input_replay&&!context.full_update)throw std::invalid_argument("town replay requires --update-passes");
     if(options.count("--talk-pulse-every")&&!context.full_update)throw std::invalid_argument("talk pulses require --update-passes");
     if(context.motion&&!context.foreground)throw std::invalid_argument("town motion requires --foreground");
     if(options.count("--motion-low-aspect")&&!context.motion&&!context.full_update)throw std::invalid_argument("motion aspect requires --motion-passes or --update-passes");
@@ -169,6 +172,6 @@ int main(int argc,char** argv)try{
     std::cout<<"],\"source_buildings\":";write_rows(std::cout,town.state.building_list);
     std::cout<<",\"buildings\":";write_rows(std::cout,buildings);
     if(backdrop)backdrop->report(std::cout);
-    std::cout<<",\"scope\":\""<<(context.full_update?"Persistent full town Update with real event selection/delays and modal pause; neutral town input, provisional font metrics, dialogue drawing and quest/return forms unbound":context.motion?"Selected native active-motion subsequence and town drawing; full Update permission/event/form gates remain unbound":context.foreground?"Native fresh town drawing through foreground and notice flush; glyph/input/clip services stubbed; persistent Update, unlock information, quest selection and mission return unbound":context.hero?"Native Member/hero Init and drawing through resident lanes1/2; notices queued, glyph/input/clip services stubbed; foreground, quest selection and mission return unbound":context.residents?"Native resident Init and lane0 composition; notices queued, glyph/input/clip services stubbed; hero, later lanes/foreground, quest selection and mission return unbound":context.areas?"Native drawing through town areas and locked fence; notices queued, text/input, inherited clip, residents, foreground, quest selection and mission return unbound":context.buildings?"Native drawing through initial buildings; notices queued, text/input services, residents, foreground, quest selection and mission return unbound":context.scenery?"Native cloud/decor initialization and drawing through floor/gate prefix; buildings, residents, quest selection and mission return unbound":backdrop?"Town data and native background prefix; decorations, buildings, residents, quest selection and mission return unbound":"Town data/cache projection; SelectForm drawing, residents, quest selection and mission return unbound")<<"\"}\n";
+    std::cout<<",\"scope\":\""<<(context.full_update?(context.input_replay?"Persistent full town Update with native camera/selection replay, movement and resident voice selection; physical hit registration, dialogue/bubble glyphs and menu/quest/return forms unbound":"Persistent full town Update with real event selection/delays and modal pause; neutral town input, provisional font metrics, dialogue drawing and quest/return forms unbound"):context.motion?"Selected native active-motion subsequence and town drawing; full Update permission/event/form gates remain unbound":context.foreground?"Native fresh town drawing through foreground and notice flush; glyph/input/clip services stubbed; persistent Update, unlock information, quest selection and mission return unbound":context.hero?"Native Member/hero Init and drawing through resident lanes1/2; notices queued, glyph/input/clip services stubbed; foreground, quest selection and mission return unbound":context.residents?"Native resident Init and lane0 composition; notices queued, glyph/input/clip services stubbed; hero, later lanes/foreground, quest selection and mission return unbound":context.areas?"Native drawing through town areas and locked fence; notices queued, text/input, inherited clip, residents, foreground, quest selection and mission return unbound":context.buildings?"Native drawing through initial buildings; notices queued, text/input services, residents, foreground, quest selection and mission return unbound":context.scenery?"Native cloud/decor initialization and drawing through floor/gate prefix; buildings, residents, quest selection and mission return unbound":backdrop?"Town data and native background prefix; decorations, buildings, residents, quest selection and mission return unbound":"Town data/cache projection; SelectForm drawing, residents, quest selection and mission return unbound")<<"\"}\n";
     return 0;
 }catch(const std::exception& error){std::cerr<<"saga_town: "<<error.what()<<'\n';return 1;}

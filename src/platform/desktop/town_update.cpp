@@ -2,17 +2,64 @@
 #include "town_background.hpp"
 #include "mission_events.hpp"
 #include "core/gameplay/quest_rewards.hpp"
+#include "core/gameplay/input_frame.hpp"
+#include <charconv>
+#include <fstream>
+#include <locale>
+#include <sstream>
 #include <stdexcept>
 
 namespace saga::desktop {
 using namespace core;
 namespace {
 [[noreturn]]void town_unbound(const char* what){throw std::logic_error(std::string("town path unbound: ")+what);}
+struct TownReplayAction {
+    enum class Kind { Camera, Selection, Buttons, TalkPulse } kind;
+    std::uint64_t frame=0;
+    std::array<std::int32_t,6> camera{}; // type,x,dx,dy,pinch delta,pointer count.
+    std::uint32_t mask=0;
+    std::int32_t value=0;
+};
+std::uint32_t replay_mask(std::string_view text){
+    const auto hex=text.substr(0,2)=="0x";if(hex)text.remove_prefix(2);
+    std::uint32_t result=0;const auto converted=std::from_chars(text.data(),text.data()+text.size(),result,hex?16:10);
+    if(text.empty()||converted.ec!=std::errc{}||converted.ptr!=text.data()+text.size())throw std::invalid_argument("town replay mask requires uint32 decimal/hex");
+    return result;
+}
+std::vector<TownReplayAction> read_town_replay(const std::filesystem::path& path){
+    if(std::filesystem::file_size(path)>1024U*1024U)throw std::length_error("town replay exceeds1MiB");
+    std::ifstream input(path);input.imbue(std::locale::classic());std::vector<TownReplayAction> actions;
+    for(std::string line;std::getline(input,line);){
+        std::istringstream row(line);row.imbue(std::locale::classic());row>>std::ws;
+        if(row.eof()||row.peek()=='#')continue;
+        TownReplayAction action{};std::string frame_text,command,mask;std::uint32_t frame=0;
+        if(!(row>>frame_text>>command))throw std::invalid_argument("town replay requires frame and command");
+        const auto parsed=std::from_chars(frame_text.data(),frame_text.data()+frame_text.size(),frame);
+        if(parsed.ec!=std::errc{}||parsed.ptr!=frame_text.data()+frame_text.size()||frame==0||frame>0x7fffffffU||(!actions.empty()&&frame<actions.back().frame)||actions.size()>=100000)
+            throw std::invalid_argument("town replay requires ordered positive int32 frames");
+        action.frame=frame;
+        if(command=="camera"){
+            action.kind=TownReplayAction::Kind::Camera;
+            for(auto& value:action.camera)if(!(row>>value))throw std::invalid_argument("camera requires type,x,dx,dy,pinch,pointers int32");
+            if(action.camera[5]<0)throw std::invalid_argument("negative replay pointer count");
+        }else if(command=="select"){
+            action.kind=TownReplayAction::Kind::Selection;
+            if(!(row>>mask>>action.value))throw std::invalid_argument("select requires flags and int32 value");action.mask=replay_mask(mask);
+        }else if(command=="buttons"){
+            action.kind=TownReplayAction::Kind::Buttons;
+            if(!(row>>mask))throw std::invalid_argument("buttons requires mask");action.mask=replay_mask(mask);
+        }else if(command=="pulse")action.kind=TownReplayAction::Kind::TalkPulse;
+        else throw std::invalid_argument("unknown town replay command");
+        row>>std::ws;if(!row.eof())throw std::invalid_argument("unexpected town replay fields");actions.push_back(action);
+    }
+    if(!input.eof())throw std::invalid_argument("incomplete town replay");return actions;
+}
 }
 struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,SelectMarkerHost,
     SelectNavigationHost,SelectBuildingHost,SelectTownButtonsHost,SelectGuidanceSaveHost,
-    SelectReviewHost,SelectTriggerHost,SelectGuideHost,SelectNotificationHost,TownPermissionHost {
+    SelectReviewHost,SelectTriggerHost,SelectGuideHost,SelectNotificationHost,TownPermissionHost,SelectTouchHost {
     TownBackground& town;
+    ResourceArchive& tables;
     GameInitialization initial;
     MissionEvents events;
     TownInitializationState permissions;
@@ -24,7 +71,33 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
     std::array<std::shared_ptr<ConditionCatalog<EquipmentMarkerState>>,3> marker_items;
     std::shared_ptr<GuideTowns> guide_towns=std::make_shared<GuideTowns>();
     TownBubbleState bubble{-1,std::make_shared<const std::string>(),0};
+    std::shared_ptr<TownVoices> voice_rows;
+    std::shared_ptr<TownSpeakers> speaker_rows=std::make_shared<TownSpeakers>();
     TownBubbleTouchHost bubble_touch{bubble,*this};
+    SelectTouchState touch{town.camera_,town.movement_,town.selected_chip_,town.selected_area_,town.form_state_,town.context_.form_scale};
+    std::int32_t pointer_count=0;
+    std::vector<TownReplayAction> replay;
+    std::size_t replay_index=0;
+    std::uint32_t button_pulses=0;
+    std::uint64_t replay_applied=0,replay_modal_ignored=0;
+    bool apply_input(std::uint64_t frame,bool pulse){
+        button_pulses=0;
+        while(replay_index<replay.size()&&replay[replay_index].frame<=frame){
+            const auto& action=replay[replay_index++];
+            if(action.kind==TownReplayAction::Kind::TalkPulse){pulse=true;++replay_applied;continue;}
+            // Deliver raw town input only to the selected parent. Closing a
+            // modal clears input; it cannot replay a hidden town click later.
+            if(events.pending()){++replay_modal_ignored;continue;}
+            if(action.kind==TownReplayAction::Kind::Camera){
+                const auto& values=action.camera;pointer_count=values[5];InputControl control{17,0};
+                const SelectFormTouch event{values[0],values[1],values[2],values[3],values[4],&control};
+                if(on_select_form_touch(touch,&event,*this))throw std::logic_error("camera event not consumed");
+            }else if(action.kind==TownReplayAction::Kind::Selection)set_select_touch_value(touch,action.mask,action.value,*this);
+            else button_pulses|=action.mask;
+            ++replay_applied;
+        }
+        return pulse;
+    }
     std::shared_ptr<int> notification_owner=std::make_shared<int>(0);
     std::uint64_t dispatches=0,updates=0,modal_dispatches=0,input_clears=0,save_requests=0,bgm_requests=0,notification_passes=0;
     static MissionEventScenario scenario(const std::filesystem::path& root,const GameInitialization& seed){
@@ -33,8 +106,9 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
         // Same declared desktop font context as the mission; GUIStyle equivalence is unverified.
         result.font=MissionFontScenario{mission_font_path(root),100,0,0,100.0F,100.0F,false,false};return result;
     }
-    UpdateOwner(TownBackground& value,ResourceArchive& tables,const std::filesystem::path& root)
-        :town(value),initial(read_game_initialization(root)),events(tables,scenario(root,initial),[this]{++input_clears;}){
+    UpdateOwner(TownBackground& value,ResourceArchive& data_tables,const std::filesystem::path& root)
+        :town(value),tables(data_tables),initial(read_game_initialization(root)),events(data_tables,scenario(root,initial),[this]{++input_clears;button_pulses=0;}){
+        if(town.context_.input_replay)replay=read_town_replay(*town.context_.input_replay);
         if(tables.selected_profile().language_folder!="English.lproj")throw std::invalid_argument("town Update font binding requires English/default skin");
         const auto data=tables.data("Town.txt");if(!data)throw std::invalid_argument("town Update requires Town.txt");
         records=std::make_shared<TownTable>(load_town_table(std::string_view(reinterpret_cast<const char*>(data->bytes.data()),data->bytes.size()),false,parse_event_decimal));
@@ -62,9 +136,11 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
             guide_towns->at(i)=std::make_shared<GuideTownRecord>(GuideTownRecord{row.flags,row.id});
         }
         conditions.characters=std::make_shared<ConditionCatalog<CharacterConditionState>>(town.characters_->size());
+        speaker_rows->resize(town.characters_->size());
         for(std::size_t i=0;i<town.characters_->size();++i)if(town.characters_->at(i)){
             const auto& row=*town.characters_->at(i);
             conditions.characters->at(i)=std::make_shared<CharacterConditionState>(CharacterConditionState{town.character_states_[i]->recruited,static_cast<std::uint8_t>(row.flags)});
+            speaker_rows->at(i)=std::make_shared<TownSpeaker>();
         }
         marker_areas->resize(town.areas_.size());
         for(std::size_t i=0;i<town.areas_.size();++i)if(town.areas_[i])marker_areas->at(i)=std::make_shared<AreaMarkerRecord>(AreaMarkerRecord{town.areas_[i]->stages});
@@ -92,8 +168,8 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
     bool enable_landscape()override{town_unbound("automatic landscape configuration");}
     void set_orientation(std::int32_t)override{town_unbound("automatic landscape configuration");}
     std::shared_ptr<ImageAnimationValues> image_animation_values()override{return clocks;}
-    bool capture_input(std::uint32_t)override{return false;} // Explicit neutral-input scenario.
-    bool pressed(std::uint32_t)override{return false;}
+    bool capture_input(std::uint32_t mask)override{return (button_pulses&mask)!=0;}
+    bool pressed(std::uint32_t mask)override{return (button_pulses&mask)!=0;}
     bool soft_label(std::int32_t)override{return false;}
     void change_state(std::int32_t)override{town_unbound("capture-state labels");}
     void finish_capture()override{town_unbound("capture finish");}
@@ -108,6 +184,12 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
     bool update_town_enable(std::int32_t index)override{return update_town_permission(permissions,index,*this);}
     void check_guide_arrow(bool force)override{check_select_guide(town.guide_state_,force,*this);}
     std::shared_ptr<TownTable> town_records()override{return records;}
+    EventInstruction active_range()override{return town.active_range();}
+    std::int32_t touch_count()override{return pointer_count;}
+    void set_camera_position(std::int32_t x,std::int32_t y)override{set_select_camera_position(town.camera_,x,y,town);}
+    void set_scale(std::int32_t)override{town_unbound("pinch SetScale lifecycle");}
+    void base_set_touch_value(std::uint32_t,std::int32_t)override{town_unbound("base form touch-value selector");}
+    std::int32_t base_get_touch_value(std::uint32_t,std::int32_t)override{town_unbound("base form touch-value selector");}
     std::shared_ptr<EventConditionHost> condition_context()override{return town.resident_condition_host_;}
     bool is_top_form()override{return top();}
     bool debug_enabled()override{return town.context_.debug;}
@@ -123,8 +205,20 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
     std::int32_t sum_quest_challenges()override{return town.resident_challenges_;}
     std::shared_ptr<GuideTowns> towns()override{return guide_towns;}
     std::shared_ptr<TownHumanRows> town_humans()override{return town.residents_.residents;}
-    std::shared_ptr<TownVoices> voices()override{town_unbound("resident Voice table binding");}
-    std::shared_ptr<TownSpeakers> speakers()override{town_unbound("resident bubble speaker binding");}
+    std::shared_ptr<TownVoices> voices()override{
+        if(!voice_rows){
+            const auto data=tables.data("Voice.txt");if(!data)throw std::invalid_argument("town bubble requires Voice.txt");
+            voice_rows=std::make_shared<TownVoices>(load_town_voice_table(std::string_view(reinterpret_cast<const char*>(data->bytes.data()),data->bytes.size()),false,parse_event_decimal));
+        }
+        return voice_rows;
+    }
+    std::shared_ptr<TownSpeakers> speakers()override{
+        for(std::size_t i=0;i<speaker_rows->size();++i)if(speaker_rows->at(i)){
+            const auto& data=*town.characters_->at(i);const auto& state=*town.character_states_[i];
+            *speaker_rows->at(i)={data.voice_id,state.living_address,state.recruited};
+        }
+        return speaker_rows;
+    }
     void play_button_sound()override{ /* SAGA_STUB(town-update-button-sound): audio output. */ }
     void make_transition(std::int32_t,bool,std::uint32_t,std::function<void()>)override{town_unbound("room transition");}
     EventObject room_form()override{town_unbound("room form");}
@@ -174,6 +268,7 @@ void TownBackground::initialize_update(ResourceArchive& tables,const std::filesy
 }
 void TownBackground::advance_update(std::uint64_t frame,bool pulse){
     if(!update_owner_)throw std::logic_error("town Update not initialized");auto& owner=*update_owner_;++owner.dispatches;
+    pulse=owner.apply_input(frame,pulse);
     if(owner.events.advance(frame,40,pulse,false)){++owner.modal_dispatches;context_.top_form=false;return;}
     context_.top_form=true;
     SelectRecoveredPassHost pass(owner,guide_state_,owner,camera_,*this,owner);
@@ -183,7 +278,7 @@ void TownBackground::advance_update(std::uint64_t frame,bool pulse){
 }
 void TownBackground::report_update(std::ostream& out)const{
     const auto& owner=*update_owner_;
-    out<<",\"update\":{\"neutral_input\":true,\"tick_ms\":40,\"low_aspect\":"<<(context_.motion_low_aspect?"true":"false")
+    out<<",\"update\":{\"neutral_input\":"<<(context_.input_replay?"false":"true")<<",\"tick_ms\":40,\"low_aspect\":"<<(context_.motion_low_aspect?"true":"false")
        <<",\"provisional_font_context\":true,\"dispatches\":"<<owner.dispatches<<",\"calls\":"<<owner.updates<<",\"modal_dispatches\":"<<owner.modal_dispatches
        <<",\"loop_counter\":"<<town_frame_<<",\"base_update_counter\":"<<prelude_.update_counter
        <<",\"event_check_requested\":"<<(pass_->events.event_check_requested?"true":"false")<<",\"scene_resume\":"<<(pass_->markers.scene_resume?"true":"false")
@@ -196,6 +291,13 @@ void TownBackground::report_update(std::ostream& out)const{
     out<<"],\"image_clock_ticks\":[";
     for(std::size_t i=0;i<owner.clocks->size();++i){if(i)out<<',';out<<'[';const auto& group=owner.clocks->at(i);
         for(std::size_t j=0;j<group->size();++j){if(j)out<<',';out<<group->at(j)->at(1);}out<<']';}
-    out<<']';owner.events.write_report(out);out<<'}';
+    out<<"],\"replay_bound\":"<<(context_.input_replay?"true":"false")<<",\"replay_applied\":"<<owner.replay_applied
+       <<",\"replay_modal_ignored\":"<<owner.replay_modal_ignored<<",\"replay_remaining\":"<<(owner.replay.size()-owner.replay_index)
+       <<",\"touch\":{\"enabled\":"<<(movement_.enabled?"true":"false")<<",\"dragging\":"<<(camera_.dragging?"true":"false")
+       <<",\"build_drag\":"<<(owner.touch.build_drag?"true":"false")<<",\"history\":"<<owner.touch.history->size()
+       <<",\"velocity\":["<<camera_.velocity_x<<','<<camera_.velocity_y<<"],\"collision\":"<<movement_.collision_id
+       <<"},\"bubble\":{\"index\":"<<owner.bubble.index<<",\"frames\":"<<owner.bubble.frames<<",\"text_bytes\":"<<(owner.bubble.text?owner.bubble.text->size():0)
+       <<",\"text_present\":"<<(owner.bubble.text?"true":"false")<<",\"voice_catalog_bound\":"<<(owner.voice_rows?"true":"false")<<'}';
+    owner.events.write_report(out);out<<'}';
 }
 } // namespace saga::desktop

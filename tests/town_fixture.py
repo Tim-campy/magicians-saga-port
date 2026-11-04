@@ -52,7 +52,8 @@ def add_town_background(root,scenery=False,buildings=False,areas=False,residents
         # events are ineligible; this tests the full selector rather than injection.
         event='0\tIntro\t0\t1\t3\t2\t0\t1\t3\t3\t10\t1\t-1\t2\t8\t0\t2\t8\t1'
         tables.extend([('English.lproj/Event.txt',event.encode()),
-                       ('English.lproj/Talk.txt',b'0\t0\t1\tFirst<br>page\n1\t1\t1\tSecond<co=4a86e8>page</co>')])
+                       ('English.lproj/Talk.txt',b'0\t0\t1\tFirst<br>page\n1\t1\t1\tSecond<co=4a86e8>page</co>'),
+                       ('English.lproj/Voice.txt',b'0\t0\t2\tHello\tWorld!\n1\t4\t1\tJoin')])
         (root/'mission-initialization.tsv').write_text('mission_initialization 2\nyugami 10000\norientation 0\nevent_arguments ""\ntown_normal 0 -7\ntown_system 0 0 0 10\n')
     (root/'textassets/tables.bin').write_bytes(jar(tables))
     atlas=png(4,2,[c for _ in range(2) for p in [(255,0,0,255)]*2+[(0,255,0,255)]*2 for c in p])
@@ -98,6 +99,7 @@ def add_town_background(root,scenery=False,buildings=False,areas=False,residents
         if update:
             members[1]=('seb.inf',members[1][1]+b'29\tguide.seb\n30\tguide.seb\n')
             members.append(('guide.seb',seb([(frame,0,0,0,2,2,0,0,0,0) for frame in range(4)])))
+            members[1]=('seb.inf',members[1][1]+b'16\tguide.seb\n')
     if areas:
         members[1]=('seb.inf',members[1][1]+b'10\tarea-name.seb\n12\tfence.seb\n')
         members.extend([('area-name.seb',seb([(0,0,0,0,2,2,0,0,0,0),(1,0,2,0,2,2,0,0,0,0)])),
@@ -115,7 +117,7 @@ def add_town_background(root,scenery=False,buildings=False,areas=False,residents
         for layer,offset in enumerate((0,2,5,0,8)):
             size=1 if layer==0 else 2
             animation+=struct.pack('>hh',4,0)+b''.join(struct.pack('>10h',frame,77,0,0,size,size,offset,0,0,0) for frame in range(4))
-        (root/'textassets/chara.bin').write_bytes(jar([('img.inf',b'10\tbody.png,bin\n200\tshadow.png,bin\n'),('seb.inf',b'38\thuman.seb\n'+(b'37\thuman.seb\n' if hero else b'')),
+        (root/'textassets/chara.bin').write_bytes(jar([('img.inf',b'10\tbody.png,bin\n200\tshadow.png,bin\n'),('seb.inf',b'38\thuman.seb\n'+(b'37\thuman.seb\n' if hero else b'')+(b'41\thuman.seb\n42\thuman.seb\n' if update else b'')),
             ('human.seb',animation),('body.png',png(2,2,[200,70,20,255]*4)),('shadow.png',png(1,1,[20,20,20,255]))]))
         (root/'textassets/weapon.bin').write_bytes(jar([('img.inf',b'3\tweapon.png,bin\n'),('seb.inf',b''),('weapon.png',png(2,2,[20,70,200,255]*4))]))
         with (root/'mission-resources.tsv').open('a') as out:
@@ -124,3 +126,8 @@ def add_town_background(root,scenery=False,buildings=False,areas=False,residents
         if hero:
             (root/'textassets/hat.bin').write_bytes(jar([('img.inf',b'5\twrong.png,bin\n7\that.png,bin\n'),('seb.inf',b''),
                 ('wrong.png',png(2,2,[255,0,0,255]*4)),('hat.png',png(2,2,[40,190,80,255]*4))]))
+
+    if update:
+        (root/'textassets/effect.bin').write_bytes(jar([('img.inf',b'28\ttarget.png,bin\n'),('seb.inf',b''),
+            ('target.png',png(10,2,[80,120,210,255]*20))]))
+        with (root/'mission-resources.tsv').open('a') as out:out.write('resource 20 "textassets/effect.bin" "effect"\n')

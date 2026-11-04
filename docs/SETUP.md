@@ -329,6 +329,19 @@ build/desktop/saga_town.exe --data extracted/full --foreground --update-passes 3
 
 Without dialogue pulses, Event0 opens Talk0/1 after delay1 and the town remains paused. Period10 supplies explicit synthetic advance input, closes the talks and permits town updates/autosave in memory. Each desktop dispatch uses40ms and one CPU draw; this is an explicit profile cadence, not recovered Unity timing. The mode excludes --motion-passes and requires top_form1/English/default skin. The existing native block builder/public FreeType font provider is reused. Dialogue window/glyph drawing, interactive town input/menu forms, persistence output and quest/mission return remain unbound; see [town](subsystems/town.md#persistent-full-controller-profile).
 
+`--replay file` adds ordered native town events to --update-passes. Records use positive dispatch frames, preserve same-frame order and accept masks in decimal or0x hex:
+
+```
+# frame camera type x deltaX deltaY pinchDelta pointerCount
+160 camera 0 430 0 0 0 1
+161 camera 1 430 0 0 0 0
+# frame select flags value (calls SelectForm.SetTouchValue)
+180 select 0x220000 1
+# frame buttons pulseMask; frame pulse (dialogue advance)
+```
+
+At --camera-x300 the first pair sets world target130 and walks the hero from40 to resident0, selecting its actual Voice text. Town input during a modal is discarded; pulse commands are delivered to the selected talk. The optional --talk-pulse-every10 can close the intro before frame160. This is native-event replay, not recovered physical hit registration; the outer SelectForm.Draw/control17 registration and interactive menu factories remain open. Pinch/base-selector paths fail explicitly when reached. Replay reports include applied/ignored/remaining actions, camera touch state and bubble index/lifetime/text byte count; no speech text is copied into the repository. See [input contracts](subsystems/town.md#native-town-input-and-resident-speech).
+
 ### Headless mission host
 
 With quest results enabled, terminal reports expose `quest_exit`: null before return, otherwise the typed native `code`, `outcome`, `handoff: "held"` and `rewards_granted`. Clear code0, main-character death1, timeout2 and retreat3 remain distinct. A granted `quest_result` includes EXP, money, crystals, prisoners, all weapon/character/cloth/hat grant lists and member records with `level_up_frame`; wallet, inventory, quest-record and member-writeback fields retain the actual in-memory effects. The held town callback and save-file persistence remain separate services. Native fresh replay commands and real-data outcomes are in [mission endings](subsystems/integration-endings.md).

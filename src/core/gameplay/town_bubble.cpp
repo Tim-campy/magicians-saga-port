@@ -1,8 +1,19 @@
 #include "town_bubble.hpp"
+#include "table_catalog.hpp"
 #include <limits>
 #include <stdexcept>
 namespace saga::core {
 namespace {
+void read_voice(TownVoice& voice,detail::TableTokens& tokens){
+    voice.id=tokens.integer();voice.type=tokens.integer();
+    const auto count=tokens.integer();
+    std::shared_ptr<std::vector<FormText>> texts;
+    if(count>=0){
+        texts=std::make_shared<std::vector<FormText>>();
+        for(std::int32_t i=0;i<count;++i)texts->push_back(std::make_shared<const std::string>(tokens.take()));
+    }
+    voice.texts=std::move(texts);
+}
 template<class T> T& required(const std::shared_ptr<T>& value) {
     if(!value)throw std::invalid_argument("null town bubble data");
     return *value;
@@ -20,6 +31,20 @@ FormText select_text(const std::shared_ptr<TownVoice>& voice,std::int32_t sequen
     const auto index=sequence%static_cast<std::int32_t>(size);
     return texts->at(static_cast<std::size_t>(index)); // Negative nonzero remainder fails.
 }
+}
+TownVoice& load_town_voice_definition(TownVoice& voice,std::optional<std::string_view> line,const EventIntegerParser& parser){
+    // String.IsNullOrEmpty gates all writes. Native id/type stores precede the
+    // GetStringArray call; a failed array read retains the previous text owner.
+    if(line&&!line->empty()){detail::TableTokens tokens(*line,parser);read_voice(voice,tokens);}
+    return voice;
+}
+TownVoices load_town_voice_table(std::string_view text,bool normalize,const EventIntegerParser& parser){
+    auto records=detail::load_table_records<TownVoice>(text,normalize,parser,[](detail::TableTokens& tokens){
+        TownVoice voice{};read_voice(voice,tokens);return voice;
+    });
+    TownVoices result(records.size());
+    for(std::size_t i=0;i<records.size();++i)if(records[i])result[i]=std::make_shared<TownVoice>(std::move(*records[i]));
+    return result;
 }
 // SelectForm.SetTalkFuki, 0x11eedd8. The second argument is unused in this body.
 void set_town_bubble(TownBubbleState& state,std::int32_t index,bool,TownBubbleHost& host) {

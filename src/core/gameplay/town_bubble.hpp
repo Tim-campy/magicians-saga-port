@@ -1,11 +1,16 @@
 #pragma once
 #include "form_push.hpp"
 #include "select_touch_move.hpp"
+#include "event_catalog.hpp"
 namespace saga::core {
-struct TownVoice {std::int32_t type;std::shared_ptr<std::vector<FormText>> texts;};
+struct TownVoice {std::int32_t type;std::shared_ptr<std::vector<FormText>> texts;std::int32_t id=0;};
 struct TownSpeaker {std::int32_t voice_id;std::int32_t living_id;std::int32_t recruit_value;};
 using TownVoices=std::vector<std::shared_ptr<TownVoice>>;
 using TownSpeakers=std::vector<std::shared_ptr<TownSpeaker>>;
+// VoiceData.Load 0x1174080: id, type, count-prefixed UTF-8 text tokens.
+// Null/empty input leaves the receiver untouched; a negative count stores null.
+TownVoice& load_town_voice_definition(TownVoice&,std::optional<std::string_view>,const EventIntegerParser&);
+TownVoices load_town_voice_table(std::string_view,bool normalize_crlf,const EventIntegerParser&);
 struct TownBubbleState {std::int32_t index;FormText text;std::int32_t frames;};
 class SelectViewportHost {
 public:

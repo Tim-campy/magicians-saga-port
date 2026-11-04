@@ -2021,10 +2021,10 @@ game:0x0600080f,game:0x0600080f,ui,,16,0x11f4464
 game:0x06000810,game:0x06000810,ui,,84,0x11ef088
 game:0x06000811,form.SelectForm.SetTalkFuki,ui,reimplemented,688,0x11eedd8
 game:0x06000812,game:0x06000812,ui,,1076,0x11f00c0
-game:0x06000813,game:0x06000813,ui,,60,0x11f4474
-game:0x06000814,game:0x06000814,ui,,44,0x11f44b0
-game:0x06000815,game:0x06000815,ui,,60,0x11f44dc
-game:0x06000816,game:0x06000816,ui,,1164,0x11f4518
+game:0x06000813,form.SelectForm.SetTouchValue,ui,reimplemented,60,0x11f4474
+game:0x06000814,form.SelectForm.GetTouchValue,ui,reimplemented,44,0x11f44b0
+game:0x06000815,form.SelectForm.OnTouchEvent,ui,reimplemented,60,0x11f44dc
+game:0x06000816,form.SelectForm.OnTouchCamera,ui,reimplemented,1164,0x11f4518
 game:0x06000817,form.SelectForm.SetCameraPosition,ui,reimplemented,320,0x11f32b4
 game:0x06000818,game:0x06000818,ui,,12,0x11eb40c
 game:0x06000819,form.SelectForm.SetActiveX,ui,reimplemented,472,0x11eb234
@@ -4474,7 +4474,7 @@ game:0x06001250,game:0x06001250,data,,8,0x1174060
 game:0x06001251,game:0x06001251,data,,8,0x1174068
 game:0x06001252,game:0x06001252,data,,8,0x1174070
 game:0x06001253,game:0x06001253,data,,8,0x1174078
-game:0x06001254,game:0x06001254,data,,168,0x1174080
+game:0x06001254,data.VoiceData.Load,data,reimplemented,168,0x1174080
 game:0x06001255,game:0x06001255,data,,128,0x1174128
 game:0x06001256,game:0x06001256,data,,4,0x11741a8
 game:0x06001257,game:0x06001257,data,,4,0x11741ac

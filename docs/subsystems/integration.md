@@ -596,7 +596,7 @@ A6 covers the selected host's actual substitutions: output services, declared ru
 | town-update-bgm / town-update-button-sound | full town Update | audio output | service stub; BGM requests counted, no output | audio backend is bound |
 | town-update-save | full town Update | save envelope/output | service stub; retain shared in-memory state and count autosave requests; no file written | S3 save codec is bound |
 | town-update-billing | full town Update | external offers | service stub; no offerwall output | authorized external integration is bound |
-| town-update-input | --update-passes / --talk-pulse-every | effective desktop town input and cadence | explicit neutral town buttons, optional period-N dialogue pulses,40ms per dispatch and one CPU draw per dispatch; no automatic player answer | interactive input/replay and window host are bound |
+| town-update-input | --update-passes / --talk-pulse-every | effective desktop town input and cadence | neutral town input by default; optional ordered native camera/selection/button/pulse replay and period-N dialogue pulses;40ms/one CPU draw per dispatch; modal town input discarded | interactive input/replay and window host are bound |
 | town-inherited-clip | TownBackground resident entry | original caller clip released before lane0 | service stub; declared full-viewport desktop profile; captured actor/scenery placement remains native | complete form rendering context is bound |
 
 ### Headless execution limits
