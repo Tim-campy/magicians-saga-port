@@ -1,6 +1,6 @@
 id	status	evidence	note
 game:0x06001213	reimplemented	src/core/gameplay/presentation_forms.cpp	TalkData.Load ordered scalars/counted nullable UTF16 strings with injected decoder; table gaps/duplicates and partial failures tested; live mission owner.
-game:0x06001135	documented	docs/subsystems/text.md	EventMsgData.Load: id, type, one token
+game:0x06001135	reimplemented	src/core/gameplay/presentation_forms.cpp	EventMsgData.Load ordered id/type/text stores with null/empty and partial-failure tests; real type4 town notices.
 game:0x0600071e	reimplemented	src/core/gameplay/presentation_forms.cpp	Boot talk catalog delegate joins nullable counted array with TAB; empty fragments/null failure tested; mission MakeTalkForm consumes the result.
 game:0x060008d2	traced	docs/subsystems/text.md	outer MakeTalkForm: charaIndex + talks_[id]
 game:0x060008d4	documented	docs/subsystems/text.md	type-0 factory; data part in presentation_forms, TextLayout setup not ported
@@ -78,3 +78,4 @@ game:0x060008b8	traced	docs/subsystems/text.md	Type0 page branch ported/tested a
 game:0x060008f9	documented	docs/subsystems/text.md	IsDrawWindowEnd captures close/style, membership0/1/2 and live frame or wrapped8-close gate; actual type0 config style2.
 game:0x06000907	traced	docs/subsystems/text.md	SubForm static initializer assigns configData row0 style2; no reconstruction of unrelated type rows.
 kairo:0x0600146d	documented	docs/subsystems/fonts.md	Cached binary32 product/division unless force or NaN; infinities pass guard, fallback platform scale provider receives240/240.
+game:0x060008e1	documented	docs/subsystems/text.md	Type4 SetEvent page guard before cached resource; fresh record/resource/clock/animation/sound order documented; presentation provider remains stubbed.

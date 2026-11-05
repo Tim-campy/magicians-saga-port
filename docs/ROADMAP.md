@@ -8,7 +8,7 @@ The plan in one page. Work happens in **vertical slices**: each ends in somethin
 | --- | --- | --- |
 | M0 | APK inventory, architecture, subsystem map | Done: [overview](subsystems/overview.md). |
 | M1 | Asset extraction and technical rendering | Partial: archives, OPT, SEB, Unity media verified; sprites render through GL; public font metrics/direct glyph output are provisional, audio remains unbound. |
-| M2 | Boot, forms/menus and input | Partial: full town Update/native-event replay bound in S2; town camera/area/GO and quest-list drawing/selection/stamina bound; shared mission entry/combat run; return, other menus and S3 boot remain open. |
+| M2 | Boot, forms/menus and input | Partial: full town Update/native-event replay bound in S2; town camera/area/GO and quest-list drawing/selection/stamina bound; shared mission entry/combat/return and repeated entry run; other menus and S3 boot remain open. |
 | M3 | First playable gameplay loop | S1 selected fresh mission acceptance complete; **current = S2 town ↔ mission loop**. Combat, collection and four endings run with real data and explicit service boundaries. Original-runtime verification and Continue/save restoration remain separate. |
 | M4 | Save/load, progression, economy, content | Slice S3; save envelope not decoded. |
 | M5 | Windows/Linux release candidate | Windows builds and CTest; Linux builds in CI. |
@@ -31,14 +31,11 @@ Host: `saga_mission` (headless or SDL window; fresh --data/--quest entry or expl
 
 Host: `saga_town`. Acceptance: SelectForm town runs with the real map and residents; choosing a quest starts S1's mission; the result returns to town and progression (EXP, money, levels, stock, quest record) is applied in memory; event scripts fire on return (event 31, 1133).
 
-- [ ] (blocking) Connect the retained mission result/return continuation in saga_town and refresh town projections from canonical progression before allowing repeated quest entry.
 - [ ] Bind remaining town widget/menu dispatch, retaining camera capture, native-event replay, resident speech and shared event/save owners.
 - [ ] Bind Building/KingReward NewGame state to town menus and return consumers before those paths become reachable.
-- [ ] Connect town quest selection and retained mission return to one shared progression owner in `saga_town`.
 - [ ] Bind capture callbacks to the town Update host.
 - [ ] Bind billing-item/catalog providers as stubs and the notification manager adapters, preserving task execution gates.
 - [ ] Find the consumer of `hour_ != -1`, the writer of `SubForm.delayEvent_` (`+0x1d0`) and the remaining effect opcodes of the table at `0x627b6e`.
-- [ ] Resolve event 1133.
 
 ### S3 — Boot, title, new game and saves
 
@@ -64,7 +61,7 @@ Host: `saga`. Acceptance: talk and event forms show their text with the correct 
 
 - [ ] (blocking, runtime oracle) Compare FreeType/LegacyRuntime and notice geometry/alpha/Graphics routing with original GUIStyle; establish live font/scale/language inputs.
 - [ ] Extend the fresh ASCII block builder to the remaining reached tags/non-ASCII paths, including EventMsg `po`, and bind glyph drawing to the host.
-- [ ] Trace the type-4 event form and producers of `nextIndex_`; bind their layout/font/page-advance paths.
+- [ ] Bind type-4 event window, glyph and physical touch output; preserve the recovered page/clock/close contract and trace remaining nextIndex_ producers.
 - [ ] Port the font localization scope with its two cleanup scopes, plus the `Frame` blink and draw counters.
 - [ ] Close the translation path (`CallTranslateText` flags and fallback, `UnicodeToChanakya`), the boot language state and SanSanRemove.
 - [ ] Decide the audio path (FSB5 Vorbis from the extractor output, streaming policy for 74 MB of PCM) and play BGM/SE through SDL.

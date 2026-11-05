@@ -27,6 +27,19 @@ void destroy_quest_entity(QuestMemberId,bool remove_registration,QuestEntityHost
 // MemberSystem.OnFinish: write memory, destroy sub-members, clear lists. Does not write a save file.
 void finish_quest_members(MemberFinishHost&);
 struct TownReturnEvent {std::int32_t result,area_id,stage;};
+class TownQuestReturnHost {
+public:
+    virtual ~TownQuestReturnHost()=default;
+    virtual void execute_return_event(std::int32_t)=0;
+    // Scan the canonical Quest catalog; native null rows/records must fail.
+    virtual std::int32_t best_total_damage()=0;
+    virtual std::int64_t high_score()=0;
+    virtual void set_high_score(std::int64_t)=0;
+    virtual bool town_form_exists()=0;
+    virtual void mark_quest_return()=0;
+};
+// TownSystem.OnReturnFromQuest 0x1169b04; area_id/stage are not read here.
+void on_town_quest_return(const TownReturnEvent&,TownQuestReturnHost&);
 class QuestReturnHost:public QuestRecordHost {
 public:
     virtual QuestRecord& return_record()=0;

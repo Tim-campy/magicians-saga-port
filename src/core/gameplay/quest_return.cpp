@@ -29,6 +29,14 @@ void finish_quest_members(MemberFinishHost& host){
     host.clear_finish_members(FinishMemberList::members);
     host.clear_finish_members(FinishMemberList::sub_members);
 }
+void on_town_quest_return(const TownReturnEvent& event,TownQuestReturnHost& host){
+    // TownSystem.OnReturnFromQuest 0x1169b04: event, score, then return flag.
+    if(event.result==1)host.execute_return_event(1133);
+    const auto damage=host.best_total_damage();
+    const auto score=host.high_score();
+    if(static_cast<std::int64_t>(damage)>score)host.set_high_score(damage);
+    if(host.town_form_exists())host.mark_quest_return();
+}
 void QuestTownContinuation::operator()()const{
     // <ReturnTown>b__0 0x116847c snapshots live area/stage before switching forms.
     if(!host)throw std::invalid_argument("missing town continuation host");

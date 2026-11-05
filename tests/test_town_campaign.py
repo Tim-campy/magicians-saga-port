@@ -137,19 +137,94 @@ class TownCampaignTests(unittest.TestCase):
             self.assertNotEqual(selected['logic_state_hash'],neutral['update']['mission']['logic_state_hash'])
             self.assertEqual(replay,self.state(root,300,*args,'--mission-replay',str(mission_input)))
 
-    def test_retreat_holds_the_same_world_at_return_without_repeating_entry(self):
+    def test_retreat_returns_to_the_same_world_without_repeating_entry(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);self.fixture(root)
             args=self.replay(root,'165 widget 0 250 250\n166 widget 1 250 250\n')
             mission_input=root/'retreat.replay'
             mission_input.write_text(''.join(f'{i} pulse 1048576\n' for i in range(30,181,5))+
                 '200 pulse 33554432\n201 pulse 134217728\n202 answer 0\n',encoding='ascii')
-            held=self.state(root,600,*args,'--mission-replay',str(mission_input));update=held['update'];mission=update['mission']
-            self.assertEqual((update['dispatches'],mission['logic_steps']),(409,202))
-            self.assertEqual(mission['quest_exit'],{'code':3,'outcome':'retreat','handoff':'held','rewards_granted':False})
-            self.assertTrue(mission['transition_pending'] and held['shared_world']['same_hero'])
-            self.assertEqual((update['stamina'],update['stage_menu']['stamina_uses'],mission['quest_detail_count']),(9,1,1))
-            self.assertEqual(held,self.state(root,900,*args,'--mission-replay',str(mission_input)))
+            inputs=(*args,'--mission-replay',str(mission_input))
+            pending=self.state(root,409,*inputs)
+            self.assertTrue(pending['update']['mission']['transition_pending'])
+            callback=self.state(root,410,*inputs)['update']
+            self.assertFalse(callback['mission_active']);self.assertTrue(callback['town_init_pending'])
+            self.assertTrue(callback['quest_return_flag'])
+            self.assertEqual(callback['return_order'],['change_form','event31','return_flag'])
+            returned=self.state(root,411,*inputs);update=returned['update']
+            self.assertEqual(update['town_initializations'],2)
+            self.assertFalse(update['town_init_pending'] or update['quest_return_flag'])
+            self.assertEqual(update['return_order'],['change_form','event31','return_flag','init','return_position','clear_return_flag'])
+            self.assertTrue(returned['shared_world']['same_hero'] and returned['shared_world']['awaiting_quest'])
+            self.assertEqual(returned['shared_world']['initialized_systems'],32)
+            completed=update['completed_missions'];self.assertEqual(len(completed),1)
+            self.assertEqual((completed[0]['frame'],completed[0]['event31']),(410,[3,0,2]))
+            self.assertEqual(completed[0]['mission_at_return']['logic_steps'],202)
+            self.assertEqual(completed[0]['mission_at_return']['quest_detail_count'],1)
+            later=self.state(root,600,*inputs)['update']
+            self.assertEqual(len(later['completed_missions']),1)
+            self.assertEqual((later['stamina'],later['stage_menu']['stamina_uses']),(9,1))
+            self.assertEqual(later['wallet'],update['wallet'])
+            self.assertGreater(later['calls'],update['calls'])
+            self.assertEqual(self.state(root,600,*inputs)['update'],later)
+
+    def test_callback_and_return_init_discard_hidden_town_input(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);self.fixture(root)
+            args=self.replay(root,'165 widget 0 250 250\n166 widget 1 250 250\n')
+            mission_input=root/'retreat.replay';mission_input.write_text(''.join(f'{i} pulse 1048576\n' for i in range(30,181,5))+
+                '200 pulse 33554432\n201 pulse 134217728\n202 answer 0\n',encoding='ascii')
+            inputs=(*args,'--mission-replay',str(mission_input))
+            baseline=self.state(root,412,*inputs)
+            replay=Path(args[1]);replay.write_text(replay.read_text(encoding='ascii')+
+                '410 widget 0 250 500\n411 widget 1 250 500\n',encoding='ascii')
+            ignored=self.state(root,412,*inputs)
+            self.assertEqual(ignored['areas_draw']['selected'],baseline['areas_draw']['selected'])
+            self.assertEqual(ignored['update']['widgets']['events'],baseline['update']['widgets']['events'])
+            self.assertEqual(ignored['update']['replay_modal_ignored'],baseline['update']['replay_modal_ignored']+2)
+            self.assertEqual(ignored['update']['replay_remaining'],0)
+
+    def test_two_native_entries_preserve_rng_wallet_and_canonical_records(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);self.fixture(root)
+            args=self.replay(root,'165 widget 0 250 250\n166 widget 1 250 250\n')
+            mission_input=root/'retreat.replay';mission_input.write_text(''.join(f'{i} pulse 1048576\n' for i in range(30,181,5))+
+                '200 pulse 33554432\n201 pulse 134217728\n202 answer 0\n',encoding='ascii')
+            inputs=(*args,'--mission-replay',str(mission_input))
+            returned=self.state(root,500,*inputs)
+            region=next(r for r in returned['update']['widgets']['regions'] if r[1]==0xc0000)
+            x,y=region[2]+region[4]//2,region[3]+region[5]//2
+            replay=Path(args[1]);replay.write_text(replay.read_text(encoding='ascii')+f'501 widget 0 {x} {y}\n502 widget 1 {x} {y}\n',encoding='ascii')
+            selected=self.state(root,502,*inputs)
+            region=next(r for r in selected['update']['widgets']['regions'] if r[0]==4 and r[1]==28)
+            x,y=region[2]+region[4]//2,region[3]+region[5]//2
+            replay.write_text(replay.read_text(encoding='ascii')+f'503 widget 0 {x} {y}\n504 widget 1 {x} {y}\n506 widget 0 250 250\n507 widget 1 250 250\n',encoding='ascii')
+            entered=self.state(root,548,*inputs)
+            self.assertTrue(entered['update']['mission_active'])
+            self.assertEqual(entered['update']['mission']['logic_steps'],0)
+            self.assertEqual(entered['update']['mission']['quest_detail_count'],2)
+            self.assertEqual(entered['update']['mission']['party_formation'],returned['hero']['formation'])
+            self.assertGreater(entered['shared_world']['gameplay_rng_draws'],returned['shared_world']['gameplay_rng_draws'])
+            complete=self.state(root,900,*inputs);update=complete['update']
+            self.assertEqual((complete['shared_world']['initialized_systems'],update['town_initializations']),(32,3))
+            self.assertTrue(complete['shared_world']['same_hero'])
+            self.assertEqual(len(update['completed_missions']),2)
+            self.assertEqual(update['stamina'],8)
+            self.assertEqual(update['wallet'],returned['update']['wallet'])
+            self.assertEqual(update['completed_missions'][1]['mission_at_return']['quest_record']['challenges'],2)
+            self.assertEqual(complete,self.state(root,900,*inputs))
+
+    def test_shared_world_requires_extracted_town_scale_but_accepts_signed_v2_input(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);self.fixture(root)
+            path=root/'new-game-save.tsv';payload=path.read_text(encoding='ascii')
+            path.write_text(payload.replace('new_game_save 2','new_game_save 1').replace('town_scale 100\n',''),encoding='ascii')
+            rejected=self.run_host(root,1);self.assertNotEqual(rejected.returncode,0)
+            self.assertIn('new-game-save v2',rejected.stderr)
+            path.write_text(payload.replace('town_scale 100','town_scale -2147483648'),encoding='ascii')
+            self.assertEqual(self.run_host(root,1).returncode,0) # Parser preserves width; SetScale is an entry-time contract.
+            path.write_text(payload.replace('town_scale 100','town_scale 2147483648'),encoding='ascii')
+            self.assertNotEqual(self.run_host(root,1).returncode,0)
 
     def test_back_returns_to_same_world_and_formation_without_consumption(self):
         with tempfile.TemporaryDirectory() as directory:

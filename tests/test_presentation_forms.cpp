@@ -81,6 +81,27 @@ struct PageHost final:TalkPageHost {
     }
     void continue_talk(PreparedTalkForm& form)override{calls.push_back("continue");continuation=&form;}
 };
+struct NoticeHost final:EventNoticeHost {
+    std::vector<std::string> calls;
+    std::vector<bool> debug_values{false},held_values{false};
+    std::size_t debug_queries=0,held_queries=0;
+    bool pulse=false,cancel=false,reject_negative=false;
+    std::string failure;
+    std::int32_t selected=-1;
+    void call(const char* name){calls.emplace_back(name);if(failure==name)throw std::runtime_error("synthetic notice failure");}
+    bool debug_command_enabled()override{
+        call("debug");const auto i=debug_queries++;return debug_values.at(i<debug_values.size()?i:debug_values.size()-1);
+    }
+    bool held_advance()override{
+        call("held");const auto i=held_queries++;return held_values.at(i<held_values.size()?i:held_values.size()-1);
+    }
+    void frame_resource()override{call("frame");}
+    bool advance_pulse()override{call("pulse");return pulse;}
+    void set_event(std::int32_t page)override{
+        call("set");selected=page;if(reject_negative&&page<0)throw std::out_of_range("synthetic negative page");
+    }
+    bool cancel_pressed()override{call("cancel");return cancel;}
+};
 int main() {
     Host h;
     std::vector<std::string> decoded_tokens;
@@ -124,6 +145,91 @@ int main() {
         load_talk_definition(row,"6\t-1\t-7\tignored",parse_event_decimal,decode);
         check(row.id==6&&row.character_index==-1&&!row.texts,"any negative string count means null");
         expect<std::invalid_argument>([&]{join_talk_text(row);},"null talk array fails join");
+    }
+    {
+        EventMessageDefinition row;
+        check(row.id==-1&&row.type==0&&row.text.empty(),"event message defaults");
+        decoded_tokens.clear();
+        const auto rows=load_event_message_table("\xef\xbb\xbf" "2\t-8\tunicode\tignored\n0\t7\t zero \r\n2\t9\tlast\n",
+                                                 false,parse_event_decimal,decode);
+        check(rows.size()==3&&rows[0]&&!rows[1]&&rows[2]&&rows[2]->id==2&&rows[2]->type==9&&rows[2]->text==u"last",
+              "event message catalog retains gaps and last duplicate");
+        check(rows[0]->text==u" zero \r"&&decoded_tokens==std::vector<std::string>({"unicode"," zero \r","last"}),
+              "event message decoding follows record order and ignores suffix tokens");
+        const auto normalized=load_event_message_table("0\t3\t\r\n",true,parse_event_decimal,decode);
+        check(normalized[0]->type==3&&normalized[0]->text.empty(),"event message CRLF gate preserves empty text");
+        expect<std::out_of_range>([&]{load_event_message_table("-1\t0\ttext",false,parse_event_decimal,decode);},
+                                  "negative event message id fails catalog placement");
+        row={4,8,u"previous"};
+        load_event_message_definition(row,std::nullopt,parse_event_decimal,decode);
+        load_event_message_definition(row,"",parse_event_decimal,decode);
+        check(row.id==4&&row.type==8&&row.text==u"previous","null and empty event message preserve receiver");
+        expect<std::out_of_range>([&]{load_event_message_definition(row,"5",parse_event_decimal,decode);},"missing message type fails");
+        check(row.id==5&&row.type==8&&row.text==u"previous","id store precedes missing type failure");
+        expect<std::invalid_argument>([&]{load_event_message_definition(row,"6\tbad\tnew",parse_event_decimal,decode);},"invalid message type fails");
+        check(row.id==6&&row.type==8&&row.text==u"previous","id store survives type parser failure");
+        expect<std::out_of_range>([&]{load_event_message_definition(row,"7\t-9",parse_event_decimal,decode);},"missing message text fails");
+        check(row.id==7&&row.type==-9&&row.text==u"previous","both scalars precede missing text failure");
+        expect<std::invalid_argument>([&]{load_event_message_definition(row,"8\t-10\tbad",parse_event_decimal,decode);},"message decoder failure propagates");
+        check(row.id==8&&row.type==-10&&row.text==u"previous","decoder failure keeps immediate scalars and previous text");
+        check(&load_event_message_definition(row,"9\t-11\tunicode\tignored",parse_event_decimal,decode)==&row&&
+              row.id==9&&row.type==-11&&row.text==u"\u00e9\U0001f600","message loader returns its receiver after decoding only text2");
+    }
+    {
+        const PreparedEventForm form{{4,0,0,0},{11,22},{u"first",u"second"},{0,0,0,0}};
+        std::int32_t page=0,frame=16,close=-1;
+        NoticeHost gated;gated.pulse=gated.cancel=true;
+        update_event_notice(form,page,frame,close,gated);
+        check(gated.calls==std::vector<std::string>({"debug"})&&page==0&&frame==16&&close==-1,
+              "frame16 gates resource, advance and cancel without advancing the frame");
+        NoticeHost unheld;unheld.debug_values={true};
+        update_event_notice(form,page,frame,close,unheld);
+        check(unheld.calls==std::vector<std::string>({"debug","held"})&&frame==16,"debug without held input does not bypass opening");
+        frame=17;NoticeHost idle;
+        update_event_notice(form,page,frame,close,idle);
+        check(idle.calls==std::vector<std::string>({"debug","frame","pulse","debug","cancel"})&&frame==17&&page==0&&close==-1,
+              "frame17 frames resource before input and rereads disabled config");
+        frame=16;NoticeHost forced;forced.debug_values={true,false};forced.held_values={true};
+        update_event_notice(form,page,frame,close,forced);
+        check(frame==17&&page==0&&close==-1&&forced.calls==std::vector<std::string>({"debug","held","frame","pulse","debug","cancel"}),
+              "opening force reads config again before deciding whether to advance");
+        NoticeHost fresh;fresh.debug_values={false,true};fresh.held_values={true};
+        update_event_notice(form,page,frame,close,fresh);
+        check(page==1&&frame==17&&fresh.selected==1&&close==-1&&
+              fresh.calls==std::vector<std::string>({"debug","frame","pulse","debug","held","set","cancel"}),
+              "fresh enabled held input advances using page index and preserves animation frame");
+        page=0;NoticeHost pulse;pulse.pulse=true;
+        update_event_notice(form,page,frame,close,pulse);
+        check(page==1&&pulse.selected==1&&pulse.calls==std::vector<std::string>({"debug","frame","pulse","set","cancel"}),
+              "pulse skips the second config and held reads");
+        pulse.calls.clear();pulse.cancel=true;
+        update_event_notice(form,page,frame,close,pulse);
+        check(page==2&&close==8&&pulse.calls==std::vector<std::string>({"debug","frame","pulse"}),
+              "last event schedules close8 and returns before cancel or SetEvent");
+        page=0;close=-1;frame=29;NoticeHost cancel;cancel.cancel=true;
+        update_event_notice(form,page,frame,close,cancel);
+        check(page==0&&frame==29&&close==8&&cancel.calls.back()=="cancel","cancel schedules close without changing page or frame");
+        page=0;close=-1;NoticeHost set_cancel;set_cancel.pulse=set_cancel.cancel=true;
+        update_event_notice(form,page,frame,close,set_cancel);
+        check(page==1&&set_cancel.selected==1&&close==8&&
+              set_cancel.calls==std::vector<std::string>({"debug","frame","pulse","set","cancel"}),
+              "next-page SetEvent precedes cancel checking");
+        page=std::numeric_limits<std::int32_t>::max();close=-1;NoticeHost wrapped;wrapped.pulse=true;wrapped.reject_negative=true;
+        expect<std::out_of_range>([&]{update_event_notice(form,page,frame,close,wrapped);},"wrapped page reaches SetEvent failure");
+        check(page==std::numeric_limits<std::int32_t>::min()&&wrapped.selected==page&&close==-1&&wrapped.calls.back()=="set",
+              "signed wrapped page is compared before forwarding unchanged to SetEvent");
+        for(const auto* failure:{"debug","held","frame","pulse","set","cancel"}){
+            page=0;frame=16;close=-1;NoticeHost failing;
+            failing.debug_values={true};failing.held_values={true};failing.pulse=true;failing.failure=failure;
+            expect<std::runtime_error>([&]{update_event_notice(form,page,frame,close,failing);},"notice callback failure propagates");
+            const std::string name=failure;
+            const std::vector<std::string> sequence{"debug","held","frame","pulse","set","cancel"};
+            std::vector<std::string> prefix;
+            for(const auto& call:sequence){prefix.push_back(call);if(call==name)break;}
+            check(failing.calls==prefix&&close==-1,"notice failure retains only its ordered call prefix");
+            check(frame==((name=="debug"||name=="held")?16:17),"opening force survives only later failures");
+            check(page==((name=="set"||name=="cancel")?1:0),"page increment survives SetEvent and cancel failures");
+        }
     }
     {
         auto form=prepare_talk_form(2,u"first\tsecond",{},h);

@@ -38,7 +38,10 @@ NewGameSaveDefaults read_new_game_save_defaults(const std::filesystem::path& roo
     std::ifstream seeds(path);seeds.imbue(std::locale::classic());std::string signature,selection,town,wallet;
     std::int32_t version=0;NewGameSaveDefaults result{};
     if(!(seeds>>signature>>version>>selection>>result.area8>>result.quest9>>town>>result.town_capacity>>wallet>>result.money>>result.crystals)||
-       signature!="new_game_save"||version!=1||selection!="selection"||town!="town_capacity"||wallet!="wallet")throw std::invalid_argument("invalid new-game save defaults");
+       signature!="new_game_save"||(version!=1&&version!=2)||selection!="selection"||town!="town_capacity"||wallet!="wallet")throw std::invalid_argument("invalid new-game save defaults");
+    if(version==2){std::string label;std::int32_t value=0;
+        if(!(seeds>>label>>value)||label!="town_scale")throw std::invalid_argument("invalid new-game town scale");result.town_scale=value;
+    }
     seeds>>std::ws;if(!seeds.eof())throw std::invalid_argument("unexpected new-game default fields");return result;
 }
 GameInitialization read_game_initialization(const std::filesystem::path& root){

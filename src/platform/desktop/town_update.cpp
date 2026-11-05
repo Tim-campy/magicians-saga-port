@@ -77,7 +77,8 @@ std::vector<TownReplayAction> read_town_replay(const std::filesystem::path& path
 }
 struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,SelectMarkerHost,
     SelectNavigationHost,SelectBuildingHost,SelectTownButtonsHost,SelectGuidanceSaveHost,
-    SelectReviewHost,SelectTriggerHost,SelectGuideHost,SelectNotificationHost,TownPermissionHost,SelectTouchHost,SelectWidgetHost,FormStackHost {
+    SelectReviewHost,SelectTriggerHost,SelectGuideHost,SelectNotificationHost,TownPermissionHost,SelectTouchHost,SelectWidgetHost,FormStackHost,
+    MissionTownReturn,TownQuestReturnHost,SelectReturnPositionHost {
     TownBackground& town;
     ResourceArchive& tables;
     GameInitialization initial;
@@ -91,6 +92,52 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
     bool stage_pending=false,stage_initialized=false,stage_back_requested=false;
     bool quest_handoff=false,camera_reset_requested=false,mission_active=false;
     std::uint64_t mission_entry_frame=0;
+    bool town_init_pending=false,quest_return_flag=false;
+    std::uint64_t town_initializations=1,return_callback_frame=0;
+    struct CompletedMission {TownReturnEvent event;std::uint64_t frame,steps;std::string state;};
+    std::vector<CompletedMission> completed;
+    std::string returning_state;
+    std::vector<std::int32_t> return_event_attempts;
+    std::vector<std::string> return_order;
+    void refresh_progression();
+    void apply_numeric_effect(const EventIntegers&);
+    void initialize_returned_town();
+    void change_to_town_form(bool option)override{
+        if(option||!mission_active)throw std::logic_error("unsupported retained town switch");
+        return_order.push_back("change_form");town_init_pending=true;
+        events.bind_numeric_effect([this](const EventIntegers& row){apply_numeric_effect(row);});
+    }
+    void send_town_return(std::int32_t id,const TownReturnEvent& event)override{
+        if(id!=31||!town_init_pending)throw std::logic_error("town return requires queued form before event31");
+        return_order.push_back("event31");town.shared_world_->dispatch_town_return(event,*this);
+        completed.push_back({event,dispatches,town.shared_world_->logic_steps,returning_state});
+    }
+    void execute_return_event(std::int32_t id)override{return_event_attempts.push_back(id);events.execute(id);}
+    std::int32_t best_total_damage()override{
+        std::int32_t maximum=0;
+        for(const auto& quest:town.quest_records_){
+            if(!quest||!quest->record)throw std::invalid_argument("best-damage scan requires every quest and record");
+            maximum=std::max(maximum,quest->record->best_damage);
+        }
+        return maximum;
+    }
+    std::int64_t high_score()override{return system_longs->at(8);}
+    void set_high_score(std::int64_t value)override{system_longs->at(8)=value;}
+    bool town_form_exists()override{return true;}
+    void mark_quest_return()override{quest_return_flag=true;return_order.push_back("return_flag");}
+    EventInstruction return_saved_integers()override{return town.save_integers_;}
+    EventInstruction return_area_position(std::int32_t id)override{
+        const auto p=town.area_position(id);return std::make_shared<EventIntegers>(EventIntegers{p[0],p[1]});
+    }
+    void return_scale(std::int32_t value)override{
+        // Native SetScale0x11eff94 clamps80..150 and returns before any viewport/save queries if unchanged.
+        if(camera_clamp(value,80,150)!=town.context_.form_scale)town_unbound("returned town scale surface transform");
+    }
+    std::int32_t return_game_width()override{return town.game_width();}
+    std::int32_t return_game_height()override{return town.game_height();}
+    std::int32_t return_surface_game_height()override{return town.view_height();}
+    void return_camera_position(std::int32_t x,std::int32_t y)override{set_select_camera_position(town.camera_,x,y,town);}
+
     std::uint64_t stage_opened=0,stage_closed=0,stage_dispatches=0;
     TownInitializationState permissions;
     std::shared_ptr<TownTable> records;
@@ -158,6 +205,9 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
     std::vector<TownReplayAction> replay;
     std::size_t replay_index=0;
     std::uint32_t button_pulses=0;
+    void discard_hidden_replay(std::uint64_t frame){
+        while(replay_index<replay.size()&&replay[replay_index].frame<=frame){++replay_index;++replay_modal_ignored;}
+    }
     std::uint64_t replay_applied=0,replay_modal_ignored=0;
     bool apply_input(std::uint64_t frame,bool pulse){
         button_pulses=0;
@@ -195,13 +245,16 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
          local_events(town.shared_world_?nullptr:std::make_unique<MissionEvents>(data_tables,scenario(root,initial),[this]{clear_input();})),
          events(town.shared_world_?town.shared_world_->event_owner():*local_events),data_root(root){
         events.bind_clear_input([this]{clear_input();});
+        if(town.shared_world_)events.bind_numeric_effect([this](const EventIntegers& row){apply_numeric_effect(row);});
         if(town.context_.input_replay)replay=read_town_replay(*town.context_.input_replay);
         if(tables.selected_profile().language_folder!="English.lproj")throw std::invalid_argument("town Update font binding requires English/default skin");
         const auto data=tables.data("Town.txt");if(!data)throw std::invalid_argument("town Update requires Town.txt");
         records=std::make_shared<TownTable>(load_town_table(std::string_view(reinterpret_cast<const char*>(data->bytes.data()),data->bytes.size()),false,parse_event_decimal));
         permissions.build_enable=town.building_enabled_;
         const auto defaults=read_new_game_save_defaults(root);const auto& save=*initial.town;
-        system_longs->at(1)=save.stamina;
+        system_longs->at(1)=save.stamina;system_longs->at(8)=town.context_.high_score;
+        if(town.shared_world_&&!defaults.town_scale)throw std::invalid_argument("shared world requires new-game-save v2; regenerate --new-game-save");
+        if(defaults.town_scale)town.save_integers_->at(13)=*defaults.town_scale;
         town.save_integers_->at(0)=save.normal_flags;town.save_integers_->at(7)=save.talk_character;
         town.save_integers_->at(8)=defaults.area8;town.save_integers_->at(9)=defaults.quest9;
         system_save->at(1)=save.system_flags;system_save->at(21)=save.review_coin;system_save->at(22)=save.reviewed;
@@ -248,6 +301,7 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
         // Retain actual row aliases in this host's explicit resource-registration
         // order; no Update callback changes dictionary membership during a pass.
         clocks=town.image_clock_values_;
+        if(town.shared_world_)refresh_progression();
     }
     bool top()const{return !events.pending()&&!stage_pending;}
     std::int32_t game_width()override{return town.game_width();}
@@ -607,9 +661,9 @@ void TownBackground::UpdateOwner::cancel_stage_widget(){if(stage)stage->row_capt
 void TownBackground::draw_stage_overlay(BitmapBackend& backend){
     if(update_owner_&&update_owner_->stage_pending&&update_owner_->stage_initialized)update_owner_->stage->draw(backend);
 }
-MissionProfile* TownBackground::active_mission()const{return update_owner_&&update_owner_->mission_active?shared_world_.get():nullptr;}
+MissionProfile* TownBackground::active_mission()const{return update_owner_&&(update_owner_->mission_active||update_owner_->town_init_pending)?shared_world_.get():nullptr;}
 bool TownBackground::quest_handoff_pending()const{
-    return update_owner_&&(update_owner_->quest_handoff||(active_mission()&&shared_world_->humans->transition_pending()));
+    return update_owner_&&update_owner_->quest_handoff;
 }
 EventObject TownBackground::UpdateOwner::area_form(){if(!stage)stage=std::make_shared<Stage>(*this);return stage;}
 void TownBackground::UpdateOwner::push(EventObject parent,EventObject child,bool option){
@@ -654,18 +708,113 @@ void TownBackground::UpdateOwner::report_stage(std::ostream& out)const{
     for(std::size_t i=0;i<stage->rows.size();++i){if(i)out<<',';const auto& r=stage->rows[i];out<<'['<<r.control.group<<','<<r.control.value<<','<<r.bounds.x<<','<<r.bounds.y<<','<<r.bounds.width<<','<<r.bounds.height<<']';}
     out<<"]}";
 }
+void TownBackground::UpdateOwner::apply_numeric_effect(const EventIntegers& row){
+    if(!town.shared_world_)town_unbound("numeric event progression requires shared world");
+    auto& results=town.shared_world_->humans->result_owner();
+    EventProgression state{results.money(),results.crystals(),initial.yugami,{},{}};
+    const auto opcode=row.at(0);
+    std::shared_ptr<DiscoveryState> discovery;
+    if(opcode==4){
+        const auto id=static_cast<std::size_t>(row.at(1));auto& target=town.progress_.at(id);
+        if(!target)throw std::invalid_argument("null event area record");
+        state.areas.resize(town.progress_.size());discovery=std::make_shared<DiscoveryState>(DiscoveryState{target->discovery_state,target->is_new});state.areas.at(id)=discovery;
+    }else if(opcode==15){
+        const auto id=static_cast<std::size_t>(row.at(1));auto& target=town.quest_records_.at(id);
+        if(!target)throw std::invalid_argument("null event quest record");
+        state.quests.resize(town.quest_records_.size());discovery=std::make_shared<DiscoveryState>(DiscoveryState{target->discovery_state,target->is_new});state.quests.at(id)=discovery;
+    }
+    if(!apply_event_progression(row,state))throw std::logic_error("unsupported numeric event binding");
+    if(opcode==1)results.set_money(state.money);
+    else if(opcode==2)results.set_crystals(state.crystals);
+    else if(opcode==4){const auto i=static_cast<std::size_t>(row.at(1));auto& target=*town.progress_.at(i);target.discovery_state=discovery->state;target.is_new=discovery->is_new;
+        town.camera_areas_->at(i)->state=target.discovery_state;town.area_views_->at(i)->discovery=target.discovery_state;*town.resident_conditions_.area_states->at(i)=target.discovery_state;
+    }else if(opcode==15){auto& target=*town.quest_records_.at(static_cast<std::size_t>(row.at(1)));target.discovery_state=discovery->state;target.is_new=discovery->is_new;}
+    refresh_progression();
+}
+void TownBackground::UpdateOwner::refresh_progression(){
+    if(!town.shared_world_)return;
+    const auto& saved=town.shared_world_->progress;const auto& results=town.shared_world_->humans->result_owner();
+    auto& conditions=town.resident_conditions_;
+    conditions.money=results.money();conditions.crystals=results.crystals();conditions.stamina=system_longs->at(1);
+    conditions.high_score=high_score();town.context_.high_score=high_score();conditions.town_capacity=town.save_integers_->at(19);
+    const auto* hero=member_hero(&town.shared_world_->entity_world->player_world());
+    if(!hero)throw std::invalid_argument("town refresh requires MemberHero");
+    const auto* human=dynamic_cast<HumanRecordLink*>(hero->get(14));
+    if(!human)throw std::invalid_argument("town hero requires Human");conditions.hero_level=saved.characters.at(human->character_id).level;
+    for(std::size_t i=0;i<town.character_states_.size();++i)if(town.character_states_[i]){
+        auto& state=*town.character_states_[i];const auto id=static_cast<std::int32_t>(i);
+        const auto& live=saved.characters.at(id);const auto& recruited=results.recruit(id);
+        state.level=live.level;state.experience=live.experience;
+        state.discovery_state=recruited.discovery_state;state.is_new=recruited.is_new;state.recruited=recruited.recruited;
+        if(const auto sortie=saved.sortie_counts.find(id);sortie!=saved.sortie_counts.end())state.sorties=sortie->second;
+        if(conditions.characters->at(i))*conditions.characters->at(i)={state.recruited,static_cast<std::uint8_t>(town.characters_->at(i)->flags)};
+    }
+    std::uint32_t challenges=0;
+    for(std::size_t i=0;i<town.quest_records_.size();++i)if(town.quest_records_[i]){
+        const auto& q=*town.quest_records_[i];if(!q.record)throw std::invalid_argument("town refresh requires quest record");const auto& r=*q.record;
+        *conditions.quests->at(i)={static_cast<std::uint8_t>(q.stage.flags),q.stage.completed!=0,QuestConditionRecord{r.challenges,r.clears,r.rescued}};
+        *marker_quests->at(i)={q.discovery_state,static_cast<std::uint8_t>(q.stage.flags),q.stage.completed!=0};
+        challenges+=static_cast<std::uint32_t>(r.challenges);
+    }
+    town.resident_challenges_=challenges<=0x7fffffffU?static_cast<std::int32_t>(challenges):-1-static_cast<std::int32_t>(0xffffffffU-challenges);
+    for(const auto kind:{EquipmentMarkerKind::Equipment,EquipmentMarkerKind::Hat,EquipmentMarkerKind::Cloth}){
+        const auto item_kind=kind==EquipmentMarkerKind::Equipment?RewardItem::weapon:kind==EquipmentMarkerKind::Hat?RewardItem::hat:RewardItem::cloth;
+        auto& projected=*marker_items[static_cast<std::size_t>(kind)];const auto& table=town.marker_equipment(kind);
+        for(std::size_t i=0;i<table.size();++i)if(table[i]){
+            const auto& stock=results.inventory(item_kind,table[i]->id);
+            *projected.at(i)={stock.stock,static_cast<std::uint32_t>(table[i]->flags),stock.is_new};
+        }
+    }
+}
+void TownBackground::UpdateOwner::initialize_returned_town(){
+    if(!town_init_pending||!town.shared_world_)throw std::logic_error("returned Init requires queued retained town");
+    // SAGA_STUB(campaign-quest-resources): QuestForm.Finish releases touch effects,
+    // resBg/resQuest and its quest clock entry; the desktop retains bounded decoded
+    // resource caches. Town uses its own registered clock set; World/progress survive.
+    return_order.push_back("init");refresh_progression();
+    // SelectForm.Init0x11e9c28: preserve constructor-owned gestures, wind,
+    // gift value, guide array and autoSave. Only reached Init stores are repeated.
+    town.context_.form_scale=100;town.town_frame_=0;town.pass_->events.event_check_requested=true;
+    town.selected_chip_=town.selected_area_=-1;town.notices_=std::make_shared<std::vector<EventInstruction>>();
+    town.scenery_.clouds=std::make_shared<std::vector<EventInstruction>>();
+    town.movement_.witch_x=40;town.movement_.direction=1;town.movement_.drag_distance=40;
+    set_select_active_x(town.camera_,town);set_select_camera_position(town.camera_,0,-9999,town);
+    initialize_select_scenery_clouds(town.scenery_,town);
+    town.form_state_=0;initialize_select_decorations(town.scenery_,town);town.pass_->markers.scene_resume=true;
+    town.area_marks_=std::make_shared<EventIntegers>(town.areas_.size(),0);
+    bubble.index=-1;bubble.text=std::make_shared<const std::string>();bubble.frames=0;town.movement_.collision_id=0;
+    initialize_town_residents(town.residents_,town);town.town_state_.resident_present_value=town.residents_.present_value;
+    town.shared_world_->reset_town_cache(town.building_cache_);town.resident_conditions_.buildings=town.building_cache_;
+    events.bind_clear_input([this]{clear_input();});events.bind_normal_save(town.save_integers_);
+    events.bind_application_push([this](EventObject child){push_select_form(town.pass_->form,std::move(child),town.pass_->auto_save,town.pass_->events.event_check_requested);});
+    if(quest_return_flag){return_order.push_back("return_position");set_select_return_position(town.movement_,*this);}
+    quest_return_flag=false;return_order.push_back("clear_return_flag");
+    town_init_pending=false;++town_initializations;
+}
 void TownBackground::initialize_update(ResourceArchive& tables,const std::filesystem::path& root){
     if(update_owner_||!context_.foreground||context_.motion||!context_.top_form)throw std::invalid_argument("full town Update requires fresh foreground/top form and excludes selected motion");
     update_owner_=std::make_shared<UpdateOwner>(*this,tables,root);
 }
 void TownBackground::advance_update(std::uint64_t frame,bool pulse){
     if(!update_owner_)throw std::logic_error("town Update not initialized");auto& owner=*update_owner_;++owner.dispatches;
+    if(owner.town_init_pending){owner.discard_hidden_replay(frame);owner.initialize_returned_town();owner.clear_input();context_.top_form=true;return;}
     if(owner.mission_active){
+        if(shared_world_->humans->transition_pending()){
+            owner.discard_hidden_replay(frame);
+            // SAGA_STUB(campaign-transition-frame): next dispatch replaces the native transition effect timing.
+            std::ostringstream snapshot;snapshot<<"{\"logic_steps\":"<<shared_world_->logic_steps;
+            shared_world_->write_combat_report(snapshot);snapshot<<'}';owner.returning_state=snapshot.str();
+            shared_world_->complete_town_return(owner);owner.return_callback_frame=frame;
+            owner.mission_active=false;context_.top_form=false;return;
+        }
         // Town replay is application-frame based; mission replay is relative to QuestForm entry.
         // No town rule or projection runs while the mission owns the foreground.
         if(pulse)shared_world_->humans->pulse_stage_keys(0x100000U);
-        shared_world_->step(frame);context_.top_form=false;return;
+        shared_world_->step(frame);
+        owner.discard_hidden_replay(frame);
+        context_.top_form=false;return;
     }
+    if(shared_world_&&!owner.completed.empty())owner.refresh_progression();
     pulse=owner.apply_input(frame,pulse);
     if(owner.advance_stage()){++owner.modal_dispatches;context_.top_form=false;return;}
     if(owner.events.advance(frame,40,pulse,false)){++owner.modal_dispatches;context_.top_form=false;return;}
@@ -730,6 +879,15 @@ void TownBackground::report_update(std::ostream& out)const{
     owner.report_stage(out);owner.events.write_report(out);
     out<<",\"mission_active\":"<<(owner.mission_active?"true":"false")<<",\"mission_entry_frame\":"<<owner.mission_entry_frame;
     out<<",\"mission\":";if(owner.mission_active){out<<"{\"logic_steps\":"<<shared_world_->logic_steps;shared_world_->write_combat_report(out);out<<'}';}else out<<"null";
-    out<<'}';
+    out<<",\"town_initializations\":"<<owner.town_initializations<<",\"town_init_pending\":"<<(owner.town_init_pending?"true":"false")
+       <<",\"quest_return_flag\":"<<(owner.quest_return_flag?"true":"false")<<",\"high_score\":"<<owner.system_longs->at(8)
+       <<",\"wallet\":{\"money\":"<<(shared_world_?shared_world_->humans->result_owner().money():*resident_conditions_.money)
+       <<",\"crystals\":"<<(shared_world_?shared_world_->humans->result_owner().crystals():*resident_conditions_.crystals)<<"},\"return_order\":[";
+    for(std::size_t i=0;i<owner.return_order.size();++i){if(i)out<<',';out<<std::quoted(owner.return_order[i]);}
+    out<<"],\"return_event_attempts\":[";for(std::size_t i=0;i<owner.return_event_attempts.size();++i){if(i)out<<',';out<<owner.return_event_attempts[i];}
+    out<<"],\"completed_missions\":[";
+    for(std::size_t i=0;i<owner.completed.size();++i){if(i)out<<',';const auto& c=owner.completed[i];
+        out<<"{\"frame\":"<<c.frame<<",\"delivery\":\"delivered\",\"event31\":["<<c.event.result<<','<<c.event.area_id<<','<<c.event.stage<<"],\"mission_at_return\":"<<c.state<<'}';}
+    out<<"]}";
 }
 } // namespace saga::desktop

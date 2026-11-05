@@ -1,4 +1,5 @@
 """Full town controller, automatic events and modal pause on synthetic records."""
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -10,6 +11,7 @@ import unittest
 EXE=Path(sys.argv.pop(1)).resolve() if len(sys.argv)>1 else None
 sys.path.insert(0,str(Path(__file__).resolve().parent))
 from town_fixture import add_town_background
+from test_sprite_preview import jar
 
 
 @unittest.skipUnless(EXE and os.environ.get('SAGA_TEST_FONT'),'CTest host and public font required')
@@ -49,6 +51,65 @@ class TownUpdateTests(unittest.TestCase):
             third=self.state(root,3)['update']
             self.assertEqual(third['talk_lifecycle'],['push:0','push:1','init:1','init:0','resume:0'])
             self.assertEqual((third['calls'],third['modal_dispatches'],third['talk']['frame']),(2,1,1))
+
+    def test_event_notice_uses_draw_clock_and_closes_without_text_reveal(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);self.fixture(root)
+            spec=importlib.util.spec_from_file_location('notice_extractor',Path(__file__).resolve().parents[1]/'tools/extract_assets.py')
+            extractor=importlib.util.module_from_spec(spec);spec.loader.exec_module(extractor)
+            path=root/'textassets/tables.bin';tables=dict(extractor.unpack_container(path.read_bytes()))
+            tables['English.lproj/Event.txt']=b'0\tNotice\t0\t1\t3\t2\t0\t1\t1\t2\t12\t0'
+            tables['English.lproj/EventMsg.txt']=b'0\t2\tSynthetic notice'
+            path.write_bytes(jar(list(tables.items())))
+            first=self.state(root,1)['update']
+            self.assertEqual((first['talk_forms_opened'],first['talk_lifecycle']),(1,['push:0','reinsert:0']))
+            before=self.state(root,17,'--talk-pulse-every','10')['update']
+            self.assertEqual((before['event_notice']['frame'],before['event_notice']['page']),(16,0))
+            ready=self.state(root,18,'--talk-pulse-every','10')['update']
+            self.assertEqual(ready['event_notice']['frame'],17)
+            closing=self.state(root,20,'--talk-pulse-every','10')['update']
+            self.assertEqual((closing['event_notice']['page'],closing['talk']['close_counter']),(1,8))
+            self.assertEqual(closing['event_notice']['frame'],18) # No end-page Draw while closing.
+            closed=self.state(root,28,'--talk-pulse-every','10')['update']
+            self.assertFalse(closed['talk_pending']);self.assertEqual(closed['talk_forms_closed'],1)
+            self.assertEqual(closed['talk_lifecycle'].count('init:0'),1)
+            self.assertGreater(closed['calls'],first['calls'])
+
+    def test_immediate_automatic_talk_reinserts_same_form_without_second_init(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);self.fixture(root)
+            spec=importlib.util.spec_from_file_location('town_test_extractor',Path(__file__).resolve().parents[1]/'tools/extract_assets.py')
+            extractor=importlib.util.module_from_spec(spec);spec.loader.exec_module(extractor)
+            path=root/'textassets/tables.bin'
+            tables=dict(extractor.unpack_container(path.read_bytes()))
+            # Keep Event0's eligible money term, replacing its delay/two talks
+            # with one immediate opcode8. AppData.Push and SelectForm's returned
+            # form path must both push this single factory-created identity.
+            tables['English.lproj/Event.txt']=b'0\tIntro\t0\t1\t3\t2\t0\t1\t1\t2\t8\t0'
+            path.write_bytes(jar(list(tables.items())))
+            first=self.state(root,1)['update']
+            self.assertEqual(first['event_execution_counts'],[[0,1]])
+            self.assertEqual((first['delay_count'],first['talk_forms_opened'],first['talk_forms_closed']),(0,1,0))
+            self.assertEqual(first['talk_lifecycle'],['push:0','reinsert:0'])
+            self.assertTrue(first['talk_pending']);self.assertTrue(first['auto_save'])
+            initialized=self.state(root,2)['update']
+            self.assertEqual(initialized['talk_lifecycle'],['push:0','reinsert:0','init:0','resume:0'])
+            self.assertEqual((initialized['calls'],initialized['modal_dispatches'],initialized['talk']['frame']),(1,1,1))
+            before=self.state(root,60);paused=self.state(root,120)
+            self.assertEqual(paused['update']['calls'],1)
+            self.assertEqual(paused['update']['modal_dispatches'],119)
+            self.assertEqual(paused['scenery'],before['scenery'])
+            self.assertEqual(paused['residents']['rows'],before['residents']['rows'])
+            self.assertEqual(paused['update']['image_clock_ticks'],before['update']['image_clock_ticks'])
+            resumed=self.state(root,160,'--talk-pulse-every','10')['update']
+            self.assertFalse(resumed['talk_pending'])
+            self.assertEqual((resumed['talk_forms_opened'],resumed['talk_forms_closed']),(1,1))
+            self.assertEqual(resumed['talk_lifecycle'].count('init:0'),1)
+            self.assertEqual(resumed['talk_lifecycle'].count('remove:0'),1)
+            self.assertEqual(resumed['event_execution_counts'],[[0,1]])
+            self.assertGreater(resumed['calls'],1)
+            self.assertEqual(resumed['calls']+resumed['modal_dispatches'],160)
+            self.assertEqual(resumed['save_requests'],1)
 
     def test_modal_wait_freezes_town_motion_and_live_image_clocks(self):
         with tempfile.TemporaryDirectory() as directory:

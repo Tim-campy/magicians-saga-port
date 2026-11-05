@@ -1,5 +1,6 @@
 #include "core/gameplay/select_camera.hpp"
 #include "core/gameplay/input_frame.hpp"
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <functional>
@@ -59,6 +60,92 @@ struct TouchFixture {
     SelectFormTouch event{0,50,0,0,0,&control};
     void send(std::int32_t type){on_select_camera_touch(touch,type,&event,host);}
 };
+struct ReturnPositionHost final:SelectReturnPositionHost {
+    EventInstruction save=std::make_shared<EventIntegers>(14,0);
+    EventInstruction position=std::make_shared<EventIntegers>(EventIntegers{100,999});
+    std::vector<std::string> calls;std::string fail;
+    std::function<void(const std::string&)> hook;
+    std::int32_t width=301,height=500,surface_height=640,area=-1,scale=-1,x=0,y=0;
+    int save_calls=0;
+    ReturnPositionHost(){save->at(8)=3;save->at(13)=80;}
+    void call(const std::string& name){calls.push_back(name);if(hook)hook(name);if(name==fail)throw std::runtime_error(name);}
+    EventInstruction return_saved_integers()override{call("save"+std::to_string(++save_calls));return save;}
+    EventInstruction return_area_position(std::int32_t value)override{area=value;call("area");return position;}
+    void return_scale(std::int32_t value)override{scale=value;call("scale");}
+    std::int32_t return_game_width()override{call("width");return width;}
+    std::int32_t return_game_height()override{call("height");return height;}
+    std::int32_t return_surface_game_height()override{call("surface_height");return surface_height;}
+    void return_camera_position(std::int32_t a,std::int32_t b)override{x=a;y=b;call("camera");}
+};
+void test_return_position(){
+    const std::vector<std::string> order{"save1","area","save2","scale","width","height","surface_height","camera"};
+    {SelectTouchMoveState state{true,-17,23,2,9};ReturnPositionHost h;
+     set_select_return_position(state,h);
+     check(h.calls==order&&h.area==3&&h.scale==80&&h.x==315&&h.y==-180);
+     check(state.witch_x==165&&state.drag_distance==165&&state.enabled&&state.direction==2&&state.collision_id==9);}
+    {SelectTouchMoveState state{false,-17,23,1,0};ReturnPositionHost h;h.position->resize(1);
+     set_select_return_position(state,h);check(state.witch_x==165&&h.x==315);} // Caller requires only cell0.
+    {SelectTouchMoveState state{false,-17,23,1,0};ReturnPositionHost h;const auto original=h.save;
+     h.hook=[&](const std::string& call){if(call=="area"){h.save=std::make_shared<EventIntegers>(14,0);h.save->at(8)=99;h.save->at(13)=61;}};
+     set_select_return_position(state,h);check(h.area==3&&h.scale==61&&original->at(13)==80&&state.witch_x==165);}
+    {SelectTouchMoveState state{false,-17,23,1,0};ReturnPositionHost h;
+     h.hook=[&](const std::string& call){if(call=="scale")state.witch_x=-123.75F;else if(call=="width")state.witch_x=444;
+         else if(call=="camera")state.witch_x=777;};
+     set_select_return_position(state,h);check(h.x==273&&state.witch_x==777&&state.drag_distance==777);}
+    {SelectTouchMoveState state{false,-17,23,1,0};ReturnPositionHost h;
+     h.position->at(0)=std::numeric_limits<std::int32_t>::max()-64;h.width=2;
+     h.height=std::numeric_limits<std::int32_t>::max();h.surface_height=std::numeric_limits<std::int32_t>::min();
+     set_select_return_position(state,h);
+     check(state.witch_x==-2147483648.0F&&h.x==std::numeric_limits<std::int32_t>::min()&&h.y==-41);}
+    struct Conversion {float value;std::int32_t absolute;};
+    const Conversion conversions[]{{-1.9F,1},{-0.0F,0},{std::numeric_limits<float>::quiet_NaN(),0},
+        {std::numeric_limits<float>::infinity(),std::numeric_limits<std::int32_t>::min()},
+        {-std::numeric_limits<float>::infinity(),std::numeric_limits<std::int32_t>::min()},
+        {2147483648.0F,std::numeric_limits<std::int32_t>::max()},
+        {-3.0e10F,std::numeric_limits<std::int32_t>::max()}};
+    for(const auto& conversion:conversions){
+        SelectTouchMoveState state{false,-17,23,1,0};ReturnPositionHost h;h.width=-3;
+        h.hook=[&](const std::string& call){if(call=="scale")state.witch_x=conversion.value;};
+        set_select_return_position(state,h);
+        const auto expected=conversion.absolute==std::numeric_limits<std::int32_t>::min()?
+            std::numeric_limits<std::int32_t>::max():conversion.absolute-1;
+        check(h.x==expected);
+        if(std::isnan(conversion.value))check(std::isnan(state.drag_distance));
+        else check(state.drag_distance==conversion.value&&std::signbit(state.drag_distance)==std::signbit(conversion.value));
+    }
+    for(const auto& failure:order){
+        SelectTouchMoveState state{false,-17,23,1,0};ReturnPositionHost h;h.fail=failure;
+        touch_fails<std::runtime_error>([&]{set_select_return_position(state,h);});
+        const auto end=std::find(order.begin(),order.end(),failure)+1;
+        check(h.calls==std::vector<std::string>(order.begin(),end)&&state.drag_distance==23);
+        check(state.witch_x==(end>order.begin()+2?165:-17));
+    }
+    for(const bool missing:{false,true}){
+        SelectTouchMoveState state{false,-17,23,1,0};ReturnPositionHost h;
+        if(missing)h.save.reset();else h.save->resize(8);
+        if(missing)touch_fails<std::invalid_argument>([&]{set_select_return_position(state,h);});
+        else touch_fails<std::out_of_range>([&]{set_select_return_position(state,h);});
+        check(h.calls==std::vector<std::string>{"save1"}&&state.witch_x==-17&&state.drag_distance==23);
+    }
+    for(const bool missing:{false,true}){
+        SelectTouchMoveState state{false,-17,23,1,0};ReturnPositionHost h;
+        if(missing)h.position.reset();else h.position->clear();
+        if(missing)touch_fails<std::invalid_argument>([&]{set_select_return_position(state,h);});
+        else touch_fails<std::out_of_range>([&]{set_select_return_position(state,h);});
+        check(h.calls==std::vector<std::string>({"save1","area"})&&state.witch_x==-17&&state.drag_distance==23);
+    }
+    for(const bool missing:{false,true}){
+        SelectTouchMoveState state{false,-17,23,1,0};ReturnPositionHost h;
+        h.hook=[&](const std::string& call){if(call=="area"){if(missing)h.save.reset();else h.save->resize(13);}};
+        if(missing)touch_fails<std::invalid_argument>([&]{set_select_return_position(state,h);});
+        else touch_fails<std::out_of_range>([&]{set_select_return_position(state,h);});
+        check(h.calls==std::vector<std::string>({"save1","area","save2"})&&state.witch_x==165&&state.drag_distance==23);
+    }
+    {SelectTouchMoveState state{false,-17,23,1,0};ReturnPositionHost h;h.fail="camera";
+     h.hook=[&](const std::string& call){if(call=="camera")state.witch_x=999;};
+     touch_fails<std::runtime_error>([&]{set_select_return_position(state,h);});
+     check(state.witch_x==999&&state.drag_distance==23);}
+}
 void test_touch_producers(){
     {TouchFixture f;set_select_touch_value(f.touch,0x2203e7U,999,f.host);check(f.chip==999&&f.area==-1);
      check(get_select_touch_value(f.touch,0x22ffffU,-8,f.host)==999);
@@ -131,6 +218,7 @@ void test_touch_producers(){
     {TouchFixture f;f.touch.history.reset();f.send(-1);f.send(13);check(f.host.calls.empty());}
 }
 int main() {
+    test_return_position();
     test_touch_producers();
     {Host h;check(select_area_number(h)==-1&&h.area_calls==1);}
     {Host h;for(auto state:{1,0,2,1})h.areas->push_back(std::make_shared<CameraAreaRecord>(CameraAreaRecord{state}));

@@ -51,7 +51,10 @@ void MissionProfile::initialize_factory(std::int32_t id,InitializationWorld* arg
     switch(id){
     case 0:case 3:case 4:case 5:case 6:case 10:humans->initialize_system(id,argument);break;
     case 1:case 8:case 17:case 20:case 24:spatial->initialize_system(id);break;
-    case 7:initialize_town_entry(this,[](const TownReturnEvent&){throw std::logic_error("town return requires S2 progression/event1133 services");});break;
+    case 7:initialize_town_entry(this,[this](const TownReturnEvent& event){
+        if(!town_return_destination_)throw std::logic_error("town return requires S2 progression/event1133 services");
+        on_town_quest_return(event,*town_return_destination_);
+    });break;
     case 27:initialize_submenu(this,[this](const InputTouch* event,ComponentSlots*){submenu_button_touch(event);++submenu_touches_;});break;
     case 28:initialize_menu(menu_shapes_,this,menu_button_receiver_,[]{throw std::logic_error("native menu orientation layout is unbound");});break;
     case 29:initialize_status_render();break;
@@ -1056,6 +1059,12 @@ void MissionProfile::flag_off(std::uint32_t mask){
     const auto bits=static_cast<std::uint32_t>(campaign_system_save_->at(1))&~mask;
     campaign_system_save_->at(1)=bits<=0x7fffffffU?static_cast<std::int32_t>(bits):-1-static_cast<std::int32_t>(0xffffffffU-bits);
 }
+void MissionProfile::dispatch_town_return(const TownReturnEvent& event,TownQuestReturnHost& destination){
+    if(!town_return_||town_return_destination_)throw std::logic_error("missing town event31 subscription or nested dispatch");
+    town_return_destination_=&destination;
+    try{town_return_(event);}catch(...){town_return_destination_=nullptr;throw;}
+    town_return_destination_=nullptr;
+}
 void MissionProfile::enter_selected_quest(EventInstruction normal,EventInstruction system){
     if(!awaiting_quest_||!initialization_complete_||!catalog||!catalog->areas||!catalog->quests||!humans||!spatial||!normal||!system)
         throw std::logic_error("retained quest entry requires the initialized application owners");
@@ -1066,6 +1075,7 @@ void MissionProfile::enter_selected_quest(EventInstruction normal,EventInstructi
     saved_mission_selection_=SavedMissionSelection{area_id,stage_id};selected_quest=stage_id;
     auto quest=std::shared_ptr<StageQuest>(catalog,&records.quest->stage);
     humans->bind_table_quest(quest,records.quest->record);
+    logic_steps=0; // Replay policy: mission-relative steps restart for each QuestForm entry.
     quest_frame_state_.loop_counter=0;quest_frame_state_.fade_type=quest_frame_state_.fade_state=0;
     humans->quest_form().fade_frame=0;spatial->begin_quest(normal);
     increment_quest_detail_count(*records.quest,stage_id);
@@ -1073,10 +1083,9 @@ void MissionProfile::enter_selected_quest(EventInstruction normal,EventInstructi
     // StartExplore's legacy list contains one Witch(type0), so the following
     // SetDefaultStatus sees no legacy type1 enemy. Its debug snapshot has no ECS consumer.
     // Init's UI/blur surface services use the declared desktop presentation context.
-    if(humans->stage_input_enabled())throw std::logic_error("retained mission re-entry requires the completed return lifecycle");
-    humans->enable_stage_loop(MissionStageScenario{}); // Native Init already installed EnemyStageEntry.
+    if(!humans->stage_input_enabled())humans->enable_stage_loop(MissionStageScenario{}); // Native Init already installed EnemyStageEntry.
     humans->bind_stage_pause([this](bool value){pause_systems(value);});
-    events_->bind_application_push({});events_->bind_clear_input([this]{humans->clear_form_input();});events_->bind_normal_save(normal);
+    events_->bind_application_push({});events_->bind_numeric_effect({});events_->bind_clear_input([this]{humans->clear_form_input();});events_->bind_normal_save(normal);
     campaign_system_save_=std::move(system);
     // Native Init re-reads area8 after the legacy detail/status prefix.
     auto& selected_area=catalog->areas->at(static_cast<std::size_t>(normal->at(8)));

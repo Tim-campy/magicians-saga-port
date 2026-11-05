@@ -55,8 +55,11 @@ public:
     bool step(std::optional<std::uint64_t> application_frame=std::nullopt); // False at a held deferred transition.
     void enter_selected_quest(core::EventInstruction normal_save,core::EventInstruction system_save);
     bool awaiting_quest()const{return awaiting_quest_;}
+    void complete_town_return(MissionTownReturn& destination){humans->result_owner().complete_return(destination);awaiting_quest_=true;}
+    void dispatch_town_return(const core::TownReturnEvent&,core::TownQuestReturnHost&);
     std::size_t initialized_system_count()const{return initialized_order_.size();}
     core::TownInitializationState& initialized_town(){return town_state_;}
+    void reset_town_cache(core::EventScript& cache){core::reset_town_buildings(town_state_,cache,*this);core::get_town_buildings(town_state_,cache,*this);}
     std::int32_t initialized_town_capacity()const{return saved_town_count_.value();}
     MissionEvents& event_owner(){return *events_;}
     core::CharacterNewGameState& initial_character_state(std::int32_t id){return initial_character_records_.at(id);}
@@ -109,7 +112,7 @@ public:
     std::optional<MissionRuntimeConfig> runtime;
     std::unique_ptr<MissionHumans> humans;
     std::unique_ptr<MissionSpatial> spatial;
-    bool accepts_live_input()const{return humans&&humans->input_enabled()&&!humans->transition_pending()&&!replay_bound_;}
+    bool accepts_live_input()const{return !awaiting_quest_&&humans&&humans->input_enabled()&&!humans->transition_pending()&&!replay_bound_;}
     bool native_stage_controls()const{return initialization_complete_&&humans&&humans->stage_input_enabled();}
     bool accepts_fast_forward()const{return quest_frame_&&quest_frame_->debug_controls;}
     bool talk_pending()const{return events_&&events_->pending();}
@@ -246,6 +249,7 @@ private:
     std::function<void()> menu_orientation_;
     core::AuxiliaryInitializationWorld::Button menu_button_receiver_;
     std::function<void(const core::TownReturnEvent&)> town_return_;
+    core::TownQuestReturnHost* town_return_destination_=nullptr; // Synchronous dispatch service, not retained state.
     std::uint64_t submenu_touches_=0,menu_touches_=0;
     core::PixelImage* gauge_image(std::int32_t)override;
     std::int32_t gauge_view_width()override{return view.width;}

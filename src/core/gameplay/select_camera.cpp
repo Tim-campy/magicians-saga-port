@@ -110,6 +110,22 @@ void move_select_camera(SelectCameraState& state,SelectCameraHost& host) {
     const auto y=wrap(static_cast<std::int64_t>(state.y)+convert(state.velocity_y));
     set_select_camera_position(state,x,y,host);
 }
+void set_select_return_position(SelectTouchMoveState& state,SelectReturnPositionHost& host){
+    // SelectForm.SetReturnPos 0x11eba2c: only the area's first coordinate is read.
+    const auto area=required(host.return_saved_integers()).at(8);
+    const auto position=host.return_area_position(area);
+    state.witch_x=static_cast<float>(wrap(static_cast<std::int64_t>(required(position).at(0))+65));
+    const auto scale=required(host.return_saved_integers()).at(13);
+    host.return_scale(scale);
+    const auto witch_x=state.witch_x;
+    const auto width=host.return_game_width();
+    const auto height=host.return_game_height();
+    const auto x=wrap(static_cast<std::int64_t>(convert(std::fabs(witch_x)))+width/2);
+    const auto surface_height=host.return_surface_game_height();
+    const auto y=wrap(static_cast<std::int64_t>(height)-surface_height-40);
+    host.return_camera_position(x,y);
+    state.drag_distance=state.witch_x;
+}
 void set_select_touch_value(SelectTouchState& state,std::uint32_t flags,std::int32_t value,SelectTouchHost& host){
     // SelectForm.SetTouchValue 0x11f4474: the masked word also reaches the base.
     flags&=0xffff0000U;

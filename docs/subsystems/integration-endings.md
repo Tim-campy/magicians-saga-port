@@ -72,13 +72,13 @@ Local `research/exports/town-mission-entry/mission-{retreat-intro,timeout,advanc
 | `advance-fight.replay` | `60d614e814444ca6` |
 | `defeat.replay` | `bd81dad661e6a9e9` |
 
-The540-frame regression retains byte-identical pixels from the preserved combat capture and CPU/GPU logic equality; see [replay checkpoints](integration-replay.md). Stage-result presentation remains a declared service boundary. The S2 town host runs the selected mission on its retained world but holds its return continuation before restoring town consumers.
+The540-frame regression retains byte-identical pixels from the preserved combat capture and CPU/GPU logic equality; see [replay checkpoints](integration-replay.md). Stage-result presentation remains a declared service boundary. The S2 town host delivers the same continuation to its retained town form and event31 consumer, refreshes progression and permits another quest; completed_missions retains the pre-delivery mission snapshot.
 
 An unbounded window run with `retreat-intro.replay` and hidden Windows startup closes normally at202 logic steps, without a frame limit or close input. `retreat-unbounded-final.json` retains the matching exit and logic digest. This exercises the window's terminal branch separately from bounded replay execution.
 
-Windows Release builds pass209 desktop CTest contracts and214 viewer contracts. All23 Python test files pass. The mission-profile contract covers native fresh retreat/timeout, null/pending exits, all four return labels, complete clear grants/member fields, stock/recruitment caps and stable held state across repeated/extended budgets. S1 A4 is checked on this evidence; original result-form pixels, town return and saves remain separate work.
+Windows Release builds pass211 desktop CTest contracts and216 viewer contracts. The mission-profile contract covers native fresh retreat/timeout, null/pending exits, all four return labels, complete clear grants/member fields, stock/recruitment caps and stable held state across repeated/extended budgets. S1 A4 is checked on this evidence; original result-form pixels, town return and saves remain separate work.
 
 ## Open questions
 
-- Bind the S2 town form/event31 consumer and S3 save restoration/persistence while preserving the captured result and cleanup/writeback order.
+- Bind S3 save restoration/persistence while preserving the captured result and cleanup/writeback order.
 - Compare original form timing, presentation and runtime behaviour when an Android oracle is available; A3/A6 and the rest of S1 retain their own acceptance gates.

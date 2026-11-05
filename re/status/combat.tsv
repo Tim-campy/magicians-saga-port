@@ -58,7 +58,7 @@ game:0x060010aa	reimplemented	src/core/gameplay/stage_rewards.cpp	add_item_stock
 game:0x06001177	reimplemented	src/core/gameplay/stage_rewards.cpp	add_item_stock; tests/test_stage_rewards.cpp
 game:0x06000f34	reimplemented	src/core/gameplay/quest_return.cpp	Desktop live member aliases write decoded saved level/EXP after cleanup; native sub-member destruction/list clears; synthetic level-up, repeated lookup and failure tests.
 game:0x06000feb	reimplemented	src/core/gameplay/pass_initialization.cpp	Event31/global loaded gate plus fresh Town table permissions, deferred initial building rows and slot19 maximum; contract and live host tests.
-game:0x06000fec	documented	docs/subsystems/rewards.md	ExecEvent(1133) on code 1, high score update, return flag
+game:0x06000fec	reimplemented	src/core/gameplay/quest_return.cpp	Ordered return event, signed best-damage maximum, int64 high-score and conditional return flag; failure-prefix tests and shared town delivery.
 game:0x0600020d	documented	docs/subsystems/rewards.md	SecureLong element 8 of AppData+0x190->+0x28
 game:0x0600020e	documented	docs/subsystems/rewards.md	overwrites the same element
 game:0x0600082d	documented	docs/subsystems/rewards.md	static byte SelectForm+0x32 = true

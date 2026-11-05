@@ -4,6 +4,12 @@
 
 namespace saga::core {
 namespace {
+void read_event_message(EventMessageDefinition& row,detail::TableTokens& tokens,
+                        const PresentationStringDecoder& decode) {
+    row.id=tokens.integer();
+    row.type=tokens.integer();
+    row.text=decode(tokens.take());
+}
 void read_talk(TalkDefinition& row,detail::TableTokens& tokens,const PresentationStringDecoder& decode) {
     row.id=tokens.integer();
     row.character_index=tokens.integer();
@@ -15,6 +21,18 @@ void read_talk(TalkDefinition& row,detail::TableTokens& tokens,const Presentatio
     }
     row.texts=std::move(texts);
 }
+}
+EventMessageDefinition& load_event_message_definition(EventMessageDefinition& row,
+    std::optional<std::string_view> line,const EventIntegerParser& parser,const PresentationStringDecoder& decode) {
+    // EventMsgData.Load 0x116fc90: empty/null input preserves the receiver.
+    if(line&&!line->empty()){detail::TableTokens tokens(*line,parser);read_event_message(row,tokens,decode);}
+    return row;
+}
+EventMessageTable load_event_message_table(std::string_view text,bool normalize,
+    const EventIntegerParser& parser,const PresentationStringDecoder& decode) {
+    return detail::load_table_records<EventMessageDefinition>(text,normalize,parser,[&](detail::TableTokens& tokens){
+        EventMessageDefinition row;read_event_message(row,tokens,decode);return row;
+    });
 }
 TalkDefinition& load_talk_definition(TalkDefinition& row,std::optional<std::string_view> line,
                                     const EventIntegerParser& parser,const PresentationStringDecoder& decode) {
@@ -48,6 +66,24 @@ void update_talk_page(PreparedTalkForm& form,std::int32_t& close_counter,TalkPag
         if(form.next_index==-1)close_counter=8;
         else host.continue_talk(form);
     }else host.set_text(form.texts.at(static_cast<std::size_t>(form.text_index)));
+}
+void update_event_notice(const PreparedEventForm& form,std::int32_t& page,
+    std::int32_t& animation_frame,std::int32_t& close_counter,EventNoticeHost& host) {
+    // SubForm.Update 0x11f80cc..0x11f81e0, close store at0x11f8a44.
+    if(host.debug_command_enabled()&&host.held_advance())animation_frame=17;
+    if(animation_frame<17)return;
+    host.frame_resource();
+    if(host.advance_pulse()||(host.debug_command_enabled()&&host.held_advance())) {
+        const auto bits=static_cast<std::uint32_t>(page)+1U;
+        page=bits<=0x7fffffffU?static_cast<std::int32_t>(bits)
+            : -1-static_cast<std::int32_t>(0xffffffffU-bits);
+        if(static_cast<std::int64_t>(page)>=static_cast<std::int64_t>(form.event_ids.size())) {
+            close_counter=8;
+            return;
+        }
+        host.set_event(page);
+    }
+    if(host.cancel_pressed())close_counter=8;
 }
 PreparedTalkForm prepare_talk_form(std::int32_t character_index,
                                  NullablePresentationText text,

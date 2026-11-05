@@ -8,6 +8,7 @@
 #include <locale>
 #include <limits>
 #include <stdexcept>
+#include <algorithm>
 
 namespace saga::desktop {
 using namespace core;
@@ -20,7 +21,7 @@ std::u16string decode_mission_text(std::string_view text){
     return converter.from_bytes(text.data(),text.data()+text.size());
 }
 MissionEvents::MissionEvents(ResourceArchive& archive,MissionEventScenario scenario,std::function<void()> clear_input)
-    :scenario_(std::move(scenario)),executor_(execution_,*this),root_{std::make_shared<int>(0),this,{}},clear_input_(std::move(clear_input)){
+    :archive_(archive),scenario_(std::move(scenario)),executor_(execution_,*this),root_{std::make_shared<int>(0),this,{}},clear_input_(std::move(clear_input)){
     auto read=[&](const char* name){auto data=archive.data(name);if(!data)throw std::invalid_argument(std::string("missing mission event table: ")+name);return std::string(data->bytes.begin(),data->bytes.end());};
     execution_.catalog=std::make_shared<EventCatalog>(load_event_catalog(read("Event.txt"),false,parse_event_decimal));
     talks_=load_talk_table(read("Talk.txt"),false,parse_event_decimal,decode_mission_text);
@@ -40,6 +41,7 @@ bool MissionEvents::advance(std::uint64_t frame,std::int32_t tick_ms,bool pulse,
     // Same-thread, synchronous manager projection: process pending Init before selecting the top.
     for(auto& form:forms_)if(form->state==0){
         // SAGA_STUB(mission-talk-common-ui): non-gameplay Init providers, softlabels, blur and resource release.
+        if(form->event_notice){updating_=form;set_event(0);updating_.reset();}
         form->state=1;clear_input_();pulse_=held_=false;
         lifecycle_.push_back("init:"+std::to_string(form->id));
     }
@@ -63,13 +65,21 @@ bool MissionEvents::advance(std::uint64_t frame,std::int32_t tick_ms,bool pulse,
         }else{
             talk.frame=advance_select_loop_counter(talk.frame);
             // SubForm.configData[0][3] is2; IsDrawWindowEnd permits its branch after5.
-            if(talk.frame>5)update_talk_page(talk.prepared,talk.finish_frame,*this);
+            if(talk.frame>5){
+                if(talk.event_notice)update_event_notice(*talk.event_notice,talk.event_page,talk.event_frame,talk.finish_frame,*this);
+                else update_talk_page(talk.prepared,talk.finish_frame,*this);
+            }
         }
+        if(talk.event_notice)draw_event_notice_semantics(talk);
         talk.state=3;updating_.reset();return true;
     }
     return false;
 }
 EventObject MissionEvents::dispatch(const EventInstruction& row,const EventContext& context){
+    if(numeric_effect_&&row&&!row->empty()){
+        const auto opcode=row->at(0);
+        if(opcode==1||opcode==2||opcode==4||opcode==15){numeric_effect_(resolve_event_arguments(*row,context.argi));return {};}
+    }
     const auto result=dispatch_known_event_instruction(row,context,*this);
     if(!result.handled)unbound("effect opcode");return result.value;
 }
@@ -85,13 +95,16 @@ void MissionEvents::push_form(EventObject form){
     if(application_push_)application_push_(std::move(form));else push_base_form(root_,std::move(form));
 }
 void MissionEvents::push(EventObject parent,EventObject child,bool option){
-    if(parent!=root_.identity||option||child!=creating_)throw std::invalid_argument("unsupported mission form push");
-    // RunOnUiThread's same-UI-thread path invokes Push's callback synchronously.
-    // The callback inserts state0; Init/Finish are owned by the next manager dispatch.
-    // Town's executing root stays pinned as GetCurrentForm for this dispatch;
-    // PushCallback inserts each child immediately after that parent (0x1be6acc).
-    if(application_push_)forms_.insert(forms_.begin(),creating_);else forms_.push_back(creating_);
-    lifecycle_.push_back("push:"+std::to_string(creating_->id));creating_.reset();++opened_;
+    auto existing=std::find_if(forms_.begin(),forms_.end(),[&](const auto& form){return child==form;});
+    if(parent!=root_.identity||option||(child!=creating_&&existing==forms_.end()))throw std::invalid_argument("unsupported mission form push");
+    const auto fresh=existing==forms_.end();auto form=fresh?creating_:*existing;
+    if(!fresh)forms_.erase(existing);
+    // PushCallback removes/reinserts known identities, preserving their native
+    // state. SelectForm's second Push of ExecEvent's result is intentional.
+    if(application_push_)forms_.insert(forms_.begin(),form);else forms_.push_back(form);
+    lifecycle_.push_back(std::string(fresh?"push:":"reinsert:")+std::to_string(form->id));
+    if(child==creating_)creating_.reset();if(fresh)++opened_;
+
 }
 bool MissionEvents::finish_talk(Talk& talk){
     // SubForm.Finish 0x120488c: this fresh factory owns no delay/share continuation.
@@ -121,7 +134,45 @@ bool MissionEvents::text_ended(){return text_reveal_ended(updating_->reveal);}
 void MissionEvents::flush_text(){flush_text_reveal(updating_->reveal,*this);++flushes_;}
 void MissionEvents::set_text(const std::u16string&){set_page(*updating_);++pages_;}
 void MissionEvents::continue_talk(PreparedTalkForm&){unbound("non-factory talk continuation");}
-EventObject MissionEvents::make_event_form(std::int32_t,EventObject){unbound("type4 event form");}
+std::int32_t MissionEvents::parse_event_type(const std::u16string& text){
+    std::wstring_convert<std::codecvt_utf8_utf16<char16_t>,char16_t> converter;
+    return parse_event_decimal(converter.to_bytes(text));
+}
+EventObject MissionEvents::make_event_form(std::int32_t id,EventObject args){
+    if(!event_messages_){
+        const auto data=archive_.data("EventMsg.txt");if(!data)throw std::invalid_argument("event notice requires EventMsg.txt");
+        event_messages_=load_event_message_table(std::string_view(reinterpret_cast<const char*>(data->bytes.data()),data->bytes.size()),false,parse_event_decimal,decode_mission_text);
+    }
+    const auto& row=event_messages_->at(static_cast<std::size_t>(id));if(!row)throw std::invalid_argument("null event-message record");
+    const auto type=std::to_string(row->type);std::u16string source(type.begin(),type.end());source+=u'&';source+=row->text;
+    const auto arguments=std::static_pointer_cast<std::u16string>(args);
+    auto form=std::make_shared<Talk>();form->id=id;form->prepared={};form->prepared.initial.type=4;
+    form->event_notice=prepare_event_form(std::move(source),arguments?NullablePresentationText(*arguments):std::nullopt,*this);
+    creating_=form;return form;
+}
+void MissionEvents::set_event(std::int32_t page){
+    if(!updating_||!updating_->event_notice)throw std::logic_error("notice setup requires current event form");
+    auto& form=*updating_;const auto kind=form.event_notice->event_ids.at(static_cast<std::size_t>(page));
+    if(form.event_resource_ready)return;
+    // SAGA_STUB(event-notice-presentation): offline resource/window/audio provider.
+    // Native first setup loads RecordStore(1,5), resets the clock/four cosmetic
+    // counters and requests HAPPY for kinds0/2 or SAD for1; no progression effect.
+    static_cast<void>(kind);form.event_frame=0;form.event_notice->animation.fill(0);form.event_resource_ready=true;
+}
+void MissionEvents::draw_event_notice_semantics(Talk& form){
+    // SAGA_STUB(event-notice-window): title backend has no animated window.
+    // Foreground is ready while not closing; one semantic Draw per dispatch.
+    // Native DrawWindow must reject closing BEFORE the possibly end-page lookup.
+    if(form.finish_frame>=0)return;
+    const auto kind=form.event_notice->event_ids.at(static_cast<std::size_t>(form.event_page));
+    if(!form.event_resource_ready)throw std::logic_error("notice Draw requires initialized resource provider");
+    const auto frame_bits=static_cast<std::uint32_t>(form.event_frame)+1U;
+    form.event_frame=frame_bits<=0x7fffffffU?static_cast<std::int32_t>(frame_bits):-1-static_cast<std::int32_t>(0xffffffffU-frame_bits);
+    if(kind==0||kind==1)for(auto& tick:form.event_notice->animation){
+        const auto bits=static_cast<std::uint32_t>(tick)+1U;tick=bits<=0x7fffffffU?static_cast<std::int32_t>(bits):-1-static_cast<std::int32_t>(0xffffffffU-bits);
+    }
+    // SAGA_STUB(event-notice-touch): full-viewport AddTouch(2); physical routing unbound.
+}
 EventProgression& MissionEvents::progression(){unbound("live numeric event progression");}
 std::int32_t MissionEvents::stamina_limit(){unbound("saved stamina item state");}
 std::int64_t MissionEvents::read_stamina(){unbound("saved stamina");}
@@ -141,7 +192,8 @@ NullablePresentationText MissionEvents::translate_argument(const std::u16string&
 std::string MissionEvents::title()const{
     if(forms_.empty())return {};
     const auto& talk=*forms_.back();
-    if(talk.finish_frame>=0)return "Dialogue - closing";
+    if(talk.finish_frame>=0)return talk.event_notice?"Notice - closing":"Dialogue - closing";
+    if(talk.event_notice)return "Notice "+std::to_string(talk.event_page+1)+"/"+std::to_string(talk.event_notice->texts.size())+" - Enter continues";
     return "Dialogue "+std::to_string(talk.prepared.text_index+1)+"/"+std::to_string(talk.prepared.texts.size())+" - Enter reveals or advances";
 }
 void MissionEvents::write_report(std::ostream& out)const{
@@ -157,6 +209,10 @@ void MissionEvents::write_report(std::ostream& out)const{
             <<",\"pages\":"<<t.prepared.texts.size()<<",\"frame\":"<<t.frame<<",\"close_counter\":"<<t.finish_frame
             <<",\"form_state\":"<<t.state<<",\"reveal_length\":"<<t.reveal.length<<",\"reveal_position\":"<<t.reveal.position
             <<",\"layout_provider\":\""<<(scenario_.font?"native ASCII blocks; public FreeType metrics unverified":"provisional scenario")<<"\"}";
+    }
+    if(pending()&&forms_.back()->event_notice){const auto& form=*forms_.back();
+        out<<",\"event_notice\":{\"id\":"<<form.id<<",\"page\":"<<form.event_page<<",\"frame\":"<<form.event_frame
+           <<",\"pages\":"<<form.event_notice->event_ids.size()<<",\"window_provider\":\"provisional ready foreground\",\"full_view_touch\":2}";
     }
     out<<",\"talk_lifecycle\":[";for(std::size_t i=0;i<lifecycle_.size();++i){if(i)out<<',';out<<'"'<<lifecycle_[i]<<'"';}out<<']';
     out<<",\"event_execution_counts\":[";bool first=true;

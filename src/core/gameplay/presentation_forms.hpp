@@ -7,6 +7,16 @@
 
 namespace saga::core {
 using PresentationStringDecoder = std::function<std::u16string(std::string_view)>;
+struct EventMessageDefinition {
+    std::int32_t id=-1,type=0;
+    std::u16string text;
+};
+using EventMessageTable = std::vector<std::optional<EventMessageDefinition>>;
+// EventMsgData.Load: id and type stores precede decoding/assigning text.
+EventMessageDefinition& load_event_message_definition(EventMessageDefinition&,
+    std::optional<std::string_view>,const EventIntegerParser&,const PresentationStringDecoder&);
+EventMessageTable load_event_message_table(std::string_view,bool normalize_crlf,
+    const EventIntegerParser&,const PresentationStringDecoder&);
 struct TalkDefinition {
     std::int32_t id=-1,character_index=0;
     std::shared_ptr<std::vector<std::u16string>> texts;
@@ -57,6 +67,19 @@ struct PreparedEventForm {
     std::vector<std::u16string> texts;
     std::array<std::int32_t, 4> animation;
 };
+class EventNoticeHost {
+public:
+    virtual ~EventNoticeHost()=default;
+    virtual bool debug_command_enabled()=0; // Config static byte+0xbb, read afresh.
+    virtual bool held_advance()=0; // Canvas held mask0x40.
+    virtual void frame_resource()=0;
+    virtual bool advance_pulse()=0; // Canvas pulse mask0x100000.
+    virtual void set_event(std::int32_t page)=0;
+    virtual bool cancel_pressed()=0; // AppData key3.
+};
+// Selected SubForm.Update type4 branch only. Draw owns animation-frame advance.
+void update_event_notice(const PreparedEventForm&,std::int32_t& page,
+    std::int32_t& animation_frame,std::int32_t& close_counter,EventNoticeHost&);
 class PresentationFormHost : public PresentationTextHost {
 public:
     // Boundary for JInteger.ParseInt/System.Int32.Parse. No guessed culture or

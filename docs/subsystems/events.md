@@ -788,6 +788,8 @@ Limits: this is the decoded selection/number-index contract, not full CultureInf
 
 ## Port
 
+The retained S2 town binds apply_event_progression for numeric opcodes1/2/4/15 to the canonical MissionResults wallet, system stamina, Area discovery and Quest fields. Changes refresh town conditions/markers immediately. Mission entry removes the town-only numeric provider; return rebinds it before event31. Immediate automatic child Push preserves native remove/reinsert identity without another Init. Type4 notices use the recovered EventMsg loader/page/clock/close contract with explicit presentation services; see [text](text.md).
+
 - `src/core/gameplay/apply_task.{hpp,cpp}` implements the gift initializer, supplied-sign Int32 parser and Init's catalog name-resolution pass; `test_apply_task.cpp` covers their ordering and failures. The supplied-item route is composed below with required getter providers.
 
 - `src/core/gameplay/select_notifications.{hpp,cpp}` implements ordered queue routing and ApplyTask.Enable, with explicit matcher/construction/manager adapters. `test_select_notifications.cpp` exercises failure ordering and `test_select_form_pass.cpp` checks composition.
@@ -950,5 +952,5 @@ Evidence: local `research/exports/collation-index/` and `collation-index-init/`,
 5. Consumer of `DelayEvent` entries with `hour_ != -1` (none in the extracted table).
 6. Writer of `SubForm.delayEvent_` (+0x1d0) and why `Finish` restores slot 5 instead of 7.
 7. Meaning of state array elements 5 and 7 (talk character slots); producer/lifecycle of AppData.questData_ (+0x1e8), whose fallback only reads length.
-8. Event 1133: confirm the effective `eventData` length at runtime (array model gives 229).
+8. (runtime oracle) Event1133 is out of bounds in the shipped229-entry catalog and is attempted through that guard on result1. Confirm whether the original runtime replaces the catalog; this does not block the shipped-table S2 path.
 9. Meaning of `timing_` (0 in every extracted record) and its consumer.

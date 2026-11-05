@@ -39,6 +39,7 @@ from pathlib import Path
 import re
 import struct
 import sys
+import tempfile
 import zipfile
 import wave
 
@@ -73,16 +74,22 @@ def mission_default_arrays(metadata, layouts):
     return defaults
 
 
-def new_game_save_payload(metadata):
+def new_game_save_payload(metadata, version=2):
     """AppData.cctor normal-save seeds consumed by NewGame at ELF0x1101e30.
 
     Field handles at ELF0x272ff50/0x272fef0 resolve to fields24359/24245.
-    This exports five reached values, not the binary save envelope.
+    Version2 adds saved town scale to the five original reached values.
+    Neither projection exports the binary save envelope.
     """
+    if version not in (1, 2):
+        raise ValueError('Unsupported new-game save version')
     defaults = mission_default_arrays(metadata, {24359:'<29i', 24245:'<3q'})
     integers, longs = defaults[24359], defaults[24245]
-    return (f'new_game_save\t1\nselection\t{integers[8]}\t{integers[9]}\n'
-            f'town_capacity\t{integers[19]}\nwallet\t{longs[0]}\t{longs[1]}\n').encode('ascii')
+    payload = (f'new_game_save\t{version}\nselection\t{integers[8]}\t{integers[9]}\n'
+               f'town_capacity\t{integers[19]}\nwallet\t{longs[0]}\t{longs[1]}\n')
+    if version == 2:
+        payload += f'town_scale\t{integers[13]}\n'
+    return payload.encode('ascii')
 
 
 def mission_initialization_payload(metadata, version=2):
@@ -127,14 +134,26 @@ def write_mission_seed(apk, root, name, reader, previous_reader=None):
     if output.exists() and output.read_bytes() != payload:
         if previous_reader is None or output.read_bytes() != previous_reader(metadata):
             raise ValueError('Refusing to replace differing new-game defaults')
-        output.write_bytes(payload) # Exact verified v1 projection upgrades to v2 only.
+        # Replace only an exact verified old projection, after staging the full
+        # payload beside it. A failed write/replace leaves the old seed intact.
+        temporary = None
+        try:
+            with tempfile.NamedTemporaryFile(dir=output.parent, prefix=output.name+'.',
+                                             suffix='.tmp', delete=False) as target:
+                temporary = Path(target.name)
+                target.write(payload)
+            temporary.replace(output)
+        finally:
+            if temporary is not None:
+                temporary.unlink(missing_ok=True)
     if not output.exists():
         output.write_bytes(payload)
     return output
 
 
 def write_new_game_save(apk, root):
-    return write_mission_seed(apk, root, 'new-game-save.tsv', new_game_save_payload)
+    return write_mission_seed(apk, root, 'new-game-save.tsv', new_game_save_payload,
+                              lambda metadata: new_game_save_payload(metadata, version=1))
 
 
 def write_mission_initialization(apk, root):

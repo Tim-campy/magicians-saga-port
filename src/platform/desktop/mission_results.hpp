@@ -9,6 +9,12 @@
 
 namespace saga::desktop {
 class MissionHumans;
+class MissionTownReturn {
+public:
+    virtual ~MissionTownReturn()=default;
+    virtual void change_to_town_form(bool)=0;
+    virtual void send_town_return(std::int32_t,const core::TownReturnEvent&)=0;
+};
 struct MissionResultScenario {
     std::int64_t money,crystals;std::int32_t rescued;
     core::QuestRecord record;
@@ -23,7 +29,14 @@ class MissionResults final:private core::QuestRewardHost,private core::QuestExpe
     public core::QuestReturnHost,private core::MemberFinishHost,private core::StageCleanupHost {
 public:
     MissionResults(MissionHumans&,MissionResultScenario);
-    void bind_quest_record(std::shared_ptr<core::QuestRecord> record){state_.quest_record=std::move(record);}
+    void bind_quest_record(std::shared_ptr<core::QuestRecord>);
+    void complete_return(MissionTownReturn&);
+    std::int64_t money()const{return state_.money;}
+    void set_money(std::int64_t value){state_.money=value;}
+    void set_crystals(std::int64_t value){state_.crystals=value;}
+    std::int64_t crystals()const{return state_.crystals;}
+    const core::ItemStock& inventory(core::RewardItem kind,std::int32_t id)const{return inventory_.at(static_cast<std::size_t>(kind)).at(id);}
+    const core::RecruitmentState& recruit(std::int32_t id)const{return recruits_.at(id);}
     void grant();
     void report(std::ostream&);
     bool check_crystals(std::int64_t amount)const;
@@ -75,5 +88,7 @@ private:
     Cursor grant_cursor_;std::array<Cursor,2> finish_cursors_;
     std::optional<core::QuestRewardResult> result_;
     std::function<void()> transition_;
+    // Borrowed service only during synchronous callback dispatch, never retained CPU state.
+    MissionTownReturn* return_destination_=nullptr;
 };
 }

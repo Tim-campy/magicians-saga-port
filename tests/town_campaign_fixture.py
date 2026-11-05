@@ -76,6 +76,10 @@ def create_campaign_fixture(root,font_file=None,quest_time_limit=None):
     quests={int(line.split('\t',1)[0]):line.split('\t')
             for line in tables['English.lproj/Quest.txt'].decode().splitlines()}
     filler=quests[0].copy();filler[0]='1';filler[-2]='0';quests[1]=filler
+    # Native best-damage scans every row and requires dense quest records.
+    for missing in range(max(quests)+1):
+        if missing not in quests:
+            quests[missing]=list(quests[2]);quests[missing][0]=str(missing)
     quests[2][-2:] = ['1','1'] # Discover Quest2; native selection costs one stamina.
     tables['English.lproj/Quest.txt']=('\n'.join('\t'.join(quests[i]) for i in sorted(quests))+'\n').encode()
     tables['English.lproj/Area.txt']=b'0\tFirst\t0\t1\t2\t1\n1\tSecond\t0\t0\t0\n'
@@ -103,4 +107,5 @@ def create_campaign_fixture(root,font_file=None,quest_time_limit=None):
     (root/'mission-resources.tsv').write_text(mission_index)
     town_index=(root/'town-resources-v2.tsv').read_text().replace('"textassets/com.bin"','"textassets/common.bin"')
     (root/'town-resources-v2.tsv').write_text(town_index)
+    seed=root/'new-game-save.tsv';seed.write_text(seed.read_text(encoding='utf-8').replace('new_game_save 1','new_game_save 2')+'town_scale 100\n',encoding='ascii')
     return control

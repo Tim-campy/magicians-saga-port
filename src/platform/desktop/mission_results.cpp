@@ -84,8 +84,24 @@ std::int32_t MissionResults::return_stage(){
     if(!owner_.stage_loop_||!owner_.stage_loop_->started())unavailable("town-return stage");
     return owner_.stage_.stage;
 }
-void MissionResults::change_to_town_form(bool){unavailable("town form switch");}
-void MissionResults::send_town_return(std::int32_t,const TownReturnEvent&){unavailable("town event31");}
+void MissionResults::change_to_town_form(bool value){
+    if(!return_destination_)unavailable("town form switch");return_destination_->change_to_town_form(value);
+}
+void MissionResults::send_town_return(std::int32_t id,const TownReturnEvent& event){
+    if(!return_destination_)unavailable("town event31");return_destination_->send_town_return(id,event);
+}
+void MissionResults::complete_return(MissionTownReturn& destination){
+    if(!transition_||return_destination_)throw std::logic_error("no pending mission return or nested dispatch");
+    // Preserve the original typed continuation and its live area/stage capture.
+    return_destination_=&destination;
+    try{transition_();}catch(...){return_destination_=nullptr;throw;}
+    return_destination_=nullptr;transition_={};
+}
+void MissionResults::bind_quest_record(std::shared_ptr<QuestRecord> record){
+    if(transition_)throw std::logic_error("quest entry requires completed town return");
+    state_.quest_record=std::move(record);granting_.reset();treasure_index_=0;
+    grant_cursor_={};finish_cursors_={};result_.reset();
+}
 std::optional<std::int32_t> MissionResults::exit_code()const{
     if(!transition_)return std::nullopt;
     const auto* continuation=transition_.target<QuestTownContinuation>();

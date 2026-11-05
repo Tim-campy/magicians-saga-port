@@ -2,6 +2,7 @@
 #include "core/gameplay/stage_cleanup.hpp"
 #include <algorithm>
 #include <cstdlib>
+#include <limits>
 #include <map>
 #include <stdexcept>
 #include <string>
@@ -66,7 +67,66 @@ struct Cleanup final:StageCleanupHost {
     void clear_extra_entity()override{extra.reset();}
     void clear_collecting_drops()override{owner.call("collecting_clear");}
 };
+struct TownHost final:TownQuestReturnHost {
+    std::int32_t damage=42;std::int64_t score=-1;
+    bool form=true,marked=false,replace_damage_on_score=false;
+    std::vector<std::string> calls;std::string fail;
+    std::function<void()> event_action;
+    void call(const std::string& name){calls.push_back(name);if(name==fail)throw std::runtime_error(name);}
+    void execute_return_event(std::int32_t id)override{
+        check(id==1133);call("event1133");if(event_action)event_action();
+    }
+    std::int32_t best_total_damage()override{call("damage");return damage;}
+    std::int64_t high_score()override{call("score");if(replace_damage_on_score)damage=-99;return score;}
+    void set_high_score(std::int64_t value)override{call("set_score");score=value;}
+    bool town_form_exists()override{call("form_exists");return form;}
+    void mark_quest_return()override{call("mark");marked=true;}
+};
+void test_town_return(){
+    {TownHost h;on_town_quest_return({1,-7,123},h);
+        check(h.calls==std::vector<std::string>({"event1133","damage","score","set_score","form_exists","mark"}));
+        check(h.score==42&&h.marked);}
+    for(const auto result:{0,2,3,-1,std::numeric_limits<std::int32_t>::min(),std::numeric_limits<std::int32_t>::max()}){
+        TownHost h;on_town_quest_return({result,0,0},h);
+        check(h.calls==std::vector<std::string>({"damage","score","set_score","form_exists","mark"}));
+        check(h.score==42&&h.marked);
+    }
+    {TownHost h;h.form=false;on_town_quest_return({1,0,0},h);
+        check(h.score==42&&!h.marked&&h.calls.back()=="form_exists");}
+    {TownHost h;h.event_action=[&]{h.damage=73;h.score=72;};on_town_quest_return({1,0,0},h);
+        check(h.score==73&&h.marked);}
+    {TownHost h;h.replace_damage_on_score=true;on_town_quest_return({0,0,0},h);
+        check(h.damage==-99&&h.score==42&&h.marked);}
+    struct Comparison {std::int32_t damage;std::int64_t score;bool write;};
+    const Comparison comparisons[]{
+        {0,0,false},{42,43,false},{42,42,false},
+        {std::numeric_limits<std::int32_t>::max(),static_cast<std::int64_t>(std::numeric_limits<std::int32_t>::max())+1,false},
+        {std::numeric_limits<std::int32_t>::max(),std::numeric_limits<std::int64_t>::max(),false},
+        {-1,0,false},{-3,-4,true},
+        {std::numeric_limits<std::int32_t>::min(),std::numeric_limits<std::int32_t>::min(),false},
+        {std::numeric_limits<std::int32_t>::min(),std::numeric_limits<std::int64_t>::min(),true},
+        {0,std::numeric_limits<std::int64_t>::min(),true}
+    };
+    for(const auto& comparison:comparisons){
+        TownHost h;h.damage=comparison.damage;h.score=comparison.score;
+        on_town_quest_return({0,-100,-200},h);
+        check(h.score==(comparison.write?static_cast<std::int64_t>(comparison.damage):comparison.score)&&h.marked);
+        const auto expected=comparison.write?
+            std::vector<std::string>{"damage","score","set_score","form_exists","mark"}:
+            std::vector<std::string>{"damage","score","form_exists","mark"};
+        check(h.calls==expected);
+    }
+    const std::vector<std::string> order{"event1133","damage","score","set_score","form_exists","mark"};
+    for(const auto& failure:order){
+        TownHost h;h.fail=failure;
+        try{on_town_quest_return({1,5,7},h);check(false);}catch(const std::runtime_error&){}
+        const auto end=std::find(order.begin(),order.end(),failure)+1;
+        check(h.calls==std::vector<std::string>(order.begin(),end)&&!h.marked);
+        check(h.score==(end>order.begin()+4?42:-1));
+    }
+}
 int main(){
+    test_town_return();
     {Host h;Cleanup cleanup(h);h.cleanup_action=[&]{cleanup_quest_stage(cleanup);};return_to_town(0,h);
         check(h.life[3].destroyed&&!cleanup.extra&&h.saved[1].level==1200&&h.saved[2].experience==99&&h.callback);
         check(h.calls[0]=="cleanup"&&h.calls[1]=="group34"&&h.calls[4]=="group29"&&h.calls[7]=="group31");

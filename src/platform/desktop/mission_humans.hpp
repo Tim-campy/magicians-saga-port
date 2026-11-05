@@ -84,6 +84,7 @@ public:
                        std::function<bool()>,std::function<void()>,std::shared_ptr<core::AreaDefinition> = {});
     bool advance_stage(std::int32_t pass=0,bool enabled=true);
     bool transition_pending()const;
+    MissionResults& result_owner(){if(!results_)throw std::logic_error("missing result owner");return *results_;}
     void write_result_report(std::ostream&);
     std::shared_ptr<core::StageQuest> quest(){return stage_.quest;}
     core::StageQuestForm& quest_form(){return quest_form_;}

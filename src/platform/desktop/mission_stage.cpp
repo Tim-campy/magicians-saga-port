@@ -61,8 +61,8 @@ void MissionStage::answer_dialog(std::int32_t answer){
 void MissionStage::start(std::int32_t stage,const EventIntegers* formation,StageMapLoader& map,
     std::function<bool()> paused,std::function<void()> resume,std::shared_ptr<AreaDefinition> area){
     const auto* effective=formation?formation:owner_.members_.formation.get();
-    if(started_||!effective||effective->size()!=16||!owner_.results_||!owner_.stage_.enemies)
-        throw std::invalid_argument("stage_start requires fresh entry, sixteen formation slots, results and native Init");
+    if(!effective||effective->size()!=16||!owner_.results_||owner_.results_->transition_pending()||!owner_.stage_.enemies)
+        throw std::invalid_argument("stage_start requires completed return, sixteen formation slots, results and native Init");
     if(formation)owner_.members_.formation=std::make_shared<EventIntegers>(*formation);
     inherited_formation_=formation==nullptr;
     map_loader_=&map;paused_=std::move(paused);resume_=std::move(resume);

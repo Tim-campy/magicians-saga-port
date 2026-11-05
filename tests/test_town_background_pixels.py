@@ -73,6 +73,39 @@ class TownBackgroundPixels(unittest.TestCase):
             width,height,_=bmp_pixels(resize.read_bytes());self.assertEqual((width,height),(320,240))
 
     @unittest.skipUnless(os.environ.get('SAGA_TEST_FONT'),'public CTest font required')
+    def test_retained_return_and_reentry_match_cpu_window_and_still_pixels(self):
+        from town_campaign_fixture import create_campaign_fixture
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);create_campaign_fixture(root)
+            replay=root/'return.replay';replay.write_text('160 widget 0 200 450\n161 widget 1 200 450\n162 widget 0 200 480\n163 widget 1 200 480\n165 widget 0 250 250\n166 widget 1 250 250\n')
+            mission=root/'retreat.replay';mission.write_text(''.join(f'{i} pulse 1048576\n' for i in range(30,181,5))+
+                '200 pulse 33554432\n201 pulse 134217728\n202 answer 0\n')
+            base=[str(EXE),'--data',str(root),'--foreground','--shared-world','--camera-x','300','--talk-pulse-every','10','--server-time','123','--replay',str(replay),'--mission-replay',str(mission)]
+            def run(n,*extra):
+                result=subprocess.run([*base,'--update-passes',str(n),*extra],capture_output=True,text=True,timeout=45)
+                self.assertEqual(result.returncode,0,result.stderr);return json.loads(result.stdout)
+            def semantic(value):
+                if isinstance(value,dict):return {k:semantic(v) for k,v in value.items() if k not in ('state_hash','state_hash_bytes')}
+                if isinstance(value,list):return [semantic(v) for v in value]
+                return value
+            returned=run(500,'--physical-input')['background']
+            region=next(r for r in returned['update']['widgets']['regions'] if r[1]==0xc0000)
+            x,y=region[2]+region[4]//2,region[3]+region[5]//2
+            replay.write_text(replay.read_text()+f'501 widget 0 {x} {y}\n502 widget 1 {x} {y}\n')
+            selected=run(502,'--physical-input')['background']
+            region=next(r for r in selected['update']['widgets']['regions'] if r[0]==4 and r[1]==28)
+            x,y=region[2]+region[4]//2,region[3]+region[5]//2
+            replay.write_text(replay.read_text()+f'503 widget 0 {x} {y}\n504 widget 1 {x} {y}\n506 widget 0 250 250\n507 widget 1 250 250\n')
+            for count in (409,410,411,548,900):
+                with self.subTest(count=count):
+                    cpu=run(count,'--physical-input');still=root/f'return-still-{count}.bmp';window=root/f'return-window-{count}.bmp'
+                    self.assertEqual(semantic(run(count,'--physical-input','--capture',str(still))),semantic(cpu))
+                    self.assertEqual(semantic(run(count,'--interactive','--hidden','--capture',str(window))),semantic(cpu))
+                    self.assertEqual(still.read_bytes(),window.read_bytes())
+                    self.assertTrue(cpu['background']['shared_world']['same_hero'])
+                    self.assertEqual(cpu['background']['shared_world']['initialized_systems'],32)
+
+    @unittest.skipUnless(os.environ.get('SAGA_TEST_FONT'),'public CTest font required')
     def test_stage_row_statistics_and_held_entry_match_window(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);add_town_background(root,update=True,stage_entries=True)

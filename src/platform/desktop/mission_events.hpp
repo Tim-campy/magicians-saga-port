@@ -20,7 +20,7 @@ struct MissionEventScenario {
 };
 std::u16string decode_mission_text(std::string_view);
 class MissionEvents final:private core::EventEffectsHost,private core::EventFlowHost,
-    private core::PresentationTextHost,private core::FormStackHost,private core::TextRevealClock,private core::TalkPageHost {
+    private core::PresentationFormHost,private core::FormStackHost,private core::TextRevealClock,private core::TalkPageHost,private core::EventNoticeHost {
 public:
     MissionEvents(ResourceArchive&,MissionEventScenario,std::function<void()> clear_input);
     bool execute(std::int32_t);
@@ -32,6 +32,7 @@ public:
     // Town supplies its SelectForm flag writes; mission retains its existing base Push.
     void bind_application_push(std::function<void(core::EventObject)> callback){application_push_=std::move(callback);}
     void bind_normal_save(core::EventInstruction values){normal_save_=std::move(values);}
+    void bind_numeric_effect(std::function<void(const core::EventIntegers&)> callback){numeric_effect_=std::move(callback);}
     void bind_clear_input(std::function<void()> callback){clear_input_=std::move(callback);}
     bool pending()const{return !forms_.empty();}
     // True when the selected modal consumes this dispatch; false permits the underlying Quest update.
@@ -45,9 +46,14 @@ private:
     struct Talk {
         std::int32_t id=0,state=0,frame=0,finish_frame=-1;
         core::PreparedTalkForm prepared;
+        std::optional<core::PreparedEventForm> event_notice;
+        std::int32_t event_page=0,event_frame=0;
+        bool event_resource_ready=false;
         core::TextRevealState reveal{};
         std::unique_ptr<MissionTextLayout> layout;
     };
+    ResourceArchive& archive_; // Source fingerprint is owned by the profile; decoded message cache is immutable.
+    std::optional<core::EventMessageTable> event_messages_;
     MissionEventScenario scenario_;
     core::TalkTable talks_;
     core::DecodedEventExecutionState execution_;
@@ -65,6 +71,7 @@ private:
     std::function<void()> clear_input_;
     std::function<void(core::EventObject)> application_push_;
     core::EventInstruction normal_save_;
+    std::function<void(const core::EventIntegers&)> numeric_effect_;
     std::shared_ptr<DesktopTextFont> font_provider_;
     std::uint64_t layout_measurements_=0;
     struct LayoutSample {std::int32_t talk,page,length,height;std::size_t blocks;};
@@ -75,6 +82,13 @@ private:
     void write_stamina(std::int64_t)override;
     core::EventObject make_talk_form(std::int32_t,core::EventObject)override;
     core::EventObject make_event_form(std::int32_t,core::EventObject)override;
+    std::int32_t parse_event_type(const std::u16string&)override;
+    bool debug_command_enabled()override{return scenario_.held_advance;}
+    bool held_advance()override{return held_;}
+    void frame_resource()override{} // SAGA_STUB(event-notice-presentation): native common Seb.Frame has cosmetic effects only.
+    void set_event(std::int32_t)override;
+    bool cancel_pressed()override{return false;} // SAGA_STUB(event-notice-touch): Enter/pulse is bound; softlabel3 hit routing remains unbound.
+    void draw_event_notice_semantics(Talk&);
     void push_form(core::EventObject)override;
     void push(core::EventObject,core::EventObject,bool)override;
     core::EventObject dispatch(const core::EventInstruction&,const core::EventContext&)override;

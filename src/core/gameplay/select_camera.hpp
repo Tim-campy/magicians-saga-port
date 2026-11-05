@@ -38,6 +38,19 @@ std::int32_t scaled_view_dimension(std::int32_t pixels,float scale);
 std::int32_t scaled_select_dimension(std::int32_t view_dimension,std::int32_t scale);
 void set_select_camera_position(SelectCameraState&,std::int32_t x,std::int32_t y,SelectCameraHost&);
 void move_select_camera(SelectCameraState&,SelectCameraHost&);
+class SelectReturnPositionHost {
+public:
+    virtual ~SelectReturnPositionHost()=default;
+    virtual EventInstruction return_saved_integers()=0;
+    virtual EventInstruction return_area_position(std::int32_t)=0;
+    virtual void return_scale(std::int32_t)=0;
+    virtual std::int32_t return_game_width()=0;
+    virtual std::int32_t return_game_height()=0;
+    virtual std::int32_t return_surface_game_height()=0;
+    virtual void return_camera_position(std::int32_t x,std::int32_t y)=0;
+};
+// SelectForm.SetReturnPos 0x11eba2c; SetScale and camera bounds belong to host.
+void set_select_return_position(SelectTouchMoveState&,SelectReturnPositionHost&);
 struct InputControl;
 // TouchEvent type/x/deltaX/deltaY/pinch and component identity. The host owns
 // the pointed control; non-camera events do not read coordinates or deltas.

@@ -227,12 +227,18 @@ struct MissionCheckpoint {
         archive.count(x.observers_.size());for(const auto& observer:x.observers_)fields(observer.adding,observer.callback);
     });}
     void value(const MissionEvents& x){
-        if(x.application_push_)throw std::logic_error("mission checkpoint does not cover town event bindings");
+        if(x.application_push_||x.numeric_effect_)throw std::logic_error("mission checkpoint does not cover town event bindings");
         object("mission-events",x,[&]{fields(x.scenario_,x.talks_,x.execution_,x.delays_,x.forms_,x.creating_,x.updating_,x.root_,
         x.ticks_,x.opened_,x.closed_,x.flushes_,x.pages_,x.now_,x.total_frames_,x.pulse_,x.held_,x.executed_,x.lifecycle_,x.layout_measurements_,x.normal_save_);
         archive.count(x.layout_samples_.size());for(const auto& sample:x.layout_samples_){fields(sample.talk,sample.page,sample.length,sample.height);archive.count(sample.blocks);}
     });}
-    void value(const MissionEvents::Talk& x){object("mission-talk",x,[&]{fields(x.id,x.state,x.frame,x.finish_frame,x.prepared,x.reveal,x.layout);});}
+    void value(const MissionEvents::Talk& x){object("mission-talk",x,[&]{
+        fields(x.id,x.state,x.frame,x.finish_frame,x.prepared,x.reveal,x.layout);
+        if(x.prepared.initial.type==4){
+            if(!x.event_notice)throw std::logic_error("event form checkpoint requires notice state");
+            archive.tag("event-notice");fields(x.event_notice->initial,x.event_notice->event_ids,x.event_notice->texts,x.event_notice->animation,x.event_page,x.event_frame,x.event_resource_ready);
+        }else if(x.event_notice)throw std::logic_error("notice payload on non-event form");
+    });}
     void value(const MissionTextLayout& x){object("mission-text-layout",x,[&]{fields(x.scenario_,x.font_,x.fit_,x.blocks_,x.text_,x.presets_,x.measurements_,x.length_);});}
 
 #define SAGA_STATE(T,...) void value(const T& x){object(#T,x,[&]{fields(__VA_ARGS__);});}

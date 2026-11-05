@@ -122,19 +122,32 @@ class DebugDrawingTests(unittest.TestCase):
 
 
 class NewGameSaveTests(unittest.TestCase):
-    def metadata(self):
+    def metadata(self,town_scale=13):
         data=bytearray(512+160)
         struct.pack_into('<II',data,0,0xfab11baf,31)
         struct.pack_into('<IIII',data,64,256,24,512,160)
         struct.pack_into('<iiiiii',data,256,24359,77,0,24245,88,116)
-        integers=list(range(29));integers[8]=-3;integers[9]=17;integers[19]=-2147483648
+        integers=list(range(29));integers[8]=-3;integers[9]=17;integers[13]=town_scale;integers[19]=-2147483648
         struct.pack_into('<29i',data,512,*integers)
         struct.pack_into('<3q',data,512+116,-9223372036854775808,9223372036854775807,23)
         return data
 
     def test_widths_selection_and_reached_slots_only(self):
         payload=extractor.new_game_save_payload(self.metadata())
-        self.assertEqual(payload,b'new_game_save\t1\nselection\t-3\t17\ntown_capacity\t-2147483648\nwallet\t-9223372036854775808\t9223372036854775807\n')
+        self.assertEqual(payload,b'new_game_save\t2\nselection\t-3\t17\ntown_capacity\t-2147483648\nwallet\t-9223372036854775808\t9223372036854775807\ntown_scale\t13\n')
+        self.assertEqual(extractor.new_game_save_payload(self.metadata(),version=1),
+                         b'new_game_save\t1\nselection\t-3\t17\ntown_capacity\t-2147483648\nwallet\t-9223372036854775808\t9223372036854775807\n')
+        for version in (-1,0,3):
+            with self.subTest(version=version),self.assertRaisesRegex(ValueError,'Unsupported new-game save version'):
+                extractor.new_game_save_payload(self.metadata(),version=version)
+
+    def test_town_scale_preserves_signed_slot13_without_clamping(self):
+        for scale in (-2147483648,-1,0,2147483647):
+            with self.subTest(scale=scale):
+                self.assertEqual(extractor.new_game_save_payload(self.metadata(scale)),
+                                 ('new_game_save\t2\nselection\t-3\t17\ntown_capacity\t-2147483648\n'
+                                  'wallet\t-9223372036854775808\t9223372036854775807\n'
+                                  f'town_scale\t{scale}\n').encode('ascii'))
 
     def test_bounds_missing_and_duplicate_fields(self):
         for offset,value in ((4,30),(64,1),(68,23),(72,256),(76,99999),(264,-1),(276,150),(268,24359),(256,7)):
@@ -164,6 +177,46 @@ class NewGameSaveTests(unittest.TestCase):
                 output.write_bytes(b'keep this user file')
                 with self.assertRaisesRegex(ValueError,'replace differing'):extractor.write_new_game_save(apk,root)
                 self.assertEqual(output.read_bytes(),b'keep this user file')
+                self.assertEqual((root/'manifest.json').read_text(),manifest)
+
+    def test_exact_v1_upgrade_is_atomic_and_modified_v1_is_preserved(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);apk=root/'synthetic.apk';metadata=self.metadata()
+            with extractor.zipfile.ZipFile(apk,'w') as archive:archive.writestr(extractor.METADATA,metadata)
+            checksum=hashlib.sha256(apk.read_bytes()).hexdigest()
+            manifest=json.dumps({'schema':3,'apk_sha256':checksum})
+            (root/'manifest.json').write_text(manifest)
+            output=root/'new-game-save.tsv'
+            old=extractor.new_game_save_payload(metadata,version=1)
+            new=extractor.new_game_save_payload(metadata)
+            output.write_bytes(old)
+            replace=Path.replace
+            def inspect_replace(source,destination):
+                self.assertEqual(destination,output)
+                self.assertEqual(source.parent,output.parent)
+                self.assertNotEqual(source,output)
+                self.assertEqual(output.read_bytes(),old)
+                self.assertEqual(source.read_bytes(),new)
+                return replace(source,destination)
+            with patch.object(extractor,'APK_SHA',checksum):
+                with patch.object(Path,'replace',autospec=True,side_effect=inspect_replace) as replacement:
+                    self.assertEqual(extractor.write_new_game_save(apk,root),output)
+                    replacement.assert_called_once()
+                self.assertEqual(output.read_bytes(),new)
+                self.assertFalse(list(root.glob('*.tmp')))
+                output.write_bytes(old)
+                with patch.object(Path,'replace',side_effect=OSError('synthetic replace failure')):
+                    with self.assertRaisesRegex(OSError,'synthetic replace failure'):
+                        extractor.write_new_game_save(apk,root)
+                self.assertEqual(output.read_bytes(),old)
+                self.assertFalse(list(root.glob('*.tmp')))
+                modified=old.replace(b'selection\t-3\t17',b'selection\t-4\t17')
+                output.write_bytes(modified)
+                with patch.object(Path,'replace') as replacement:
+                    with self.assertRaisesRegex(ValueError,'replace differing'):
+                        extractor.write_new_game_save(apk,root)
+                    replacement.assert_not_called()
+                self.assertEqual(output.read_bytes(),modified)
                 self.assertEqual((root/'manifest.json').read_text(),manifest)
 
 

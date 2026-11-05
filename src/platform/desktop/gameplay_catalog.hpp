@@ -17,6 +17,7 @@ struct GameResourceIndex {std::int32_t version;std::vector<GameArchiveEntry> ent
 struct NewGameSaveDefaults {
     std::int32_t area8,quest9,town_capacity;
     std::int64_t money,crystals;
+    std::optional<std::int32_t> town_scale; // v2: decoded normal-save slot13; v1 diagnostics omit it.
 };
 // Shared extracted-data inputs for mission and town hosts; no implicit game values.
 std::vector<std::uint8_t> read_game_archive(const std::filesystem::path&);

@@ -214,3 +214,5 @@ game:0x06000857	reimplemented	src/core/gameplay/stage_menu.cpp	Native vertical s
 game:0x06000850	reimplemented	src/core/gameplay/stage_menu.cpp	Stage row content with captured quest, bounds, name/level and completed/pending SEBs; live town rendering and contracts.
 game:0x06000a22	reimplemented	src/core/gameplay/stage_menu.cpp	Stage row touch types0/2 retain unsigned low16; no dereference for other types; host delivery and contracts.
 game:0x060007b4	reimplemented	src/core/gameplay/quest_catalog.cpp	Increment selected quest stageDetail[global exploreStage][3] with int32 wrap; null bounds short-row and Load/NewGame preservation contracts tested.
+game:0x0600082e	reimplemented	src/core/gameplay/select_camera.cpp	Native SetReturnPos int32 wrap/binary32 ordering, dimension callbacks and live post-camera witchX; shared town return and edge/failure tests.
+game:0x060007a4	documented	docs/subsystems/town.md	QuestForm.Finish touch teardown, resBg disposal, resQuest clock removal/disposal; bounded desktop resource retention is an explicit service stub.
