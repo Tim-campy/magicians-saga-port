@@ -218,7 +218,7 @@ game:0x0600082e	reimplemented	src/core/gameplay/select_camera.cpp	Native SetRetu
 game:0x060007a4	documented	docs/subsystems/town.md	QuestForm.Finish touch teardown, resBg disposal, resQuest clock removal/disposal; bounded desktop resource retention is an explicit service stub.
 game:0x06000905	reimplemented	src/core/gameplay/presentation_forms.cpp	Five-step open/close production, int32 wrap, Pop-before-clear and failure-prefix tests; shared resident gift popup.
 game:0x060008b3	documented	docs/subsystems/text.md	MakePopUpContens allocates type19; kind, title/text and option stores; fresh gift factory wired with explicit output service.
-game:0x060008b9	traced	docs/subsystems/town.md	Types12/15/17/19 controllers ported and host-bound; ordered construction, king hall, completion and gift popup; other _update types remain uncovered.
+game:0x060008b9	traced	docs/subsystems/town.md	Types12/14/15/17/19 controllers ported and host-bound; ordered construction, king hall, completion and gift popup; other _update types remain uncovered.
 game:0x0600076d	documented	docs/subsystems/town.md	LT template/int64 wrapper: TranslateText(true), JString.ValueOf then existing StringUtil.Replace; gift host with declared locale provider.
 game:0x06000771	traced	docs/subsystems/town.md	SetTouchValue mask0x10000 forwards ARM-masked bit shift to Canvas.KeyClick; gift uses low value25; other selectors remain unbound.
 game:0x060000a7	traced	docs/subsystems/town.md	OnTouchList selected flags9/16/17 paths: type1/2 Set; release pulse or retained packed-key marker; shared Stage/BuildList two-click marker bound; other flags remain uncovered.
@@ -228,3 +228,17 @@ game:0x060008b1	documented	docs/subsystems/town.md	MakeBuildingComplete creates 
 game:0x060008da	documented	docs/subsystems/town.md	SetTouchValue routes masks0x20000/0x130000/0x140000 to selected/+0x248/+0x24c; remaining masks delegate base.
 kairo:0x060009ba	documented	docs/subsystems/town.md	Parameterless GetKey packs uint32(group)<<32 | uint32(value); retained construction marker contract.
 game:0x06000086	documented	docs/subsystems/town.md	One-argument OnKeyDown ignores supplied key and calls ClearMarker after metadata setup; SDL town keys clear retained row marker.
+game:0x06000860	documented	docs/subsystems/town.md	Typed constructor writes frame98/32 before base form construction and requested kind afterward; ordinary kind1 factory bound.
+game:0x06000861	documented	docs/subsystems/town.md	MakeShopForm allocates fresh typed ShopForm preserving requested kind; Building kind1 host-bound; other shop kinds explicit errors.
+game:0x06000862	traced	docs/subsystems/town.md	Kind1 Init common/resource14/member/view, binary32 positions, labels/state/flag/reset ported and host-bound; kind11 NewsBanner remains uncovered.
+game:0x06000863	traced	docs/subsystems/town.md	Kind1 Reset publishes entries/filter arrays, visits found catalog indices in order and preserves inclusive page clamp; other kinds uncovered.
+game:0x06000864	traced	docs/subsystems/town.md	Reached kind1 CheckFilter requires existing TownSystem cache and leaves zero filters unchanged; other kind filters uncovered.
+game:0x06000865	traced	docs/subsystems/town.md	Kind1 complete outer Update clock/motion/crossfade/BGM/Back ports; domain executes retained shop; other kinds uncovered.
+game:0x06000866	traced	docs/subsystems/town.md	Kind1/thread0 buy/returned-child/repeat/optional-input path ported with native ordering; billing/unlock/other kinds remain uncovered.
+game:0x06000871	reimplemented	src/core/gameplay/shop_form.cpp	ChangeState labels-before-state/frame stores; initialize/crossfade and callback-failure tests; retained magic shop bound.
+game:0x06000873	documented	docs/subsystems/town.md	SetTouchValue masks0x20000/0xc0000 write selection/selected_item; other selectors delegate base; reached row selection bound.
+game:0x06000874	documented	docs/subsystems/town.md	GetTouchValue masks0x20000/0xc0000 return selection/selected_item; other selectors delegate base.
+game:0x06000876	documented	docs/subsystems/town.md	Resume calls inert MyFormBase.Resume then returns true; parent shop identity retained after purchase notice.
+game:0x06000877	documented	docs/subsystems/town.md	Finish calls base teardown, optionally disposes resource14, clears AppData shop owner and ends blur; desktop caches/output explicitly external.
+game:0x0600086c	traced	docs/subsystems/town.md	Kind1 Panel source background/rows, native two-column geometry/flags16 and separate Buy control bound; remaining kinds/visual details uncovered.
+game:0x060008af	documented	docs/subsystems/town.md	MakeShopBuyMagic allocates type14 before nullable CharaData lookup and key/add/post-total stores; no payment/stat mutation; notice host-bound.

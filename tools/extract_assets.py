@@ -49,7 +49,7 @@ APK_SHA = 'd58943e6ed4137975a554f1e210853f4a7b41573a38dbb462f4f5e159bf6eead'
 MISSION_RESOURCES = ((1, 'chara'), (2, 'com'), (3, 'enemy'), (7, 'quest'), (18, 'chip'),
                      (19, 'bullet'), (20, 'effect'), (21, 'hat'), (22, 'weapon'), (23, 'gauge'))
 # RESOURCE row1 ordinals, independent of AppData.GetResourceManager's selected IDs.
-TOWN_RESOURCES = ((0, 'bg'), (2, 'com'), (8, 'resident'), (11, 'select'), (13, 'select_stage'))
+TOWN_RESOURCES = ((0, 'bg'), (2, 'com'), (8, 'resident'), (11, 'select'), (13, 'select_stage'), (14, 'shop'))
 
 
 def mission_default_arrays(metadata, layouts):
@@ -259,7 +259,7 @@ def write_building_defaults(apk, root):
     return write_mission_seed(apk, root, 'building-defaults.tsv', building_defaults_payload)
 
 
-def write_resource_index(root, label, signature, filename, resources):
+def write_resource_index(root, label, signature, filename, resources, additive_ids=()):
     """Publish an index from existing decoded archives without extracting payloads."""
     manifest = json.loads((root / 'manifest.json').read_text(encoding='utf-8'))
     if manifest.get('schema') not in (2, 3) or manifest.get('apk_sha256') != APK_SHA:
@@ -279,8 +279,12 @@ def write_resource_index(root, label, signature, filename, resources):
         rows.append(f'{kind}\t{resource}\t{json.dumps(relative, ensure_ascii=False)}\t{json.dumps(name)}')
     output = bounded(root, filename);payload = ('\n'.join(rows) + '\n').encode('utf-8')
     if output.exists() and output.read_bytes() != payload:
-        raise ValueError('Refusing to replace differing ' + label.lower() + ' resource index')
-    if not output.exists():
+        # Upgrade only an exact previously generated subset; preserve user edits.
+        previous = ('\n'.join(line for line in rows if not any(
+            line.startswith('resource\t'+str(value)+'\t') for value in additive_ids))+'\n').encode('utf-8')
+        if not additive_ids or output.read_bytes() != previous:
+            raise ValueError('Refusing to replace differing ' + label.lower() + ' resource index')
+    if not output.exists() or output.read_bytes() != payload:
         output.write_bytes(payload)
     return output
 
@@ -294,7 +298,7 @@ def write_mission_index(root):
 def write_town_index(root):
     """Index the reached SelectForm archives using their original RESOURCE ordinals."""
     return write_resource_index(root, 'Town', 'town_resources\t2',
-                                'town-resources-v2.tsv', TOWN_RESOURCES)
+                                'town-resources-v2.tsv', TOWN_RESOURCES, additive_ids=(14,))
 
 
 def write_mission_font(root):

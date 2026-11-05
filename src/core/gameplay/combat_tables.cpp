@@ -1,13 +1,58 @@
 #include "combat_tables.hpp"
 #include "table_catalog.hpp"
+#include <limits>
+#include <stdexcept>
 
 namespace saga::core {
+namespace {
+std::int32_t shop_word(std::uint32_t bits){
+    return bits<=0x7fffffffU?static_cast<std::int32_t>(bits):-1-static_cast<std::int32_t>(0xffffffffU-bits);
+}
+std::int32_t shop_group(std::int32_t category){
+    if(category>=0&&category<=1)return 0;
+    if(category>=2&&category<=4)return 1;
+    if(category>=5&&category<=7)return 2;
+    return -1;
+}
+template<class T>const T& shop_required(const T* value){
+    if(!value)throw std::invalid_argument("missing magic shop price data");return *value;
+}
+}
 MagicShopCombatTable load_magic_shop_combat_table(std::string_view text,bool normalize,const EventIntegerParser& parser) {
     // MagicShopData.Load 0x1171f2c: id/name/category/basePrice/upValue/explain/flag.
     return detail::load_table_records<MagicShopCombatRecord>(text,normalize,parser,[](detail::TableTokens& t){
-        MagicShopCombatRecord r;r.id=t.integer();t.take();r.category=t.integer();t.integer();
-        r.value_per_purchase=t.integer();t.take();r.flags=t.integer();return r;
+        MagicShopCombatRecord r;r.id=t.integer();r.name=t.take();r.category=t.integer();r.base_price=t.integer();
+        r.value_per_purchase=t.integer();r.explanation=t.take();r.flags=t.integer();return r;
     });
+}
+std::int32_t magic_shop_grouped_count(const MagicShopCombatRecord& record,MagicShopPriceHost& host){
+    const auto group=shop_group(record.category);
+    if(group<0)return std::numeric_limits<std::int32_t>::max();
+    const auto first=group==0?0:group==1?2:5;
+    const auto end=group==0?2:group==1?5:8;
+    std::int32_t total=0;
+    for(auto slot=first;slot<end;++slot){
+        const auto value=shop_required(host.saved_purchases(slot));
+        total=shop_word(static_cast<std::uint32_t>(total)+static_cast<std::uint32_t>(value));
+    }
+    return total;
+}
+std::int32_t magic_shop_price(const MagicShopCombatRecord& record,MagicShopPriceHost& host){
+    // Grouping callbacks run before the fresh category read used for the column.
+    const auto count=magic_shop_grouped_count(record,host);
+    const auto group=shop_group(record.category);
+    if(group<0)return std::numeric_limits<std::int32_t>::max();
+    const auto rate=shop_required(host.price_record(count)).shop_parameters.at(static_cast<std::size_t>(group));
+    const auto base=record.base_price; // Re-read only after the selected Table row.
+    const auto product=shop_word(static_cast<std::uint32_t>(base)*static_cast<std::uint32_t>(rate));
+    return product/100;
+}
+std::int32_t magic_shop_parameter_key(std::int32_t category){
+    if(category>=0&&category<=4)return category;
+    return category>=5&&category<=7?category+5:-1;
+}
+void add_magic_shop_purchases(std::int32_t& purchases,std::int32_t amount){
+    purchases=shop_word(static_cast<std::uint32_t>(purchases)+static_cast<std::uint32_t>(amount));
 }
 EquipmentCombatTable load_equipment_combat_table(std::string_view text,EquipmentTableKind kind,
                                                  bool normalize,const EventIntegerParser& parser) {

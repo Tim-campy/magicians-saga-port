@@ -364,6 +364,12 @@ void test_construction_forms() {
     }
     {BuildingCompleteState state{7,9,22};initialize_building_complete(state);
         check(state.building_id==7&&state.frame==22&&state.production_step==1,"complete Init sets only production step");}
+    {MagicShopNoticeState state{1,0};CompleteHost h;h.close=true;
+        for(int frame=1;frame<=19;++frame)update_magic_shop_notice(state,h);
+        check(h.calls.empty()&&state.production_step==0,"magic purchase opens at6 without construction sound at15");
+        update_magic_shop_notice(state,h);check(h.calls==std::vector<std::string>{"sound"},"magic purchase sound at20");
+        for(int frame=21;frame<=31;++frame)update_magic_shop_notice(state,h);
+        check(h.calls==std::vector<std::string>({"sound","pulse","pop"}),"magic purchase closes only after31 on acknowledgement");}
     {BuildingCompleteState state;initialize_building_complete(state);CompleteHost h;
         for(int frame=1;frame<=30;++frame){update_building_complete(state,h);check(state.frame==frame&&state.production_step==(frame<6?1:0),"complete opening retains the total frame clock");}
         check(h.calls==std::vector<std::string>{"sound"},"complete plays sound once at15 and accepts no early close input");

@@ -13,7 +13,7 @@ game:0x060001c1	reimplemented	src/core/gameplay/event_conditions.cpp	matrix AND;
 game:0x060001c3	traced	docs/subsystems/events.md	unit evaluator: 14 Event.txt predicates ported behind data host; other handlers unresolved
 game:0x060001c2	reimplemented	src/core/gameplay/event_conditions.cpp	signed64 comparison codes 0-5; tests/test_event_conditions.cpp
 game:0x060001a1	reimplemented	src/core/gameplay/event_progression.cpp	Normal decoded int64 plus sign-extended int32 wraps with no clamp; bounded SecureLong value path established; desktop result adapter bound; secure encoding/locking not ported.
-game:0x060001a3	reimplemented	src/core/gameplay/event_progression.cpp	decoded-value arithmetic, floor 0
+game:0x060001a3	reimplemented	src/core/gameplay/event_progression.cpp	SubMoney(int32) decoded sign extension/wrap64 then floor0; shared shop debit and overflow/underflow tests; no crystal scaling.
 game:0x060001a7	reimplemented	src/core/gameplay/event_progression.cpp	Normal decoded int64 plus sign-extended int32 wraps with no clamp; bounded SecureLong value path established; desktop result adapter bound; secure encoding/locking not ported.
 game:0x060001a8	reimplemented	src/core/gameplay/event_progression.cpp	SYSSAVEI_YUGAMI mode supplied by caller
 game:0x06000224	documented	docs/subsystems/events.md	10/20 decision ported as stamina_limit_from_item_state; billing lookup not ported
@@ -44,3 +44,4 @@ game:0x060001c7	reimplemented	src/core/gameplay/select_triggers.cpp	CheckAlready
 game:0x06001130	documented	docs/subsystems/events.md	108-byte constructor initializes inherited BaseData state; execNum+0x20 remains CLR zero; inherited NewGame RET preserves reused counters
 game:0x06000251	reimplemented	src/core/gameplay/select_building.cpp	Complete query/grant scan with captured signed score, live script/argument reads, unit effects, returned Push, currency-before-received and alias/failure tests; retained king hall.
 game:0x06000238	reimplemented	src/core/gameplay/select_camera.cpp	Count discovery exactly1 starting at -1, repeated catalog/length/row reads and null failures; tests and saga_town frontier bound.
+game:0x060001a5	reimplemented	src/core/gameplay/event_progression.cpp	CheckMoney decoded signed64 contract: nonpositive true, otherwise balance threshold; canonical campaign wallet and edge tests.

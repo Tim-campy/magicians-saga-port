@@ -1,8 +1,10 @@
 #include "core/gameplay/combat_tables.hpp"
 #include <cstdlib>
 #include <fstream>
+#include <functional>
 #include <iostream>
 #include <iterator>
+#include <limits>
 #include <stdexcept>
 using namespace saga::core;
 void check(bool ok){if(!ok)std::abort();}
@@ -11,6 +13,90 @@ std::string read(const char* path){
     return {std::istreambuf_iterator<char>(file),std::istreambuf_iterator<char>()};
 }
 std::string endpoints(){std::string s="13";for(int i=0;i<13;++i)s+="\t2\t100\t1000";return s;}
+template<class E,class F>void expect(F action){try{action();}catch(const E&){return;}check(false);}
+struct ShopPriceHost:MagicShopPriceHost {
+    std::vector<std::optional<std::int32_t>> purchases{1,2,3,4,5,6,7,8};
+    LevelTable records=LevelTable(30);
+    std::vector<std::string> calls;
+    std::function<void(std::int32_t)> on_purchases,on_price;
+    ShopPriceHost(){for(std::size_t i=0;i<records.size();++i){records[i].emplace();const auto n=static_cast<std::int32_t>(i);records[i]->shop_parameters={100+n,200+n,300+n};}}
+    const std::int32_t* saved_purchases(std::int32_t slot)override{
+        calls.push_back("P"+std::to_string(slot));if(on_purchases)on_purchases(slot);
+        const auto& value=purchases.at(static_cast<std::size_t>(slot));return value?&*value:nullptr;
+    }
+    const LevelTableRecord* price_record(std::int32_t index)override{
+        calls.push_back("T"+std::to_string(index));if(on_price)on_price(index);
+        const auto& row=records.at(static_cast<std::size_t>(index));return row?&*row:nullptr;
+    }
+};
+void magic_shop_economy_contract(){
+    const MagicShopCombatRecord compatible{7,3,9,2};
+    check(compatible.id==7&&compatible.category==3&&compatible.value_per_purchase==9&&compatible.flags==2&&
+          compatible.base_price==0&&compatible.name.empty()&&compatible.explanation.empty());
+    const std::array<std::int32_t,8> keys{0,1,2,3,4,10,11,12};
+    for(std::int32_t category=0;category<8;++category){
+        MagicShopCombatRecord row;row.category=category;row.base_price=37;
+        ShopPriceHost h;const auto group=category<2?0:category<5?1:2;
+        const std::vector<std::string> reads=group==0?std::vector<std::string>{"P0","P1"}:
+            group==1?std::vector<std::string>{"P2","P3","P4"}:std::vector<std::string>{"P5","P6","P7"};
+        const auto count=group==0?3:group==1?12:21;
+        check(magic_shop_grouped_count(row,h)==count&&h.calls==reads);
+        h.calls.clear();auto price_reads=reads;price_reads.push_back("T"+std::to_string(count));
+        const auto price=group==0?38:group==1?78:118;
+        check(magic_shop_price(row,h)==price&&h.calls==price_reads);
+        check(magic_shop_parameter_key(category)==keys[static_cast<std::size_t>(category)]&&
+              shop_id_for_parameter(magic_shop_parameter_key(category))==category);
+    }
+    for(const auto category:{std::numeric_limits<std::int32_t>::min(),-1,8,std::numeric_limits<std::int32_t>::max()}){
+        MagicShopCombatRecord row;row.category=category;row.base_price=0;ShopPriceHost h;h.purchases.clear();h.records.clear();
+        check(magic_shop_grouped_count(row,h)==std::numeric_limits<std::int32_t>::max()&&
+              magic_shop_price(row,h)==std::numeric_limits<std::int32_t>::max()&&magic_shop_parameter_key(category)==-1&&h.calls.empty());
+    }
+    {MagicShopCombatRecord row;ShopPriceHost h;
+        h.on_purchases=[&](std::int32_t slot){if(slot==1){h.purchases[0]=100;h.purchases[1]=4;}};
+        check(magic_shop_grouped_count(row,h)==5&&h.calls==std::vector<std::string>({"P0","P1"}));}
+    {MagicShopCombatRecord row;row.base_price=10;ShopPriceHost h;
+        h.on_purchases=[&](std::int32_t slot){if(slot==0)row.category=5;};
+        h.on_price=[&](std::int32_t index){check(index==3);row.base_price=37;row.category=0;};
+        check(magic_shop_price(row,h)==112&&h.calls==std::vector<std::string>({"P0","P1","T3"}));
+        check(row.base_price==37&&row.category==0);}
+    {MagicShopCombatRecord row;ShopPriceHost h;
+        h.on_purchases=[&](std::int32_t slot){if(slot==1)row.category=-1;};
+        check(magic_shop_price(row,h)==std::numeric_limits<std::int32_t>::max()&&h.calls==std::vector<std::string>({"P0","P1"}));}
+    {MagicShopCombatRecord row;row.base_price=std::numeric_limits<std::int32_t>::max();ShopPriceHost h;h.records[3]->shop_parameters[0]=200;
+        check(magic_shop_price(row,h)==-2);row.base_price=std::numeric_limits<std::int32_t>::min();check(magic_shop_price(row,h)==0);
+        row.base_price=-3;h.records[3]->shop_parameters[0]=150;check(magic_shop_price(row,h)==-4);
+        row.base_price=-1;h.records[3]->shop_parameters[0]=99;check(magic_shop_price(row,h)==0);}
+    for(const auto slot:{0,1,2,3,4,5,6,7}){
+        MagicShopCombatRecord row;row.category=slot<2?0:slot<5?2:5;ShopPriceHost h;h.purchases[static_cast<std::size_t>(slot)].reset();
+        expect<std::invalid_argument>([&]{magic_shop_price(row,h);});
+        const auto first=slot<2?0:slot<5?2:5;std::vector<std::string> prefix;
+        for(auto i=first;i<=slot;++i)prefix.push_back("P"+std::to_string(i));
+        check(h.calls==prefix);
+    }
+    {MagicShopCombatRecord row;ShopPriceHost h;h.purchases.resize(1);
+        expect<std::out_of_range>([&]{magic_shop_grouped_count(row,h);});check(h.calls==std::vector<std::string>({"P0","P1"}));}
+    {MagicShopCombatRecord row;row.base_price=0;ShopPriceHost h;h.records[3].reset();
+        expect<std::invalid_argument>([&]{magic_shop_price(row,h);});check(h.calls==std::vector<std::string>({"P0","P1","T3"}));}
+    {MagicShopCombatRecord row;ShopPriceHost h;h.records.resize(3);
+        expect<std::out_of_range>([&]{magic_shop_price(row,h);});check(h.calls==std::vector<std::string>({"P0","P1","T3"}));}
+    {MagicShopCombatRecord row;ShopPriceHost h;h.purchases[0]=std::numeric_limits<std::int32_t>::max();h.purchases[1]=1;
+        check(magic_shop_grouped_count(row,h)==std::numeric_limits<std::int32_t>::min());h.calls.clear();
+        expect<std::out_of_range>([&]{magic_shop_price(row,h);});
+        check(h.calls==std::vector<std::string>({"P0","P1","T-2147483648"}));}
+    {MagicShopCombatRecord row;row.category=2;ShopPriceHost h;h.purchases[2]=std::numeric_limits<std::int32_t>::max();h.purchases[3]=1;h.purchases[4]=-1;
+        check(magic_shop_grouped_count(row,h)==std::numeric_limits<std::int32_t>::max()&&h.calls==std::vector<std::string>({"P2","P3","P4"}));}
+    {MagicShopCombatRecord row;ShopPriceHost h;
+        h.on_purchases=[](std::int32_t slot){if(slot==1)throw std::runtime_error("synthetic purchase provider failure");};
+        expect<std::runtime_error>([&]{magic_shop_price(row,h);});check(h.calls==std::vector<std::string>({"P0","P1"}));}
+    {MagicShopCombatRecord row;ShopPriceHost h;
+        h.on_price=[](std::int32_t){throw std::runtime_error("synthetic price provider failure");};
+        expect<std::runtime_error>([&]{magic_shop_price(row,h);});check(h.calls==std::vector<std::string>({"P0","P1","T3"}));}
+    std::int32_t purchases=std::numeric_limits<std::int32_t>::max();add_magic_shop_purchases(purchases,1);
+    check(purchases==std::numeric_limits<std::int32_t>::min());add_magic_shop_purchases(purchases,-1);
+    check(purchases==std::numeric_limits<std::int32_t>::max());purchases=-1;add_magic_shop_purchases(purchases,1);check(purchases==0);
+    add_magic_shop_purchases(purchases,-7);check(purchases==-7);add_magic_shop_purchases(purchases,0);check(purchases==-7);
+}
 int main(int argc,char** argv){
     if(argc==6){
         const auto characters=load_character_progression_table(read(argv[1]),false,parse_event_decimal);
@@ -40,12 +126,14 @@ int main(int argc,char** argv){
         std::cout<<"characters="<<character_count<<" shop="<<shop_count<<" equipment="<<equipment_count
                  <<" queries="<<queries<<" hash="<<hash<<'\n';return 0;
     }
+    magic_shop_economy_contract();
     const std::string character="2\tName\t7\tres\t8\tres2\t9\t2\t3\t4\t5\t150\t"+endpoints()+"\t6\t7\t8\t-1\t9\t258";
     auto chars=load_character_progression_table(character,false,parse_event_decimal);
     check(chars[2]->weapon_id==9&&chars[2]->initial_level==4&&chars[2]->flags==258);
     auto c=bind_character_parameters(*chars[2],1000);check(c.level==1000&&c.flags==2&&c.values==chars[2]->parameters);
     auto shop=load_magic_shop_combat_table("0\tUpgrade\t5\t123\t7\tDescription\t2\n2\tGap\t6\t1\t9\tD\t0",false,parse_event_decimal);
     check(shop.size()==3&&!shop[1]&&shop[0]->category==5&&shop[0]->value_per_purchase==7);
+    check(shop[0]->name=="Upgrade"&&shop[0]->base_price==123&&shop[0]->explanation=="Description");
     {ShopNewGameState state{7,55,false};MagicShopCombatRecord record;record.flags=2;
      reset_shop_for_new_game(state,record,1);check(state.discovery_state==7&&!state.is_new&&state.purchases==0);
      state.purchases=55;reset_shop_for_new_game(state,record,2);check(state.discovery_state==1&&state.is_new&&state.purchases==0);
@@ -91,6 +179,13 @@ int main(int argc,char** argv){
      check(state.level==99&&state.inventory.stock==88&&state.inventory.discovery_state==1&&state.inventory.is_new);}
     auto duplicate=load_magic_shop_combat_table("0\tA\t1\t2\t3\tD\t0\n0\tB\t4\t5\t6\tD\t1\textra",false,parse_event_decimal);
     check(duplicate[0]->value_per_purchase==6);
+    check(duplicate[0]->name=="B"&&duplicate[0]->base_price==5&&duplicate[0]->explanation=="D");
+    const auto signed_shop=load_magic_shop_combat_table("0\t name \t-1\t-2147483648\t-7\t explain \t-1\n",false,parse_event_decimal);
+    check(signed_shop[0]->name==" name "&&signed_shop[0]->base_price==std::numeric_limits<std::int32_t>::min()&&
+          signed_shop[0]->value_per_purchase==-7&&signed_shop[0]->explanation==" explain "&&signed_shop[0]->flags==-1);
+    const auto empty_shop=load_magic_shop_combat_table("0\t\t0\t-3\t1\t\t1",false,parse_event_decimal);
+    check(empty_shop[0]->name.empty()&&empty_shop[0]->explanation.empty()&&empty_shop[0]->base_price==-3);
+    expect<std::invalid_argument>([]{load_magic_shop_combat_table("0\tN\t0\tbad\t1\tD\t1",false,parse_event_decimal);});
     auto nulls=load_equipment_combat_table("0\tHat\t0\tRes\t0\t0\t0\t0\t0\t-1\tD\t0",EquipmentTableKind::cloth_or_hat,false,parse_event_decimal);
     check(!nulls[0]->parameters);
     try{load_magic_shop_combat_table("1\tName\t2",false,parse_event_decimal);check(false);}catch(const std::out_of_range&){}

@@ -143,3 +143,31 @@ def add_construction_case(root):
     members['build-window.seb']=seb([(0,99,0,0,240,240,0,0,0,0)])
     common.write_bytes(jar(list(members.items())))
     (root/'building-defaults.tsv').write_text('building_defaults 1\nresident_rates 9 125 250 375 500 625 750 875 1000 1125\n')
+
+
+def add_magic_shop_case(root):
+    """A real host shop route over synthetic catalog, rates and two-frame sprites."""
+    from test_sprite_preview import seb,png
+    root=Path(root);add_construction_case(root);read=_container_reader()
+    archive=root/'textassets/tables.bin';tables=dict(read(archive.read_bytes()))
+    towns=tables['English.lproj/Town.txt'].decode().splitlines()
+    cells=towns[0].split('\t');cells[1]='0';towns[0]='\t'.join(cells)
+    tables['English.lproj/Town.txt']=('\n'.join(towns)+'\n').encode()
+    tables['English.lproj/MagicShop.txt']=('\n'.join(
+        f'{i}\tUpgrade{i}\t{i}\t{10*(i+1)}\t{i+2}\tSynthetic\t{1 if i<2 else 0}' for i in range(8))+'\n').encode()
+    levels=[l.split('\t') for l in tables['English.lproj/Table.txt'].decode().splitlines()]
+    for row in levels:row[3:6]=[str(125*(int(row[0])+1))]*3
+    tables['English.lproj/Table.txt']=('\n'.join('\t'.join(l) for l in levels)+'\n').encode()
+    archive.write_bytes(jar(list(tables.items())))
+    common=root/'textassets/common.bin';members=dict(read(common.read_bytes()))
+    members['img.inf']=_merge_rows(members['img.inf'],b'100\tbuy.png,bin\n')
+    members['seb.inf']=_merge_rows(members['seb.inf'],b'70\tbuy.seb\n')
+    members['buy.png']=png(116,26,[40,160,80,255]*(116*26))
+    members['buy.seb']=seb([(0,100,0,0,116,26,-58,0,0,0),(1,100,0,0,116,26,-58,0,0,0)])
+    common.write_bytes(jar(list(members.items())))
+    shop={'img.inf':b'0\tshop.png,bin\n','seb.inf':b'1\tbackground.seb\n12\trow.seb\n',
+          'shop.png':png(240,240,[24,32,64,255]*(240*240)),
+          'background.seb':seb([(0,0,0,0,240,240,-120,-120,0,0),(1,0,0,0,240,240,-120,-120,0,0)]),
+          'row.seb':seb([(0,0,0,0,120,32,0,0,0,0),(1,0,120,0,120,32,0,0,0,0)])}
+    (root/'textassets/shop.bin').write_bytes(jar(list(shop.items())))
+    index=root/'town-resources-v2.tsv';index.write_text(index.read_text()+'resource\t14\t"textassets/shop.bin"\t"shop"\n')

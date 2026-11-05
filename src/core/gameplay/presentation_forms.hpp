@@ -167,6 +167,9 @@ public:
 // SubForm.Init type17 sets only production_step; common Init owns frame0.
 void initialize_building_complete(BuildingCompleteState&);
 bool update_building_complete(BuildingCompleteState&,BuildingCompleteHost&);
+// SubForm14 shares the six-pass opening/frame31 close, with sound at20.
+struct MagicShopNoticeState {std::int32_t production_step=0,frame=0;};
+bool update_magic_shop_notice(MagicShopNoticeState&,BuildingCompleteHost&);
 class PresentationFormHost : public PresentationTextHost {
 public:
     // Boundary for JInteger.ParseInt/System.Int32.Parse. No guessed culture or

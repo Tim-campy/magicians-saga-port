@@ -165,7 +165,7 @@ int main(int argc,char** argv)try{
     auto buildings=get_town_buildings(town.state,town.cache,town);
     std::unique_ptr<TownBackground> backdrop;
     if(background){
-        const auto draw_index=read_game_resource_index(*root,true);const GameArchiveEntry* selected=nullptr;const GameArchiveEntry* bg_entry=nullptr;const GameArchiveEntry* common_entry=nullptr;const GameArchiveEntry* stage_entry=nullptr;bool matching_tables=false;
+        const auto draw_index=read_game_resource_index(*root,true);const GameArchiveEntry* selected=nullptr;const GameArchiveEntry* bg_entry=nullptr;const GameArchiveEntry* common_entry=nullptr;const GameArchiveEntry* stage_entry=nullptr;const GameArchiveEntry* shop_entry=nullptr;bool matching_tables=false;
         std::set<std::int32_t> draw_ids;std::set<std::string> draw_names;
         for(const auto& entry:draw_index.entries){
             if(!draw_ids.insert(entry.id).second||!draw_names.insert(entry.name).second)throw std::invalid_argument("duplicate town background resource index entry");
@@ -174,11 +174,12 @@ int main(int argc,char** argv)try{
             else if(entry.kind=="resource"&&entry.id==0&&entry.name=="bg"&&!bg_entry)bg_entry=&entry;
             else if(entry.kind=="resource"&&entry.id==2&&entry.name=="com"&&!common_entry)common_entry=&entry;
             else if(entry.kind=="resource"&&entry.id==13&&entry.name=="select_stage"&&!stage_entry)stage_entry=&entry;
+            else if(entry.kind=="resource"&&entry.id==14&&entry.name=="shop"&&!shop_entry)shop_entry=&entry;
             else if(entry.kind!="resource"||((entry.id!=8||entry.name!="resident")&&(entry.id!=13||entry.name!="select_stage")))
                 throw std::invalid_argument("unexpected town background resource index entry");
         }
         if(!matching_tables||!selected)throw std::invalid_argument("town background requires matching tables and select resource");
-        backdrop=std::make_unique<TownBackground>(archive,*selected,ResourceProfile{language,dpi},town.capacity,context,buildings,town.state.build_enable,bg_entry,common_entry,&index,stage_entry,shared_world);
+        backdrop=std::make_unique<TownBackground>(archive,*selected,ResourceProfile{language,dpi},town.capacity,context,buildings,town.state.build_enable,bg_entry,common_entry,&index,stage_entry,shared_world,shop_entry);
         for(std::int32_t pass=0;pass<context.motion_passes;++pass)backdrop->advance_motion();
         if(context.full_update)backdrop->initialize_update(archive,*root);
         if(interactive){

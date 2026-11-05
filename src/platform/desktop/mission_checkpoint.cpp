@@ -232,7 +232,7 @@ struct MissionCheckpoint {
         x.ticks_,x.opened_,x.closed_,x.flushes_,x.pages_,x.now_,x.total_frames_,x.pulse_,x.held_,x.executed_,x.lifecycle_,x.layout_measurements_,x.normal_save_);
         archive.count(x.layout_samples_.size());for(const auto& sample:x.layout_samples_){fields(sample.talk,sample.page,sample.length,sample.height);archive.count(sample.blocks);}
     });}
-    void value(const MissionEvents::Talk& x){if(x.king||x.build_list||x.building_complete)throw std::logic_error("mission checkpoint does not cover town form services");object("mission-talk",x,[&]{
+    void value(const MissionEvents::Talk& x){if(x.king||x.build_list||x.building_complete||x.magic_shop||x.magic_notice)throw std::logic_error("mission checkpoint does not cover town form services");object("mission-talk",x,[&]{
         fields(x.id,x.state,x.frame,x.finish_frame,x.prepared,x.reveal,x.layout);
         if(x.prepared.initial.type==4){
             if(!x.event_notice)throw std::logic_error("event form checkpoint requires notice state");

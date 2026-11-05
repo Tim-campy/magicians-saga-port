@@ -32,6 +32,8 @@ public:
     void bind_quest_record(std::shared_ptr<core::QuestRecord>);
     void complete_return(MissionTownReturn&);
     std::int64_t money()const{return state_.money;}
+    bool check_money(std::int64_t amount)const;
+    void subtract_money(std::int32_t amount);
     void set_money(std::int64_t value){state_.money=value;}
     void set_crystals(std::int64_t value){state_.crystals=value;}
     std::int64_t crystals()const{return state_.crystals;}

@@ -940,3 +940,8 @@ if(SAGA_BUILD_VIEWER)
   add_test(NAME sprite_preview_pixels COMMAND "${Python3_EXECUTABLE}" -I "${CMAKE_CURRENT_SOURCE_DIR}/test_sprite_preview.py" "$<TARGET_FILE:asset_viewer>")
   add_test(NAME queue_capture_pixels COMMAND "${Python3_EXECUTABLE}" -I "${CMAKE_CURRENT_SOURCE_DIR}/test_queue_capture.py" "$<TARGET_FILE:queue_capture>" "$<TARGET_FILE:asset_viewer>" "$<TARGET_FILE:saga_mission>")
 endif()
+
+add_executable(test_shop_form test_shop_form.cpp)
+target_link_libraries(test_shop_form PRIVATE shop_form)
+project_warnings(test_shop_form)
+add_test(NAME shop_form_contract COMMAND test_shop_form)

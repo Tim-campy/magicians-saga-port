@@ -33,6 +33,12 @@ struct Host : EventFlowHost {
     }
 };
 int main() {
+    check(check_decoded_money(-1,0)&&check_decoded_money(-1,-5),"nonpositive money requests succeed");
+    check(check_decoded_money(100,100)&&!check_decoded_money(99,100),"signed64 money check");
+    check(subtract_decoded_money(143,100)==43&&subtract_decoded_money(99,100)==0,"money debit clamps at zero without crystal scaling");
+    check(subtract_decoded_money(0,std::numeric_limits<std::int32_t>::min())==2147483648LL,"negative int32 cost is sign extended before subtraction");
+    check(subtract_decoded_money(std::numeric_limits<std::int64_t>::max(),-1)==0,"money wraps64 before its negative floor");
+    check(subtract_decoded_money(std::numeric_limits<std::int64_t>::min(),1)==std::numeric_limits<std::int64_t>::max(),"money subtraction underflow retains wrapped positive result");
     check(check_decoded_crystals(-1,0)&&check_decoded_crystals(-1,-1),"nonpositive crystal request succeeds");
     check(check_decoded_crystals(100,100)&&!check_decoded_crystals(99,100),"signed64 crystal threshold");
     check(check_decoded_crystals(std::numeric_limits<std::int64_t>::max(),std::numeric_limits<std::int64_t>::max()),"full signed64 request retained");

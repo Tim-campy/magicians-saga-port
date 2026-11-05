@@ -10,6 +10,8 @@ Schema2 includes QuestData.stage_detail (99 independently owned int32[99] rows p
 
 The checkpoint is a typed field traversal of the selected mission owner graph, not a hash of the JSON report or C++ object memory. Unsupported component types, opaque payloads, service bindings, continuations and unlabelled multicast callbacks fail explicitly. It covers the state represented by the port's reached owners; it does not imply that all original game fields or systems have been reconstructed.
 
+The selected mission checkpoint keeps the combat fields of MagicShopCombatRecord. Its retained price/name/explanation are immutable town-shop inputs covered by the catalog source fingerprint; active shop and notice service identities are rejected rather than serialized. Canonical purchase counts and money remain checkpointed mission state.
+
 ## Behaviour
 
 ### Canonical representation

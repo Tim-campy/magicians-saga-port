@@ -79,7 +79,7 @@ struct TownBackground::HeroOwner final:HeroBootstrapHost,PartyHumanFactory {
 TownBackground::~TownBackground()=default;
 TownBackground::DrawingArchive::DrawingArchive(const GameArchiveEntry& entry,ResourceProfile profile)
     :archive(read_game_archive(entry.path),std::move(profile)),manager(archive),images(manager,decode_png),clocks(archive.image_animation_infos()){}
-TownBackground::TownBackground(ResourceArchive& tables,const GameArchiveEntry& selected,ResourceProfile profile,std::int32_t capacity,TownBackgroundContext context,EventScript buildings,std::shared_ptr<std::vector<std::uint8_t>> enabled,const GameArchiveEntry* background,const GameArchiveEntry* common,const GameResourceIndex* actor_resources,const GameArchiveEntry* stage,std::shared_ptr<MissionProfile> world)
+TownBackground::TownBackground(ResourceArchive& tables,const GameArchiveEntry& selected,ResourceProfile profile,std::int32_t capacity,TownBackgroundContext context,EventScript buildings,std::shared_ptr<std::vector<std::uint8_t>> enabled,const GameArchiveEntry* background,const GameArchiveEntry* common,const GameResourceIndex* actor_resources,const GameArchiveEntry* stage,std::shared_ptr<MissionProfile> world,const GameArchiveEntry* shop)
     :shared_world_(std::move(world)),camera_{false,0,0,prelude_.camera_x,building_state_.camera_y,0,0},context_(context),
      app_random_(context.app_seed),lib_random_(context.lib_seed),
      areas_(shared_world_?*shared_world_->catalog->areas:local_areas_),
@@ -149,6 +149,10 @@ TownBackground::TownBackground(ResourceArchive& tables,const GameArchiveEntry& s
         common_=std::make_unique<DrawingArchive>(*common,archive_.selected_profile());
         image_clock_values_->push_back(area_background_->clocks);image_clock_values_->push_back(common_->clocks);
         textures_.bind(area_background_->images);textures_.bind(common_->images);
+    }
+    if(shop){
+        if(shop->kind!="resource"||shop->id!=14||shop->name!="shop")throw std::invalid_argument("town requires native shop resource14");
+        actor_entries_.emplace(14,*shop);
     }
     if(context_.residents)initialize_resident_data(tables,actor_resources);
 }
@@ -522,6 +526,7 @@ void TownBackground::report(std::ostream& out)const{
            <<",\"level\":"<<human->level<<",\"experience\":"<<human->experience<<",\"current_x\":"<<movement_.witch_x<<",\"target_x\":"<<movement_.drag_distance
            <<",\"direction\":"<<movement_.direction<<",\"resident_lanes\":[0,1,2]";
         const auto array=[&](const char* name,const EventInstruction& values){out<<",\""<<name<<"\":[";for(std::size_t i=0;i<values->size();++i){if(i)out<<',';out<<values->at(i);}out<<']';};
+        if(shared_world_){if(const auto* hp=resolve_combat_parameter(hero,0))out<<",\"hp\":"<<hp->value<<",\"max_hp\":"<<hp->maximum;}
         array("textures",image->arrays.textures);array("equipment",equipment->ids);array("formation",hero_owner_->roster.formation);
         out<<",\"draws\":[";for(std::size_t i=0;i<hero_draws_.size();++i){if(i)out<<',';out<<'[';for(std::size_t j=0;j<5;++j){if(j)out<<',';out<<hero_draws_[i][j];}out<<']';}out<<"]}";
     }

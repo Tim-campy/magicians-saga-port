@@ -79,7 +79,7 @@ std::vector<TownReplayAction> read_town_replay(const std::filesystem::path& path
 struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,SelectMarkerHost,
     SelectNavigationHost,SelectBuildingHost,SelectTownButtonsHost,SelectGuidanceSaveHost,
     SelectReviewHost,SelectTriggerHost,SelectGuideHost,SelectNotificationHost,TownPermissionHost,SelectTouchHost,SelectWidgetHost,FormStackHost,
-    MissionTownReturn,TownQuestReturnHost,SelectReturnPositionHost,KingRewardExecutionHost,KingHallServices,ConstructionServices,FreshTownHost {
+    MissionTownReturn,TownQuestReturnHost,SelectReturnPositionHost,KingRewardExecutionHost,KingHallServices,ConstructionServices,FreshTownHost,MagicShopFormHost,MagicShopPriceHost {
     TownBackground& town;
     ResourceArchive& tables;
     GameInitialization initial;
@@ -226,6 +226,7 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
     bool widget(std::int32_t type,std::int32_t x,std::int32_t y){
         if(!town.context_.physical_input)throw std::invalid_argument("town widget requires physical input");
         if(stage_pending)return stage_widget(type,x,y);
+        if(events.active_magic_shop())return magic_widget(type,x,y);
         if(events.active_build_list()||events.active_building_complete())return construction_widget(type,x,y);
         if(type==3){cancel_widget();return true;}
         if(type!=0&&type!=1)throw std::invalid_argument("unsupported town widget pointer type");
@@ -243,7 +244,7 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
         InputTouch event{hit?(captured.control.group==4?5:1):3,&captured.control};
         select_widget_touch(&event,*this);++widget_events;return true;
     }
-    void cancel_widget(){construction_capture.reset();if(widget_capture){widget_capture.reset();++widget_cancels;}cancel_stage_widget();}
+    void cancel_widget(){magic_capture.reset();construction_capture.reset();if(widget_capture){widget_capture.reset();++widget_cancels;}cancel_stage_widget();}
     void clear_input(){++input_clears;button_pulses=pending_physical_pulses=0;stage_back_requested=false;cancel_pointer();cancel_widget();}
     void push(EventObject,EventObject,bool)override;
     bool advance_stage();
@@ -277,6 +278,7 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
         while(replay_index<replay.size()&&replay[replay_index].frame<=frame){
             const auto& action=replay[replay_index++];
             if(action.kind==TownReplayAction::Kind::TalkPulse){pulse=true;++replay_applied;continue;}
+            if(action.kind==TownReplayAction::Kind::Buttons&&events.active_magic_shop()){events.pulse_construction(action.mask);++replay_applied;continue;}
             if(action.kind==TownReplayAction::Kind::Widget){widget(action.camera[0],action.camera[1],action.camera[2]);++replay_applied;continue;}
             if(action.kind==TownReplayAction::Kind::FormBack){town.form_back();++replay_applied;continue;}
             if(action.kind==TownReplayAction::Kind::StageBack){if(!stage_pending)throw std::invalid_argument("stage-back requires selected menu");stage_back_requested=true;++replay_applied;continue;}
@@ -433,7 +435,10 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
     void play_button_sound()override{ /* SAGA_STUB(town-update-button-sound): audio output. */ }
     void make_transition(std::int32_t,bool,std::uint32_t,std::function<void()>)override{town_unbound("room transition");}
     EventObject room_form()override{town_unbound("room form");}
-    EventObject make_shop(std::int32_t)override{town_unbound("shop form");}
+    EventObject make_shop(std::int32_t kind)override{
+        if(kind!=1||!town.shared_world_)town_unbound("only retained magic shop kind1 is bound");
+        return events.make_magic_shop(*this);
+    }
     std::shared_ptr<BuildingMenuCatalog> building_menu;
     std::shared_ptr<BuildingMenuCatalog> buildings()override{
         if(!building_menu){building_menu=std::make_shared<BuildingMenuCatalog>(town.building_records_.size());
@@ -445,6 +450,129 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
     std::shared_ptr<std::vector<EventObject>> living_members()override{town_unbound("building resident owners");}
     std::int32_t system_share_value()override{town_unbound("share save slot");}
     void set_shop_selection(EventObject,std::int32_t)override{town_unbound("shop selection");}
+    std::uint64_t magic_purchases=0,magic_returns=0,magic_sounds=0;
+    EventObject shop_touch_identity=std::make_shared<int>(0),shop_member_identity=std::make_shared<int>(0);
+    RenderDrawResource* magic_resource=nullptr;
+    std::vector<SelectAreaTouchRegion> magic_regions;
+    std::optional<SelectAreaTouchRegion> magic_capture;
+    std::vector<std::array<std::int32_t,4>> magic_quotes;
+    std::map<std::pair<std::string,std::uint32_t>,std::unique_ptr<DesktopTextBitmap>> magic_texts;
+    const std::int32_t* saved_purchases(std::int32_t slot)override{return &town.shared_world_->progress.shop_purchases.at(slot);}
+    const LevelTableRecord* price_record(std::int32_t count)override{
+        const auto& row=town.shared_world_->catalog->levels.value().at(static_cast<std::size_t>(count));return row?&*row:nullptr;
+    }
+    void shop_common_initialize()override{
+        // SAGA_STUB(town-magic-presentation): opaque view/resource and blur services;
+        // resource14 is the original ReadRecord(1,14), not a fabricated shop table.
+        if(!town.actor_entries_.count(14))throw std::invalid_argument("magic shop requires regenerated --town-resources index");
+        magic_resource=town.actor_resource(14);
+    }
+    EventObject shop_member_system()override{return shop_member_identity;}
+    EventObject shop_touch_panel()override{return shop_touch_identity;}
+    std::int32_t shop_game_height()override{return town.game_height();}
+    void shop_change_soft_labels(std::int32_t)override{}
+    void shop_flag_system(std::int32_t value)override{
+        const auto bits=static_cast<std::uint32_t>(system_save->at(1))|static_cast<std::uint32_t>(value);
+        system_save->at(1)=bits<=0x7fffffffU?static_cast<std::int32_t>(bits):-1-static_cast<std::int32_t>(0xffffffffU-bits);
+    }
+    std::int32_t shop_catalog_count()override{return static_cast<std::int32_t>(town.shared_world_->catalog->shop.size());}
+    const MagicShopCombatRecord* shop_record(std::int32_t index)override{
+        const auto& row=town.shared_world_->catalog->shop.at(static_cast<std::size_t>(index));return row?&*row:nullptr;
+    }
+    bool shop_catalog_is_found(std::int32_t index)override{
+        const auto* row=shop_record(index);if(!row)throw std::invalid_argument("null magic shop catalog row");
+        return town.shared_world_->initial_shop_state(row->id).discovery_state==1;
+    }
+    void shop_town_buildings()override{static_cast<void>(town.town_buildings());}
+    void shop_base_update()override{}
+    void shop_reset_image_animations()override{reset_image_animations(*clocks);}
+    void shop_update_image_animations()override{advance_image_animations(*clocks);}
+    void shop_update_main_blur()override{}
+    bool shop_key_repeat(std::uint32_t)override{return false;} // Declared neutral page/navigation provider.
+    bool shop_key_pulse(std::uint32_t mask)override{return events.magic_shop_key_pulse(mask);}
+    bool shop_soft_label(std::int32_t label)override{return label==3&&events.magic_shop_back_pressed();}
+    float shop_clamp(float value,float lower,float upper)override{if(value>upper)value=upper;if(value<lower)value=lower;return value;}
+    float shop_clamp_max(float value,float maximum)override{return value>maximum?maximum:value;}
+    void shop_find_building(std::int32_t kind)override{
+        for(const auto& row:town.building_records_){if(!row)throw std::invalid_argument("null building in shop lookup");if(row->type==kind)return;}
+    }
+    std::optional<std::int32_t> shop_take_returned_child_result()override{return events.take_magic_shop_child_result();}
+    std::int32_t shop_price(const MagicShopCombatRecord& row)override{return magic_shop_price(row,*this);}
+    bool shop_check_money(std::int64_t amount)override{return town.shared_world_->humans->result_owner().check_money(amount);}
+    void shop_subtract_money(std::int32_t amount)override{
+        town.shared_world_->humans->result_owner().subtract_money(amount);
+        town.resident_conditions_.money=town.shared_world_->humans->result_owner().money();
+    }
+    void shop_add_purchases(const MagicShopCombatRecord& row,std::int32_t amount)override{
+        add_magic_shop_purchases(town.shared_world_->progress.shop_purchases.at(row.id),amount);++magic_purchases;
+    }
+    std::int32_t shop_parameter_key(const MagicShopCombatRecord& row)override{return magic_shop_parameter_key(row.category);}
+    std::int32_t shop_hero_total(const EventObject& member,std::int32_t key)override{
+        if(member!=shop_member_identity)throw std::logic_error("magic shop lost retained MemberSystem");
+        return town.shared_world_->humans->debug_parameter(*town.town_hero(),key);
+    }
+    EventObject shop_make_buy_confirmation(const MagicShopBuyRequest& request)override{
+        // Factory permits a null CharaData[0], but requires its array/index.
+        const auto& character=town.resident_characters_->at(static_cast<std::size_t>(request.character_index));
+        return events.make_magic_shop_notice(request,character,[this]{++magic_sounds;play_button_sound();});
+    }
+    void shop_push_form(EventObject child)override{events.push_script_result(std::move(child));}
+    void shop_execute_event(std::int32_t id)override{events.execute(id);}
+    void shop_open_tapjoy()override{show_offerwall();}
+    void shop_open_browser()override{town_unbound("magic shop optional browser");}
+    void shop_open_text_input()override{town_unbound("magic shop optional code input");}
+    void shop_play_bgm()override{++bgm_requests; /* SAGA_STUB(town-update-bgm): native BGM3 output. */}
+    void shop_back_sound()override{++magic_sounds;play_button_sound();}
+    bool shop_change_to_town()override{++magic_returns;return events.pop_magic_shop();}
+    DesktopTextBitmap& magic_text_bitmap(const std::string& text,std::uint32_t color){
+        const auto key=std::make_pair(text,color);auto entry=magic_texts.find(key);
+        if(entry==magic_texts.end()){
+            auto value=std::make_unique<DesktopTextBitmap>();rasterize_desktop_text(*value,*events.font_scenario(),*events.font_provider(),decode_mission_text(text),town.context_.menu_font,color,town.textures_);
+            entry=magic_texts.emplace(key,std::move(value)).first;
+        }
+        return *entry->second;
+    }
+    void draw_magic_text(BitmapBackend& backend,const std::string& text,std::int32_t x,std::int32_t y,std::uint32_t color,bool right=false){
+        const auto& v=magic_text_bitmap(text,color);if(!v.ready.image)return;
+        backend.draw_bitmap(*v.ready.image,x-(right?v.width:0)+v.left*v.scale,y+(v.ascent+v.top)*v.scale,v.ready.pixels.width*v.scale,v.ready.pixels.height*v.scale);
+    }
+    void draw_magic_shop(BitmapBackend& backend){
+        magic_regions.clear();magic_quotes.clear();const auto* state=events.active_magic_shop();
+        if(!state||state->state!=1||state->crossfade>=0||!state->entries)return;
+        const auto ox=(town.context_.width-240)/2,oy=(town.context_.height-240)/2;
+        const auto cx=(town.context_.width+1)/2-ox,cy=(town.context_.height+1)/2-oy;
+        backend.draw_seb_frame(magic_resource,1,1,static_cast<float>(ox+cx),static_cast<float>(oy+cy));
+        bool buy=false;
+        for(std::size_t i=0;i<state->entries->size();++i){
+            const auto id=state->entries->at(i);const auto& row=*shop_record(id);const auto price=shop_price(row);const auto affordable=shop_check_money(price);
+            magic_quotes.push_back({id,town.shared_world_->progress.shop_purchases.at(id),price,affordable?1:0});
+            const auto x=ox+cx-120+120*static_cast<std::int32_t>(i&1U),y=oy+cy-92+32*static_cast<std::int32_t>(i>>1);
+            const auto selected=state->selection==static_cast<std::int32_t>(i);if(selected)buy=affordable;
+            backend.draw_seb_frame(magic_resource,12,selected?1:0,static_cast<float>(x),static_cast<float>(y));
+            const auto color=affordable?0xffffffffU:0xffcc4040U;
+            draw_magic_text(backend,row.name,x+6,y+3,color);draw_magic_text(backend,std::to_string(row.value_per_purchase),x+48,y+3,color);
+            draw_magic_text(backend,std::to_string(price),x+114,y+18,color,true);
+            magic_regions.push_back({input_screen_rectangle({x,y,120,32},{0,0,0,0},town.context_.width,town.context_.height),{10,static_cast<std::int32_t>(0x20000U|static_cast<std::uint32_t>(i))}});
+        }
+        if(buy){
+            auto* clip=town.common_->manager.animations().clips->at(70);if(!clip||!clip->sprites)throw std::invalid_argument("magic buy requires common clip70");
+            const auto bounds=seb_bounding_rect(*clip->sprites,1);const auto font=magic_text_bitmap("0",0xffffffffU).font_height;
+            auto y=town.context_.height-oy-font-bounds[3]-61;
+            if(town.context_.width<=240){y-=32;if(town.context_.motion_low_aspect)y=town.context_.height-font-bounds[3]-3;}
+            backend.draw_seb_frame(&town.common_->manager.drawing(),70,1,static_cast<float>(ox+cx),static_cast<float>(oy+y));
+            magic_regions.push_back({input_screen_rectangle({ox+cx-bounds[2]/2,oy+y,bounds[2],bounds[3]},{30,30,5,5},town.context_.width,town.context_.height),{4,25}});
+        }
+    }
+    bool magic_widget(std::int32_t type,std::int32_t x,std::int32_t y){
+        if(type==3){magic_capture.reset();return true;}
+        if(type!=0&&type!=1)throw std::invalid_argument("unsupported magic shop pointer type");
+        if(type==0){magic_capture.reset();for(auto it=magic_regions.rbegin();it!=magic_regions.rend();++it)if(input_hit_rectangle(it->bounds,x,y)){magic_capture=*it;break;}}
+        if(!magic_capture)return false;const auto captured=*magic_capture;const auto hit=input_hit_rectangle(captured.bounds,x,y);
+        if(type==1)magic_capture.reset();
+        if(captured.control.group==10){if(type==0||hit){events.select_magic_shop_row(captured.control.value&0xffff);if(type==1&&marked_row_release(captured.control))events.pulse_construction(0x100000U);}}
+        else if(type==1&&hit)events.pulse_construction(0x02000000U);
+        return true;
+    }
     EventInstruction resident_rates;
     std::uint64_t constructions=0,construction_sounds=0;
     void fill_build_list(std::vector<std::int32_t>& output)override{
@@ -818,7 +946,7 @@ bool TownBackground::UpdateOwner::stage_widget(std::int32_t type,std::int32_t x,
 void TownBackground::UpdateOwner::cancel_stage_widget(){if(stage)stage->row_capture.reset();}
 void TownBackground::draw_stage_overlay(BitmapBackend& backend){
     if(update_owner_&&update_owner_->stage_pending&&update_owner_->stage_initialized)update_owner_->stage->draw(backend);
-    if(update_owner_)update_owner_->draw_construction(backend);
+    if(update_owner_){update_owner_->draw_construction(backend);update_owner_->draw_magic_shop(backend);}
 }
 MissionProfile* TownBackground::active_mission()const{return update_owner_&&(update_owner_->mission_active||update_owner_->town_init_pending)?shared_world_.get():nullptr;}
 bool TownBackground::quest_handoff_pending()const{
@@ -1065,7 +1193,11 @@ void TownBackground::report_update(std::ostream& out)const{
        <<",\"construction_widgets\":{\"captured\":"<<(owner.construction_capture?"true":"false")<<",\"marked_key\":"<<owner.marked_list_key<<",\"events\":"<<owner.construction_widget_events<<",\"regions\":[";
     for(std::size_t i=0;i<owner.construction_regions.size();++i){if(i)out<<',';const auto& r=owner.construction_regions[i];out<<'['<<r.control.group<<','<<r.control.value<<','<<r.bounds.x<<','<<r.bounds.y<<','<<r.bounds.width<<','<<r.bounds.height<<']';}
     out<<"],\"quotes\":[";for(std::size_t i=0;i<owner.construction_quotes.size();++i){if(i)out<<',';const auto& q=owner.construction_quotes[i];out<<'['<<q[0]<<','<<q[1]<<','<<q[2]<<','<<q[3]<<']';}
-    out<<"]},\"completed_missions\":[";
+    out<<"]},\"magic_purchases\":"<<owner.magic_purchases<<",\"magic_returns\":"<<owner.magic_returns<<",\"magic_shop_widgets\":{\"regions\":[";
+    for(std::size_t i=0;i<owner.magic_regions.size();++i){if(i)out<<',';const auto& r=owner.magic_regions[i];out<<'['<<r.control.group<<','<<r.control.value<<','<<r.bounds.x<<','<<r.bounds.y<<','<<r.bounds.width<<','<<r.bounds.height<<']';}
+    out<<"],\"quotes\":[";for(std::size_t i=0;i<owner.magic_quotes.size();++i){if(i)out<<',';const auto& q=owner.magic_quotes[i];out<<'['<<q[0]<<','<<q[1]<<','<<q[2]<<','<<q[3]<<']';}
+    out<<"]},\"shop_purchases\":[";if(shared_world_){bool first_shop=true;for(const auto& row:shared_world_->progress.shop_purchases){if(!first_shop)out<<',';first_shop=false;out<<'['<<row.first<<','<<row.second<<']';}}
+    out<<"],\"completed_missions\":[";
     for(std::size_t i=0;i<owner.completed.size();++i){if(i)out<<',';const auto& c=owner.completed[i];
         out<<"{\"frame\":"<<c.frame<<",\"delivery\":\"delivered\",\"event31\":["<<c.event.result<<','<<c.event.area_id<<','<<c.event.stage<<"],\"mission_at_return\":"<<c.state<<'}';}
     out<<"]}";

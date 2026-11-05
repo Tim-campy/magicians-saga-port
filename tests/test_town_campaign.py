@@ -49,6 +49,62 @@ class TownCampaignTests(unittest.TestCase):
         self.assertEqual((hero['character'],hero['level'],hero['experience']),(2,1,0))
         self.assertEqual(hero['formation'],[-1]*10+[2]+[-1]*5)
 
+    def test_magic_shop_purchase_changes_shared_combat_parameters_and_resumes_town(self):
+        from town_campaign_fixture import add_magic_shop_case
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);self.fixture(root);add_magic_shop_case(root)
+            context=('--camera-x','0');before=self.state(root,60,*context)
+            replay=root/'magic.replay';touch=next(t for t in before['buildings_draw']['touches'] if t[0]==0)
+            x,y=touch[2]+40,touch[3]+45
+            replay.write_text(''.join(f'{61+i} widget {i%2} {x} {y}\n' for i in range(4)))
+            args=(*context,'--replay',str(replay))
+            opened=self.state(root,140,*args)['update'];menu=opened['magic_shop']
+            self.assertEqual((menu['state'],menu['entries'],menu['selected']),(1,[0,1],-1))
+            self.assertIn([0,0,12,1],opened['magic_shop_widgets']['quotes'])
+            with replay.open('a') as out:out.write('141 widget 0 240 244\n142 widget 1 240 244\n143 widget 0 240 244\n144 widget 1 240 244\n')
+            selected=self.state(root,144,*args)['update']
+            self.assertEqual(selected['wallet'],before['update']['wallet']);self.assertEqual(selected['magic_purchases'],0)
+            buy=next(t for t in selected['magic_shop_widgets']['regions'] if t[:2]==[4,25]);bx,by=buy[2]+buy[4]//2,buy[3]+buy[5]//2
+            with replay.open('a') as out:out.write(f'145 widget 0 {bx} {by}\n146 widget 1 {bx} {by}\n')
+            first=self.state(root,146,*args)['update']
+            self.assertEqual(first['wallet']['money'],25);self.assertEqual(first['magic_purchases'],1)
+            self.assertEqual(dict(first['shop_purchases'])[0],1);self.assertEqual(first['magic_purchase']['parameter'],0)
+            self.assertEqual(first['magic_purchase']['add'],2);self.assertEqual(first['magic_purchase']['frame'],0)
+            resumed=self.state(root,190,*args)['update']
+            self.assertEqual(resumed['magic_shop']['selected'],-1)
+            self.assertIn([0,1,25,1],resumed['magic_shop_widgets']['quotes'])
+            self.assertIn([1,0,50,0],resumed['magic_shop_widgets']['quotes']) # Grouped price also affects MP.
+            with replay.open('a') as out:out.write(f'191 widget 0 240 244\n192 widget 1 240 244\n193 widget 0 {bx} {by}\n194 widget 1 {bx} {by}\n')
+            second=self.state(root,194,*args)['update']
+            self.assertEqual((second['magic_purchases'],second['wallet']['money']),(2,0))
+            self.assertEqual(dict(second['shop_purchases'])[0],2)
+            self.assertEqual(second['magic_purchase']['total'],first['magic_purchase']['total']+2)
+            with replay.open('a') as out:out.write('241 widget 0 240 244\n242 widget 1 240 244\n244 buttons 0x02000000\n260 form-back\n')
+            refused=self.state(root,244,*args)['update']
+            self.assertEqual((refused['magic_purchases'],refused['wallet']['money']),(2,0))
+            self.assertIn([0,2,37,0],refused['magic_shop_widgets']['quotes'])
+            self.assertFalse(any(t[:2]==[4,25] for t in refused['magic_shop_widgets']['regions']))
+            city=self.state(root,270,*args)
+            self.assertEqual(city['update']['magic_returns'],1);self.assertNotIn('magic_shop',city['update'])
+            self.assertEqual(city['update']['town_initializations'],1);self.assertEqual(city['shared_world']['initialized_systems'],32)
+            self.assertTrue(city['shared_world']['same_hero']);self.assertEqual(city['update']['wallet']['crystals'],before['update']['wallet']['crystals'])
+            mission_open='271 select 0xc0000 0\n272 buttons 0x10000000\n'
+            with replay.open('a') as out:out.write(mission_open+'286 widget 0 250 250\n287 widget 1 250 250\n')
+            entered_scene=self.state(root,328,*args);entered=entered_scene['update']
+            self.assertTrue(entered['mission_active']);self.assertEqual(entered['mission']['logic_steps'],0)
+            self.assertEqual(dict(entered['shop_purchases'])[0],2)
+            control=root/'without-purchase.replay';control.write_text(mission_open+'286 widget 0 250 250\n286 widget 1 250 250\n286 widget 0 250 250\n287 widget 1 250 250\n')
+            baseline=self.state(root,328,*context,'--replay',str(control))
+            self.assertEqual(entered_scene['hero']['hp'],baseline['hero']['hp']+4)
+            # ChangeCurrentForm also retires a child pushed by Buy in the same pass.
+            race=root/'buy-back.replay';prefix=[line for line in replay.read_text().splitlines() if int(line.split()[0])<=144]
+            race.write_text('\n'.join(prefix)+f'\n145 widget 0 {bx} {by}\n146 widget 1 {bx} {by}\n146 form-back\n')
+            returned=self.state(root,150,*context,'--replay',str(race))['update']
+            self.assertEqual((returned['magic_purchases'],returned['magic_returns'],returned['wallet']['money']),(1,1,25))
+            self.assertFalse(returned['talk_pending']);self.assertNotIn('magic_purchase',returned)
+            self.assertNotIn('init:-14',returned['talk_lifecycle'])
+
+
     def test_resident_gift_credits_shared_wallet_once_and_native_popup_returns(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);self.fixture(root)

@@ -63,6 +63,7 @@ public:
     std::int32_t initialized_town_capacity()const{return saved_town_count_.value();}
     MissionEvents& event_owner(){return *events_;}
     core::CharacterNewGameState& initial_character_state(std::int32_t id){return initial_character_records_.at(id);}
+    const core::ShopNewGameState& initial_shop_state(std::int32_t id)const{return initial_shop_records_.at(id);}
     bool resizable_viewport()const{return offscreen_camera_.has_value();}
     bool accepts_live_viewport()const{return resizable_viewport()&&!replay_bound_;}
     void resize_viewport(std::int32_t width,std::int32_t height);

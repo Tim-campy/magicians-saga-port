@@ -8,3 +8,7 @@ game:0x06001067	documented	docs/subsystems/town.md	get_isMain returns flags bit1
 game:0x06001254	reimplemented	src/core/gameplay/town_bubble.cpp	Ordered VoiceData.Load id/type/nullable text array; indexed catalog and collision/lifetime host binding; receiver/partial-failure/CRLF/gap tests.
 game:0x060011f6	documented	docs/subsystems/data.md	Constructor publishes 99 distinct zero-filled int32[99] rows; Load/NewGame preserve them; full constructor port remains unclaimed.
 game:0x0600103b	reimplemented	src/core/gameplay/select_building.cpp	Fixed cost or type6 stock-indexed ResidentUpRate; wrap32 multiply/difference, lower-first clamp and truncating divide; contract tested and campaign-bound.
+game:0x0600119e	reimplemented	src/core/gameplay/combat_tables.cpp	GetPeice: grouped live purchases then fresh category/Table/basePrice; int32 multiply wrap and truncation; campaign prices and next-mission HP tested.
+game:0x0600119f	reimplemented	src/core/gameplay/combat_tables.cpp	Category0..4 direct,5/6/7 to10/11/12, otherwise-1; native table mapping; contract tested and magic shop bound.
+game:0x060011a1	reimplemented	src/core/gameplay/combat_tables.cpp	AddBuyCount signed int32 wrap for any delta; canonical campaign counter affects price and next-mission stats.
+game:0x060011a2	reimplemented	src/core/gameplay/combat_tables.cpp	GetGoupBuyCount fresh slots0/1,2/3/4,5/6/7 in native order; copied values, wrap32 and invalid-category INT_MAX; callback/failure tests.

@@ -5,6 +5,7 @@
 #include "core/gameplay/event_execution.hpp"
 #include "core/gameplay/form_push.hpp"
 #include "core/gameplay/presentation_forms.hpp"
+#include "core/gameplay/shop_form.hpp"
 #include "core/gameplay/text_reveal.hpp"
 #include <map>
 #include <ostream>
@@ -45,6 +46,14 @@ public:
     MissionEvents(ResourceArchive&,MissionEventScenario,std::function<void()> clear_input);
     bool execute(std::int32_t);
     core::EventObject make_king_hall(KingHallServices&);
+    core::EventObject make_magic_shop(core::MagicShopFormHost&);
+    const core::MagicShopFormState* active_magic_shop()const;
+    void select_magic_shop_row(std::int32_t);
+    core::EventObject make_magic_shop_notice(const core::MagicShopBuyRequest&,core::EventObject character,std::function<void()> sound);
+    bool pop_magic_shop();
+    bool magic_shop_key_pulse(std::uint32_t mask)const{return (mask==0x100000U&&pulse_)||(construction_pulses_&mask)!=0;}
+    bool magic_shop_back_pressed()const{return form_back_pulse_;}
+    std::optional<std::int32_t> take_magic_shop_child_result();
     bool request_form_back();
     core::EventObject make_build_list(std::int32_t,ConstructionServices&);
     const core::BuildListState* active_build_list()const;
@@ -87,12 +96,16 @@ private:
     };
     struct BuildList {core::BuildListState state;ConstructionServices* services=nullptr;};
     struct BuildingComplete {core::BuildingCompleteState state;ConstructionServices* services=nullptr;};
+    struct MagicShop {core::MagicShopFormState state;core::MagicShopFormHost* host=nullptr;std::optional<std::int32_t> child_result;};
+    struct MagicShopNotice {core::MagicShopNoticeState state;core::MagicShopBuyRequest request;core::EventObject character;std::function<void()> sound;};
     struct Talk {
         std::int32_t id=0,state=0,frame=0,finish_frame=-1;
         core::PreparedTalkForm prepared;
         std::optional<core::PreparedEventForm> event_notice;
         std::optional<PopupContents> popup;
         std::optional<KingHall> king;
+        std::optional<MagicShop> magic_shop;
+        std::optional<MagicShopNotice> magic_notice;
         std::optional<BuildList> build_list;
         std::optional<BuildingComplete> building_complete;
         std::int32_t event_page=0,event_frame=0;
@@ -150,7 +163,7 @@ private:
     void pop_build_list()override;
     bool build_back_pressed()override{return form_back_pulse_;}
     void push_build_tapjoy()override;
-    void completion_sound()override{updating_->building_complete->services->build_sound();}
+    void completion_sound()override{if(updating_->magic_notice)updating_->magic_notice->sound();else updating_->building_complete->services->build_sound();}
     bool completion_close_pulse()override{return pulse_||(construction_pulses_&0x02000000U);}
     void pop_building_complete()override;
     core::NullablePresentationText king_hall_voice()override;

@@ -197,17 +197,26 @@ void initialize_building_complete(BuildingCompleteState& state) {
     // SubForm.Init type17 uses the common0x11f679c step store.
     state.production_step=1;
 }
-bool update_building_complete(BuildingCompleteState& state,BuildingCompleteHost& host) {
-    // SubForm._update type17 0x11f94d0..0x11f955c, Pop suffix0x11f9a84.
+namespace {
+template<class State>bool update_completion_notice(State& state,std::int32_t sound_frame,BuildingCompleteHost& host) {
     const auto step=state.production_step;
     state.frame=increment_form_int32(state.frame);
     if(step==1||step==2) {
         if(state.frame<6)return true;
         state.production_step=0;
     }
-    if(state.frame==15)host.completion_sound();
+    if(state.frame==sound_frame)host.completion_sound();
     if(state.frame>=31&&host.completion_close_pulse())host.pop_building_complete();
     return true;
+}
+}
+bool update_building_complete(BuildingCompleteState& state,BuildingCompleteHost& host) {
+    // SubForm._update type17 0x11f94d0..0x11f955c, Pop suffix0x11f9a84.
+    return update_completion_notice(state,15,host);
+}
+bool update_magic_shop_notice(MagicShopNoticeState& state,BuildingCompleteHost& host) {
+    // SubForm._update type14 0x11f8fb8..0x11f8fe8, shared close at0x11f953c.
+    return update_completion_notice(state,20,host);
 }
 PreparedTalkForm prepare_talk_form(std::int32_t character_index,
                                  NullablePresentationText text,

@@ -55,6 +55,14 @@ Type17 Init sets production1. `_update` (`0x11f94d0..0x11f955c`, Pop suffix0x11f
 
 `MissionEvents` removes the originating parent identity after pushing completion, preserving the new child at state0 until its following Init dispatch. This differs from popping the stack's current last element. Init/Resume/Finish clear the Back softlabel pulse with the other Canvas input, so Back delivered during pending Init does not close the first opening pass. Construction retains external campaign services, so mission checkpoints reject these active forms rather than serializing incomplete service state. Evidence: bounded ignored town-construction/ exports and cached SubForm_Init/form-update branches. Contract tests cover input short-circuiting, live price rereads, stock wrap, publication/callback failures and both controllers' timing.
 
+### Magic purchase notice (type14)
+
+MakeShopBuyMagic (`0x11f6260`,212 bytes) allocates SubForm14 before reading Data.charaData[character_index]. The first kind argument is ignored; kind1 supplies character_index0. The indexed row may be null. It stores the character reference+0x128, parameter key+0x174, upValue+0x178 and post-purchase total+0x17c; the notice does not apply or charge the upgrade. Init shares the production1 store at0x11f679c and common frame0; config14[3]=-1 bypasses the generic window gate. MyFormBase.Init (`0x11d0668`) sets result+0xc8=-1, retained by this branch.
+
+The reached _update14 (`0x11f8fb8..0x11f8fe8`) wraps frame+1, clears production1/2 at frame>=6 without resetting frame, plays sound exactly at20, then shares the frame>=31/pulse0x02000000 immediate Pop at0x11f953c. `update_magic_shop_notice` reuses the completion controller's clock/close logic with sound20, independently of construction17's sound15. Tests assert both clocks. Normal removal returns result-1 to the retained shop, whose next inner Update calls Reset and clears selection. Simultaneous parent Buy/Back retires the fresh notice through ChangeCurrentForm instead of initializing an orphan.
+
+`MissionEvents` binds the actual post-payment state and title/Enter acknowledgement. Original celebration art, glyphs, audio and physical acknowledgement registration are the listed town-magic-purchase-output service. Evidence is ignored town-shop/ factory/constant exports and cached mission-talk-lifecycle/SubForm_cctor, mission-talk-modal/SubForm_Init and form-update/M36150. Confidence high for the static controller; no Android comparison.
+
 ### Contents popup (type19)
 
 `SubForm.MakePopUpContens` (`game:0x060008b3`, ELF0x11f6480,136 bytes) allocates SubForm(19), stores content kind at+0x170, header/text at+0x1e8/+0x1f0 and option at+0x174. Resident gifts pass kind3 and optionfalse. Fresh allocation supplies productionFrame+0x164=0; Init sets productionStep+0x160=1 without independently resetting that frame. The selected configData[19][3]=-1 bypasses the generic window-end wait.

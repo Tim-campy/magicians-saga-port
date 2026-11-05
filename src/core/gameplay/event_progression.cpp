@@ -41,6 +41,8 @@ EventIntegers resolve_event_arguments(const EventIntegers& row,
 }
 
 std::int64_t add_decoded_currency(std::int64_t value,std::int32_t amount){return add(value,amount);}
+bool check_decoded_money(std::int64_t value,std::int64_t amount){return amount<=0||value>=amount;}
+std::int64_t subtract_decoded_money(std::int64_t value,std::int32_t amount){return subtract(value,amount);}
 bool check_decoded_crystals(std::int64_t value,std::int64_t amount){return amount<=0||value>=amount;}
 std::int64_t subtract_decoded_crystals(std::int64_t value,std::int32_t amount,std::int32_t yugami){
     auto cost=static_cast<std::uint32_t>(amount);if(yugami!=10000)cost*=10000U;

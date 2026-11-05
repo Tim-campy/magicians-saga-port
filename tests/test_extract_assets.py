@@ -566,7 +566,7 @@ class TownResourceIndexTests(unittest.TestCase):
     def fixture(self,root):
         (root/'textassets').mkdir()
         entries=[]
-        for number,name in ((91,'xls'),(5,'resident'),(88,'select'),(2,'select_stage'),(3,'bg'),(7,'com')):
+        for number,name in ((91,'xls'),(5,'resident'),(88,'select'),(2,'select_stage'),(3,'bg'),(7,'com'),(6,'shop')):
             payload=('synthetic archive: '+name).encode()
             relative=f'textassets/{number}_{name}.bin'
             (root/relative).write_bytes(payload)
@@ -591,10 +591,14 @@ class TownResourceIndexTests(unittest.TestCase):
                       b'resource\t2\t"textassets/7_com.bin"\t"com"\n'
                       b'resource\t8\t"textassets/5_resident.bin"\t"resident"\n'
                       b'resource\t11\t"textassets/88_select.bin"\t"select"\n'
-                      b'resource\t13\t"textassets/2_select_stage.bin"\t"select_stage"\n')
+                      b'resource\t13\t"textassets/2_select_stage.bin"\t"select_stage"\n'
+                      b'resource\t14\t"textassets/6_shop.bin"\t"shop"\n')
             output=extractor.write_town_index(root)
             self.assertEqual(output,root/'town-resources-v2.tsv')
             self.assertEqual(output.read_bytes(),expected)
+            legacy=b''.join(line for line in expected.splitlines(keepends=True) if not line.startswith(b'resource\t14\t'))
+            output.write_bytes(legacy)
+            self.assertEqual(extractor.write_town_index(root).read_bytes(),expected)
             self.assertEqual(extractor.write_town_index(root).read_bytes(),expected)
             self.assertEqual((root/'manifest.json').read_bytes(),original)
             manifest['schema']=3;self.write_manifest(root,manifest)
