@@ -177,7 +177,7 @@ class TownMessagesTests(unittest.TestCase):
 
     def test_cli_requires_apk_and_rejects_other_modes_before_io(self):
         flags=('--check','--mission-index','--town-resources','--mission-font','--new-game-save',
-               '--mission-initialization','--debug-drawing','--stage-menu','--building-defaults','--unity-media',
+               '--mission-initialization','--debug-drawing','--stage-menu','--building-defaults','--shop-defaults','--unity-media',
                '--culture-signs','--culture-names','--culture-neutral','--culture-lower',
                '--runtime-tables','--collation','--collation-indexers')
         arguments=[['--town-messages']]+[['owned.apk','--town-messages',flag] for flag in flags]
@@ -246,7 +246,7 @@ class BuildingDefaultsTests(unittest.TestCase):
             extractor.main();writer.assert_called_once_with(Path('owned.apk'),Path('synthetic'))
             extraction.assert_not_called();archive.assert_not_called()
         flags=('--check','--mission-index','--town-resources','--mission-font','--new-game-save',
-               '--mission-initialization','--debug-drawing','--stage-menu','--town-messages','--unity-media',
+               '--mission-initialization','--debug-drawing','--stage-menu','--town-messages','--shop-defaults','--unity-media',
                '--culture-signs','--culture-names','--culture-neutral','--culture-lower',
                '--runtime-tables','--collation','--collation-indexers')
         arguments=[['--building-defaults']]+[['owned.apk','--building-defaults',flag] for flag in flags]
@@ -256,6 +256,84 @@ class BuildingDefaultsTests(unittest.TestCase):
                     patch.object(extractor.sys,'stderr',io.StringIO()):
                 with self.assertRaises(SystemExit) as result:extractor.main()
                 self.assertEqual(result.exception.code,1);writer.assert_not_called();extraction.assert_not_called()
+
+
+class ShopDefaultsTests(unittest.TestCase):
+    levels=(-2147483648,-17,-1,0,3,29,1000,2147483647)
+
+    def metadata(self):
+        normal=list(range(29));normal[20:28]=self.levels
+        data=bytearray(628);struct.pack_into('<II',data,0,0xfab11baf,31)
+        struct.pack_into('<IIII',data,64,256,12,512,116)
+        struct.pack_into('<iii',data,256,24359,77,0)
+        struct.pack_into('<29i',data,512,*normal)
+        return data
+
+    def test_exact_eight_signed_levels_and_bounded_initializer(self):
+        expected=b'shop_defaults\t1\nnormal_levels\t8\t-2147483648\t-17\t-1\t0\t3\t29\t1000\t2147483647\n'
+        self.assertEqual(extractor.shop_defaults_payload(self.metadata()),expected)
+        data=self.metadata();struct.pack_into('<I',data,68,24)
+        struct.pack_into('<iii',data,268,7,88,-1) # Ignore unselected malformed initializer.
+        self.assertEqual(extractor.shop_defaults_payload(data),expected)
+
+    def test_invalid_headers_sections_missing_duplicate_and_short_initializer(self):
+        for data in (b'',b'bad',bytes(255)):
+            with self.subTest(length=len(data)),self.assertRaises(ValueError):extractor.shop_defaults_payload(data)
+        for offset,value in ((0,0),(4,30),(64,255),(68,13),(64,99999),(72,256),
+                             (72,99999),(76,99999),(76,115),(256,24360),(264,-1),(264,1)):
+            data=self.metadata();struct.pack_into('<i',data,offset,value)
+            with self.subTest(offset=offset,value=value),self.assertRaises(ValueError):
+                extractor.shop_defaults_payload(data)
+        data=self.metadata();struct.pack_into('<I',data,68,24);struct.pack_into('<iii',data,268,24359,88,0)
+        with self.assertRaisesRegex(ValueError,'duplicate'):extractor.shop_defaults_payload(data)
+        with self.assertRaises(ValueError):extractor.shop_defaults_payload(self.metadata()[:-1])
+
+    def test_writer_checks_source_and_preserves_output_other_seeds_and_manifest(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);apk=root/'synthetic.apk';metadata=self.metadata()
+            with extractor.zipfile.ZipFile(apk,'w') as archive:archive.writestr(extractor.METADATA,metadata)
+            checksum=hashlib.sha256(apk.read_bytes()).hexdigest()
+            other=root/'new-game-save.tsv';other.write_bytes(b'keep existing new-game save format')
+            for schema in (2,3):
+                manifest=json.dumps({'schema':schema,'apk_sha256':checksum});(root/'manifest.json').write_text(manifest)
+                with patch.object(extractor,'APK_SHA',checksum):
+                    output=extractor.write_shop_defaults(apk,root)
+                    self.assertEqual(output.name,'shop-defaults.tsv')
+                    self.assertEqual(output.read_bytes(),extractor.shop_defaults_payload(metadata))
+                    self.assertEqual(extractor.write_shop_defaults(apk,root),output)
+                self.assertEqual((root/'manifest.json').read_text(),manifest)
+            output.write_bytes(b'keep user shop defaults')
+            with patch.object(extractor,'APK_SHA',checksum):
+                with self.assertRaisesRegex(ValueError,'replace differing'):extractor.write_shop_defaults(apk,root)
+                for entry in ({'schema':1,'apk_sha256':checksum},{'schema':3,'apk_sha256':'wrong'}):
+                    (root/'manifest.json').write_text(json.dumps(entry))
+                    with self.assertRaisesRegex(ValueError,'manifest'):extractor.write_shop_defaults(apk,root)
+                (root/'manifest.json').write_text(manifest)
+                apk.write_bytes(apk.read_bytes()+b'changed source')
+                with self.assertRaisesRegex(ValueError,'supported APK'):extractor.write_shop_defaults(apk,root)
+            self.assertEqual(output.read_bytes(),b'keep user shop defaults')
+            self.assertEqual(other.read_bytes(),b'keep existing new-game save format')
+            self.assertEqual((root/'manifest.json').read_text(),manifest)
+
+    def test_cli_routes_bounded_writer_and_rejects_mixed_modes_before_io(self):
+        with patch.object(extractor.sys,'argv',['extract_assets.py','owned.apk','--shop-defaults','--out','synthetic']),\
+                patch.object(extractor,'write_shop_defaults',return_value=Path('synthetic/shop-defaults.tsv')) as writer,\
+                patch.object(extractor,'extract') as extraction,patch.object(extractor.zipfile,'ZipFile') as archive,\
+                patch.object(extractor.sys,'stdout',io.StringIO()):
+            extractor.main();writer.assert_called_once_with(Path('owned.apk'),Path('synthetic'))
+            extraction.assert_not_called();archive.assert_not_called()
+        flags=('--check','--mission-index','--town-resources','--mission-font','--new-game-save',
+               '--mission-initialization','--debug-drawing','--stage-menu','--town-messages','--building-defaults',
+               '--unity-media','--culture-signs','--culture-names','--culture-neutral','--culture-lower',
+               '--runtime-tables','--collation','--collation-indexers')
+        arguments=[['--shop-defaults']]+[['owned.apk','--shop-defaults',flag] for flag in flags]
+        for args in arguments:
+            with self.subTest(args=args),patch.object(extractor.sys,'argv',['extract_assets.py',*args]),\
+                    patch.object(extractor,'write_shop_defaults') as writer,patch.object(extractor,'extract') as extraction,\
+                    patch.object(extractor.zipfile,'ZipFile') as archive,patch.object(extractor.sys,'stderr',io.StringIO()):
+                with self.assertRaises(SystemExit) as result:extractor.main()
+                self.assertEqual(result.exception.code,1)
+                writer.assert_not_called();extraction.assert_not_called();archive.assert_not_called()
 
 
 class DebugDrawingTests(unittest.TestCase):
@@ -518,7 +596,7 @@ class MissionFontTests(unittest.TestCase):
             self.assertEqual(output.read_bytes(),b'keep user index')
 
     def test_cli_font_mode_is_exclusive_before_reading_or_extracting(self):
-        flags=('owned.apk','--check','--mission-index','--new-game-save','--mission-initialization','--town-messages','--building-defaults',
+        flags=('owned.apk','--check','--mission-index','--new-game-save','--mission-initialization','--town-messages','--building-defaults','--shop-defaults',
                '--unity-media','--culture-signs','--culture-names','--culture-neutral','--culture-lower',
                '--runtime-tables','--collation','--collation-indexers')
         for flag in flags:
@@ -667,7 +745,7 @@ class TownResourceIndexTests(unittest.TestCase):
             extraction.assert_not_called();archive.assert_not_called()
 
     def test_cli_mode_is_exclusive_before_reading_or_extracting(self):
-        flags=('owned.apk','--check','--mission-index','--mission-font','--new-game-save','--town-messages','--building-defaults',
+        flags=('owned.apk','--check','--mission-index','--mission-font','--new-game-save','--town-messages','--building-defaults','--shop-defaults',
                '--mission-initialization','--debug-drawing','--unity-media','--culture-signs',
                '--culture-names','--culture-neutral','--culture-lower','--runtime-tables',
                '--collation','--collation-indexers')

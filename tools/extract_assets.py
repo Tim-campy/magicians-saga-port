@@ -259,6 +259,17 @@ def write_building_defaults(apk, root):
     return write_mission_seed(apk, root, 'building-defaults.tsv', building_defaults_payload)
 
 
+def shop_defaults_payload(metadata):
+    """Reached shop unlock levels from AppData.cctor normal-save field24359."""
+    normal = mission_default_arrays(metadata, {24359:'<29i'})[24359]
+    return ('shop_defaults\t1\nnormal_levels\t8\t'+
+            '\t'.join(map(str, normal[20:28]))+'\n').encode('ascii')
+
+
+def write_shop_defaults(apk, root):
+    return write_mission_seed(apk, root, 'shop-defaults.tsv', shop_defaults_payload)
+
+
 def write_resource_index(root, label, signature, filename, resources, additive_ids=()):
     """Publish an index from existing decoded archives without extracting payloads."""
     manifest = json.loads((root / 'manifest.json').read_text(encoding='utf-8'))
@@ -927,6 +938,7 @@ def main():
     p.add_argument('--stage-menu', action='store_true', help='Export reached stage-menu title/format/prefix literals from the supported APK')
     p.add_argument('--town-messages', action='store_true', help='Export only resident gift title/format literals from the supported APK')
     p.add_argument('--building-defaults', action='store_true', help='Export only the resident construction price rates from the supported APK metadata')
+    p.add_argument('--shop-defaults', action='store_true', help='Export only reached normal-save shop unlock levels from the supported APK metadata')
     p.add_argument('--debug-drawing', action='store_true', help='Export only reached debug parameter/state labels and format strings from supported APK metadata')
     p.add_argument('--collation-indexers', action='store_true', help='Include native indexer configurations and collation resources')
     p.add_argument('--collation', action='store_true', help='Include seven original version-3 collation resources')
@@ -940,21 +952,21 @@ def main():
     try:
         if args.town_resources:
             if args.apk or args.check or any((args.mission_index, args.mission_font, args.new_game_save,
-                    args.mission_initialization, args.debug_drawing, args.stage_menu, args.town_messages, args.building_defaults, args.unity_media, args.culture_signs,
+                    args.mission_initialization, args.debug_drawing, args.stage_menu, args.town_messages, args.building_defaults, args.shop_defaults, args.unity_media, args.culture_signs,
                     args.culture_names, args.culture_neutral, args.culture_lower, args.runtime_tables,
                     args.collation, args.collation_indexers)):
                 raise ValueError('--town-resources requires existing --out only; cannot combine export/check modes')
             print('Town resource index: ' + str(write_town_index(args.out)))
         elif args.mission_font:
-            if args.apk or args.check or any((args.mission_index, args.new_game_save, args.mission_initialization, args.debug_drawing, args.stage_menu, args.town_messages, args.building_defaults,
+            if args.apk or args.check or any((args.mission_index, args.new_game_save, args.mission_initialization, args.debug_drawing, args.stage_menu, args.town_messages, args.building_defaults, args.shop_defaults,
                     args.unity_media, args.culture_signs, args.culture_names, args.culture_neutral,
                     args.culture_lower, args.runtime_tables, args.collation, args.collation_indexers)):
                 raise ValueError('--mission-font requires existing --out only; cannot combine export/check modes')
             print('Mission font index: ' + str(write_mission_font(args.out)))
-        elif args.new_game_save or args.mission_initialization or args.debug_drawing or args.stage_menu or args.town_messages or args.building_defaults:
-            if not args.apk or args.check or args.mission_index or sum((args.new_game_save,args.mission_initialization,args.debug_drawing,args.stage_menu,args.town_messages,args.building_defaults))!=1 or any((args.unity_media, args.culture_signs, args.culture_names, args.culture_neutral, args.culture_lower, args.runtime_tables, args.collation, args.collation_indexers)):
+        elif args.new_game_save or args.mission_initialization or args.debug_drawing or args.stage_menu or args.town_messages or args.building_defaults or args.shop_defaults:
+            if not args.apk or args.check or args.mission_index or sum((args.new_game_save,args.mission_initialization,args.debug_drawing,args.stage_menu,args.town_messages,args.building_defaults,args.shop_defaults))!=1 or any((args.unity_media, args.culture_signs, args.culture_names, args.culture_neutral, args.culture_lower, args.runtime_tables, args.collation, args.collation_indexers)):
                 raise ValueError('Select one mission seed export with APK and --out only')
-            writer=write_new_game_save if args.new_game_save else write_mission_initialization if args.mission_initialization else write_debug_drawing if args.debug_drawing else write_stage_menu if args.stage_menu else write_town_messages if args.town_messages else write_building_defaults
+            writer=write_new_game_save if args.new_game_save else write_mission_initialization if args.mission_initialization else write_debug_drawing if args.debug_drawing else write_stage_menu if args.stage_menu else write_town_messages if args.town_messages else write_building_defaults if args.building_defaults else write_shop_defaults
             print('Mission defaults: ' + str(writer(args.apk, args.out)))
         elif args.mission_index:
             if args.apk or args.check:

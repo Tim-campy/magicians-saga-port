@@ -12,3 +12,6 @@ game:0x0600119e	reimplemented	src/core/gameplay/combat_tables.cpp	GetPeice: grou
 game:0x0600119f	reimplemented	src/core/gameplay/combat_tables.cpp	Category0..4 direct,5/6/7 to10/11/12, otherwise-1; native table mapping; contract tested and magic shop bound.
 game:0x060011a1	reimplemented	src/core/gameplay/combat_tables.cpp	AddBuyCount signed int32 wrap for any delta; canonical campaign counter affects price and next-mission stats.
 game:0x060011a2	reimplemented	src/core/gameplay/combat_tables.cpp	GetGoupBuyCount fresh slots0/1,2/3/4,5/6/7 in native order; copied values, wrap32 and invalid-category INT_MAX; callback/failure tests.
+game:0x060010e9	reimplemented	src/platform/desktop/town_update.cpp	Equipment isHave is signed stock>0 from canonical MissionResults inventory; shop exclusion before/after purchase covered by campaign tests.
+game:0x06001249	documented	docs/subsystems/town.md	GetLockValue rejects categories outside1..11/mask0x71f before storage; selected key from normal save, kind2=21; startup seed extracted, live writes retained.
+game:0x06001248	documented	docs/subsystems/town.md	GetSaveKeyForCategory maps1..11 to signed category key table, otherwise-1; storage tier consumer documented.

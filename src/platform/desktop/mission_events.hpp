@@ -46,14 +46,15 @@ public:
     MissionEvents(ResourceArchive&,MissionEventScenario,std::function<void()> clear_input);
     bool execute(std::int32_t);
     core::EventObject make_king_hall(KingHallServices&);
-    core::EventObject make_magic_shop(core::MagicShopFormHost&);
-    const core::MagicShopFormState* active_magic_shop()const;
-    void select_magic_shop_row(std::int32_t);
+    core::EventObject make_shop(core::ShopFormHost&,std::int32_t kind);
+    const core::ShopFormState* active_shop()const;
+    void select_shop_row(std::int32_t);
     core::EventObject make_magic_shop_notice(const core::MagicShopBuyRequest&,core::EventObject character,std::function<void()> sound);
-    bool pop_magic_shop();
-    bool magic_shop_key_pulse(std::uint32_t mask)const{return (mask==0x100000U&&pulse_)||(construction_pulses_&mask)!=0;}
-    bool magic_shop_back_pressed()const{return form_back_pulse_;}
-    std::optional<std::int32_t> take_magic_shop_child_result();
+    core::EventObject make_equipment_purchase(std::int32_t kind,std::int32_t id,std::int32_t option,std::function<void()> sound);
+    bool pop_shop();
+    bool shop_key_pulse(std::uint32_t mask)const{return (mask==0x100000U&&pulse_)||(construction_pulses_&mask)!=0;}
+    bool shop_back_pressed()const{return form_back_pulse_;}
+    std::optional<std::int32_t> take_shop_child_result();
     bool request_form_back();
     core::EventObject make_build_list(std::int32_t,ConstructionServices&);
     const core::BuildListState* active_build_list()const;
@@ -96,8 +97,8 @@ private:
     };
     struct BuildList {core::BuildListState state;ConstructionServices* services=nullptr;};
     struct BuildingComplete {core::BuildingCompleteState state;ConstructionServices* services=nullptr;};
-    struct MagicShop {core::MagicShopFormState state;core::MagicShopFormHost* host=nullptr;std::optional<std::int32_t> child_result;};
-    struct MagicShopNotice {core::MagicShopNoticeState state;core::MagicShopBuyRequest request;core::EventObject character;std::function<void()> sound;};
+    struct MagicShop {core::ShopFormState state;core::ShopFormHost* host=nullptr;std::optional<std::int32_t> child_result;};
+    struct MagicShopNotice {core::MagicShopNoticeState state;core::MagicShopBuyRequest request;core::EventObject character;std::function<void()> sound;std::int32_t item=0,option=0;};
     struct Talk {
         std::int32_t id=0,state=0,frame=0,finish_frame=-1;
         core::PreparedTalkForm prepared;

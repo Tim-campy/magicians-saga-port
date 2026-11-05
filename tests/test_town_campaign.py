@@ -49,6 +49,123 @@ class TownCampaignTests(unittest.TestCase):
         self.assertEqual((hero['character'],hero['level'],hero['experience']),(2,1,0))
         self.assertEqual(hero['formation'],[-1]*10+[2]+[-1]*5)
 
+    def open_equipment_shop(self,root):
+        from town_campaign_fixture import add_equipment_shop_case
+        self.fixture(root);add_equipment_shop_case(root)
+        context=('--camera-x','0');before=self.state(root,60,*context)
+        touch=next(t for t in before['buildings_draw']['touches'] if t[0]==0)
+        x,y=touch[2]+40,touch[3]+45
+        replay=root/'equipment.replay'
+        replay.write_text(''.join(f'{61+i} widget {i%2} {x} {y}\n' for i in range(4)),encoding='ascii')
+        args=(*context,'--replay',str(replay))
+        return before,replay,args,self.state(root,140,*args)
+
+    def equipment_row_point(self,update,item):
+        widgets=update['equipment_shop_widgets']
+        position=next(i for i,q in enumerate(widgets['quotes']) if q[0]==item)
+        region=[r for r in widgets['regions'] if r[0]==10][position]
+        return region[2]+region[4]//2,region[3]+region[5]//2
+
+    def test_equipment_purchase_updates_shared_stock_without_auto_equipping(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);before,replay,args,opened=self.open_equipment_shop(root)
+            update=opened['update'];menu=update['equipment_shop']
+            expected=[14,*range(2,14),15]
+            self.assertEqual((menu['state'],menu['entries'],menu['selected'],menu['page_count']),(1,expected,-1,2))
+            self.assertIn([14,0,12,1],update['equipment_shop_widgets']['quotes'])
+            x,y=self.equipment_row_point(update,14)
+            with replay.open('a') as out:out.write(f'141 widget 0 {x} {y}\n142 widget 1 {x} {y}\n')
+            selected=self.state(root,142,*args)
+            self.assertEqual(selected['update']['wallet'],before['update']['wallet'])
+            self.assertEqual(selected['update']['equipment_purchases'],0)
+            self.assertEqual(selected['update']['equipment_shop']['selected'],0)
+            self.assertEqual(next(r for r in selected['update']['equipment_stock'] if r[0]==14),[14,0,0,0])
+            buy=next(r for r in selected['update']['equipment_shop_widgets']['regions'] if r[:2]==[4,25])
+            bx,by=buy[2]+buy[4]//2,buy[3]+buy[5]//2
+            with replay.open('a') as out:out.write(f'143 widget 0 {bx} {by}\n144 widget 1 {bx} {by}\n')
+            bought=self.state(root,144,*args);purchase=bought['update']['equipment_purchase']
+            self.assertEqual((purchase['kind'],purchase['item'],purchase['option'],purchase['frame']),(2,14,0,0))
+            self.assertEqual((bought['update']['equipment_purchases'],bought['update']['wallet']['money']),(1,25))
+            self.assertEqual(next(r for r in bought['update']['equipment_stock'] if r[0]==14),[14,1,1,1])
+            self.assertEqual(bought['hero']['equipment'],before['hero']['equipment'])
+            self.assertEqual(bought['hero']['textures'],before['hero']['textures'])
+            resumed=self.state(root,190,*args)
+            self.assertEqual(resumed['update']['equipment_shop']['entries'],expected[1:])
+            self.assertEqual(resumed['update']['equipment_shop']['selected'],-1)
+            self.assertEqual(resumed['update']['equipment_purchases'],1)
+            self.assertNotIn('equipment_purchase',resumed['update'])
+            with replay.open('a') as out:out.write('191 form-back\n')
+            city=self.state(root,200,*args)
+            self.assertNotIn('equipment_shop',city['update']);self.assert_waiting_world(city)
+            self.assertEqual(city['update']['town_initializations'],1)
+            self.assertEqual(city['update']['wallet'],bought['update']['wallet'])
+            self.assertEqual(city['hero']['equipment'],before['hero']['equipment'])
+            self.assertEqual(city['hero']['formation'],before['hero']['formation'])
+            with replay.open('a') as out:out.write('201 select 0xc0000 0\n202 buttons 0x10000000\n216 widget 0 250 250\n216 widget 1 250 250\n216 widget 0 250 250\n217 widget 1 250 250\n')
+            entered=self.state(root,258,*args)
+            self.assertTrue(entered['update']['mission_active'])
+            self.assertEqual(next(r for r in entered['update']['equipment_stock'] if r[0]==14),[14,1,1,1])
+            self.assertEqual(entered['hero']['equipment'],before['hero']['equipment'])
+
+    def test_equipment_insufficient_money_cannot_grant_stock(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);before,replay,args,opened=self.open_equipment_shop(root)
+            self.assertIn([2,0,50,0],opened['update']['equipment_shop_widgets']['quotes'])
+            x,y=self.equipment_row_point(opened['update'],2)
+            with replay.open('a') as out:out.write(f'141 widget 0 {x} {y}\n142 widget 1 {x} {y}\n')
+            selected=self.state(root,142,*args)['update']
+            self.assertFalse(any(r[:2]==[4,25] for r in selected['equipment_shop_widgets']['regions']))
+            # Exercise the native affordability gate even without a rendered Buy button.
+            with replay.open('a') as out:out.write('143 buttons 0x02000000\n')
+            refused=self.state(root,144,*args)['update']
+            self.assertEqual(refused['wallet'],before['update']['wallet'])
+            self.assertEqual(refused['equipment_purchases'],0)
+            self.assertEqual(next(r for r in refused['equipment_stock'] if r[0]==2),[2,0,0,0])
+            self.assertNotIn('equipment_purchase',refused)
+            self.assertEqual(refused['equipment_shop']['selected'],-1)
+
+    def test_equipment_pages_and_locked_second_tap_execute_event8_once(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);before,replay,args,opened=self.open_equipment_shop(root)
+            with replay.open('a') as out:out.write('141 buttons 0x40000\n')
+            page=self.state(root,142,*args)['update']
+            self.assertEqual(page['equipment_shop']['page'],1)
+            self.assertEqual([q[0] for q in page['equipment_shop_widgets']['quotes']],[13,15])
+            x,y=self.equipment_row_point(page,15)
+            with replay.open('a') as out:out.write(f'145 widget 0 {x} {y}\n146 widget 1 {x} {y}\n')
+            selected=self.state(root,146,*args)['update']
+            self.assertGreaterEqual(selected['equipment_shop']['selected'],9999)
+            self.assertNotIn(8,dict(selected['event_execution_counts']))
+            with replay.open('a') as out:out.write(f'147 widget 0 {x} {y}\n148 widget 1 {x} {y}\n')
+            event=self.state(root,148,*args)['update']
+            self.assertEqual(dict(event['event_execution_counts'])[8],1)
+            self.assertEqual(event['equipment_purchases'],0);self.assertEqual(event['wallet'],before['update']['wallet'])
+            self.assertTrue(event['talk_pending']);self.assertNotIn('equipment_purchase',event)
+            self.assertEqual(next(r for r in event['equipment_stock'] if r[0]==15),[15,0,0,0])
+            resumed=self.state(root,200,*args)['update']
+            self.assertEqual(resumed['equipment_shop']['page'],1)
+            self.assertEqual(dict(resumed['event_execution_counts'])[8],1)
+            self.assertEqual(resumed['equipment_purchases'],0)
+            with replay.open('a') as out:out.write('201 buttons 0x10000\n203 buttons 0x40000\n205 buttons 0x40000\n')
+            self.assertEqual(self.state(root,202,*args)['update']['equipment_shop']['page'],0)
+            self.assertEqual(self.state(root,204,*args)['update']['equipment_shop']['page'],1)
+            self.assertEqual(self.state(root,206,*args)['update']['equipment_shop']['page'],0)
+
+    def test_equipment_shop_requires_valid_bounded_defaults(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);before,replay,args,opened=self.open_equipment_shop(root)
+            path=root/'shop-defaults.tsv';payload=path.read_text(encoding='ascii');path.unlink()
+            self.assertEqual(self.run_host(root,60,*args).returncode,0)
+            missing=self.run_host(root,140,*args)
+            self.assertNotEqual(missing.returncode,0);self.assertIn('--shop-defaults',missing.stderr)
+            for bad in (payload.replace('shop_defaults\t1','shop_defaults\t2'),
+                        payload.replace('normal_levels\t8','normal_levels\t7'),
+                        payload.replace('normal_levels\t8\t1','normal_levels\t8\t2147483648'),
+                        payload.replace('normal_levels\t8\t1','normal_levels\t8\tbad'),payload+'extra\n'):
+                with self.subTest(payload=bad):
+                    path.write_text(bad,encoding='ascii');rejected=self.run_host(root,1,*args)
+                    self.assertNotEqual(rejected.returncode,0);self.assertIn('shop',rejected.stderr.lower())
+
     def test_magic_shop_purchase_changes_shared_combat_parameters_and_resumes_town(self):
         from town_campaign_fixture import add_magic_shop_case
         with tempfile.TemporaryDirectory() as directory:

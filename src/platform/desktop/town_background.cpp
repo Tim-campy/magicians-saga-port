@@ -83,7 +83,7 @@ TownBackground::TownBackground(ResourceArchive& tables,const GameArchiveEntry& s
     :shared_world_(std::move(world)),camera_{false,0,0,prelude_.camera_x,building_state_.camera_y,0,0},context_(context),
      app_random_(context.app_seed),lib_random_(context.lib_seed),
      areas_(shared_world_?*shared_world_->catalog->areas:local_areas_),
-     camera_areas_(std::make_shared<CameraAreas>()),save_integers_(std::make_shared<EventIntegers>(20)),
+     camera_areas_(std::make_shared<CameraAreas>()),save_integers_(std::make_shared<EventIntegers>(29)),
      archive_(read_game_archive(selected.path),std::move(profile)),manager_(archive_),images_(manager_,decode_png),
      quest_records_(shared_world_?*shared_world_->catalog->quests:local_quest_records_){
     if(context.shared_world!=static_cast<bool>(shared_world_)||(shared_world_&&!shared_world_->awaiting_quest()))throw std::invalid_argument("town shared world requires a deferred native world owner");

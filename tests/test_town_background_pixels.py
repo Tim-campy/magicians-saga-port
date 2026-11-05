@@ -16,6 +16,45 @@ from test_sprite_preview import bmp_pixels
 @unittest.skipUnless(EXE,'viewer saga_town supplied by CTest')
 class TownBackgroundPixels(unittest.TestCase):
     @unittest.skipUnless(os.environ.get('SAGA_TEST_FONT'),'public CTest font required')
+    def test_equipment_grid_stock_notice_pages_and_return_match_window(self):
+        from town_campaign_fixture import create_campaign_fixture,add_equipment_shop_case
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);create_campaign_fixture(root);add_equipment_shop_case(root)
+            replay=root/'equipment.replay';replay.write_text('')
+            base=[str(EXE),'--data',str(root),'--foreground','--shared-world','--physical-input',
+                  '--camera-x','0','--talk-pulse-every','10','--replay',str(replay)]
+            def run(frame,*extra):
+                result=subprocess.run([*base,'--update-passes',str(frame),*extra],capture_output=True,text=True,encoding='utf-8',timeout=45)
+                self.assertEqual(result.returncode,0,result.stderr);return json.loads(result.stdout)
+            before=run(60);touch=next(t for t in before['background']['buildings_draw']['touches'] if t[0]==0)
+            x,y=touch[2]+40,touch[3]+45
+            replay.write_text(''.join(f'{61+i} widget {i%2} {x} {y}\n' for i in range(4)))
+            opened=run(140)['background']['update'];cell=next(r for r in opened['equipment_shop_widgets']['regions'] if r[:2]==[10,0x20000])
+            x,y=cell[2]+cell[4]//2,cell[3]+cell[5]//2
+            with replay.open('a') as out:out.write(f'141 widget 0 {x} {y}\n142 widget 1 {x} {y}\n')
+            selected=run(142)['background']['update'];buy=next(r for r in selected['equipment_shop_widgets']['regions'] if r[:2]==[4,25])
+            bx,by=buy[2]+buy[4]//2,buy[3]+buy[5]//2
+            with replay.open('a') as out:out.write(f'145 widget 0 {bx} {by}\n146 widget 1 {bx} {by}\n')
+            resumed=run(190)['background']['update'];right=next(r for r in resumed['equipment_shop_widgets']['regions'] if r[:2]==[5,0x10012])
+            rx,ry=right[2]+right[4]//2,right[3]+right[5]//2
+            with replay.open('a') as out:out.write(f'191 widget 0 {rx} {ry}\n192 widget 1 {rx} {ry}\n200 form-back\n')
+            captures={}
+            for frame in (140,142,146,166,190,192,210):
+                with self.subTest(frame=frame):
+                    cpu=run(frame);still=root/f'equipment-still-{frame}.bmp';window=root/f'equipment-window-{frame}.bmp'
+                    self.assertEqual(run(frame,'--capture',str(still)),cpu)
+                    self.assertEqual(run(frame,'--interactive','--hidden','--capture',str(window)),cpu)
+                    self.assertEqual(still.read_bytes(),window.read_bytes());captures[frame]=still.read_bytes()
+                    update=cpu['background']['update']
+                    if frame>=146:
+                        self.assertEqual(update['wallet']['money'],25)
+                        self.assertEqual(next(r for r in update['equipment_stock'] if r[0]==14),[14,1,1,1])
+                        self.assertEqual(cpu['background']['hero']['equipment'],before['background']['hero']['equipment'])
+                    if frame==192:self.assertEqual(update['equipment_shop']['page'],1)
+                    if frame==210:self.assertNotIn('equipment_shop',update)
+            self.assertNotEqual(captures[140],captures[142]);self.assertNotEqual(captures[190],captures[192])
+
+    @unittest.skipUnless(os.environ.get('SAGA_TEST_FONT'),'public CTest font required')
     def test_magic_shop_rows_purchase_notice_and_town_return_match_window(self):
         from town_campaign_fixture import create_campaign_fixture,add_magic_shop_case
         with tempfile.TemporaryDirectory() as directory:

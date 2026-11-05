@@ -97,6 +97,51 @@ void magic_shop_economy_contract(){
     check(purchases==std::numeric_limits<std::int32_t>::max());purchases=-1;add_magic_shop_purchases(purchases,1);check(purchases==0);
     add_magic_shop_purchases(purchases,-7);check(purchases==-7);add_magic_shop_purchases(purchases,0);check(purchases==-7);
 }
+void equipment_shop_entries_contract(){
+    const EquipmentCombatRecord compatible{7,3,2,{}};
+    check(compatible.id==7&&compatible.attribute==3&&compatible.flags==2&&compatible.unlock_level==0&&
+          compatible.buy_price==0&&compatible.explanation.empty());
+    const auto row=[](std::int32_t id,std::int32_t level,std::int32_t flags){
+        EquipmentCombatRecord value;value.id=id;value.unlock_level=level;value.flags=flags;return value;
+    };
+    {EquipmentCombatTable records{row(31,2,2),std::nullopt,row(19,-1,3),row(32,2,2),row(7,0,1),
+         row(9,std::numeric_limits<std::int32_t>::min(),2),row(2,std::numeric_limits<std::int32_t>::max(),2)};
+     std::vector<std::int32_t> output{77},calls;
+     append_equipment_shop_entries(output,records,2,[&](const auto& value){calls.push_back(value.id);return value.id==19;});
+     check(calls==std::vector<std::int32_t>({9,19,31,32,2}));
+     check(output==std::vector<std::int32_t>({77,9,31,32,2}));}
+    {EquipmentCombatTable records{row(5,0,2),row(5,0,2),row(5,0,2)};
+     std::vector<std::int32_t> output,calls;std::size_t index=0;
+     append_equipment_shop_entries(output,records,2,[&](const auto& value){
+         check(&value==&*records.at(index));calls.push_back(value.id);return index++==1;
+     });
+     check(index==3&&calls==std::vector<std::int32_t>({5,5,5})&&output==std::vector<std::int32_t>({5,5}));}
+    {EquipmentCombatTable records{row(3,30,2),row(1,10,2),row(2,20,0),row(4,40,2)};
+     std::vector<std::int32_t> output,calls;
+     append_equipment_shop_entries(output,records,2,[&](const auto& value){
+         calls.push_back(value.id);
+         if(value.id==1){records[0]->unlock_level=-100;records[2]->flags=2;records[3]->flags=0;}
+         if(value.id==3)records[0]->id=44;
+         return false;
+     });
+     // All keys/order were resolved before have; later flags and the appended id stay live.
+     check(calls==std::vector<std::int32_t>({1,2,3})&&output==std::vector<std::int32_t>({1,2,44}));}
+    {EquipmentCombatTable records{row(3,30,2),row(2,20,2),row(1,10,2)};
+     std::vector<std::int32_t> output{90},calls;
+     expect<std::runtime_error>([&]{append_equipment_shop_entries(output,records,2,[&](const auto& value){
+         calls.push_back(value.id);if(value.id==2)throw std::runtime_error("synthetic have failure");return false;
+     });});
+     check(calls==std::vector<std::int32_t>({1,2})&&output==std::vector<std::int32_t>({90,1}));}
+    {EquipmentCombatTable records{std::nullopt,row(1,0,0),row(2,0,std::numeric_limits<std::int32_t>::min())};
+     std::vector<std::int32_t> output{77};
+     append_equipment_shop_entries(output,records,0,{});check(output==std::vector<std::int32_t>({77}));
+     append_equipment_shop_entries(output,records,0x80000000U,[](const auto&){return false;});
+     check(output==std::vector<std::int32_t>({77,2}));
+     expect<std::bad_function_call>([&]{append_equipment_shop_entries(output,records,0x80000000U,{});});
+     check(output==std::vector<std::int32_t>({77,2}));}
+    {std::vector<std::int32_t> output{77};append_equipment_shop_entries(output,{},2,{});
+     check(output==std::vector<std::int32_t>({77}));}
+}
 int main(int argc,char** argv){
     if(argc==6){
         const auto characters=load_character_progression_table(read(argv[1]),false,parse_event_decimal);
@@ -127,6 +172,7 @@ int main(int argc,char** argv){
                  <<" queries="<<queries<<" hash="<<hash<<'\n';return 0;
     }
     magic_shop_economy_contract();
+    equipment_shop_entries_contract();
     const std::string character="2\tName\t7\tres\t8\tres2\t9\t2\t3\t4\t5\t150\t"+endpoints()+"\t6\t7\t8\t-1\t9\t258";
     auto chars=load_character_progression_table(character,false,parse_event_decimal);
     check(chars[2]->weapon_id==9&&chars[2]->initial_level==4&&chars[2]->flags==258);
@@ -145,7 +191,13 @@ int main(int argc,char** argv){
     TableCharacterParameterHost host(maxima,upgrades);check(member_base_parameter(c,0,host)==1021);
     const std::string gear="3\tBlade\t1\t2\t3\t4\tRes\t5\t6\t2\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t"+endpoints()+"\tD\t4";
     auto weapons=load_equipment_combat_table(gear,EquipmentTableKind::weapon_or_shield,false,parse_event_decimal);
-    check(weapons[3]->name=="Blade");
+    check(weapons[3]->name=="Blade"&&weapons[3]->unlock_level==3&&weapons[3]->buy_price==0&&weapons[3]->explanation=="D");
+    std::string priced=gear;
+    for(const auto token:{12,4}){std::size_t where=0;for(int i=0;i<token;++i)where=priced.find('\t',where)+1;
+        priced.replace(where,priced.find('\t',where)-where,token==12?"-2147483648":"2147483647");}
+    const auto priced_weapons=load_equipment_combat_table(priced,EquipmentTableKind::weapon_or_shield,false,parse_event_decimal);
+    check(priced_weapons[3]->unlock_level==std::numeric_limits<std::int32_t>::max()&&
+          priced_weapons[3]->buy_price==std::numeric_limits<std::int32_t>::min()&&priced_weapons[3]->explanation=="D");
     auto e=bind_equipment_parameters(*weapons[3],100);check(e.attribute==2&&equipment_parameter(e.parameters,0)==1000);
     std::string ranged=gear;std::size_t at=0;
     for(int token=0;token<17;++token)at=ranged.find('\t',at)+1;
@@ -165,6 +217,7 @@ int main(int argc,char** argv){
     check(hats[1]->flags==6&&hats[1]->parameters->at(12)->at(0)==100);
     check(hats[1]->image==8&&hats[1]->resource=="Res");
     check(hats[1]->initial_level==11);
+    check(hats[1]->unlock_level==0&&hats[1]->buy_price==0&&hats[1]->explanation=="D");
     for(const auto flags:{0,1,2,3,-1}){
         EquipmentCombatRecord r;r.flags=flags;r.initial_level=-7;
         EquipmentNewGameState state{99,{4,true,88}};reset_equipment_for_new_game(state,r);

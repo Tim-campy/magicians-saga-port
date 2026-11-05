@@ -44,6 +44,17 @@ NewGameSaveDefaults read_new_game_save_defaults(const std::filesystem::path& roo
     }
     seeds>>std::ws;if(!seeds.eof())throw std::invalid_argument("unexpected new-game default fields");return result;
 }
+std::optional<std::array<std::int32_t,8>> read_shop_defaults(const std::filesystem::path& root){
+    const auto path=root/"shop-defaults.tsv";
+    if(!std::filesystem::exists(path))return std::nullopt;
+    if(std::filesystem::file_size(path)>1024)throw std::length_error("shop defaults exceed1KiB");
+    std::ifstream input(path);input.imbue(std::locale::classic());
+    std::string tag;std::int32_t version=0,count=0;std::array<std::int32_t,8> result{};
+    if(!(input>>tag>>version)||tag!="shop_defaults"||version!=1||
+       !(input>>tag>>count)||tag!="normal_levels"||count!=8)throw std::invalid_argument("invalid shop defaults header");
+    for(auto& value:result)if(!(input>>value))throw std::invalid_argument("invalid shop unlock default");
+    input>>std::ws;if(!input.eof())throw std::invalid_argument("unexpected shop default fields");return result;
+}
 GameInitialization read_game_initialization(const std::filesystem::path& root){
     const auto path=root/"mission-initialization.tsv";
     if(std::filesystem::file_size(path)>4096)throw std::length_error("mission initialization exceeds4KiB");

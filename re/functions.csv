@@ -2109,7 +2109,7 @@ game:0x06000867,game:0x06000867,ui,,232,0x120d324
 game:0x06000868,game:0x06000868,ui,,444,0x120d40c
 game:0x06000869,game:0x06000869,ui,,452,0x120d5c8
 game:0x0600086a,game:0x0600086a,ui,,852,0x120de08
-game:0x0600086b,game:0x0600086b,ui,,6080,0x120fd34
+game:0x0600086b,form.ShopForm._DrawContens,ui,traced,6080,0x120fd34
 game:0x0600086c,form.ShopForm._DrawContensPanel,ui,traced,7128,0x120e15c
 game:0x0600086d,game:0x0600086d,ui,,500,0x1211a08
 game:0x0600086e,game:0x0600086e,ui,,1128,0x12115a0
@@ -2130,8 +2130,8 @@ game:0x0600087c,game:0x0600087c,ui,,36,0x1211fe0
 game:0x0600087d,game:0x0600087d,ui,,36,0x1212004
 game:0x0600087e,game:0x0600087e,unassigned,,92,0x1212028
 game:0x0600087f,game:0x0600087f,unassigned,,8,0x1212084
-game:0x06000880,game:0x06000880,unassigned,,12,0x121208c
-game:0x06000881,game:0x06000881,unassigned,,24,0x1212098
+game:0x06000880,<>c.<Reset>b__55_0,unassigned,reimplemented,12,0x121208c
+game:0x06000881,<>c.<Reset>b__55_1,unassigned,reimplemented,24,0x1212098
 game:0x06000882,game:0x06000882,unassigned,,12,0x12120b0
 game:0x06000883,game:0x06000883,unassigned,,24,0x12120bc
 game:0x06000884,game:0x06000884,unassigned,,12,0x12120d4
@@ -2176,7 +2176,7 @@ game:0x060008aa,game:0x060008aa,ui,,128,0x11f601c
 game:0x060008ab,game:0x060008ab,ui,,108,0x11f609c
 game:0x060008ac,game:0x060008ac,ui,,120,0x11f6108
 game:0x060008ad,form.SubForm.MakeBuildList,ui,documented,100,0x11f6180
-game:0x060008ae,game:0x060008ae,ui,,124,0x11f61e4
+game:0x060008ae,form.SubForm.MakeShopPurchase,ui,reimplemented,124,0x11f61e4
 game:0x060008af,form.SubForm.MakeShopBuyMagic,ui,documented,212,0x11f6260
 game:0x060008b0,game:0x060008b0,ui,,132,0x11f6334
 game:0x060008b1,form.SubForm.MakeBuildingComplete,ui,documented,100,0x11f63b8
@@ -2254,7 +2254,7 @@ game:0x060008f8,game:0x060008f8,ui,,1092,0x12058a0
 game:0x060008f9,form.SubForm.IsDrawWindowEnd,ui,documented,204,0x11f8cd8
 game:0x060008fa,game:0x060008fa,ui,,712,0x1201f18
 game:0x060008fb,game:0x060008fb,ui,,176,0x12021e0
-game:0x060008fc,game:0x060008fc,ui,,1176,0x1205da8
+game:0x060008fc,form.SubForm.DrawArrowLR,ui,traced,1176,0x1205da8
 game:0x060008fd,game:0x060008fd,ui,,184,0x1206240
 game:0x060008fe,game:0x060008fe,ui,,196,0x1205ce4
 game:0x060008ff,game:0x060008ff,ui,,264,0x12062f8
@@ -4116,7 +4116,7 @@ game:0x060010e5,game:0x060010e5,data,,120,0x116edfc
 game:0x060010e6,data.EnemyData..ctor,data,documented,108,0x116ee74
 game:0x060010e7,data.EnemyData..cctor,data,reimplemented,208,0x116eee0
 game:0x060010e8,game:0x060010e8,data,,8,0x116efb0
-game:0x060010e9,game:0x060010e9,data,,16,0x116efb8
+game:0x060010e9,data.EquipmentData.get_isHave,data,reimplemented,16,0x116efb8
 game:0x060010ea,game:0x060010ea,data,,8,0x116efc8
 game:0x060010eb,game:0x060010eb,data,,8,0x116efd0
 game:0x060010ec,data.EquipmentData.get_bullet,data,reimplemented,140,0x116efd8
@@ -4462,8 +4462,8 @@ game:0x06001244,game:0x06001244,data,,8,0x11739ac
 game:0x06001245,game:0x06001245,data,,8,0x11739b4
 game:0x06001246,game:0x06001246,data,,248,0x11739bc
 game:0x06001247,game:0x06001247,data,,444,0x1173ab4
-game:0x06001248,game:0x06001248,data,,36,0x1173d58
-game:0x06001249,game:0x06001249,data,,232,0x1173c70
+game:0x06001248,data.UnlockShopData.GetSaveKeyForCategory,data,documented,36,0x1173d58
+game:0x06001249,data.UnlockShopData.GetLockValue,data,documented,232,0x1173c70
 game:0x0600124a,game:0x0600124a,data,,300,0x1173d7c
 game:0x0600124b,game:0x0600124b,data,,244,0x1173ea8
 game:0x0600124c,game:0x0600124c,data,,4,0x1173f9c

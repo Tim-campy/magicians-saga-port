@@ -171,3 +171,46 @@ def add_magic_shop_case(root):
           'row.seb':seb([(0,0,0,0,120,32,0,0,0,0),(1,0,120,0,120,32,0,0,0,0)])}
     (root/'textassets/shop.bin').write_bytes(jar(list(shop.items())))
     index=root/'town-resources-v2.tsv';index.write_text(index.read_text()+'resource\t14\t"textassets/shop.bin"\t"shop"\n')
+
+
+def add_equipment_shop_case(root):
+    """Fourteen unowned offers, two pages and one locked tier; preserve combat gear."""
+    from test_sprite_preview import seb,png
+    root=Path(root);add_magic_shop_case(root);read=_container_reader()
+    archive=root/'textassets/tables.bin';tables=dict(read(archive.read_bytes()))
+    buildings=[line.split('\t') for line in tables['English.lproj/Building.txt'].decode().splitlines() if line]
+    for row in buildings:
+        if row[0]=='0':row[5]='2'
+    tables['English.lproj/Building.txt']=('\n'.join('\t'.join(row) for row in buildings)+'\n').encode()
+    gear=[line.split('\t') for line in tables['English.lproj/Equipment.txt'].decode().splitlines() if line]
+    template=next(row for row in gear if row[0]=='1')
+    for item in range(2,16):
+        row=template.copy();row[0]=str(item);row[1]=f'Shop weapon {item}'
+        row[4]='0' if item==14 else '2' if item==15 else '1'
+        row[7]='1';row[12]='12' if item==14 else '50' if item==2 else str(item+8)
+        row[-2]=f'Synthetic equipment {item}';row[-1]='16';gear.append(row)
+    tables['English.lproj/Equipment.txt']=('\n'.join('\t'.join(row) for row in gear)+'\n').encode()
+    # A direct event8 is observable; its money<0 term prevents automatic selection.
+    tables['English.lproj/Event.txt']+=b'\n8\tLocked tier\t0\t1\t3\t1\t0\t3\t1\t2\t8\t9\n'
+    tables['English.lproj/Talk.txt']+=b'\n9\t0\t1\tSynthetic locked equipment\n'
+    archive.write_bytes(jar(list(tables.items())))
+    shop=root/'textassets/shop.bin';members=dict(read(shop.read_bytes()))
+    members['seb.inf']=_merge_rows(members['seb.inf'],b'9\tequipment-cell.seb\n')
+    members['equipment-cell.seb']=seb([(0,0,0,0,48,48,0,0,0,0),(1,0,48,0,48,48,0,0,0,0)])
+    shop.write_bytes(jar(list(members.items())))
+    # Resource22 retains all existing weapon images. Only its shop icon clip0
+    # changes; resource1's shared human animations remain byte-identical.
+    icons=dict(read((root/'textassets/hero.bin').read_bytes()))
+    clips={int(line.split(b'\t',1)[0]):line for line in icons['seb.inf'].splitlines() if line}
+    clips[0]=b'0\tequipment-icon.seb'
+    icons['seb.inf']=b'\n'.join(clips[i] for i in sorted(clips))+b'\n'
+    icons['img.inf']=_merge_rows(icons['img.inf'],b'1\tequipment-icon.png,bin\n')
+    icons['equipment-icon.png']=png(2,2,[240,180,40,255]*4)
+    icons['equipment-icon.seb']=seb([(1,1,0,0,2,2,0,0,0,0)])
+    (root/'textassets/equipment-icons.bin').write_bytes(jar(list(icons.items())))
+    index=root/'mission-resources-v2.tsv'
+    lines=index.read_text().splitlines()
+    lines=[line.replace('"textassets/hero.bin"','"textassets/equipment-icons.bin"')
+           if line.split()[:2]==['resource','22'] else line for line in lines]
+    index.write_text('\n'.join(lines)+'\n')
+    (root/'shop-defaults.tsv').write_text('shop_defaults\t1\nnormal_levels\t8\t1\t1\t1\t1\t1\t1\t1\t1\n',encoding='ascii')

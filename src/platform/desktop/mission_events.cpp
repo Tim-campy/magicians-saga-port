@@ -71,15 +71,15 @@ void MissionEvents::pop_popup(){
     if(!updating_||!updating_->popup)throw std::logic_error("popup Pop requires selected type19 form");
     updating_->state=4;lifecycle_.push_back("pop:"+std::to_string(updating_->id));
 }
-EventObject MissionEvents::make_magic_shop(MagicShopFormHost& host){
+EventObject MissionEvents::make_shop(ShopFormHost& host,std::int32_t kind){
     auto form=std::make_shared<Talk>();form->id=-101;form->prepared={};
-    form->magic_shop=MagicShop{{},&host,{}};creating_=form;return form;
+    form->magic_shop=MagicShop{{},&host,{}};form->magic_shop->state.kind=kind;creating_=form;return form;
 }
-const MagicShopFormState* MissionEvents::active_magic_shop()const{
+const ShopFormState* MissionEvents::active_shop()const{
     return forms_.empty()||!forms_.back()->magic_shop?nullptr:&forms_.back()->magic_shop->state;
 }
-void MissionEvents::select_magic_shop_row(std::int32_t value){
-    if(!active_magic_shop())throw std::logic_error("shop selection requires selected shop");
+void MissionEvents::select_shop_row(std::int32_t value){
+    if(!active_shop())throw std::logic_error("shop selection requires selected shop");
     forms_.back()->magic_shop->state.selection=value; // ShopForm.SetTouchValue0x1211d50, mask0x20000.
 }
 EventObject MissionEvents::make_magic_shop_notice(const MagicShopBuyRequest& request,EventObject character,std::function<void()> sound){
@@ -88,11 +88,18 @@ EventObject MissionEvents::make_magic_shop_notice(const MagicShopBuyRequest& req
     // SAGA_STUB(town-magic-purchase-output): title replaces native celebration art/audio.
     creating_=form;return form;
 }
-bool MissionEvents::pop_magic_shop(){
+EventObject MissionEvents::make_equipment_purchase(std::int32_t kind,std::int32_t id,std::int32_t option,std::function<void()> sound){
+    // SubForm.MakeShopPurchase0x11f61e4; SubForm13 shares14's completion controller.
+    auto form=std::make_shared<Talk>();form->id=-13;form->prepared={};form->prepared.initial.type=13;
+    form->magic_notice=MagicShopNotice{{},{kind,0,0,0,0},{},std::move(sound),id,option};
+    // SAGA_STUB(town-magic-purchase-output): title acknowledgement and audio provider.
+    creating_=form;return form;
+}
+bool MissionEvents::pop_shop(){
     if(!updating_||!updating_->magic_shop)throw std::logic_error("shop return requires selected shop");
     updating_->state=4;lifecycle_.push_back("return:-101");return true;
 }
-std::optional<std::int32_t> MissionEvents::take_magic_shop_child_result(){
+std::optional<std::int32_t> MissionEvents::take_shop_child_result(){
     if(!updating_||!updating_->magic_shop)throw std::logic_error("shop child result requires selected parent");
     return std::exchange(updating_->magic_shop->child_result,std::nullopt);
 }
@@ -113,12 +120,6 @@ void MissionEvents::push_building_complete(std::int32_t id){
 }
 void MissionEvents::pop_build_list(){updating_->state=4;lifecycle_.push_back("pop:-12");}
 void MissionEvents::pop_building_complete(){
-    if(updating_->magic_notice){
-        const auto position=std::find(forms_.begin(),forms_.end(),updating_);
-        if(position==forms_.begin()||position==forms_.end()||!(*std::prev(position))->magic_shop)throw std::logic_error("magic purchase lost shop parent");
-        // MyFormBase.Init0x11d0668 sets result-1; SubForm14 retains it.
-        (*std::prev(position))->magic_shop->child_result=-1;
-    }
     updating_->state=4;lifecycle_.push_back("pop:"+std::to_string(updating_->id));
 }
 void MissionEvents::push_build_tapjoy(){unbound("optional construction Tapjoy child");}
@@ -160,7 +161,7 @@ bool MissionEvents::advance(std::uint64_t frame,std::int32_t tick_ms,bool pulse,
         if(form->popup){form->popup->production={1,0};form->event_frame=0;}
         if(form->build_list){updating_=form;form->build_list->state.frame=0;initialize_build_list(form->build_list->state,*this);updating_.reset();}
         if(form->building_complete){form->building_complete->state.frame=0;initialize_building_complete(form->building_complete->state);}
-        if(form->magic_shop){updating_=form;initialize_magic_shop(form->magic_shop->state,*form->magic_shop->host);updating_.reset();}
+        if(form->magic_shop){updating_=form;initialize_shop_form(form->magic_shop->state,*form->magic_shop->host);updating_.reset();}
         if(form->magic_notice){form->magic_notice->state={1,0};}
         if(form->king){updating_=form;form->king->state.frame=0;initialize_king_hall(form->king->state,*this);updating_.reset();}
         form->state=1;clear_input_();pulse_=held_=form_back_pulse_=false;construction_pulses_=0;
@@ -171,7 +172,7 @@ bool MissionEvents::advance(std::uint64_t frame,std::int32_t tick_ms,bool pulse,
         if(talk.state==1){clear_input_();pulse_=held_=form_back_pulse_=false;construction_pulses_=0;talk.state=2;lifecycle_.push_back("resume:"+std::to_string(talk.id));} // Manager.Resume, no form Resume callback.
         ++ticks_;
         if(talk.build_list||talk.building_complete||talk.magic_shop||talk.magic_notice){
-            if(talk.magic_shop)update_magic_shop(talk.magic_shop->state,*talk.magic_shop->host);
+            if(talk.magic_shop)update_shop_form(talk.magic_shop->state,*talk.magic_shop->host);
             else if(talk.magic_notice)update_magic_shop_notice(talk.magic_notice->state,*this);
             else if(talk.build_list)update_build_list(talk.build_list->state,*this);
             else update_building_complete(talk.building_complete->state,*this);
@@ -290,7 +291,14 @@ void MissionEvents::push(EventObject parent,EventObject child,bool option){
 bool MissionEvents::finish_talk(Talk& talk){
     // SubForm.Finish 0x120488c: this fresh factory owns no delay/share continuation.
     // SAGA_STUB(mission-talk-common-ui): base UI/resource cleanup and parent release hook.
-    lifecycle_.push_back("finish:"+std::to_string(talk.id));return true;
+    lifecycle_.push_back("finish:"+std::to_string(talk.id));
+    const auto position=std::find_if(forms_.begin(),forms_.end(),[&](const auto& form){return form.get()==&talk;});
+    if(position!=forms_.begin()&&position!=forms_.end()&&(*std::prev(position))->magic_shop){
+        // The shop consumes any returned MyFormBase child, including event8's
+        // ordinary Talk. Reached factories retain Init's result-1.
+        (*std::prev(position))->magic_shop->child_result=-1;
+    }
+    return true;
 }
 void MissionEvents::set_page(Talk& talk){
     if(scenario_.font){
@@ -374,8 +382,8 @@ std::string MissionEvents::title()const{
     if(forms_.empty())return {};
     const auto& talk=*forms_.back();
     if(talk.build_list)return "Construction - select an item twice; Backspace returns";
-    if(talk.magic_shop)return "Magic shop - select a row, then Buy; Backspace returns";
-    if(talk.magic_notice)return "Magic improved - Enter continues";
+    if(talk.magic_shop)return talk.magic_shop->state.kind==1?"Magic shop - select a row, then Buy; Backspace returns":"Equipment shop - select an item, then Buy; Backspace returns";
+    if(talk.magic_notice)return talk.prepared.initial.type==13?"Equipment purchased - Enter continues":"Magic improved - Enter continues";
     if(talk.building_complete)return "Construction complete - Enter continues";
     if(talk.king)return "King hall - Backspace returns to town";
     if(talk.popup)return talk.popup->title+" - Enter continues";
@@ -412,13 +420,15 @@ void MissionEvents::write_report(std::ostream& out)const{
            <<",\"movement_frame\":"<<k.movement_frame<<",\"entrance_x\":"<<k.entrance_x<<",\"selection\":"<<k.selection
            <<",\"speech_present\":"<<(k.speech?"true":"false")<<",\"news_updates\":"<<hall.news_updates<<'}';
     }
-    if(const auto* state=active_magic_shop()){
-        out<<",\"magic_shop\":{\"state\":"<<state->state<<",\"selected\":"<<state->selection<<",\"page\":"<<state->page
+    if(const auto* state=active_shop()){
+        out<<(state->kind==1?",\"magic_shop\":{\"state\":":",\"equipment_shop\":{\"state\":")<<state->state<<",\"selected\":"<<state->selection<<",\"page\":"<<state->page
            <<",\"page_count\":"<<state->page_count<<",\"frame\":"<<state->frame<<",\"crossfade\":"<<state->crossfade<<",\"witch_x\":"<<state->witch_x<<",\"entries\":[";
         if(state->entries)for(std::size_t i=0;i<state->entries->size();++i){if(i)out<<',';out<<state->entries->at(i);}out<<"]}";
     }
     if(pending()&&forms_.back()->magic_notice){const auto& n=*forms_.back()->magic_notice;
-        out<<",\"magic_purchase\":{\"parameter\":"<<n.request.parameter_key<<",\"add\":"<<n.request.add_value<<",\"total\":"<<n.request.total
+        if(forms_.back()->prepared.initial.type==13)out<<",\"equipment_purchase\":{\"kind\":"<<n.request.kind<<",\"item\":"<<n.item<<",\"option\":"<<n.option;
+        else out<<",\"magic_purchase\":{\"parameter\":"<<n.request.parameter_key<<",\"add\":"<<n.request.add_value<<",\"total\":"<<n.request.total;
+        out
            <<",\"frame\":"<<n.state.frame<<",\"production_state\":"<<n.state.production_step<<'}';
     }
     if(const auto* state=active_build_list()){

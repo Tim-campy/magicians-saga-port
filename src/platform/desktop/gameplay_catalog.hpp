@@ -23,6 +23,7 @@ struct NewGameSaveDefaults {
 std::vector<std::uint8_t> read_game_archive(const std::filesystem::path&);
 GameResourceIndex read_game_resource_index(const std::filesystem::path& root,bool town=false);
 NewGameSaveDefaults read_new_game_save_defaults(const std::filesystem::path& root);
+std::optional<std::array<std::int32_t,8>> read_shop_defaults(const std::filesystem::path& root);
 struct TownSaveInputs {
     std::int32_t normal_flags,talk_character,system_flags,review_coin,reviewed;
     std::int64_t stamina;

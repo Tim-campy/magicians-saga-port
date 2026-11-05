@@ -1,5 +1,6 @@
 #include "combat_tables.hpp"
 #include "table_catalog.hpp"
+#include <algorithm>
 #include <limits>
 #include <stdexcept>
 
@@ -60,9 +61,9 @@ EquipmentCombatTable load_equipment_combat_table(std::string_view text,Equipment
         EquipmentCombatRecord r;r.id=t.integer();r.name=t.take();
         if(kind==EquipmentTableKind::weapon_or_shield) {
             // EquipmentData.Load 0x116f428, status_ +0x88; attribute is fixed token 9.
-            t.integer();r.type=t.integer();t.integer();t.integer();
+            t.integer();r.type=t.integer();r.unlock_level=t.integer();t.integer();
             r.resource=t.take();r.image=t.integer();r.bullet_id=t.integer();r.attribute=t.integer();
-            t.integer();t.integer();t.integer();r.max_height=t.integer();r.bullet_speed=t.integer();
+            t.integer();t.integer();r.buy_price=t.integer();r.max_height=t.integer();r.bullet_speed=t.integer();
             r.distance=t.integer();r.burst_count=t.integer();
             r.range=t.integer(); // EquipmentData.range +0x78, fixed token 17.
             r.use_mp=t.integer();r.initial_level=t.integer();t.integer();
@@ -70,8 +71,18 @@ EquipmentCombatTable load_equipment_combat_table(std::string_view text,Equipment
             // ClothData.Load 0x116e704 and HatData.Load 0x1171734 share token framing.
             t.integer();r.resource=t.take();r.image=t.integer();t.integer();t.integer();r.initial_level=t.integer();t.integer();
         }
-        r.parameters=t.script();t.take();r.flags=t.integer();return r;
+        r.parameters=t.script();r.explanation=t.take();r.flags=t.integer();return r;
     });
+}
+void append_equipment_shop_entries(std::vector<std::int32_t>& output,const EquipmentCombatTable& records,
+    std::uint32_t mask,const std::function<bool(const EquipmentCombatRecord&)>& have){
+    struct Ranked {const EquipmentCombatRecord* record;std::int32_t key;};
+    std::vector<Ranked> ordered;ordered.reserve(records.size());
+    for(const auto& row:records)if(row)ordered.push_back({&*row,row->unlock_level});
+    std::stable_sort(ordered.begin(),ordered.end(),[](const auto& a,const auto& b){return a.key<b.key;});
+    for(const auto& entry:ordered){const auto* row=entry.record;
+        if((static_cast<std::uint32_t>(row->flags)&mask)!=0&&!have(*row))output.push_back(row->id);
+    }
 }
 void reset_shop_for_new_game(ShopNewGameState& state,const MagicShopCombatRecord& record,std::int32_t mask,const std::function<void(bool)>& find){
     if((static_cast<std::uint32_t>(record.flags)&static_cast<std::uint32_t>(mask))!=0)find(true);

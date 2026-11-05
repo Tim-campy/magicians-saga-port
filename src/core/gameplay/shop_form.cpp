@@ -18,46 +18,56 @@ std::int32_t remainder32(std::int32_t numerator,std::int32_t denominator){
     return numerator%denominator;
 }
 template<class T>const T& required(const T* value){
-    if(!value)throw std::invalid_argument("null magic-shop record");
+    if(!value)throw std::invalid_argument("null shop record");
     return *value;
 }
 template<class T>T& required(const std::shared_ptr<T>& value){
-    if(!value)throw std::invalid_argument("null magic-shop entries");
+    if(!value)throw std::invalid_argument("null shop entries");
     return *value;
 }
-void require_kind(const MagicShopFormState& state){
-    if(state.kind!=1)throw std::invalid_argument("only magic ShopForm kind1 is bound");
+void require_kind(const ShopFormState& state){
+    if(state.kind!=1&&state.kind!=2)throw std::invalid_argument("only ShopForm kinds1/2 are bound");
 }
-std::int32_t entry_count(const MagicShopFormState& state){
+std::int32_t entry_count(const ShopFormState& state){
     const auto size=required(state.entries).size();
     if(size>static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max()))
-        throw std::length_error("magic-shop list exceeds int32");
+        throw std::length_error("shop list exceeds int32");
     return static_cast<std::int32_t>(size);
 }
-void check_filter(const MagicShopFormState& state,MagicShopFormHost& host){
+void check_filter(const ShopFormState& state,ShopFormHost& host){
     // ShopForm.CheckFilter0x120b0c0 queries TownSystem before the vector.
     host.shop_town_buildings();
-    if(entry_count(state)!=0){
-        (void)required(state.entries).at(0);
-        // kind1 fails the unsigned(type-2)<=7 dispatch gate, leaving filters false.
+    for(std::int32_t item=0;item<entry_count(state);item=add32(item,1)){
+        const auto id=required(state.entries).at(static_cast<std::size_t>(item));
+        // kind1 fails the unsigned(type-2)<=7 dispatch gate after reading the first item.
+        if(state.kind==1)return;
+        const auto unlock=required(host.shop_equipment_record(id)).unlock_level;
+        const auto price=required(host.shop_equipment_record(id)).buy_price;
+        const auto kind=state.kind;
+        const auto tier=host.shop_unlock_value(kind);
+        const auto filters=state.filters;
+        // Native calls CheckMoney even for locked rows, and only afterward
+        // checks the captured filter array's null/bounds and combines the bits.
+        const auto affordable=host.shop_check_money(static_cast<std::int64_t>(price));
+        required(filters).at(static_cast<std::size_t>(id))=static_cast<std::uint8_t>(unlock<=tier&&!affordable);
     }
 }
-void change_state(MagicShopFormState& state,std::int32_t value,MagicShopFormHost& host){
+void change_state(ShopFormState& state,std::int32_t value,ShopFormHost& host){
     // ShopForm.ChangeState0x1209ea0: labels precede both stores.
     host.shop_change_soft_labels(value);state.state=value;state.frame=0;
 }
-void reset_preserving_selection(MagicShopFormState& state,MagicShopFormHost& host){
+void reset_preserving_selection(ShopFormState& state,ShopFormHost& host){
     const auto selected=state.selection;
-    reset_magic_shop(state,host);
+    reset_shop_form(state,host);
     state.selection=selected;
 }
-void update_main(MagicShopFormState& state,MagicShopFormHost& host){
-    // Selected ShopForm._update0x120ba1c kind1/thread0 path.
-    if(state.thread_state!=0)throw std::invalid_argument("magic-shop billing thread path is unbound");
+void update_main(ShopFormState& state,ShopFormHost& host){
+    // Selected ShopForm._update0x120ba1c kinds1/2, thread0 path.
+    if(state.thread_state!=0)throw std::invalid_argument("shop billing thread path is unbound");
     host.shop_find_building(state.kind);
     if(const auto result=host.shop_take_returned_child_result()){
-        if(*result==0)throw std::invalid_argument("magic-shop zero-result unlock child is unbound");
-        reset_magic_shop(state,host);return;
+        if(*result==0)throw std::invalid_argument("shop zero-result unlock child is unbound");
+        reset_shop_form(state,host);return;
     }
     check_filter(state,host);
     if(host.shop_key_repeat(0x40000U))
@@ -69,47 +79,73 @@ void update_main(MagicShopFormState& state,MagicShopFormHost& host){
     }
     if(host.shop_key_pulse(0x02000000U)){
         const auto index=required(state.entries).at(static_cast<std::size_t>(state.selection));
-        const auto price=host.shop_price(required(host.shop_record(index)));
-        if(host.shop_check_money(static_cast<std::int64_t>(price))){
-            const auto payment=host.shop_price(required(host.shop_record(index)));
-            host.shop_subtract_money(payment);
-            host.shop_add_purchases(required(host.shop_record(index)),1);
-            const auto parameter=host.shop_parameter_key(required(host.shop_record(index)));
-            const auto& record=required(host.shop_record(index));
-            const auto member=state.member_system;
-            if(!member)throw std::invalid_argument("null magic-shop MemberSystem");
-            const auto addition=record.value_per_purchase;
-            const auto kind=state.kind;
-            const auto total=host.shop_hero_total(member,parameter);
-            const auto form=host.shop_make_buy_confirmation({kind,0,parameter,addition,total});
-            host.shop_push_form(form);
+        if(state.kind==1){
+            const auto price=host.shop_price(required(host.shop_record(index)));
+            if(host.shop_check_money(static_cast<std::int64_t>(price))){
+                const auto payment=host.shop_price(required(host.shop_record(index)));
+                host.shop_subtract_money(payment);
+                host.shop_add_purchases(required(host.shop_record(index)),1);
+                const auto parameter=host.shop_parameter_key(required(host.shop_record(index)));
+                const auto& record=required(host.shop_record(index));
+                const auto member=state.member_system;
+                if(!member)throw std::invalid_argument("null magic-shop MemberSystem");
+                const auto addition=record.value_per_purchase;
+                const auto kind=state.kind;
+                const auto total=host.shop_hero_total(member,parameter);
+                const auto form=host.shop_make_buy_confirmation({kind,0,parameter,addition,total});
+                host.shop_push_form(form);
+            }
+            // Only kinds1/9 preserve selection after a successful or refused buy.
+            reset_preserving_selection(state,host);
+        }else{
+            // Equipment kind2: cost/check, fresh cost/debit, fresh record/stock,
+            // then MakeShopPurchase(kind,id,0), Push and a plain selection-clearing Reset.
+            const auto price=required(host.shop_equipment_record(index)).buy_price;
+            if(host.shop_check_money(static_cast<std::int64_t>(price))){
+                const auto payment=required(host.shop_equipment_record(index)).buy_price;
+                host.shop_subtract_money(payment);
+                (void)required(host.shop_equipment_record(index));
+                host.shop_add_equipment_stock(index,1);
+                const auto kind=state.kind;
+                const auto form=host.shop_make_equipment_confirmation(kind,index,0);
+                host.shop_push_form(form);
+            }
+            reset_shop_form(state,host);
         }
-        // The native kind1 Reset executes for both successful and refused buys.
-        reset_preserving_selection(state,host);
     }
     if(host.shop_key_pulse(0x10000000U))host.shop_open_tapjoy();
     if(host.shop_soft_label(12))host.shop_open_browser();
     if(host.shop_soft_label(21))host.shop_open_text_input();
 }
 }
-void reset_magic_shop(MagicShopFormState& state,MagicShopFormHost& host){
-    // ShopForm.Reset0x1209ec8: selected kind1 at0x120a110 and common tail0x120b048.
+void reset_shop_form(ShopFormState& state,ShopFormHost& host){
+    // ShopForm.Reset0x1209ec8: kind1 at0x120a110, kind2 at0x120a1fc, common tail0x120b048.
     require_kind(state);
     state.selection=-1;state.crossfade=-1;
     state.entries=std::make_shared<std::vector<std::int32_t>>();
-    const auto count=host.shop_catalog_count();
-    if(count<0)throw std::length_error("negative magic-shop catalog length");
-    state.filters=std::make_shared<std::vector<std::uint8_t>>(static_cast<std::size_t>(count));
-    for(std::int32_t index=0;index<host.shop_catalog_count();index=add32(index,1))
-        if(host.shop_catalog_is_found(index))required(state.entries).push_back(index);
+    if(state.kind==1){
+        const auto count=host.shop_catalog_count();
+        if(count<0)throw std::length_error("negative magic-shop catalog length");
+        state.filters=std::make_shared<std::vector<std::uint8_t>>(static_cast<std::size_t>(count));
+        for(std::int32_t index=0;index<host.shop_catalog_count();index=add32(index,1))
+            if(host.shop_catalog_is_found(index))required(state.entries).push_back(index);
+    }else{
+        const auto count=host.shop_equipment_catalog_count();
+        if(count<0)throw std::length_error("negative equipment-shop catalog length");
+        state.filters=std::make_shared<std::vector<std::uint8_t>>(static_cast<std::size_t>(count));
+        const auto catalog=host.shop_equipment_catalog();
+        const auto& source=required(catalog);
+        append_equipment_shop_entries(required(state.entries),source,0x10U,
+            [&](const EquipmentCombatRecord& record){return host.shop_equipment_owned(record);});
+    }
     const auto maximum=add32(add32(entry_count(state),-1)/12,1);
     state.page_count=maximum;
     // IntExtension.ClampMax0x10eda6c is inclusive, even though page_count is a count.
     if(state.page>maximum)state.page=maximum;
     check_filter(state,host);
 }
-void initialize_magic_shop(MagicShopFormState& state,MagicShopFormHost& host){
-    // ShopForm.Init0x1209bc4 selected ordinary kind1.
+void initialize_shop_form(ShopFormState& state,ShopFormHost& host){
+    // ShopForm.Init0x1209bc4 selected ordinary kinds1/2.
     require_kind(state);
     host.shop_common_initialize();
     state.member_system=host.shop_member_system();
@@ -118,9 +154,9 @@ void initialize_magic_shop(MagicShopFormState& state,MagicShopFormHost& host){
     state.witch_y=static_cast<float>(add32(host.shop_game_height(),-156));
     change_state(state,0,host);
     host.shop_flag_system(0x100);
-    reset_magic_shop(state,host);
+    reset_shop_form(state,host);
 }
-bool update_magic_shop(MagicShopFormState& state,MagicShopFormHost& host){
+bool update_shop_form(ShopFormState& state,ShopFormHost& host){
     // ShopForm.Update0x120b774, with source binary32 motion and int32 counters.
     require_kind(state);
     state.update_pair={1,0};host.shop_base_update();

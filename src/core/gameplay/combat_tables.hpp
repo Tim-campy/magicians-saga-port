@@ -36,7 +36,9 @@ struct EquipmentCombatRecord {std::int32_t id=0,attribute=0,flags=0;EventScript 
     std::int32_t type=0,bullet_id=-1,max_height=0,bullet_speed=0; // +0x3c/+0x54/+0x68/+0x6c.
     std::int32_t image=0;std::string resource;
     std::int32_t initial_level=0; // Equipment +0x80, cloth +0x4c, hat +0x44.
-    std::string name;}; // BaseData name, selected resource-language table token1.
+    std::string name; // BaseData name, selected resource-language table token1.
+    std::int32_t unlock_level=0,buy_price=0; // Equipment tokens4/12, +0x40/+0x64.
+    std::string explanation;}; // Equipment token22; cloth/hat token10.
 struct EquipmentNewGameState {
     std::int32_t level=0;
     ItemStock inventory{0,false,0}; // Fresh constructors explicitly clear discovery/new.
@@ -48,6 +50,12 @@ void reset_equipment_for_new_game(EquipmentNewGameState&,const EquipmentCombatRe
 void reset_equipment_for_new_game(EquipmentNewGameState&,const EquipmentCombatRecord&);
 using MagicShopCombatTable=std::vector<std::optional<MagicShopCombatRecord>>;
 using EquipmentCombatTable=std::vector<std::optional<EquipmentCombatRecord>>;
+// ShopForm.Reset: materialize nonnull records, stable OrderBy(unlock_level),
+// then Check(mask) and !isHave. Append directly, retaining the published prefix
+// if have throws. Record addresses must survive callbacks; fields remain live.
+void append_equipment_shop_entries(std::vector<std::int32_t>& output,const EquipmentCombatTable&,
+    std::uint32_t flag_mask,const std::function<bool(const EquipmentCombatRecord&)>& have);
+
 enum class EquipmentTableKind { weapon_or_shield,cloth_or_hat };
 MagicShopCombatTable load_magic_shop_combat_table(std::string_view,bool normalize_crlf,const EventIntegerParser&);
 EquipmentCombatTable load_equipment_combat_table(std::string_view,EquipmentTableKind,bool normalize_crlf,const EventIntegerParser&);

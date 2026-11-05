@@ -79,13 +79,14 @@ std::vector<TownReplayAction> read_town_replay(const std::filesystem::path& path
 struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,SelectMarkerHost,
     SelectNavigationHost,SelectBuildingHost,SelectTownButtonsHost,SelectGuidanceSaveHost,
     SelectReviewHost,SelectTriggerHost,SelectGuideHost,SelectNotificationHost,TownPermissionHost,SelectTouchHost,SelectWidgetHost,FormStackHost,
-    MissionTownReturn,TownQuestReturnHost,SelectReturnPositionHost,KingRewardExecutionHost,KingHallServices,ConstructionServices,FreshTownHost,MagicShopFormHost,MagicShopPriceHost {
+    MissionTownReturn,TownQuestReturnHost,SelectReturnPositionHost,KingRewardExecutionHost,KingHallServices,ConstructionServices,FreshTownHost,ShopFormHost,MagicShopPriceHost {
     TownBackground& town;
     ResourceArchive& tables;
     GameInitialization initial;
     std::unique_ptr<MissionEvents> local_events;
     MissionEvents& events;
     std::filesystem::path data_root;
+    bool shop_defaults_bound=false;
     std::shared_ptr<StageStaminaValues> system_longs=std::make_shared<StageStaminaValues>(13,0);
     FormStackHost* talk_manager=nullptr;
     struct Stage;
@@ -226,7 +227,7 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
     bool widget(std::int32_t type,std::int32_t x,std::int32_t y){
         if(!town.context_.physical_input)throw std::invalid_argument("town widget requires physical input");
         if(stage_pending)return stage_widget(type,x,y);
-        if(events.active_magic_shop())return magic_widget(type,x,y);
+        if(events.active_shop())return magic_widget(type,x,y);
         if(events.active_build_list()||events.active_building_complete())return construction_widget(type,x,y);
         if(type==3){cancel_widget();return true;}
         if(type!=0&&type!=1)throw std::invalid_argument("unsupported town widget pointer type");
@@ -278,7 +279,7 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
         while(replay_index<replay.size()&&replay[replay_index].frame<=frame){
             const auto& action=replay[replay_index++];
             if(action.kind==TownReplayAction::Kind::TalkPulse){pulse=true;++replay_applied;continue;}
-            if(action.kind==TownReplayAction::Kind::Buttons&&events.active_magic_shop()){events.pulse_construction(action.mask);++replay_applied;continue;}
+            if(action.kind==TownReplayAction::Kind::Buttons&&events.active_shop()){events.pulse_construction(action.mask);++replay_applied;continue;}
             if(action.kind==TownReplayAction::Kind::Widget){widget(action.camera[0],action.camera[1],action.camera[2]);++replay_applied;continue;}
             if(action.kind==TownReplayAction::Kind::FormBack){town.form_back();++replay_applied;continue;}
             if(action.kind==TownReplayAction::Kind::StageBack){if(!stage_pending)throw std::invalid_argument("stage-back requires selected menu");stage_back_requested=true;++replay_applied;continue;}
@@ -323,6 +324,9 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
         if(defaults.town_scale)town.save_integers_->at(13)=*defaults.town_scale;
         town.save_integers_->at(0)=save.normal_flags;town.save_integers_->at(7)=save.talk_character;
         town.save_integers_->at(8)=defaults.area8;town.save_integers_->at(9)=defaults.quest9;
+        if(const auto levels=read_shop_defaults(root)){
+            std::copy(levels->begin(),levels->end(),town.save_integers_->begin()+20);shop_defaults_bound=true;
+        }
         system_save->at(1)=save.system_flags;system_save->at(21)=save.review_coin;system_save->at(22)=save.reviewed;
         events.bind_normal_save(town.save_integers_);town.pass_->form=events.form_owner();
         talk_manager=town.pass_->form.manager;town.pass_->form.manager=this;
@@ -436,8 +440,8 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
     void make_transition(std::int32_t,bool,std::uint32_t,std::function<void()>)override{town_unbound("room transition");}
     EventObject room_form()override{town_unbound("room form");}
     EventObject make_shop(std::int32_t kind)override{
-        if(kind!=1||!town.shared_world_)town_unbound("only retained magic shop kind1 is bound");
-        return events.make_magic_shop(*this);
+        if((kind!=1&&kind!=2)||!town.shared_world_)town_unbound("only retained shop kinds1/2 are bound");
+        return events.make_shop(*this,kind);
     }
     std::shared_ptr<BuildingMenuCatalog> building_menu;
     std::shared_ptr<BuildingMenuCatalog> buildings()override{
@@ -450,12 +454,14 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
     std::shared_ptr<std::vector<EventObject>> living_members()override{town_unbound("building resident owners");}
     std::int32_t system_share_value()override{town_unbound("share save slot");}
     void set_shop_selection(EventObject,std::int32_t)override{town_unbound("shop selection");}
-    std::uint64_t magic_purchases=0,magic_returns=0,magic_sounds=0;
+    std::uint64_t magic_purchases=0,magic_returns=0,magic_sounds=0,equipment_purchases=0;
     EventObject shop_touch_identity=std::make_shared<int>(0),shop_member_identity=std::make_shared<int>(0);
     RenderDrawResource* magic_resource=nullptr;
     std::vector<SelectAreaTouchRegion> magic_regions;
     std::optional<SelectAreaTouchRegion> magic_capture;
     std::vector<std::array<std::int32_t,4>> magic_quotes;
+    bool equipment_menu_drawn=false;
+    SebStaticWork shop_icon_work;
     std::map<std::pair<std::string,std::uint32_t>,std::unique_ptr<DesktopTextBitmap>> magic_texts;
     const std::int32_t* saved_purchases(std::int32_t slot)override{return &town.shared_world_->progress.shop_purchases.at(slot);}
     const LevelTableRecord* price_record(std::int32_t count)override{
@@ -483,20 +489,43 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
         const auto* row=shop_record(index);if(!row)throw std::invalid_argument("null magic shop catalog row");
         return town.shared_world_->initial_shop_state(row->id).discovery_state==1;
     }
+    std::int32_t shop_equipment_catalog_count()override{return static_cast<std::int32_t>(town.shared_world_->catalog->equipment.size());}
+    std::shared_ptr<const EquipmentCombatTable> shop_equipment_catalog()override{
+        return {town.shared_world_->catalog,&town.shared_world_->catalog->equipment};
+    }
+    const EquipmentCombatRecord* shop_equipment_record(std::int32_t id)override{
+        const auto& row=town.shared_world_->catalog->equipment.at(static_cast<std::size_t>(id));return row?&*row:nullptr;
+    }
+    bool shop_equipment_owned(const EquipmentCombatRecord& row)override{
+        return town.shared_world_->humans->result_owner().inventory(RewardItem::weapon,row.id).stock>0;
+    }
+    std::int32_t shop_unlock_value(std::int32_t kind)override{
+        // UnlockShopData.GetLockValue0x1173c70, selected kind2 -> normal-save21.
+        if(kind!=2)town_unbound("shop unlock category");
+        if(!shop_defaults_bound)throw std::invalid_argument("equipment shop requires --shop-defaults extraction");
+        return town.save_integers_->at(21);
+    }
+    void shop_add_equipment_stock(std::int32_t id,std::int32_t amount)override{
+        town.shared_world_->humans->result_owner().add_inventory_stock(RewardItem::weapon,id,amount);
+        ++equipment_purchases;refresh_progression();
+    }
+    EventObject shop_make_equipment_confirmation(std::int32_t kind,std::int32_t id,std::int32_t option)override{
+        return events.make_equipment_purchase(kind,id,option,[this]{++magic_sounds;play_button_sound();});
+    }
     void shop_town_buildings()override{static_cast<void>(town.town_buildings());}
     void shop_base_update()override{}
     void shop_reset_image_animations()override{reset_image_animations(*clocks);}
     void shop_update_image_animations()override{advance_image_animations(*clocks);}
     void shop_update_main_blur()override{}
-    bool shop_key_repeat(std::uint32_t)override{return false;} // Declared neutral page/navigation provider.
-    bool shop_key_pulse(std::uint32_t mask)override{return events.magic_shop_key_pulse(mask);}
-    bool shop_soft_label(std::int32_t label)override{return label==3&&events.magic_shop_back_pressed();}
+    bool shop_key_repeat(std::uint32_t mask)override{return events.shop_key_pulse(mask);} // One replay/release pulse per request.
+    bool shop_key_pulse(std::uint32_t mask)override{return events.shop_key_pulse(mask);}
+    bool shop_soft_label(std::int32_t label)override{return label==3&&events.shop_back_pressed();}
     float shop_clamp(float value,float lower,float upper)override{if(value>upper)value=upper;if(value<lower)value=lower;return value;}
     float shop_clamp_max(float value,float maximum)override{return value>maximum?maximum:value;}
     void shop_find_building(std::int32_t kind)override{
         for(const auto& row:town.building_records_){if(!row)throw std::invalid_argument("null building in shop lookup");if(row->type==kind)return;}
     }
-    std::optional<std::int32_t> shop_take_returned_child_result()override{return events.take_magic_shop_child_result();}
+    std::optional<std::int32_t> shop_take_returned_child_result()override{return events.take_shop_child_result();}
     std::int32_t shop_price(const MagicShopCombatRecord& row)override{return magic_shop_price(row,*this);}
     bool shop_check_money(std::int64_t amount)override{return town.shared_world_->humans->result_owner().check_money(amount);}
     void shop_subtract_money(std::int32_t amount)override{
@@ -523,7 +552,7 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
     void shop_open_text_input()override{town_unbound("magic shop optional code input");}
     void shop_play_bgm()override{++bgm_requests; /* SAGA_STUB(town-update-bgm): native BGM3 output. */}
     void shop_back_sound()override{++magic_sounds;play_button_sound();}
-    bool shop_change_to_town()override{++magic_returns;return events.pop_magic_shop();}
+    bool shop_change_to_town()override{++magic_returns;return events.pop_shop();}
     DesktopTextBitmap& magic_text_bitmap(const std::string& text,std::uint32_t color){
         const auto key=std::make_pair(text,color);auto entry=magic_texts.find(key);
         if(entry==magic_texts.end()){
@@ -537,13 +566,14 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
         backend.draw_bitmap(*v.ready.image,x-(right?v.width:0)+v.left*v.scale,y+(v.ascent+v.top)*v.scale,v.ready.pixels.width*v.scale,v.ready.pixels.height*v.scale);
     }
     void draw_magic_shop(BitmapBackend& backend){
-        magic_regions.clear();magic_quotes.clear();const auto* state=events.active_magic_shop();
+        magic_regions.clear();magic_quotes.clear();const auto* state=events.active_shop();
+        equipment_menu_drawn=state&&state->kind==2;
         if(!state||state->state!=1||state->crossfade>=0||!state->entries)return;
         const auto ox=(town.context_.width-240)/2,oy=(town.context_.height-240)/2;
         const auto cx=(town.context_.width+1)/2-ox,cy=(town.context_.height+1)/2-oy;
         backend.draw_seb_frame(magic_resource,1,1,static_cast<float>(ox+cx),static_cast<float>(oy+cy));
         bool buy=false;
-        for(std::size_t i=0;i<state->entries->size();++i){
+        if(state->kind==1)for(std::size_t i=0;i<state->entries->size();++i){
             const auto id=state->entries->at(i);const auto& row=*shop_record(id);const auto price=shop_price(row);const auto affordable=shop_check_money(price);
             magic_quotes.push_back({id,town.shared_world_->progress.shop_purchases.at(id),price,affordable?1:0});
             const auto x=ox+cx-120+120*static_cast<std::int32_t>(i&1U),y=oy+cy-92+32*static_cast<std::int32_t>(i>>1);
@@ -554,11 +584,44 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
             draw_magic_text(backend,std::to_string(price),x+114,y+18,color,true);
             magic_regions.push_back({input_screen_rectangle({x,y,120,32},{0,0,0,0},town.context_.width,town.context_.height),{10,static_cast<std::int32_t>(0x20000U|static_cast<std::uint32_t>(i))}});
         }
+        else{
+            const auto start=static_cast<std::int64_t>(state->page)*12;
+            auto* resource=town.actor_resource(22);
+            auto* sprite=resource->animations->clips->at(0);if(!sprite)throw std::invalid_argument("equipment icon requires weapon clip0");
+            for(auto i=start;i<start+12&&i<static_cast<std::int64_t>(state->entries->size());++i){
+                const auto id=state->entries->at(static_cast<std::size_t>(i));const auto& row=*shop_equipment_record(id);
+                const auto n=static_cast<std::int32_t>(i-start),x=ox+cx-116+58*(n%4),y=oy+cy-92+42*(n/4);
+                const auto locked=row.unlock_level>shop_unlock_value(2),selected=state->selection==i;
+                const auto affordable=shop_check_money(row.buy_price);
+                const auto stock=town.shared_world_->humans->result_owner().inventory(RewardItem::weapon,id).stock;
+                magic_quotes.push_back({id,stock,row.buy_price,affordable?1:0});
+                backend.draw_seb_frame(magic_resource,9,selected?0:1,static_cast<float>(x),static_cast<float>(y));
+                draw_fixed_image_seb(&backend.graphics(),x+29,y+21,sprite->sprites,resource->images->at(static_cast<std::size_t>(row.image)),1,shop_icon_work);
+                // SAGA_STUB(town-magic-presentation): public-font price/lock labels
+                // replace native filtering/tint and selected-stat layout.
+                draw_magic_text(backend,locked?"Locked":std::to_string(row.buy_price),x+56,y+27,affordable?0xffffffffU:0xffcc4040U,true);
+                if(selected&&!locked){
+                    buy=shop_check_money(row.buy_price);
+                    draw_magic_text(backend,row.name,ox+cx-110,oy+cy+48,0xffffffffU);
+                }
+                const auto value=static_cast<std::uint32_t>(i)+(locked?9999U:0U);
+                magic_regions.push_back({input_screen_rectangle({x,y,58,42},{0,0,0,0},town.context_.width,town.context_.height),{10,static_cast<std::int32_t>(0x20000U|value)}});
+            }
+            if(state->page_count>=2){
+                // SAGA_STUB(town-shop-page-input): one-click arrows feed the
+                // recovered repeat masks; native held-key repeat timing is unbound.
+                draw_magic_text(backend,"<",ox+cx-116,oy+cy-118,0xffffffffU);
+                draw_magic_text(backend,">",ox+cx+95,oy+cy-118,0xffffffffU);
+                magic_regions.push_back({input_screen_rectangle({ox+cx-120,oy+cy-118,24,24},{120,20,0,0},town.context_.width,town.context_.height),{5,0x10010}});
+                magic_regions.push_back({input_screen_rectangle({ox+cx+95,oy+cy-118,24,24},{20,120,0,0},town.context_.width,town.context_.height),{5,0x10012}});
+            }
+        }
         if(buy){
             auto* clip=town.common_->manager.animations().clips->at(70);if(!clip||!clip->sprites)throw std::invalid_argument("magic buy requires common clip70");
             const auto bounds=seb_bounding_rect(*clip->sprites,1);const auto font=magic_text_bitmap("0",0xffffffffU).font_height;
             auto y=town.context_.height-oy-font-bounds[3]-61;
-            if(town.context_.width<=240){y-=32;if(town.context_.motion_low_aspect)y=town.context_.height-font-bounds[3]-3;}
+            if(town.context_.width<=240)y-=32;
+            if(town.context_.motion_low_aspect&&(state->kind==2||town.context_.width<=240))y=town.context_.height-font-bounds[3]-3;
             backend.draw_seb_frame(&town.common_->manager.drawing(),70,1,static_cast<float>(ox+cx),static_cast<float>(oy+y));
             magic_regions.push_back({input_screen_rectangle({ox+cx-bounds[2]/2,oy+y,bounds[2],bounds[3]},{30,30,5,5},town.context_.width,town.context_.height),{4,25}});
         }
@@ -569,8 +632,8 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
         if(type==0){magic_capture.reset();for(auto it=magic_regions.rbegin();it!=magic_regions.rend();++it)if(input_hit_rectangle(it->bounds,x,y)){magic_capture=*it;break;}}
         if(!magic_capture)return false;const auto captured=*magic_capture;const auto hit=input_hit_rectangle(captured.bounds,x,y);
         if(type==1)magic_capture.reset();
-        if(captured.control.group==10){if(type==0||hit){events.select_magic_shop_row(captured.control.value&0xffff);if(type==1&&marked_row_release(captured.control))events.pulse_construction(0x100000U);}}
-        else if(type==1&&hit)events.pulse_construction(0x02000000U);
+        if(captured.control.group==10){if(type==0||hit){events.select_shop_row(captured.control.value&0xffff);if(type==1&&marked_row_release(captured.control))events.pulse_construction(0x100000U);}}
+        else if(type==1&&hit)events.pulse_construction(captured.control.group==5?(1U<<(captured.control.value&31)):0x02000000U);
         return true;
     }
     EventInstruction resident_rates;
@@ -1193,7 +1256,15 @@ void TownBackground::report_update(std::ostream& out)const{
        <<",\"construction_widgets\":{\"captured\":"<<(owner.construction_capture?"true":"false")<<",\"marked_key\":"<<owner.marked_list_key<<",\"events\":"<<owner.construction_widget_events<<",\"regions\":[";
     for(std::size_t i=0;i<owner.construction_regions.size();++i){if(i)out<<',';const auto& r=owner.construction_regions[i];out<<'['<<r.control.group<<','<<r.control.value<<','<<r.bounds.x<<','<<r.bounds.y<<','<<r.bounds.width<<','<<r.bounds.height<<']';}
     out<<"],\"quotes\":[";for(std::size_t i=0;i<owner.construction_quotes.size();++i){if(i)out<<',';const auto& q=owner.construction_quotes[i];out<<'['<<q[0]<<','<<q[1]<<','<<q[2]<<','<<q[3]<<']';}
-    out<<"]},\"magic_purchases\":"<<owner.magic_purchases<<",\"magic_returns\":"<<owner.magic_returns<<",\"magic_shop_widgets\":{\"regions\":[";
+    out<<"]},\"magic_purchases\":"<<owner.magic_purchases<<",\"magic_returns\":"<<owner.magic_returns;
+    if(owner.shop_defaults_bound){
+        out<<",\"equipment_purchases\":"<<owner.equipment_purchases<<",\"equipment_unlock_level\":"<<save_integers_->at(21)<<",\"equipment_stock\":[";
+        bool first=true;if(shared_world_)for(const auto& row:shared_world_->catalog->equipment)if(row){
+            const auto& v=shared_world_->humans->result_owner().inventory(RewardItem::weapon,row->id);
+            if(!first)out<<',';first=false;out<<'['<<row->id<<','<<v.discovery_state<<','<<(v.is_new?1:0)<<','<<v.stock<<']';
+        }out<<']';
+    }
+    out<<(owner.equipment_menu_drawn?",\"equipment_shop_widgets\":{\"regions\":[":",\"magic_shop_widgets\":{\"regions\":[");
     for(std::size_t i=0;i<owner.magic_regions.size();++i){if(i)out<<',';const auto& r=owner.magic_regions[i];out<<'['<<r.control.group<<','<<r.control.value<<','<<r.bounds.x<<','<<r.bounds.y<<','<<r.bounds.width<<','<<r.bounds.height<<']';}
     out<<"],\"quotes\":[";for(std::size_t i=0;i<owner.magic_quotes.size();++i){if(i)out<<',';const auto& q=owner.magic_quotes[i];out<<'['<<q[0]<<','<<q[1]<<','<<q[2]<<','<<q[3]<<']';}
     out<<"]},\"shop_purchases\":[";if(shared_world_){bool first_shop=true;for(const auto& row:shared_world_->progress.shop_purchases){if(!first_shop)out<<',';first_shop=false;out<<'['<<row.first<<','<<row.second<<']';}}
