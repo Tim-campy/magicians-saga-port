@@ -52,7 +52,8 @@ public:
     MissionProfile(const MissionBootstrapOptions&,ArchiveImageSet::Decoder,MissionRuntimeConfig,std::optional<std::filesystem::path> replay=std::nullopt);
     MissionProfile(const MissionProfile&)=delete;
     MissionProfile& operator=(const MissionProfile&)=delete;
-    bool step(); // False at an explicitly held deferred transition; no further old-mission logic.
+    bool step(std::optional<std::uint64_t> application_frame=std::nullopt); // False at a held deferred transition.
+    void enter_selected_quest(core::EventInstruction normal_save,core::EventInstruction system_save);
     bool awaiting_quest()const{return awaiting_quest_;}
     std::size_t initialized_system_count()const{return initialized_order_.size();}
     core::TownInitializationState& initialized_town(){return town_state_;}
@@ -119,6 +120,7 @@ private:
     MissionProfile(const std::filesystem::path&,bool,ArchiveImageSet::Decoder,std::optional<MissionRuntimeConfig>,std::optional<std::filesystem::path>,MissionSelection,const MissionBootstrapOptions*);
     std::optional<MissionBootstrapOptions> bootstrap_options_;
     bool awaiting_quest_=false;
+    core::EventInstruction campaign_system_save_;
     float instance_view_scale_=100,base_view_scale_=100;
     std::unique_ptr<MissionEvents> events_;
     struct TextBitmap:DesktopTextBitmap {
@@ -167,8 +169,8 @@ private:
     std::vector<std::int32_t> last_world_passes_;
     bool quest_frame_result_=true,debug_modal_=false;
     void base_update()override{core::update_my_form_base(parent_update_counter_,*this);}
-    bool flag_check(std::uint32_t)override{return false;} // SAGA_STUB(mission-application-flags): Init clears flag0x100; subsequent producers are unbound.
-    void flag_off(std::uint32_t)override{}
+    bool flag_check(std::uint32_t mask)override{return campaign_system_save_&&(static_cast<std::uint32_t>(campaign_system_save_->at(1))&mask)!=0;}
+    void flag_off(std::uint32_t)override;
     void reset_image_clocks()override;
     void advance_image_clocks()override;
     bool config_debug_controls()override{return quest_frame_->debug_controls;}

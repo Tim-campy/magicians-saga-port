@@ -23,6 +23,7 @@ class MissionResults final:private core::QuestRewardHost,private core::QuestExpe
     public core::QuestReturnHost,private core::MemberFinishHost,private core::StageCleanupHost {
 public:
     MissionResults(MissionHumans&,MissionResultScenario);
+    void bind_quest_record(std::shared_ptr<core::QuestRecord> record){state_.quest_record=std::move(record);}
     void grant();
     void report(std::ostream&);
     bool check_crystals(std::int64_t amount)const;

@@ -2,6 +2,7 @@
 #include "table_catalog.hpp"
 #include "quest_rewards.hpp"
 #include "event_progression.hpp"
+#include <limits>
 #include <stdexcept>
 
 namespace saga::core {
@@ -72,6 +73,11 @@ void reset_area_for_new_game(AreaProgressState& state,const AreaDefinition& defi
     }
     reset_area_progress(state,definition);
 }
+EventScript initial_quest_stage_detail(){
+    auto rows=std::make_shared<std::vector<EventInstruction>>();rows->reserve(99);
+    for(std::size_t row=0;row<99;++row)rows->push_back(std::make_shared<EventIntegers>(99,0));
+    return rows;
+}
 QuestDefinition& load_quest_definition(QuestDefinition& receiver,std::optional<std::string_view> line,const EventIntegerParser& parser){
     if(line&&!line->empty()){detail::TableTokens t(*line,parser);read(receiver,t);}
     return receiver;
@@ -89,6 +95,13 @@ void reset_quest_for_new_game(QuestDefinition& receiver,const std::function<void
     // QuestRecord..ctor 0x11ce190 only calls Object..ctor: seven CLR-zero int32 fields.
     auto record=allocate?allocate():std::make_shared<QuestRecord>();
     receiver.record=std::move(record);
+}
+void increment_quest_detail_count(QuestDefinition& receiver,std::int32_t stage){
+    if(!receiver.stage_detail)throw std::invalid_argument("missing quest stage-detail array");
+    const auto row=receiver.stage_detail->at(static_cast<std::size_t>(stage));
+    if(!row)throw std::invalid_argument("missing quest stage-detail row");
+    auto& count=row->at(3);
+    count=count==std::numeric_limits<std::int32_t>::max()?std::numeric_limits<std::int32_t>::min():count+1;
 }
 MissionSelectionRecords select_mission_records(AreaTable& areas,QuestTable& quests,std::int32_t area_slot8,std::int32_t quest_slot9){
     // AppData.StartExplore 0x11152c4..0x11152d4 validates the cache length,

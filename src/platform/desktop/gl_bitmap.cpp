@@ -136,6 +136,13 @@ struct GlBitmapRenderer::Impl {
 };
 GlBitmapRenderer::GlBitmapRenderer(SDL_Window& w,std::int32_t width,std::int32_t height,Textures textures):impl_(std::make_unique<Impl>(w,width,height,std::move(textures))){impl_->init();}
 GlBitmapRenderer::~GlBitmapRenderer()=default;
+void GlBitmapRenderer::set_texture_source(Textures source){
+    if(!source)throw std::invalid_argument("missing GL texture provider");
+    auto& state=*impl_;state.current();
+    for(const auto& entry:state.uploaded)state.gl->DeleteTextures(1,&entry.second);
+    state.uploaded.clear();state.textures=std::move(source);
+    state.begun=false;state.material_ready=false;state.active_key=0;
+}
 void GlBitmapRenderer::resize_target(std::int32_t width,std::int32_t height){
     if(width<1||height<1||width>8192||height>8192||static_cast<std::int64_t>(width)*height>16*1024*1024)throw std::invalid_argument("invalid GL resize target");
     auto& s=*impl_;if(width==s.width&&height==s.height)return;s.current();auto& g=*s.gl;

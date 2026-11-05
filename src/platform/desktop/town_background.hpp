@@ -42,7 +42,7 @@ struct TownBackgroundContext {
     std::int32_t gameplay_seed=42; // Independent provisional gameplay RNG; never AppData/Lib.
     std::int32_t stamina_up_state=0,menu_font=10; // Provisional billing/text provider inputs.
     std::int64_t server_time=0; // Provisional fixed GetServerTime result, seconds.
-    std::optional<std::filesystem::path> input_replay;
+    std::optional<std::filesystem::path> input_replay,mission_replay;
 };
 class TownBackground final:private core::SelectBackgroundHost,private core::SelectActiveAreaHost,private core::SelectCameraHost,private core::SelectSceneryHost,private core::SelectFloorHost,private core::SelectTownDrawingHost,private core::KingRewardAvailabilityHost,private core::SelectAreaDrawingHost,private core::TownResidentInitializationHost,private core::TownResidentGeometryHost,private core::ScaledHumanDrawingHost,private core::SelectResidentDrawingHost,private core::SelectHeroDrawingHost,private core::SelectForegroundDrawingHost,private core::SelectNoticeDrawingHost,private core::TownResidentUpdateHost,private core::SelectCloudHost {
 public:
@@ -59,6 +59,7 @@ public:
     void cancel_widget_pointer();
     void stage_back();
     bool quest_handoff_pending()const;
+    MissionProfile* active_mission()const;
     void cancel_camera_pointer();
     std::string window_title()const;
     void report(std::ostream&)const;

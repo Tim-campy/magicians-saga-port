@@ -30,6 +30,8 @@ void reset_area_progress(AreaProgressState&,const AreaDefinition&);
 // The default Find is BaseData.Find; callback mutations of flags remain live.
 void reset_area_for_new_game(AreaProgressState&,const AreaDefinition&,
                              const std::function<void(bool)>& find={});
+// QuestData..ctor0x117311c: JTool.MakeArray<int[][]>([99,99]), distinct zero rows.
+EventScript initial_quest_stage_detail();
 // Static QuestData projection. Saved completion/prisoner fields in stage are not read by Load.
 struct QuestDefinition {
     std::int32_t id=-1,image=0,need_stamina=0;
@@ -38,6 +40,7 @@ struct QuestDefinition {
     std::int32_t discovery_state=0;
     bool is_new=false;
     std::shared_ptr<QuestRecord> record;
+    EventScript stage_detail=initial_quest_stage_detail(); // +0x98; Load/NewGame preserve it.
 };
 using QuestTable=std::vector<std::optional<QuestDefinition>>;
 // QuestData.Load 0x1172b44: null/empty preserves the receiver; failures keep successful stores.
@@ -49,6 +52,8 @@ void find_quest_record(QuestDefinition&,bool);
 // Callbacks expose virtual dispatch/allocation failures without emulating the managed runtime.
 void reset_quest_for_new_game(QuestDefinition&,const std::function<void(bool)>& find={},
                              const std::function<std::shared_ptr<QuestRecord>()>& allocate={});
+// QuestForm.AddDetailCount0x11da22c: increment stageDetail_[exploreStage_][3], wrap32.
+void increment_quest_detail_count(QuestDefinition&,std::int32_t stage);
 struct MissionSelectionRecords {
     AreaDefinition* area=nullptr;
     QuestDefinition* quest=nullptr;

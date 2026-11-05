@@ -4,6 +4,9 @@
 #include <fstream>
 #include <iostream>
 #include <iterator>
+#include <limits>
+#include <set>
+#include <type_traits>
 using namespace saga::core;
 #define CHECK(x) do{if(!(x)){std::cerr<<"failed line "<<__LINE__<<'\n';std::abort();}}while(false)
 AreaProgressState dirty_area_progress(){
@@ -79,6 +82,47 @@ void test_area_new_game(){
      definition.flags=0;state.is_new=true;reset_area_progress(state,definition);
      check_reset_area_arrays(state);CHECK(state.discovery_state==0&&state.is_new);}
 }
+void test_quest_detail_ledger(){
+    static_assert(std::is_aggregate<QuestDefinition>::value,"quest projection retains aggregate initialization");
+    QuestDefinition first,second;
+    CHECK(first.stage_detail&&second.stage_detail&&first.stage_detail!=second.stage_detail);
+    std::set<const EventIntegers*> identities;
+    for(const auto& matrix:{first.stage_detail,second.stage_detail}){
+        CHECK(matrix->size()==99);
+        for(const auto& row:*matrix){
+            CHECK(row&&*row==EventIntegers(99,0));CHECK(identities.insert(row.get()).second);
+        }
+    }
+    increment_quest_detail_count(first,0);increment_quest_detail_count(first,98);
+    CHECK(first.stage_detail->at(0)->at(3)==1&&first.stage_detail->at(98)->at(3)==1);
+    CHECK(first.stage_detail->at(0)->at(2)==0&&first.stage_detail->at(0)->at(4)==0&&second.stage_detail->at(0)->at(3)==0);
+    auto& wrapped=first.stage_detail->at(98)->at(3);wrapped=std::numeric_limits<std::int32_t>::max();
+    increment_quest_detail_count(first,98);CHECK(wrapped==std::numeric_limits<std::int32_t>::min());
+    increment_quest_detail_count(first,98);CHECK(wrapped==std::numeric_limits<std::int32_t>::min()+1);
+    const auto matrix=first.stage_detail;const auto row=matrix->at(98);first.stage.flags=1;
+    reset_quest_for_new_game(first,[&](bool argument){CHECK(argument&&first.stage_detail==matrix&&matrix->at(98)==row);});
+    CHECK(first.stage_detail==matrix&&matrix->at(98)==row&&row->at(3)==std::numeric_limits<std::int32_t>::min()+1&&matrix->at(0)->at(3)==1);
+    try{reset_quest_for_new_game(first,{},[]()->std::shared_ptr<QuestRecord>{throw std::runtime_error("allocate");});CHECK(false);}catch(const std::runtime_error&){}
+    CHECK(first.stage_detail==matrix&&matrix->at(98)==row&&matrix->at(0)->at(3)==1);
+    load_quest_definition(first,std::nullopt,parse_event_decimal);load_quest_definition(first,"",parse_event_decimal);
+    CHECK(first.stage_detail==matrix&&matrix->at(98)==row);
+    for(const auto stage:{-1,99,std::numeric_limits<std::int32_t>::min(),std::numeric_limits<std::int32_t>::max()}){
+        try{increment_quest_detail_count(first,stage);CHECK(false);}catch(const std::out_of_range&){}
+        CHECK(first.stage_detail==matrix&&matrix->at(0)->at(3)==1&&matrix->at(98)==row);
+    }
+    first.stage_detail.reset();
+    try{increment_quest_detail_count(first,-1);CHECK(false);}catch(const std::invalid_argument&){}
+    first.stage_detail=std::make_shared<std::vector<EventInstruction>>();
+    try{increment_quest_detail_count(first,0);CHECK(false);}catch(const std::out_of_range&){}
+    first.stage_detail->push_back(nullptr);
+    try{increment_quest_detail_count(first,0);CHECK(false);}catch(const std::invalid_argument&){}
+    first.stage_detail->at(0)=std::make_shared<EventIntegers>(EventIntegers{71,72,73});
+    try{increment_quest_detail_count(first,0);CHECK(false);}catch(const std::out_of_range&){}
+    CHECK(*first.stage_detail->at(0)==EventIntegers({71,72,73}));
+    // Selected rows need only cell3; constructor-sized replacement is not required.
+    first.stage_detail->at(0)->push_back(-1);increment_quest_detail_count(first,0);
+    CHECK(*first.stage_detail->at(0)==EventIntegers({71,72,73,0}));
+}
 int main(int argc,char** argv){
     if(argc==2){
         std::ifstream f(argv[1],std::ios::binary);if(!f)throw std::runtime_error("cannot open quest table");
@@ -88,6 +132,7 @@ int main(int argc,char** argv){
         std::cout<<"quest slots="<<table.size()<<" populated="<<count<<'\n';return 0;
     }
     test_area_new_game();
+    test_quest_detail_ledger();
     {
         QuestDefinition r;r.stage.flags=3;r.stage.completed=7;r.stage.rescued_prisoners=9;
         r.record=std::make_shared<QuestRecord>(QuestRecord{1,2,3,4,5,6,7});const auto old=r.record;
@@ -149,7 +194,9 @@ int main(int argc,char** argv){
     const std::string prefix="2\tSynthetic\t17\tmap\t4\t0\t1\t2\t3\tignored\talso ignored\t5\t6\t10\t40\t25\t3\t20\t150\t";
     const std::string suffix="1\t1\t2\t4\t90\t0\t7\t1\t0\t-1\t8\t9\t10\t2\t11";
     QuestDefinition r;r.stage.rescued_prisoners=3;r.stage.completed=1;
+    const auto ledger=r.stage_detail;ledger->at(2)->at(3)=31;
     CHECK(&load_quest_definition(r,prefix+suffix+"\textra",parse_event_decimal)==&r);
+    CHECK(r.stage_detail==ledger&&ledger->at(2)->at(3)==31);
     CHECK(r.id==2&&r.name=="Synthetic"&&r.image==17&&r.resource=="map"&&r.need_stamina==11);
     const auto& q=r.stage;
     CHECK(q.flags==2&&q.base_level==5&&q.boss_level==6&&q.distance==10&&q.time_limit==40);

@@ -50,6 +50,66 @@ struct OffscreenBlit final:QuestRenderHost,QuestRenderSurface,RenderGraphics {
 
 }
 namespace saga::desktop {
+struct NativeMissionFrame::Impl {
+    MissionProfile& profile;GlBitmapRenderer& renderer;
+    BitmapBackend backend;MeshDepthSurface surface;MeshDepthState depth;GpuQueries queries;
+    BitmapMaterials native_materials;BitmapMeshFrame frame;GlMeshBindings bindings;
+    MeshSubmissionState s;GlMeshSubmissionHost host;
+    NativeMissionFrameStats statistics;std::set<std::size_t> used_textures;
+    static MeshDepthState depth_state(MeshDepthSurface& surface){MeshDepthState value;value.surface=&surface;return value;}
+    Impl(MissionProfile& p,GlBitmapRenderer& r)
+        :profile(p),renderer(r),backend(p.application,p.global,p.textures,p.view.height,p.world),depth(depth_state(surface)),
+         frame(backend,depth,queries,{p.depth_bits,false,[this]{return profile.depth_step!=0;}},[this](auto texture,auto shader,auto queue)->SubmissionMaterial&{
+             if(profile.native_materials)return native_materials.resolve(texture,shader,queue);
+             const auto found=profile.material_bindings.find({texture,shader,queue});
+             if(found==profile.material_bindings.end())throw std::invalid_argument("unbound material: texture="+std::to_string(texture)+" shader="+std::to_string(shader)+" queue="+std::to_string(queue));
+             return profile.materials.at(found->second);
+         }),host(renderer,bindings,[](auto&,auto&){},[this]()->std::int32_t{
+             if(profile.native_materials)return 0; // SAGA_STUB(mission-image-access-check): no eviction/aging service.
+             throw std::logic_error("capture has no image counter");
+         }){
+        if(!profile.has_projection||!profile.has_gpu_depth)throw std::invalid_argument("native frame requires projection/depth context");
+        sort_render_queue(profile.queue);
+        s.cursors=std::make_shared<std::vector<std::int32_t>>(1,0);s.lengths=std::make_shared<std::vector<std::int32_t>>(1,0);
+        s.lists=std::make_shared<std::vector<SubmissionRecords>>(1,frame.records().rows);
+        OffscreenMatrix unit;unit.values[0]=unit.values[5]=unit.values[10]=unit.values[15]=1;
+        s.matrices=std::make_shared<std::vector<OffscreenMatrix>>(1,unit);s.used_materials=std::make_shared<std::vector<SubmissionMaterial*>>();
+    }
+    void draw(std::int32_t width,std::int32_t height){
+        statistics.quads=0;used_textures.clear();
+        const auto account=[&]{statistics.quads+=backend.quads().size();for(const auto& q:backend.quads())used_textures.insert(q.texture);};
+        auto surface_projection=profile.projection;statistics.surface_width=width;statistics.surface_height=height;
+        if(profile.resizable_viewport()&&profile.spatial){
+            OffscreenBlit blit(profile.spatial->camera_host(),width,height);const auto draw=blit.prepare();
+            if(!draw.scaled||draw.u!=0||draw.v!=0||draw.x!=0||draw.y!=0||draw.width!=width||draw.height!=height)
+                throw std::logic_error("unsupported offscreen presentation rectangle");
+            statistics.surface_width=draw.source_width;statistics.surface_height=draw.source_height;
+            surface_projection=profile.surface_projection(statistics.surface_width,statistics.surface_height);
+        }
+        renderer.resize_target(statistics.surface_width,statistics.surface_height);backend.resize_surface(statistics.surface_height);
+        frame.begin_frame();frame.draw(profile.queue,0);profile.draw_dynamic_hud(&backend);frame.draw(profile.queue,1);frame.finish();bind_bitmap_mesh_frame(bindings,frame);
+        s.cursors->at(0)=0;s.lengths->at(0)=frame.records().active_count;
+        renderer.begin_frame(GlBitmapClear::color_and_depth,{0,0,0,0},surface_projection);submit_mesh_streams(s,1,host);
+        account();
+        if(profile.attack_widgets_enabled()||(profile.stage_mp_hud&&profile.native_stage_controls())||profile.has_static_buttons()){
+            // QuestForm.Draw calls World.Draw after DrawOffscreen: HUD stays in GameView pixels.
+            renderer.compose_target(width,height);backend.resize_surface(height);backend.set_matrix(nullptr);
+            frame.begin_frame();auto* mesh=backend.graphics().mesh_manager();mesh->group=0;mesh->set_depth(0,0);
+            profile.draw_stage_hud(&backend);profile.draw_stage_controls(&backend);profile.draw_entity_buttons(false,&backend);frame.finish();bind_bitmap_mesh_frame(bindings,frame);
+            s.cursors->at(0)=0;s.lengths->at(0)=frame.records().active_count;
+            const auto hud_projection=profile.resizable_viewport()?profile.surface_projection(width,height):profile.projection;
+            renderer.begin_frame(GlBitmapClear::depth,{0,0,0,0},hud_projection);submit_mesh_streams(s,1,host);account();
+            backend.set_matrix(&profile.world);
+        }
+
+        statistics.textures=used_textures.size();
+    }
+};
+NativeMissionFrame::NativeMissionFrame(MissionProfile& profile,GlBitmapRenderer& renderer):impl_(std::make_unique<Impl>(profile,renderer)){}
+NativeMissionFrame::~NativeMissionFrame()=default;
+void NativeMissionFrame::draw(std::int32_t width,std::int32_t height){impl_->draw(width,height);}
+NativeMissionFrameStats NativeMissionFrame::stats()const{return impl_->statistics;}
+
 int run_native_mission(MissionProfile& profile,std::int32_t width,std::int32_t height,
     std::optional<std::int32_t> frames,std::optional<std::filesystem::path> capture){
     if(width<1||height<1||width>8192||height>8192||static_cast<std::uint64_t>(width)*height>16U*1024U*1024U)throw std::invalid_argument("invalid mission dimensions");
@@ -63,25 +123,9 @@ int run_native_mission(MissionProfile& profile,std::int32_t width,std::int32_t h
         if(!loop)throw std::invalid_argument("mission_presentation capture dimensions must match the prepared viewport");
         profile.resize_viewport(width,height); // Explicit frontend size; native Camera/Cell/Render follow on the first step.
     }
-    auto& application=profile.application;
-    auto& global=profile.global;
-    auto& textures=profile.textures;
-    auto& owners=profile.owners;
-    auto& world=profile.world;
-    auto& queue=profile.queue;
-    auto& projection=profile.projection;
-    auto& has_projection=profile.has_projection;
-    auto& has_gpu_depth=profile.has_gpu_depth;
-    auto& depth_bits=profile.depth_bits;
-    auto& depth_step=profile.depth_step;
-    auto& materials=profile.materials;
-    auto& material_bindings=profile.material_bindings;
-    auto& created=profile.created;
-    auto& mission=profile.mission;
-    auto& tick_ms=profile.tick_ms;
-    auto& entity_world=profile.entity_world;
-    BitmapBackend backend(application,global,textures,height,world);sort_render_queue(queue);
-    if(!has_projection||!has_gpu_depth)throw std::invalid_argument("native capture needs projection and gpu_depth rows");
+    auto& textures=profile.textures;auto& owners=profile.owners;auto& queue=profile.queue;
+    auto& created=profile.created;auto& mission=profile.mission;auto& tick_ms=profile.tick_ms;auto& entity_world=profile.entity_world;
+    if(!profile.has_projection||!profile.has_gpu_depth)throw std::invalid_argument("native capture needs projection and gpu_depth rows");
     if(loop&&(!mission||(!capture&&!tick_ms)))throw std::invalid_argument("scene loop requires selected entities and explicit tick_ms");
     require(SDL_Init(SDL_INIT_VIDEO),"SDL_Init");Quit quit;configure_gl_bitmap_context();
     const char* input_title=profile.native_stage_controls()?"Mission - W/S move, 1/2/3/F/click attack, P mission pause, Enter result, Space freeze, N step, Esc close":
@@ -91,22 +135,6 @@ int run_native_mission(MissionProfile& profile,std::int32_t width,std::int32_t h
         SDL_WINDOW_OPENGL|(interactive?0:SDL_WINDOW_HIDDEN)|(live_viewport?SDL_WINDOW_RESIZABLE:0)),SDL_DestroyWindow);require(window!=nullptr,"SDL_CreateWindow");
     GlBitmapRenderer renderer(*window,width,height,[&](std::size_t key){const auto* ready=textures.at(key).ready;
         if(!ready)throw std::invalid_argument("texture has no decoded archive image");return GlBitmapTexture{&ready->pixels,GlBitmapWrap::clamp,GlBitmapWrap::clamp};});
-    MeshDepthSurface surface;MeshDepthState depth;depth.surface=&surface;GpuQueries queries;
-    BitmapMaterials native_materials;
-    BitmapMeshFrame frame(backend,depth,queries,{depth_bits,false,[&]{return depth_step!=0;}},[&](auto t,auto shader,auto queue_value)->SubmissionMaterial&{
-        if(profile.native_materials)return native_materials.resolve(t,shader,queue_value);
-        const auto found=material_bindings.find({t,shader,queue_value});
-        if(found==material_bindings.end())throw std::invalid_argument("unbound material: texture="+std::to_string(t)+" shader="+std::to_string(shader)+" queue="+std::to_string(queue_value));
-        return materials.at(found->second);
-    });
-    GlMeshBindings bindings;
-    MeshSubmissionState s;s.cursors=std::make_shared<std::vector<std::int32_t>>(1,0);s.lengths=std::make_shared<std::vector<std::int32_t>>(1,0);
-    s.lists=std::make_shared<std::vector<SubmissionRecords>>(1,frame.records().rows);OffscreenMatrix unit;unit.values[0]=unit.values[5]=unit.values[10]=unit.values[15]=1;
-    s.matrices=std::make_shared<std::vector<OffscreenMatrix>>(1,unit);s.used_materials=std::make_shared<std::vector<SubmissionMaterial*>>();
-    GlMeshSubmissionHost host(renderer,bindings,[](auto&,auto&){},[&]()->std::int32_t{
-        if(profile.native_materials)return 0; // SAGA_STUB(mission-image-access-check): no eviction/aging service is bound.
-        throw std::logic_error("capture has no image counter");
-    });
     const auto resize=[&](std::int32_t w,std::int32_t h){
         if(!profile.resizable_viewport()||w<1||h<2||(w==width&&h==height))return;
         profile.resize_viewport(w,h);width=w;height=h;
@@ -114,35 +142,8 @@ int run_native_mission(MissionProfile& profile,std::int32_t width,std::int32_t h
     if(live_viewport){
         int w=0,h=0;require(SDL_GetWindowSizeInPixels(window.get(),&w,&h),"SDL window pixel size");resize(w,h);
     }
-    std::int32_t surface_width=width,surface_height=height;
-    std::size_t submitted_quads=0;std::set<std::size_t> submitted_textures;
-    auto submit=[&]{
-        submitted_quads=0;submitted_textures.clear();
-        const auto account=[&]{submitted_quads+=backend.quads().size();for(const auto& q:backend.quads())submitted_textures.insert(q.texture);};
-        auto surface_projection=projection;surface_width=width;surface_height=height;
-        if(profile.resizable_viewport()&&profile.spatial){
-            OffscreenBlit blit(profile.spatial->camera_host(),width,height);const auto draw=blit.prepare();
-            if(!draw.scaled||draw.u!=0||draw.v!=0||draw.x!=0||draw.y!=0||draw.width!=width||draw.height!=height)
-                throw std::logic_error("unsupported offscreen presentation rectangle");
-            surface_width=draw.source_width;surface_height=draw.source_height;
-            surface_projection=profile.surface_projection(surface_width,surface_height);
-        }
-        renderer.resize_target(surface_width,surface_height);backend.resize_surface(surface_height);
-        frame.begin_frame();frame.draw(queue,0);profile.draw_dynamic_hud(&backend);frame.draw(queue,1);frame.finish();bind_bitmap_mesh_frame(bindings,frame);
-        s.cursors->at(0)=0;s.lengths->at(0)=frame.records().active_count;
-        renderer.begin_frame(GlBitmapClear::color_and_depth,{0,0,0,0},surface_projection);submit_mesh_streams(s,1,host);
-        account();
-        if(profile.attack_widgets_enabled()||(profile.stage_mp_hud&&profile.native_stage_controls())||profile.has_static_buttons()){
-            // QuestForm.Draw calls World.Draw after DrawOffscreen: HUD stays in GameView pixels.
-            renderer.compose_target(width,height);backend.resize_surface(height);backend.set_matrix(nullptr);
-            frame.begin_frame();auto* mesh=backend.graphics().mesh_manager();mesh->group=0;mesh->set_depth(0,0);
-            profile.draw_stage_hud(&backend);profile.draw_stage_controls(&backend);profile.draw_entity_buttons(false,&backend);frame.finish();bind_bitmap_mesh_frame(bindings,frame);
-            s.cursors->at(0)=0;s.lengths->at(0)=frame.records().active_count;
-            const auto hud_projection=profile.resizable_viewport()?profile.surface_projection(width,height):projection;
-            renderer.begin_frame(GlBitmapClear::depth,{0,0,0,0},hud_projection);submit_mesh_streams(s,1,host);account();
-            backend.set_matrix(&world);
-        }
-    };
+    NativeMissionFrame drawing(profile,renderer);
+    const auto submit=[&]{drawing.draw(width,height);};
     std::uint64_t rendered=0,logic_steps=0;
     const auto write_state=[&]{
         std::cout<<"\"rng_draws\":"<<(profile.humans?profile.humans->random_draws():0)<<",\"positions\":[";
@@ -261,8 +262,8 @@ int run_native_mission(MissionProfile& profile,std::int32_t width,std::int32_t h
     if(!loop||rendered==0)submit();auto pixels=renderer.read_pixels(width,height);
     Surface captured(SDL_CreateSurfaceFrom(width,height,SDL_PIXELFORMAT_RGBA32,pixels.rgba.data(),width*4),SDL_DestroySurface);require(captured!=nullptr,"SDL_CreateSurfaceFrom");
     require(SDL_SaveBMP(captured.get(),output.string().c_str()),"SDL_SaveBMP");
-    std::cout<<"{\"resources\":"<<owners.size()<<",\"entities\":"<<profile.selected_count<<",\"commands\":"<<(queue.counts->at(0)+queue.counts->at(1))<<",\"quads\":"<<submitted_quads<<",\"textures\":"<<submitted_textures.size()
-             <<",\"capture_render_frames\":"<<rendered<<",\"capture_logic_steps\":"<<logic_steps<<",\"surface_width\":"<<surface_width<<",\"surface_height\":"<<surface_height;
+    std::cout<<"{\"resources\":"<<owners.size()<<",\"entities\":"<<profile.selected_count<<",\"commands\":"<<(queue.counts->at(0)+queue.counts->at(1))<<",\"quads\":"<<drawing.stats().quads<<",\"textures\":"<<drawing.stats().textures
+             <<",\"capture_render_frames\":"<<rendered<<",\"capture_logic_steps\":"<<logic_steps<<",\"surface_width\":"<<drawing.stats().surface_width<<",\"surface_height\":"<<drawing.stats().surface_height;
     // Capture the same final observations as the non-capture frontend, after the last submitted frame.
     if(mission&&entity_world){std::cout<<",\"state\":{";write_state();std::cout<<'}';}
     std::cout<<",\"profile\":\""<<(profile.native_materials?"explicit projection, native material cache and depth":"explicit projection and material identities, native depth")<<"\"}\n";return 0;

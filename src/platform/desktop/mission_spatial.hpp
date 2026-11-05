@@ -16,6 +16,8 @@ public:
     MissionSpatial(MissionEntities&,core::MapComponent&,MissionView&,core::StageQuestForm&,
                    std::shared_ptr<core::StageQuest>,core::EventInstruction chip_images,bool defer_init=false);
     void initialize_system(std::int32_t factory);
+    void begin_quest(core::EventInstruction saved){save_=std::move(saved);form_.x=form_.y=0;form_.state.scale=100;}
+    void finish_quest_presentation(){form_.state.scale=75;form_.minimum_scale=50;form_.pinch_value=120;}
     void construct_camera(){camera_=core::QuestCameraSystem{};} // Camera ctor allocates its two-element scratch before base.
     void load_selected_map();
     void load_map(std::shared_ptr<core::StageQuest>)override;

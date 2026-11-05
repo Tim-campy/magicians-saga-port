@@ -996,6 +996,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
                 created.at(players.front())=member_hero(&entity_world->player_world());
                 if(!created.at(players.front()))throw std::logic_error("fresh Member Init did not publish a hero");
             }
+            if(quest_frame_&&new_game_save_&&stage_entry)increment_quest_detail_count(catalog->quests->at(static_cast<std::size_t>(*selected_quest)).value(),*stage_entry);
             if(stage_entry)humans->start_mission(*stage_entry,fresh_formation?nullptr:&formation,*spatial,
                 [this]{return initialization_.paused;},[this]{pause_systems(false);},std::move(stage_area));
             for(const auto& request:states)humans->set_state(*created.at(std::get<0>(request)),std::get<1>(request),std::get<2>(request));
@@ -1020,8 +1021,8 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         bind_schedule();
         for(const auto& frame:replay_)for(const auto& action:frame.second)
             if(action.kind==InputKind::viewport&&!offscreen_camera_)throw std::invalid_argument("viewport replay requires mission_presentation");
-            else if((action.kind==InputKind::control||action.kind==InputKind::control_cancel)&&!attack_widgets_enabled())throw std::invalid_argument("control replay requires native stage controls/presentation");
-            else if(action.kind==InputKind::widget&&!attack_widgets_enabled())throw std::invalid_argument("widget replay requires native stage controls/presentation");
+            else if((action.kind==InputKind::control||action.kind==InputKind::control_cancel)&&(!attack_widgets_enabled()&&!(awaiting_quest_&&offscreen_camera_)))throw std::invalid_argument("control replay requires native stage controls/presentation");
+            else if(action.kind==InputKind::widget&&(!attack_widgets_enabled()&&!(awaiting_quest_&&offscreen_camera_)))throw std::invalid_argument("widget replay requires native stage controls/presentation");
             else if(action.kind==InputKind::answer&&(!stage_loop||!initialized_loaded_))throw std::invalid_argument("answer replay requires stage_loop and system_init");
             else if(action.kind==InputKind::camera&&(!spatial||!input_scenario))throw std::invalid_argument("camera replay requires mission map/input");
             else if((action.kind==InputKind::pointer||action.kind==InputKind::pointer_cancel)&&(!spatial||!input_scenario||!offscreen_camera_))throw std::invalid_argument("pointer replay requires native mission presentation/map/input");
@@ -1050,7 +1051,42 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     if(movement_widgets_enabled())draw_stage_controls();
 }
 void MissionProfile::prepare_drawing_state(){draw_dynamic_hud();draw_stage_hud();draw_stage_controls();draw_entity_buttons(false);}
-bool MissionProfile::step(){
+void MissionProfile::flag_off(std::uint32_t mask){
+    if(!campaign_system_save_)return; // SAGA_STUB(mission-application-flags): standalone diagnostic context.
+    const auto bits=static_cast<std::uint32_t>(campaign_system_save_->at(1))&~mask;
+    campaign_system_save_->at(1)=bits<=0x7fffffffU?static_cast<std::int32_t>(bits):-1-static_cast<std::int32_t>(0xffffffffU-bits);
+}
+void MissionProfile::enter_selected_quest(EventInstruction normal,EventInstruction system){
+    if(!awaiting_quest_||!initialization_complete_||!catalog||!catalog->areas||!catalog->quests||!humans||!spatial||!normal||!system)
+        throw std::logic_error("retained quest entry requires the initialized application owners");
+    // QuestForm.Init0x11d9878: read save8 before9; preserve global indices.
+    const auto area_id=normal->at(8),stage_id=normal->at(9);
+    const auto records=select_mission_records(*catalog->areas,*catalog->quests,area_id,stage_id);
+    if(!records.quest)throw std::invalid_argument("retained quest ID is a catalog gap");
+    saved_mission_selection_=SavedMissionSelection{area_id,stage_id};selected_quest=stage_id;
+    auto quest=std::shared_ptr<StageQuest>(catalog,&records.quest->stage);
+    humans->bind_table_quest(quest,records.quest->record);
+    quest_frame_state_.loop_counter=0;quest_frame_state_.fade_type=quest_frame_state_.fade_state=0;
+    humans->quest_form().fade_frame=0;spatial->begin_quest(normal);
+    increment_quest_detail_count(*records.quest,stage_id);
+    spatial->finish_quest_presentation();
+    // StartExplore's legacy list contains one Witch(type0), so the following
+    // SetDefaultStatus sees no legacy type1 enemy. Its debug snapshot has no ECS consumer.
+    // Init's UI/blur surface services use the declared desktop presentation context.
+    if(humans->stage_input_enabled())throw std::logic_error("retained mission re-entry requires the completed return lifecycle");
+    humans->enable_stage_loop(MissionStageScenario{}); // Native Init already installed EnemyStageEntry.
+    humans->bind_stage_pause([this](bool value){pause_systems(value);});
+    events_->bind_application_push({});events_->bind_clear_input([this]{humans->clear_form_input();});events_->bind_normal_save(normal);
+    campaign_system_save_=std::move(system);
+    // Native Init re-reads area8 after the legacy detail/status prefix.
+    auto& selected_area=catalog->areas->at(static_cast<std::size_t>(normal->at(8)));
+    auto area=selected_area?std::shared_ptr<AreaDefinition>(catalog->areas,&*selected_area):std::shared_ptr<AreaDefinition>{};
+    humans->start_mission(stage_id,nullptr,*spatial,[this]{return initialization_.paused;},[this]{pause_systems(false);},std::move(area));
+    flag_off(0x100U);awaiting_quest_=false;
+    spatial->advance_visibility();queue=mission->render();commands=static_cast<std::size_t>(queue.counts->at(0))+static_cast<std::size_t>(queue.counts->at(1));
+    prepare_drawing_state();
+}
+bool MissionProfile::step(std::optional<std::uint64_t> application_frame){
     if(awaiting_quest_)throw std::logic_error("mission update requires QuestForm entry on the retained world");
     if(!mission)throw std::invalid_argument("selected logic requires a table-backed entity scene");
     if(talk_pending()||(humans&&(humans->stage_modal_pending()||humans->transition_pending()))){cancel_map_pointer();cancel_control_pointer();}
@@ -1081,7 +1117,7 @@ bool MissionProfile::step(){
     if(quest_frame_){
         humans->begin_stage_frame(logic_steps+1);
         try{
-            const bool modal=events_&&events_->advance(logic_steps+1,*tick_ms,humans->stage_frame_pulse(0x100000U),humans->stage_frame_key(0x40U));
+            const bool modal=events_&&events_->advance(application_frame.value_or(logic_steps+1),*tick_ms,humans->stage_frame_pulse(0x100000U),humans->stage_frame_key(0x40U));
             if(!modal)quest_frame_result_=update_quest_frame(quest_frame_state_,humans->quest_form().fade_frame,*this);
         }
         catch(...){humans->end_stage_frame();throw;}
@@ -1119,7 +1155,7 @@ struct HumanHud final:HumanDrawingHost {
 void MissionProfile::write_combat_report(std::ostream& out){
     const auto checkpoint=mission_state_digest(*this);
     out<<",\"state_hash\":"<<std::quoted(checkpoint.hash)<<",\"logic_state_hash\":"<<std::quoted(checkpoint.logic_hash)
-       <<",\"state_hash_schema\":\"mission-v1-xxh64\",\"state_hash_bytes\":"<<checkpoint.bytes<<",\"logic_state_bytes\":"<<checkpoint.logic_bytes;
+       <<",\"state_hash_schema\":\"mission-v2-xxh64\",\"state_hash_bytes\":"<<checkpoint.bytes<<",\"logic_state_bytes\":"<<checkpoint.logic_bytes;
     draw_dynamic_hud();
     const auto mp=draw_stage_hud();out<<",\"stage_mp_hud_enabled\":"<<(stage_mp_hud?"true":"false")<<",\"stage_mp_hud\":";
     if(mp){std::string ascii;for(const auto c:mp->text)ascii.push_back(static_cast<char>(c));
@@ -1136,6 +1172,10 @@ void MissionProfile::write_combat_report(std::ostream& out){
         out<<"],\"movement_pointer\":{\"captured\":"<<(held_move_control_?"true":"false")<<",\"value\":";
         if(held_move_control_)out<<held_move_control_->value;else out<<"null";
         out<<",\"events\":"<<move_pointer_events_<<",\"cancellations\":"<<move_pointer_cancellations_<<'}';
+    }
+    if(catalog&&catalog->quests&&selected_quest){
+        const auto& q=catalog->quests->at(static_cast<std::size_t>(*selected_quest));
+        out<<",\"quest_detail_count\":"<<(q?q->stage_detail->at(static_cast<std::size_t>(*selected_quest))->at(3):0);
     }
     out<<",\"entry_source\":\""<<(bootstrap_options_?"data":"scene")<<'"';
     if(bootstrap_options_){

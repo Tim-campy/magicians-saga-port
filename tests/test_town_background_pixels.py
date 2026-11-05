@@ -37,7 +37,7 @@ class TownBackgroundPixels(unittest.TestCase):
                     self.assertEqual(cpu['background']['update']['stage_menu']['pending'],count<184)
 
     @unittest.skipUnless(os.environ.get('SAGA_TEST_FONT'),'public CTest font required')
-    def test_shared_world_menu_preserves_state_across_cpu_and_window(self):
+    def test_shared_world_menu_and_mission_preserve_logic_and_pixels(self):
         from town_campaign_fixture import create_campaign_fixture
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);create_campaign_fixture(root)
@@ -46,15 +46,31 @@ class TownBackgroundPixels(unittest.TestCase):
             def run(*args):
                 result=subprocess.run([*base,*args],capture_output=True,text=True,timeout=45)
                 self.assertEqual(result.returncode,0,result.stderr);return json.loads(result.stdout)
-            for count in (1,166,207):
+            def semantic(report):
+                # S1 hashes CPU logic separately from GPU-warmed SEB/render work.
+                result=json.loads(json.dumps(report));mission=result['background']['update']['mission']
+                if mission:
+                    mission.pop('state_hash');mission.pop('state_hash_bytes')
+                return result
+            for count in (1,166,207,300):
                 with self.subTest(count=count):
                     args=['--update-passes',str(count)];cpu=run(*args,'--physical-input')
                     still=root/f'world-still-{count}.bmp';window=root/f'world-window-{count}.bmp'
-                    self.assertEqual(run(*args,'--physical-input','--capture',str(still)),cpu)
-                    self.assertEqual(run(*args,'--interactive','--hidden','--capture',str(window)),cpu)
+                    self.assertEqual(semantic(run(*args,'--physical-input','--capture',str(still))),semantic(cpu))
+                    self.assertEqual(semantic(run(*args,'--interactive','--hidden','--capture',str(window))),semantic(cpu))
                     self.assertEqual(still.read_bytes(),window.read_bytes())
                     self.assertTrue(cpu['background']['shared_world']['same_hero'])
                     self.assertEqual(cpu['background']['shared_world']['initialized_systems'],32)
+                    self.assertEqual(cpu['background']['update']['mission_active'],count>=207)
+                    if count>=207:
+                        mission=cpu['background']['update']['mission']
+                        self.assertEqual(mission['logic_steps'],count-207)
+                        self.assertEqual(mission['quest_detail_count'],1)
+            mission_replay=root/'viewport.replay';mission_replay.write_text('1 viewport 320 240\n',encoding='ascii')
+            resize=root/'resize.bmp';resized=run('--update-passes','208','--interactive','--hidden','--mission-replay',str(mission_replay),'--capture',str(resize))
+            cpu=run('--update-passes','208','--physical-input','--mission-replay',str(mission_replay))
+            self.assertEqual(semantic(resized),semantic(cpu))
+            width,height,_=bmp_pixels(resize.read_bytes());self.assertEqual((width,height),(320,240))
 
     @unittest.skipUnless(os.environ.get('SAGA_TEST_FONT'),'public CTest font required')
     def test_stage_row_statistics_and_held_entry_match_window(self):

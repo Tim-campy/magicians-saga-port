@@ -117,10 +117,10 @@ DropEffectWorld* MissionStage::recovery_effect_world(){return &owner_.world_.eff
 PlayerWorldState* MissionStage::recovery_world(){return &owner_.world_.player_world();}
 std::int32_t MissionStage::invincible_time(){return owner_.retry_invincibility_time_.value();}
 void MissionStage::release_recovery_modification(Component* c){owner_.world_.return_component(15,c);}
-StageBossHost& MissionStage::boss_host(){if(!enemy_entry_)unavailable("stage_boss inputs");return *this;}
+StageBossHost& MissionStage::boss_host(){if(!owner_.stage_.enemies)unavailable("stage_boss inputs");return *this;}
 StagePlacementHost& MissionStage::boss_coordinates(){return static_cast<StagePlacementHost&>(owner_);}
 ComponentSlots* MissionStage::create_stage_boss(StageEnemyStart& receiver){
-    if(&receiver!=enemy_entry_.get())throw std::invalid_argument("foreign stage enemy system");
+    if(&receiver!=owner_.stage_.enemies)throw std::invalid_argument("foreign stage enemy system");
     ++boss_creation_calls_;return &create_boss_enemy(owner_.enemies_,static_cast<EnemyCreationHost&>(owner_));
 }
 ProjectileModification& MissionStage::acquire_modification(){return owner_.world_.acquire_modification();}
@@ -174,13 +174,17 @@ void MissionStage::report(std::ostream& out){
         for(const auto& e:owner_.saved_.sortie_counts){if(!first)out<<',';first=false;out<<"{\"id\":"<<e.first<<",\"count\":"<<e.second<<'}';}out<<']';
     }
     out<<",\"stage_steps\":"<<steps_<<",\"remaining_time\":"<<owner_.stage_.remaining_time
-       <<",\"boss_entry_enabled\":"<<(enemy_entry_?"true":"false")<<",\"boss_started\":"<<(owner_.stage_.boss_started?"true":"false")
+       <<",\"boss_entry_enabled\":"<<(owner_.stage_.enemies?"true":"false")<<",\"boss_started\":"<<(owner_.stage_.boss_started?"true":"false")
        <<",\"boss_creation_calls\":"<<boss_creation_calls_<<",\"min_z_rate\":"<<owner_.stage_.min_z_rate<<",\"boss_fence\":";
     if(const auto* e=owner_.stage_.boss_fence){out<<"{\"id\":"<<owner_.world_.id(*e)<<",\"destroyed\":"<<(owner_.world_.destroyed(*e)?"true":"false");if(const auto* p=dynamic_cast<ContactPosition*>(e->get(0)))out<<",\"x\":"<<p->x<<",\"y\":"<<p->y<<",\"z\":"<<p->z;out<<'}';}else out<<"null";
 }
 void MissionHumans::enable_stage_loop(MissionStageScenario scenario){
     if(stage_loop_)throw std::invalid_argument("stage_loop requires one explicit scenario");
     stage_loop_=std::make_unique<MissionStage>(*this,std::move(scenario));
+}
+void MissionHumans::bind_table_quest(std::shared_ptr<StageQuest> quest,std::shared_ptr<QuestRecord> record){
+    if(!native_state_||!deferred_init_||!quest||!record||!results_)throw std::invalid_argument("retained quest requires native world and result owners");
+    table_quest_=true;stage_.quest=std::move(quest);results_->bind_quest_record(std::move(record));
 }
 void MissionHumans::start_mission(std::int32_t stage,const EventIntegers* formation,StageMapLoader& map,
     std::function<bool()> paused,std::function<void()> resume,std::shared_ptr<AreaDefinition> area){

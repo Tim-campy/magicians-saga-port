@@ -265,6 +265,7 @@ void TownBackground::advance_motion(){
     ++motion_passes_;
 }
 void TownBackground::draw(BitmapBackend& backend){
+    if(active_mission())return;
     if(context_.physical_input){
         // SelectForm.Draw0x11ef468..0x11ef4cc publishes VIEW_W/H before
         // its top gate. The selected host consumes VIEW_W in cloud wrapping.

@@ -63,16 +63,16 @@ build/desktop/saga_mission.exe --data extracted/full --quest 1 --headless --fram
 build/desktop/saga_mission.exe --data extracted/full --quest 75 --headless --frames 8000 --replay research/exports/mission-endings/defeat.replay
 ```
 
-Local `research/exports/town-update/mission-{retreat-intro,timeout,advance-fight,defeat}.json` retain the actual exits, grant lists and member fields. Compared with preserved playtest-1ce0a06 on identical data and an equivalent v1 initialization projection, all fields match except quest_form_update (+1 from its corrected native fresh0) and the two state digests. These port runs establish reached endings without claiming Android equivalence, completed town return or persistence.
+Local `research/exports/town-mission-entry/mission-{retreat-intro,timeout,advance-fight,defeat}.json` retain the actual exits, grant lists and member fields under schema2. Compared with preserved41b996e reports, all fields match except quest_detail_count1, the schema and the two digests/byte counts. These port runs establish reached endings without claiming Android equivalence, completed town return or persistence.
 
-| Replay | Final logic hash |
+| Replay | Final schema2 logic hash |
 | --- | --- |
-| `retreat-intro.replay` | `e966f3ac5ac1a620` |
-| `timeout.replay` | `1d908f6a24b867db` |
-| `advance-fight.replay` | `ed73faa41faec4bb` |
-| `defeat.replay` | `e343445c96308865` |
+| `retreat-intro.replay` | `c1629bd810c9472d` |
+| `timeout.replay` | `933f5c3c6e033def` |
+| `advance-fight.replay` | `60d614e814444ca6` |
+| `defeat.replay` | `bd81dad661e6a9e9` |
 
-The headless executable SHA256 is `a8dc06d654322787020947d1b26b9c37003e91d99f0556a5824fad02effae297`. The540-frame regression additionally compares CPU/GPU logic fields and retains byte-identical pixels from the preserved combat capture. Its final logic hash is `6c62139ed1bdd724`; see [replay checkpoints](integration-replay.md). Stage-result presentation remains a declared service boundary, not the original result form or a town.
+The540-frame regression retains byte-identical pixels from the preserved combat capture and CPU/GPU logic equality; see [replay checkpoints](integration-replay.md). Stage-result presentation remains a declared service boundary. The S2 town host runs the selected mission on its retained world but holds its return continuation before restoring town consumers.
 
 An unbounded window run with `retreat-intro.replay` and hidden Windows startup closes normally at202 logic steps, without a frame limit or close input. `retreat-unbounded-final.json` retains the matching exit and logic digest. This exercises the window's terminal branch separately from bounded replay execution.
 

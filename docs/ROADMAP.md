@@ -8,7 +8,7 @@ The plan in one page. Work happens in **vertical slices**: each ends in somethin
 | --- | --- | --- |
 | M0 | APK inventory, architecture, subsystem map | Done: [overview](subsystems/overview.md). |
 | M1 | Asset extraction and technical rendering | Partial: archives, OPT, SEB, Unity media verified; sprites render through GL; public font metrics/direct glyph output are provisional, audio remains unbound. |
-| M2 | Boot, forms/menus and input | Partial: full town Update/native-event replay bound in S2; town camera/area/GO and quest-list drawing/selection/stamina bound; shared mission entry, other menus and S3 boot remain open. |
+| M2 | Boot, forms/menus and input | Partial: full town Update/native-event replay bound in S2; town camera/area/GO and quest-list drawing/selection/stamina bound; shared mission entry/combat run; return, other menus and S3 boot remain open. |
 | M3 | First playable gameplay loop | S1 selected fresh mission acceptance complete; **current = S2 town ↔ mission loop**. Combat, collection and four endings run with real data and explicit service boundaries. Original-runtime verification and Continue/save restoration remain separate. |
 | M4 | Save/load, progression, economy, content | Slice S3; save envelope not decoded. |
 | M5 | Windows/Linux release candidate | Windows builds and CTest; Linux builds in CI. |
@@ -31,7 +31,7 @@ Host: `saga_mission` (headless or SDL window; fresh --data/--quest entry or expl
 
 Host: `saga_town`. Acceptance: SelectForm town runs with the real map and residents; choosing a quest starts S1's mission; the result returns to town and progression (EXP, money, levels, stock, quest record) is applied in memory; event scripts fire on return (event 31, 1133).
 
-- [ ] (blocking) Bind production41 to Stage.Start on saga_town's retained --shared-world instance with live save/event owners; connect return and refresh town projections from canonical progression.
+- [ ] (blocking) Connect the retained mission result/return continuation in saga_town and refresh town projections from canonical progression before allowing repeated quest entry.
 - [ ] Bind remaining town widget/menu dispatch, retaining camera capture, native-event replay, resident speech and shared event/save owners.
 - [ ] Bind Building/KingReward NewGame state to town menus and return consumers before those paths become reachable.
 - [ ] Connect town quest selection and retained mission return to one shared progression owner in `saga_town`.

@@ -39,7 +39,7 @@ template<class Visitor>inline void visit_state_fields(const LevelTableRecord& s,
     v("LevelTableRecord",s.id,s.level,s.experience,s.shop_parameters,s.unlock_money,s.unlock_crystal,s.unlock_web_page,s.unlock_rescue);
 }
 template<class Visitor>inline void visit_state_fields(const QuestDefinition& s,Visitor&& v){
-    v("QuestDefinition",s.id,s.image,s.need_stamina,s.name,s.resource,s.stage,s.discovery_state,s.is_new,s.record);
+    v("QuestDefinition",s.id,s.image,s.need_stamina,s.name,s.resource,s.stage,s.discovery_state,s.is_new,s.record,s.stage_detail);
 }
 template<class Visitor>inline void visit_state_fields(const AreaDefinition& s,Visitor&& v){
     v("AreaDefinition",s.id,s.image,s.flags,s.name,s.stages);

@@ -89,7 +89,8 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
     struct Stage;
     std::shared_ptr<Stage> stage;
     bool stage_pending=false,stage_initialized=false,stage_back_requested=false;
-    bool quest_handoff=false,camera_reset_requested=false;
+    bool quest_handoff=false,camera_reset_requested=false,mission_active=false;
+    std::uint64_t mission_entry_frame=0;
     std::uint64_t stage_opened=0,stage_closed=0,stage_dispatches=0;
     TownInitializationState permissions;
     std::shared_ptr<TownTable> records;
@@ -557,9 +558,11 @@ struct TownBackground::UpdateOwner::Stage final:StageMenuHost,StageStaminaHost,S
         set_select_camera_position(owner.town.camera_,0,-9999,owner.town);owner.camera_reset_requested=true;
     }
     void change_to_quest()override{
-        // SAGA_STUB(town-stage-quest-handoff): hold the ChangeCurrentForm request,
-        // retaining this owner and its save/catalog/event objects for mission binding.
-        owner.quest_handoff=true;
+        if(owner.town.shared_world_){
+            owner.town.shared_world_->enter_selected_quest(owner.town.save_integers_,owner.system_save);
+            owner.mission_active=true;owner.mission_entry_frame=owner.dispatches;owner.stage_pending=false;
+        }else owner.quest_handoff=true; // SAGA_STUB(town-stage-quest-handoff): legacy drawing diagnostics have no application World.
+
     }
     void base_set_touch_value(std::uint32_t,std::int32_t)override{town_unbound("stage base touch selector");}
     std::int32_t base_get_touch_value(std::uint32_t,std::int32_t)override{town_unbound("stage base touch selector");}
@@ -604,7 +607,10 @@ void TownBackground::UpdateOwner::cancel_stage_widget(){if(stage)stage->row_capt
 void TownBackground::draw_stage_overlay(BitmapBackend& backend){
     if(update_owner_&&update_owner_->stage_pending&&update_owner_->stage_initialized)update_owner_->stage->draw(backend);
 }
-bool TownBackground::quest_handoff_pending()const{return update_owner_&&update_owner_->quest_handoff;}
+MissionProfile* TownBackground::active_mission()const{return update_owner_&&update_owner_->mission_active?shared_world_.get():nullptr;}
+bool TownBackground::quest_handoff_pending()const{
+    return update_owner_&&(update_owner_->quest_handoff||(active_mission()&&shared_world_->humans->transition_pending()));
+}
 EventObject TownBackground::UpdateOwner::area_form(){if(!stage)stage=std::make_shared<Stage>(*this);return stage;}
 void TownBackground::UpdateOwner::push(EventObject parent,EventObject child,bool option){
     if(stage&&child.get()==stage.get()){
@@ -620,7 +626,7 @@ bool TownBackground::UpdateOwner::advance_stage(){
     if(!stage_initialized){clear_input();initialize_stage_menu(stage->state,*stage);resume_stage_menu(*stage);stage_initialized=true;}
     update_stage_menu(stage->state,*stage,{1,0});stage_back_requested=false;
     if(stage_pending)return true;
-    finish_stage_menu(*stage);stage_initialized=false;++stage_closed;clear_input();return false;
+    finish_stage_menu(*stage);stage_initialized=false;++stage_closed;clear_input();return mission_active;
 }
 void TownBackground::UpdateOwner::report_stage(std::ostream& out)const{
     out<<",\"widgets\":{\"captured\":"<<(widget_capture?"true":"false")<<",\"events\":"<<widget_events<<",\"rejected\":"<<widget_rejected
@@ -654,6 +660,12 @@ void TownBackground::initialize_update(ResourceArchive& tables,const std::filesy
 }
 void TownBackground::advance_update(std::uint64_t frame,bool pulse){
     if(!update_owner_)throw std::logic_error("town Update not initialized");auto& owner=*update_owner_;++owner.dispatches;
+    if(owner.mission_active){
+        // Town replay is application-frame based; mission replay is relative to QuestForm entry.
+        // No town rule or projection runs while the mission owns the foreground.
+        if(pulse)shared_world_->humans->pulse_stage_keys(0x100000U);
+        shared_world_->step(frame);context_.top_form=false;return;
+    }
     pulse=owner.apply_input(frame,pulse);
     if(owner.advance_stage()){++owner.modal_dispatches;context_.top_form=false;return;}
     if(owner.events.advance(frame,40,pulse,false)){++owner.modal_dispatches;context_.top_form=false;return;}
@@ -673,6 +685,14 @@ void TownBackground::cancel_widget_pointer(){if(update_owner_){if(update_owner_-
 void TownBackground::stage_back(){if(update_owner_&&update_owner_->stage_pending)update_owner_->stage_back_requested=true;}
 void TownBackground::cancel_camera_pointer(){if(update_owner_)update_owner_->cancel_pointer();}
 std::string TownBackground::window_title()const{
+    if(const auto* mission=active_mission()){
+        if(mission->humans->transition_pending())return "Mission complete - town return binding pending";
+        const auto modal=mission->humans->stage_modal_title();if(!modal.empty())return modal;
+        const auto talk=mission->talk_title();if(!talk.empty())return talk;
+        if(mission->humans->exit_dialog_pending())return "Retreat from mission? Y confirms, N cancels";
+        if(mission->humans->stage_state()==2)return "Mission paused - P resumes, Q requests retreat";
+        return "Magician's Saga - Mission | W/S move; 1/2/3/F attack; P pause; Enter advances";
+    }
     if(quest_handoff_pending())return "SelectStage - quest entry retained; shared mission binding pending";
     if(update_owner_&&update_owner_->events.pending())return update_owner_->events.title();
     if(update_owner_&&update_owner_->stage_pending&&!update_owner_->stage_initialized)return "SelectStage - opening";
@@ -707,6 +727,9 @@ void TownBackground::report_update(std::ostream& out)const{
        <<",\"rejected\":"<<owner.pointer_rejected<<",\"cancels\":"<<owner.pointer_cancels
        <<",\"region\":["<<region.bounds.x<<','<<region.bounds.y<<','<<region.bounds.width<<','<<region.bounds.height<<"],\"flags\":"<<region.flags
        <<",\"outer_draw_prefix\":"<<(context_.physical_input?"true":"false")<<",\"view_content_width\":"<<cloud_view_width_<<'}';
-    owner.report_stage(out);owner.events.write_report(out);out<<'}';
+    owner.report_stage(out);owner.events.write_report(out);
+    out<<",\"mission_active\":"<<(owner.mission_active?"true":"false")<<",\"mission_entry_frame\":"<<owner.mission_entry_frame;
+    out<<",\"mission\":";if(owner.mission_active){out<<"{\"logic_steps\":"<<shared_world_->logic_steps;shared_world_->write_combat_report(out);out<<'}';}else out<<"null";
+    out<<'}';
 }
 } // namespace saga::desktop

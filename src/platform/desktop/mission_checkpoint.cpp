@@ -227,9 +227,9 @@ struct MissionCheckpoint {
         archive.count(x.observers_.size());for(const auto& observer:x.observers_)fields(observer.adding,observer.callback);
     });}
     void value(const MissionEvents& x){
-        if(x.application_push_||x.normal_save_)throw std::logic_error("mission checkpoint does not cover town event bindings");
+        if(x.application_push_)throw std::logic_error("mission checkpoint does not cover town event bindings");
         object("mission-events",x,[&]{fields(x.scenario_,x.talks_,x.execution_,x.delays_,x.forms_,x.creating_,x.updating_,x.root_,
-        x.ticks_,x.opened_,x.closed_,x.flushes_,x.pages_,x.now_,x.total_frames_,x.pulse_,x.held_,x.executed_,x.lifecycle_,x.layout_measurements_);
+        x.ticks_,x.opened_,x.closed_,x.flushes_,x.pages_,x.now_,x.total_frames_,x.pulse_,x.held_,x.executed_,x.lifecycle_,x.layout_measurements_,x.normal_save_);
         archive.count(x.layout_samples_.size());for(const auto& sample:x.layout_samples_){fields(sample.talk,sample.page,sample.length,sample.height);archive.count(sample.blocks);}
     });}
     void value(const MissionEvents::Talk& x){object("mission-talk",x,[&]{fields(x.id,x.state,x.frame,x.finish_frame,x.prepared,x.reveal,x.layout);});}
@@ -284,10 +284,10 @@ struct MissionCheckpoint {
     void value(const SlideBar* x){archive.number(x!=nullptr);if(x)value(*x);}
 
     void write(){
-        archive.tag("magicians-saga-mission-checkpoint-v1");
+        archive.tag("magicians-saga-mission-checkpoint-v2");
         archive.tag("inputs");fields(p.tables,p.catalog,p.progress,p.application,p.global,p.runtime,p.selected_quest,p.geometry,p.view,p.has_view,p.has_slots,p.has_animation,p.slots,
             p.frames,p.automatic,p.application_update,p.tick_ms,p.simulate,p.collisions,p.enemy_gauges,p.human_hud,p.stage_mp_hud,p.damage_labels,p.resource_names,
-            p.instance_view_scale_,p.base_view_scale_,p.debug_requested_flags_,p.quest_frame_,p.initial_context_,p.saved_mission_selection_);
+            p.instance_view_scale_,p.base_view_scale_,p.debug_requested_flags_,p.quest_frame_,p.initial_context_,p.saved_mission_selection_,p.awaiting_quest_,p.campaign_system_save_);
         archive.count(p.owners.size());for(const auto& owner:p.owners){fields(owner->archive,owner->image_clocks);value(owner->manager.drawing());}
         archive.tag("entities");fields(p.entity_world,p.created);
         archive.tag("systems");fields(p.mission,p.humans,p.spatial,p.events_);

@@ -32,7 +32,7 @@ class MissionProfileTests(unittest.TestCase):
             a=run(replay);b=run(relocated);changed=run(different)
             self.assertEqual(a,b);self.assertEqual(a,run(replay))
             self.assertRegex(a['state_hash'],r'^[0-9a-f]{16}$');self.assertRegex(a['logic_state_hash'],r'^[0-9a-f]{16}$')
-            self.assertEqual(a['state_hash_schema'],'mission-v1-xxh64')
+            self.assertEqual(a['state_hash_schema'],'mission-v2-xxh64')
             self.assertGreater(a['state_hash_bytes'],a['logic_state_bytes']);self.assertGreater(a['logic_state_bytes'],0)
             self.assertEqual(observations(a),observations(changed))
             self.assertNotEqual(a['state_hash'],changed['state_hash']);self.assertNotEqual(a['logic_state_hash'],changed['logic_state_hash'])

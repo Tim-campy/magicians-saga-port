@@ -44,8 +44,9 @@ int main(int argc,char** argv)try{
             "Add --foreground for the native fresh foreground, leaves and final notice flush (implies --hero).\n"
             "Diagnostic --motion-passes N advances selected counter/cloud/decor/resident blocks (requires --foreground); this is not full Update.\n"
             "Full controller: --update-passes N --foreground; optional --talk-pulse-every N supplies explicit dialogue inputs.\n"
-            "Add --shared-world for native World initialization before town; retain its hero/formation/catalog/event owners, awaiting Stage.Start.\n"
+            "Add --shared-world for native World initialization before town; retain its hero/formation/catalog/event owners through Stage.Start.\n"
             "--gameplay-seed 42 is a provisional independent gameplay stream; AppData/Lib retain their own seeds.\n"
+            "--mission-replay file supplies S1 replay actions in mission-relative logic steps after town confirmation.\n"
             "Interactive viewer: --foreground --interactive; right click walks/right drag pans; left click selects an area/GO; Backspace returns from its menu; Enter/Space advances dialogue; Escape closes.\n"
             "Add --update-passes N --hidden for a bounded automated window; --physical-input enables the same hit path headlessly.\n"
             "Add --replay file for ordered native camera/selection/button/pulse input plus physical widget/stage-back actions; default town input is neutral.\n"
@@ -60,7 +61,7 @@ int main(int argc,char** argv)try{
             "Camera requests: --camera-x 0 --camera-y -9999, clamped by native fresh Area/Town bounds.\n"
             "S2 data projection: fresh Town.Init, ResetBuildingList and GetBuildingList.\n"
             "Reads the existing resource index and APK-derived new-game defaults.\n"
-            "Full Update binds camera, Area/GO, mission rows/stats and stamina; production41 retains quest entry and stops dispatch. Shared mission entry/return, list gestures, other menus and unlock information remain unbound.\n";return 0;
+            "Full Update binds camera, Area/GO, mission rows/stats and stamina; production41 starts the retained mission with --shared-world. Town return, list gestures, other menus and unlock information remain unbound.\n";return 0;
     }
     std::optional<std::filesystem::path> root,capture;std::string language="English.lproj";std::int32_t dpi=1;
     bool background=false,interactive=false,hidden=false;TownBackgroundContext context;std::int32_t update_passes=0,talk_pulse_every=0;
@@ -82,11 +83,12 @@ int main(int argc,char** argv)try{
             if(key=="--residents"||key=="--hero"||key=="--foreground")context.residents=true;
             if(key=="--hero"||key=="--foreground")context.hero=true;
             if(key=="--foreground")context.foreground=true;continue;}
-        const std::set<std::string> allowed{"--data","--language","--dpi","--capture","--width","--height","--view-x","--view-y","--camera-x","--camera-y","--app-seed","--lib-seed","--high-score","--top-form","--automatic-images","--store-kairo-limit","--condition-characters","--debug","--debug-rescue-count","--motion-passes","--motion-low-aspect","--update-passes","--talk-pulse-every","--replay","--stamina-up-state","--server-time","--menu-font","--gameplay-seed"};
+        const std::set<std::string> allowed{"--data","--language","--dpi","--capture","--width","--height","--view-x","--view-y","--camera-x","--camera-y","--app-seed","--lib-seed","--high-score","--top-form","--automatic-images","--store-kairo-limit","--condition-characters","--debug","--debug-rescue-count","--motion-passes","--motion-low-aspect","--update-passes","--talk-pulse-every","--replay","--stamina-up-state","--server-time","--menu-font","--gameplay-seed","--mission-replay"};
         if(!allowed.count(key)||i+1>=argc||!options.insert(key).second)throw std::invalid_argument("unsupported, incomplete or duplicate town option");
         const std::string value=argv[++i];
         if(key=="--data")root=std::filesystem::u8path(value);
         else if(key=="--replay")context.input_replay=std::filesystem::u8path(value);
+        else if(key=="--mission-replay")context.mission_replay=std::filesystem::u8path(value);
         else if(key=="--language")language=value;
         else if(key=="--capture"){capture=std::filesystem::u8path(value);background=true;}
         else if(key=="--high-score"||key=="--server-time"){
@@ -115,6 +117,7 @@ int main(int argc,char** argv)try{
     }
     if(hidden&&(!interactive||update_passes==0))throw std::invalid_argument("hidden town window requires --interactive and positive --update-passes");
     if(options.count("--gameplay-seed")&&!context.shared_world)throw std::invalid_argument("gameplay seed requires shared world");
+    if(context.mission_replay&&!context.shared_world)throw std::invalid_argument("mission replay requires shared world");
     if(context.shared_world&&!context.full_update)throw std::invalid_argument("shared world requires full town Update");
     if(context.physical_input&&!context.full_update)throw std::invalid_argument("physical input requires full town Update");
     if(interactive&&!context.foreground)throw std::invalid_argument("interactive town requires --foreground");
@@ -153,7 +156,7 @@ int main(int argc,char** argv)try{
         MissionBootstrapOptions b;b.data_root=*root;b.defer_stage_start=true;b.width=context.width;b.height=context.height;b.language=language;b.dpi=dpi;
         b.camera=context.projection;b.depth_bits=context.depth_bits;b.depth_step=context.depth_step?1:0;b.debug_controls=context.debug;
         const auto runtime=initial_game_frame_configuration;
-        shared_world=std::make_shared<MissionProfile>(b,decode_png,MissionRuntimeConfig{runtime.fps,runtime.damage_debug,context.gameplay_seed,"system"});
+        shared_world=std::make_shared<MissionProfile>(b,decode_png,MissionRuntimeConfig{runtime.fps,runtime.damage_debug,context.gameplay_seed,"system"},context.mission_replay);
         town.records=shared_world->catalog->towns;town.state=shared_world->initialized_town();town.capacity=shared_world->initialized_town_capacity();
     }else initialize_fresh_town(town.state,town);
     // SelectForm.Init 0x11eaf88 invokes this cache reset; this host projects only
@@ -210,6 +213,6 @@ int main(int argc,char** argv)try{
     std::cout<<"],\"source_buildings\":";write_rows(std::cout,town.state.building_list);
     std::cout<<",\"buildings\":";write_rows(std::cout,buildings);
     if(backdrop)backdrop->report(std::cout);
-    std::cout<<",\"scope\":\""<<(context.full_update?(context.physical_input?"Persistent full town Update with camera/area/GO and stage list/stats/selection/stamina; production41 retains quest entry; shared mission entry/return, list gestures, other menus and dialogue/bubble glyphs unbound":context.input_replay?"Persistent full town Update with native camera/selection replay, movement and resident voice selection; physical hit registration, dialogue/bubble glyphs and menu/quest/return forms unbound":"Persistent full town Update with real event selection/delays and modal pause; neutral town input, provisional font metrics, dialogue drawing and quest/return forms unbound"):context.motion?"Selected native active-motion subsequence and town drawing; full Update permission/event/form gates remain unbound":context.foreground?"Native fresh town drawing through foreground and notice flush; glyph/input/clip services stubbed; persistent Update, unlock information, quest selection and mission return unbound":context.hero?"Native Member/hero Init and drawing through resident lanes1/2; notices queued, glyph/input/clip services stubbed; foreground, quest selection and mission return unbound":context.residents?"Native resident Init and lane0 composition; notices queued, glyph/input/clip services stubbed; hero, later lanes/foreground, quest selection and mission return unbound":context.areas?"Native drawing through town areas and locked fence; notices queued, text/input, inherited clip, residents, foreground, quest selection and mission return unbound":context.buildings?"Native drawing through initial buildings; notices queued, text/input services, residents, foreground, quest selection and mission return unbound":context.scenery?"Native cloud/decor initialization and drawing through floor/gate prefix; buildings, residents, quest selection and mission return unbound":backdrop?"Town data and native background prefix; decorations, buildings, residents, quest selection and mission return unbound":"Town data/cache projection; SelectForm drawing, residents, quest selection and mission return unbound")<<"\"}\n";
+    std::cout<<",\"scope\":\""<<(context.full_update?(context.physical_input?"Persistent full town Update with camera/area/GO and stage list/stats/selection/stamina; retained shared-world mission entry/combat; town return, list gestures, other menus and dialogue/bubble glyphs unbound":context.input_replay?"Persistent full town Update with native camera/selection replay, movement and resident voice selection; physical hit registration, dialogue/bubble glyphs and menu/quest/return forms unbound":"Persistent full town Update with real event selection/delays and modal pause; neutral town input, provisional font metrics, dialogue drawing and quest/return forms unbound"):context.motion?"Selected native active-motion subsequence and town drawing; full Update permission/event/form gates remain unbound":context.foreground?"Native fresh town drawing through foreground and notice flush; glyph/input/clip services stubbed; persistent Update, unlock information, quest selection and mission return unbound":context.hero?"Native Member/hero Init and drawing through resident lanes1/2; notices queued, glyph/input/clip services stubbed; foreground, quest selection and mission return unbound":context.residents?"Native resident Init and lane0 composition; notices queued, glyph/input/clip services stubbed; hero, later lanes/foreground, quest selection and mission return unbound":context.areas?"Native drawing through town areas and locked fence; notices queued, text/input, inherited clip, residents, foreground, quest selection and mission return unbound":context.buildings?"Native drawing through initial buildings; notices queued, text/input services, residents, foreground, quest selection and mission return unbound":context.scenery?"Native cloud/decor initialization and drawing through floor/gate prefix; buildings, residents, quest selection and mission return unbound":backdrop?"Town data and native background prefix; decorations, buildings, residents, quest selection and mission return unbound":"Town data/cache projection; SelectForm drawing, residents, quest selection and mission return unbound")<<"\"}\n";
     return 0;
 }catch(const std::exception& error){std::cerr<<"saga_town: "<<error.what()<<'\n';return 1;}

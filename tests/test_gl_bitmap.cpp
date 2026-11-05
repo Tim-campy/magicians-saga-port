@@ -128,6 +128,28 @@ int main(int argc,char** argv)try{
     renderer.compose_target(34,38);renderer.begin_frame(GlBitmapClear::depth,{0,0,0,0},unit);
     check(renderer.read_pixels().rgba==presented.rgba);
     fails([&]{renderer.compose_target(0,38);});fails([&]{renderer.compose_target(8192,8192);});
+    // Town and Mission reuse numeric texture keys in one GL context. Switching
+    // the source must replace uploaded pixels without resetting target size.
+    {
+        const DecodedImage switched_green{1,1,{0,255,0,255}},switched_blue{1,1,{0,0,255,255}};
+        std::size_t green_queries=0,blue_queries=0;
+        renderer.resize_target(17,19);
+        renderer.set_texture_source([&](std::size_t key){check(key==0);++green_queries;return GlBitmapTexture{&switched_green,GlBitmapWrap::clamp,GlBitmapWrap::clamp};});
+        fails([&]{renderer.read_pixels();}); // A successful switch invalidates the preceding frame/material.
+        begin();fails([&]{renderer.draw(quad(0,0),unit);});draw(quad(0,0));
+        auto switched=renderer.read_pixels();check(switched.width==17&&switched.height==19);
+        check((pixel(switched,8,9)==std::array<int,4>{0,255,0,255}));check(green_queries==1);
+        begin();draw(quad(0,0));check(green_queries==1); // Same-source frames retain uploads.
+        fails([&]{renderer.set_texture_source(GlBitmapRenderer::Textures{});});
+        check((pixel(renderer.read_pixels(),8,9)==std::array<int,4>{0,255,0,255}));
+        begin();draw(quad(0,0));check(green_queries==1); // Rejection preserves source, cache and frame state.
+        renderer.set_texture_source([&](std::size_t key){check(key==0);++blue_queries;return GlBitmapTexture{&switched_blue,GlBitmapWrap::clamp,GlBitmapWrap::clamp};});
+        fails([&]{renderer.read_pixels();});begin();draw(quad(0,0));
+        switched=renderer.read_pixels();check(switched.width==17&&switched.height==19);
+        check((pixel(switched,8,9)==std::array<int,4>{0,0,255,255}));check(blue_queries==1&&green_queries==1);
+        renderer.set_texture_source([&](std::size_t key){return GlBitmapTexture{&textures.at(key),GlBitmapWrap::clamp,GlBitmapWrap::clamp};});
+        begin();draw(quad(0,0));check((pixel(renderer.read_pixels(),8,9)==std::array<int,4>{255,0,0,255}));
+    }
     renderer.resize_target(32,32);renderer.begin_frame(GlBitmapClear::color_and_depth,{0,0,0,0},unit);
     // Unsupported input is rejected, rather than silently flattening or guessing a material.
     auto invalid=quad(0,0);invalid.native_depth=false;renderer.set_material(invalid.shader_key);fails([&]{renderer.draw(invalid,unit);});

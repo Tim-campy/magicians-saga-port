@@ -28,7 +28,7 @@ void catalogs(){
     const auto& impact=static_cast<const BulletImpactData&>(bullet);expect(impact,"BulletImpactData",{&impact.category,&impact.attribute,&impact.effect_image,&impact.flags});
     TreasureRecord treasure;expect(treasure,"TreasureRecord",{&treasure.id,&treasure.name,&treasure.resource,&treasure.image,&treasure.experience,&treasure.money,&treasure.crystals,&treasure.weapon_id,&treasure.character_id,&treasure.cloth_id,&treasure.hat_id,&treasure.flags});
     LevelTableRecord level;expect(level,"LevelTableRecord",{&level.id,&level.level,&level.experience,&level.shop_parameters,&level.unlock_money,&level.unlock_crystal,&level.unlock_web_page,&level.unlock_rescue});
-    QuestDefinition quest;expect(quest,"QuestDefinition",{&quest.id,&quest.image,&quest.need_stamina,&quest.name,&quest.resource,&quest.stage,&quest.discovery_state,&quest.is_new,&quest.record});
+    QuestDefinition quest;expect(quest,"QuestDefinition",{&quest.id,&quest.image,&quest.need_stamina,&quest.name,&quest.resource,&quest.stage,&quest.discovery_state,&quest.is_new,&quest.record,&quest.stage_detail});
     AreaDefinition area;expect(area,"AreaDefinition",{&area.id,&area.image,&area.flags,&area.name,&area.stages});
     TownDefinition town;expect(town,"TownDefinition",{&town.id,&town.first_build,&town.flags,&town.open_term,&town.rock_term});
 }

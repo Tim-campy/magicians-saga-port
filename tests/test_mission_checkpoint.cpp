@@ -36,6 +36,18 @@ void check_aliases_and_observational_reads(Fixture& f){
     check(mission_state_bytes(*a)==mission_state_bytes(*b));
     pb.offset_x=1;check(mission_state_digest(*a).logic_hash!=mission_state_digest(*b).logic_hash);
 }
+void check_saved_quest_detail(Fixture& f){
+    auto a=f.profile(),b=f.profile();
+    for(auto* p:{a.get(),b.get()}){
+        p->catalog->quests=QuestTable(1);p->catalog->quests->at(0)=QuestDefinition{};
+    }
+    check(mission_state_bytes(*a)==mission_state_bytes(*b));
+    const auto before=mission_state_digest(*a).logic_hash;
+    increment_quest_detail_count(a->catalog->quests->at(0).value(),0);
+    check(before!=mission_state_digest(*a).logic_hash);
+    increment_quest_detail_count(b->catalog->quests->at(0).value(),0);
+    check(mission_state_bytes(*a)==mission_state_bytes(*b));
+}
 void check_tombstones_and_subscriptions(Fixture& f){
     auto a=f.profile(),b=f.profile();std::vector<ComponentSlots*> left,right;
     for(int i=0;i<3;++i){left.push_back(&a->entity_world->raw_entity(0));right.push_back(&b->entity_world->raw_entity(0));}
@@ -61,4 +73,4 @@ void check_unknown_component_and_rng(Fixture& f){
     check(seeds!=advanced);check(source.next()==control.next());
 }
 }
-int main(){Fixture fixture;check_aliases_and_observational_reads(fixture);check_tombstones_and_subscriptions(fixture);check_unknown_component_and_rng(fixture);std::cout<<"mission checkpoint contracts ok\n";}
+int main(){Fixture fixture;check_aliases_and_observational_reads(fixture);check_saved_quest_detail(fixture);check_tombstones_and_subscriptions(fixture);check_unknown_component_and_rng(fixture);std::cout<<"mission checkpoint contracts ok\n";}

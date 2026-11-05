@@ -1,4 +1,4 @@
-"""Retained native World ownership before the S2 mission-entry boundary."""
+"""Retained native World ownership through town selection and native mission entry."""
 import json
 import os
 from pathlib import Path
@@ -79,7 +79,7 @@ class TownCampaignTests(unittest.TestCase):
             self.assertTrue(debug['config_debug']);self.assertFalse(debug['damage_debug'])
             self.assertEqual(debug['initialized_systems'],32)
 
-    def test_menu_confirmation_retains_world_without_starting_stage(self):
+    def test_menu_confirmation_starts_stage_without_recreating_the_world(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);self.fixture(root)
             args=self.replay(root,'165 widget 0 250 250\n166 widget 1 250 250\n')
@@ -97,14 +97,59 @@ class TownCampaignTests(unittest.TestCase):
             before=self.state(root,206,*args);self.assert_waiting_world(before)
             self.assertEqual(before['update']['stage_menu']['production_frame'],40)
             self.assertFalse(before['update']['stage_menu']['quest_handoff_pending'])
-            held=self.state(root,207,*args);self.assert_waiting_world(held)
-            menu=held['update']['stage_menu']
+            entered=self.state(root,207,*args)
+            shared=entered['shared_world'];menu=entered['update']['stage_menu'];mission=entered['update']['mission']
+            self.assertFalse(shared['awaiting_quest'])
+            self.assertEqual(shared['initialized_systems'],32)
+            self.assertTrue(shared['same_hero'] and shared['canonical_quests'] and shared['canonical_areas'])
+            self.assertEqual(entered['hero']['formation'],opened['hero']['formation'])
             self.assertEqual(menu['production_frame'],41)
-            self.assertTrue(menu['quest_handoff_pending'] and menu['shared_owner_retained'])
-            self.assertEqual(held['update']['event_execution_counts'],[[0,1]])
-            self.assertEqual((held['update']['talk_forms_opened'],held['update']['talk_forms_closed']),(2,2))
-            self.assertEqual(held['shared_world'],opened['shared_world'])
-            self.assertEqual(self.state(root,300,*args),held)
+            self.assertFalse(menu['quest_handoff_pending'] or menu['pending'])
+            self.assertEqual((menu['closed'],menu['stamina_uses']),(1,1))
+            self.assertEqual(entered['update']['mission_entry_frame'],207)
+            self.assertTrue(entered['update']['mission_active'] and mission['native_stage_started'])
+            self.assertEqual((mission['logic_steps'],mission['stage_entry_stage'],mission['quest_detail_count']),(0,2,1))
+            self.assertEqual(mission['party_formation'],entered['hero']['formation'])
+            self.assertEqual(mission['state_hash_schema'],'mission-v2-xxh64')
+            self.assertEqual(entered['update']['event_execution_counts'],[[0,1]])
+            self.assertEqual((entered['update']['talk_forms_opened'],entered['update']['talk_forms_closed']),(2,2))
+            stepped=self.state(root,208,*args)
+            self.assertEqual(stepped['update']['mission']['logic_steps'],1)
+            self.assertEqual(stepped['update']['calls'],entered['update']['calls'])
+            running=self.state(root,300,*args)
+            self.assertEqual(running['update']['mission']['logic_steps'],93)
+            self.assertEqual(running['update']['mission']['stage_state'],1)
+            self.assertEqual(running['update']['mission']['quest_detail_count'],1)
+            self.assertLess(running['update']['mission']['remaining_time'],mission['remaining_time'])
+            self.assertEqual(running,self.state(root,300,*args))
+
+    def test_mission_replay_uses_relative_steps_and_preserves_town_event_history(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);self.fixture(root)
+            args=self.replay(root,'165 widget 0 250 250\n166 widget 1 250 250\n')
+            mission_input=root/'mission.replay';mission_input.write_text('70 keys 1\n80 keys 0\n',encoding='ascii')
+            neutral=self.state(root,300,*args)
+            replay=self.state(root,300,*args,'--mission-replay',str(mission_input))
+            selected=replay['update']['mission']
+            self.assertEqual(selected['replay_actions'],2)
+            self.assertEqual(selected['logic_steps'],93)
+            self.assertEqual(selected['event_execution_counts'],neutral['update']['mission']['event_execution_counts'])
+            self.assertNotEqual(selected['logic_state_hash'],neutral['update']['mission']['logic_state_hash'])
+            self.assertEqual(replay,self.state(root,300,*args,'--mission-replay',str(mission_input)))
+
+    def test_retreat_holds_the_same_world_at_return_without_repeating_entry(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);self.fixture(root)
+            args=self.replay(root,'165 widget 0 250 250\n166 widget 1 250 250\n')
+            mission_input=root/'retreat.replay'
+            mission_input.write_text(''.join(f'{i} pulse 1048576\n' for i in range(30,181,5))+
+                '200 pulse 33554432\n201 pulse 134217728\n202 answer 0\n',encoding='ascii')
+            held=self.state(root,600,*args,'--mission-replay',str(mission_input));update=held['update'];mission=update['mission']
+            self.assertEqual((update['dispatches'],mission['logic_steps']),(409,202))
+            self.assertEqual(mission['quest_exit'],{'code':3,'outcome':'retreat','handoff':'held','rewards_granted':False})
+            self.assertTrue(mission['transition_pending'] and held['shared_world']['same_hero'])
+            self.assertEqual((update['stamina'],update['stage_menu']['stamina_uses'],mission['quest_detail_count']),(9,1,1))
+            self.assertEqual(held,self.state(root,900,*args,'--mission-replay',str(mission_input)))
 
     def test_back_returns_to_same_world_and_formation_without_consumption(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -125,6 +170,8 @@ class TownCampaignTests(unittest.TestCase):
             root=Path(directory);self.fixture(root)
             def direct(*args):
                 return subprocess.run([str(EXE),'--data',str(root),'--foreground',*args],capture_output=True,text=True,timeout=30)
+            rejected=direct('--mission-replay','missing.replay')
+            self.assertNotEqual(rejected.returncode,0);self.assertIn('mission replay requires shared world',rejected.stderr)
             rejected=direct('--shared-world')
             self.assertNotEqual(rejected.returncode,0);self.assertIn('shared world requires full town Update',rejected.stderr)
             rejected=direct('--update-passes','1','--gameplay-seed','42')

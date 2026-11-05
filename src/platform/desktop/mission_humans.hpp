@@ -78,6 +78,7 @@ public:
     void write_collection_report(std::ostream&);
     void enable_results(MissionResultScenario);
     void enable_stage_loop(MissionStageScenario);
+    void bind_table_quest(std::shared_ptr<core::StageQuest>,std::shared_ptr<core::QuestRecord>);
     // Null preserves the formation array prepared by MemberSystem.Init; nonnull supplies a snapshot.
     void start_mission(std::int32_t,const core::EventIntegers*,core::StageMapLoader&,
                        std::function<bool()>,std::function<void()>,std::shared_ptr<core::AreaDefinition> = {});

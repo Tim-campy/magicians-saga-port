@@ -21,6 +21,8 @@ public:
     ~GlBitmapRenderer();
     GlBitmapRenderer(const GlBitmapRenderer&)=delete;
     GlBitmapRenderer& operator=(const GlBitmapRenderer&)=delete;
+    // Texture keys belong to one scene; changing owners invalidates GPU uploads.
+    void set_texture_source(Textures);
     // Column-major world -> OpenGL clip matrix is an explicit host input; no camera is inferred.
     void begin_frame(GlBitmapClear,core::RenderColor background,const core::OffscreenMatrix& view_projection);
     void set_viewport(std::int32_t x,std::int32_t y,std::int32_t width,std::int32_t height); // Bottom-left pixels.
