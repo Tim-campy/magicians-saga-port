@@ -58,6 +58,7 @@ public:
     bool widget_pointer(std::int32_t type,std::int32_t x,std::int32_t y);
     void cancel_widget_pointer();
     void stage_back();
+    void form_back();
     bool quest_handoff_pending()const;
     MissionProfile* active_mission()const;
     void cancel_camera_pointer();
@@ -118,6 +119,7 @@ private:
     std::vector<std::int32_t> fonts_;
     std::vector<std::array<std::int32_t,2>> font_requests_;
     core::BuildingTable building_records_;
+    std::vector<std::optional<core::BuildingNewGameState>> building_progress_;
     core::EventScript building_cache_,notices_=std::make_shared<std::vector<core::EventInstruction>>();
     std::shared_ptr<std::vector<std::uint8_t>> building_enabled_;
     std::vector<std::shared_ptr<core::TownBuildingView>> building_views_;

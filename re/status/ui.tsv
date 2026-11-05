@@ -218,6 +218,8 @@ game:0x0600082e	reimplemented	src/core/gameplay/select_camera.cpp	Native SetRetu
 game:0x060007a4	documented	docs/subsystems/town.md	QuestForm.Finish touch teardown, resBg disposal, resQuest clock removal/disposal; bounded desktop resource retention is an explicit service stub.
 game:0x06000905	reimplemented	src/core/gameplay/presentation_forms.cpp	Five-step open/close production, int32 wrap, Pop-before-clear and failure-prefix tests; shared resident gift popup.
 game:0x060008b3	documented	docs/subsystems/text.md	MakePopUpContens allocates type19; kind, title/text and option stores; fresh gift factory wired with explicit output service.
-game:0x060008b9	traced	docs/subsystems/text.md	Selected type19 production/idle counter/pulse branch ported and host-bound; remaining _update types are not covered.
+game:0x060008b9	traced	docs/subsystems/town.md	Type15 king hall and type19 popup branches ported and host-bound; other _update types remain uncovered.
 game:0x0600076d	documented	docs/subsystems/town.md	LT template/int64 wrapper: TranslateText(true), JString.ValueOf then existing StringUtil.Replace; gift host with declared locale provider.
 game:0x06000771	traced	docs/subsystems/town.md	SetTouchValue mask0x10000 forwards ARM-masked bit shift to Canvas.KeyClick; gift uses low value25; other selectors remain unbound.
+game:0x060000a7	traced	docs/subsystems/town.md	OnTouchList selected flags9 path: type1/2 Set, release KeyClick; physical building10 selection bound; flag16 branch not bound.
+game:0x06001255	documented	docs/subsystems/town.md	Capture Voice texts, AppData.Random(length), unsigned bounds check on captured owner and nullable result; type15 Init binding.

@@ -16,6 +16,30 @@ from test_sprite_preview import bmp_pixels
 @unittest.skipUnless(EXE,'viewer saga_town supplied by CTest')
 class TownBackgroundPixels(unittest.TestCase):
     @unittest.skipUnless(os.environ.get('SAGA_TEST_FONT'),'public CTest font required')
+    def test_king_hall_selection_nested_reward_and_return_match_window(self):
+        from town_campaign_fixture import create_campaign_fixture,add_king_reward_case
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);create_campaign_fixture(root);add_king_reward_case(root)
+            replay=root/'king.replay';replay.write_text('')
+            base=[str(EXE),'--data',str(root),'--foreground','--shared-world','--physical-input',
+                  '--camera-x','300','--high-score','20','--talk-pulse-every','10','--replay',str(replay)]
+            def run(*args):
+                r=subprocess.run([*base,*args],capture_output=True,text=True,encoding='utf-8',timeout=45)
+                self.assertEqual(r.returncode,0,r.stderr);return json.loads(r.stdout)
+            # Read native geometry to avoid a guessed screen target.
+            before=run('--update-passes','60');t=next(t for t in before['background']['buildings_draw']['touches'] if t[0]==1)
+            x,y=t[2]+40,t[3]+45
+            replay.write_text(f'61 widget 0 {x} {y}\n62 widget 1 {x} {y}\n63 widget 0 {x} {y}\n64 widget 1 {x} {y}\n151 form-back\n')
+            for frame in (61,64,65,72,111,160):
+                with self.subTest(frame=frame):
+                    args=['--update-passes',str(frame)];cpu=run(*args)
+                    still=root/f'king-still-{frame}.bmp';window=root/f'king-window-{frame}.bmp'
+                    self.assertEqual(run(*args,'--capture',str(still)),cpu)
+                    self.assertEqual(run(*args,'--interactive','--hidden','--capture',str(window)),cpu)
+                    self.assertEqual(still.read_bytes(),window.read_bytes())
+                    if frame>=111:self.assertEqual(cpu['background']['update']['wallet'],{'money':48,'crystals':53})
+
+    @unittest.skipUnless(os.environ.get('SAGA_TEST_FONT'),'public CTest font required')
     def test_resident_gift_capture_popup_and_resume_match_cpu_and_window(self):
         from town_campaign_fixture import create_campaign_fixture
         with tempfile.TemporaryDirectory() as directory:

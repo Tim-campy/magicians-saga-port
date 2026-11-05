@@ -11,6 +11,8 @@
 #include <algorithm>
 #include <sstream>
 #include <iomanip>
+#include <utility>
+#include "core/gameplay/combat_rules.hpp"
 
 namespace saga::desktop {
 using namespace core;
@@ -69,17 +71,42 @@ void MissionEvents::pop_popup(){
     if(!updating_||!updating_->popup)throw std::logic_error("popup Pop requires selected type19 form");
     updating_->state=4;lifecycle_.push_back("pop:"+std::to_string(updating_->id));
 }
+EventObject MissionEvents::make_king_hall(KingHallServices& services){
+    auto form=std::make_shared<Talk>();form->id=-15;form->prepared={};form->prepared.initial.type=15;
+    form->king=KingHall{{},&services,0};creating_=form;return form;
+}
+bool MissionEvents::request_king_back(){
+    if(forms_.empty()||!forms_.back()->king)return false;
+    king_back_requested_=true;return true;
+}
+NullablePresentationText MissionEvents::king_hall_voice(){return updating_->king->services->king_voice();}
+void MissionEvents::king_hall_initialize_news(std::int32_t value){
+    if(value!=60)throw std::invalid_argument("unsupported king news initialization");
+    // SAGA_STUB(town-king-news): offline NewsBanner(60), no online feed or output.
+    updating_->king->news_updates=0;
+}
+std::int32_t MissionEvents::king_hall_easing(std::int32_t frame){return easing(-40,80,40,frame,0);}
+void MissionEvents::execute_king_rewards(){updating_->king->services->king_grant();}
+void MissionEvents::king_hall_play_sound(){updating_->king->services->king_sound();}
+void MissionEvents::king_hall_save_game(){updating_->king->services->king_save_game();}
+void MissionEvents::king_hall_save_system(){updating_->king->services->king_save_system();}
+void MissionEvents::king_hall_push_notes(){unbound("king notes form5");}
+void MissionEvents::king_hall_push_tapjoy(){unbound("king optional Tapjoy child");}
+void MissionEvents::king_hall_pop(){updating_->state=4;lifecycle_.push_back("pop:-15");}
+void MissionEvents::king_hall_update_news(){++updating_->king->news_updates;}
 bool MissionEvents::execute(std::int32_t id){
     const auto result=execute_indexed_event(id,{},delays_,executor_);executed_.push_back(id);return static_cast<bool>(result);
 }
 bool MissionEvents::advance(std::uint64_t frame,std::int32_t tick_ms,bool pulse,bool held){
     if(forms_.empty())return false;
+    king_back_pulse_=std::exchange(king_back_requested_,false);
     now_=static_cast<std::int64_t>(frame)*tick_ms;total_frames_=static_cast<std::int32_t>(frame);pulse_=pulse;held_=held;
     // Same-thread, synchronous manager projection: process pending Init before selecting the top.
     for(auto& form:forms_)if(form->state==0){
         // SAGA_STUB(mission-talk-common-ui): non-gameplay Init providers, softlabels, blur and resource release.
         if(form->event_notice){updating_=form;set_event(0);updating_.reset();}
         if(form->popup){form->popup->production={1,0};form->event_frame=0;}
+        if(form->king){updating_=form;form->king->state.frame=0;initialize_king_hall(form->king->state,*this);updating_.reset();}
         form->state=1;clear_input_();pulse_=held_=false;
         lifecycle_.push_back("init:"+std::to_string(form->id));
     }
@@ -87,6 +114,20 @@ bool MissionEvents::advance(std::uint64_t frame,std::int32_t tick_ms,bool pulse,
         updating_=forms_.back();auto& talk=*updating_;
         if(talk.state==1){clear_input_();pulse_=held_=false;talk.state=2;lifecycle_.push_back("resume:"+std::to_string(talk.id));} // Manager.Resume, no form Resume callback.
         ++ticks_;
+        if(talk.king){
+            // SAGA_STUB(town-king-output): title/Backspace is the declared idle
+            // window/soft-label provider; the original domain controller executes.
+            talk.frame=advance_select_loop_counter(talk.frame);
+            update_king_hall(talk.king->state,*this);
+            if(talk.state==4){
+                if(!finish_talk(talk)||talk.state!=4)return true;
+                lifecycle_.push_back("remove:-15");forms_.pop_back();++closed_;
+                updating_.reset();clear_input_();pulse_=held_=false;
+                if(!forms_.empty()&&forms_.back()->state==3)forms_.back()->state=1;
+                continue;
+            }
+            talk.state=3;updating_.reset();return true;
+        }
         if(talk.popup){
             // Type19 config[3]=-1 skips the generic five-pass window gate.
             talk.frame=advance_select_loop_counter(talk.frame);
@@ -143,16 +184,21 @@ EventObject MissionEvents::make_talk_form(std::int32_t id,EventObject args){
     set_page(*talk);creating_=talk;return talk;
 }
 void MissionEvents::push_form(EventObject form){
-    if(application_push_)application_push_(std::move(form));else push_base_form(root_,std::move(form));
+    if(updating_){FormPushState parent{updating_,this,{}};push_base_form(parent,std::move(form));}
+    else if(application_push_)application_push_(std::move(form));else push_base_form(root_,std::move(form));
 }
 void MissionEvents::push(EventObject parent,EventObject child,bool option){
     auto existing=std::find_if(forms_.begin(),forms_.end(),[&](const auto& form){return child==form;});
-    if(parent!=root_.identity||option||(child!=creating_&&existing==forms_.end()))throw std::invalid_argument("unsupported mission form push");
+    const auto parent_exists=parent==root_.identity||std::any_of(forms_.begin(),forms_.end(),[&](const auto& form){return parent==form;});
+    if(!parent_exists||option||child==parent||(child!=creating_&&existing==forms_.end()))throw std::invalid_argument("unsupported mission form push");
     const auto fresh=existing==forms_.end();auto form=fresh?creating_:*existing;
     if(!fresh)forms_.erase(existing);
     // PushCallback removes/reinserts known identities, preserving their native
     // state. SelectForm's second Push of ExecEvent's result is intentional.
-    if(application_push_)forms_.insert(forms_.begin(),form);else forms_.push_back(form);
+    if(parent!=root_.identity){
+        const auto position=std::find_if(forms_.begin(),forms_.end(),[&](const auto& value){return parent==value;});
+        forms_.insert(std::next(position),form);
+    }else if(application_push_)forms_.insert(forms_.begin(),form);else forms_.push_back(form);
     lifecycle_.push_back(std::string(fresh?"push:":"reinsert:")+std::to_string(form->id));
     if(child==creating_)creating_.reset();if(fresh)++opened_;
 
@@ -243,6 +289,7 @@ NullablePresentationText MissionEvents::translate_argument(const std::u16string&
 std::string MissionEvents::title()const{
     if(forms_.empty())return {};
     const auto& talk=*forms_.back();
+    if(talk.king)return "King hall - Backspace returns to town";
     if(talk.popup)return talk.popup->title+" - Enter continues";
     if(talk.finish_frame>=0)return talk.event_notice?"Notice - closing":"Dialogue - closing";
     if(talk.event_notice)return "Notice "+std::to_string(talk.event_page+1)+"/"+std::to_string(talk.event_notice->texts.size())+" - Enter continues";
@@ -271,6 +318,11 @@ void MissionEvents::write_report(std::ostream& out)const{
            <<",\"production_state\":"<<popup.production.step<<",\"production_frame\":"<<popup.production.frame
            <<",\"animation_frame\":"<<form.event_frame<<",\"title\":"<<std::quoted(popup.title)<<",\"text\":"<<std::quoted(popup.text)
            <<",\"close_pulse\":33554432,\"presentation\":\"provisional title acknowledgement\"}";
+    }
+    if(pending()&&forms_.back()->king){const auto& hall=*forms_.back()->king;const auto& k=hall.state;
+        out<<",\"king_hall\":{\"production_state\":"<<k.production_step<<",\"frame\":"<<k.frame
+           <<",\"movement_frame\":"<<k.movement_frame<<",\"entrance_x\":"<<k.entrance_x<<",\"selection\":"<<k.selection
+           <<",\"speech_present\":"<<(k.speech?"true":"false")<<",\"news_updates\":"<<hall.news_updates<<'}';
     }
     out<<",\"talk_lifecycle\":[";for(std::size_t i=0;i<lifecycle_.size();++i){if(i)out<<',';out<<'"'<<lifecycle_[i]<<'"';}out<<']';
     out<<",\"event_execution_counts\":[";bool first=true;

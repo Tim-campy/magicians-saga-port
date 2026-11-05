@@ -41,6 +41,10 @@ The clock producer is eligible **Draw**, not Update. Outer Draw calls `_draw` on
 
 The portable `update_event_notice` kernel supplies the exact reached Update branch. `saga_town`/`MissionEvents` binds the EventMsg factory and retained type4 form identity, title-page controls and Enter/pulse acknowledgement. Its explicit `SAGA_STUB(event-notice-window)` provider reports a foreground, nonclosing window ready and performs one semantic Draw per dispatch; the clock/cosmetic counters follow that declared cadence. Window animation, glyph/resource/audio output and physical full-view touch registration remain presentation services. This provider does not establish native opening/closing timing, GUIStyle metrics or original-runtime equivalence. EventMsg is a lazy immutable source catalogue, excluded from mutable checkpoints; the source archive is fingerprinted separately.
 
+### King hall (type15)
+
+The reached type15 Init and full _update branch use KingHallState/KingHallHost and initialize_king_hall/update_king_hall. They preserve the eight-pass production, application-RNG greeting, reward-at39, confirm/save/choice priority, Back and NewsBanner.Update ordering documented in [town](town.md#king-hall-and-permanent-rewards). These helpers do not reconstruct every SubForm type. Opened hall drawing begins at0x11fe820; the desktop declares title/Backspace output and an offline news service. Nested reward talk/event forms run on the actual executing hall parent rather than SelectForm's root.
+
 ### Contents popup (type19)
 
 `SubForm.MakePopUpContens` (`game:0x060008b3`, ELF0x11f6480,136 bytes) allocates SubForm(19), stores content kind at+0x170, header/text at+0x1e8/+0x1f0 and option at+0x174. Resident gifts pass kind3 and optionfalse. Fresh allocation supplies productionFrame+0x164=0; Init sets productionStep+0x160=1 without independently resetting that frame. The selected configData[19][3]=-1 bypasses the generic window-end wait.

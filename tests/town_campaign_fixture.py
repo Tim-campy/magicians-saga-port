@@ -84,6 +84,8 @@ def create_campaign_fixture(root,font_file=None,quest_time_limit=None):
     tables['English.lproj/Quest.txt']=('\n'.join('\t'.join(quests[i]) for i in sorted(quests))+'\n').encode()
     tables['English.lproj/Area.txt']=b'0\tFirst\t0\t1\t2\t1\n1\tSecond\t0\t0\t0\n'
 
+    tables['English.lproj/Voice.txt']+=b'\n2\t2\t1\tSynthetic royal greeting\n'
+
     # Stage event212 stays directly executable, with a false automatic term
     # (money<0) so the town selector cannot prematurely open its mission talk.
     events={int(line.split('\t',1)[0]):line for line in tables['English.lproj/Event.txt'].decode().splitlines()}
@@ -111,3 +113,14 @@ def create_campaign_fixture(root,font_file=None,quest_time_limit=None):
     seed=root/'new-game-save.tsv';seed.write_text(seed.read_text(encoding='utf-8').replace('new_game_save 1','new_game_save 2')+'town_scale 100\n',encoding='ascii')
     (root/'town-messages.tsv').write_text('town_messages 1\ngift_title "Synthetic gift"\ngift_format "Gift <0>G"\n',encoding='utf-8')
     return control
+
+
+def add_king_reward_case(root):
+    """Two eligible rewards, one retained child and a numeric effect; synthetic only."""
+    root=Path(root);archive=root/'textassets/tables.bin'
+    tables=dict(_container_reader()(archive.read_bytes()))
+    tables['English.lproj/KingReward.txt']=(
+        b'0\tFirst\t10\t3\t0\t0\t0\n'
+        b'1\tSecond\t20\t7\t123\t0\t2\t2\t8\t9\t2\t1\t11\n')
+    tables['English.lproj/Talk.txt']+=b'\n9\t0\t1\tReward <0>/<1>\n'
+    archive.write_bytes(jar(list(tables.items())))

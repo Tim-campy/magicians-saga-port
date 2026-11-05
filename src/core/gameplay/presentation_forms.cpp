@@ -5,6 +5,11 @@
 
 namespace saga::core {
 namespace {
+std::int32_t increment_form_int32(std::int32_t value) {
+    const auto bits=static_cast<std::uint32_t>(value)+1U;
+    return bits<=0x7fffffffU?static_cast<std::int32_t>(bits)
+        : -1-static_cast<std::int32_t>(0xffffffffU-bits);
+}
 void read_event_message(EventMessageDefinition& row,detail::TableTokens& tokens,
                         const PresentationStringDecoder& decode) {
     row.id=tokens.integer();
@@ -114,6 +119,39 @@ bool update_popup_contents(std::int32_t& animation_frame,PopupProductionState& p
     animation_frame=next%std::numeric_limits<std::int32_t>::max();
     if(host.popup_close_pulse())production.step=2;
     return true;
+}
+void initialize_king_hall(KingHallState& state,KingHallHost& host) {
+    // SubForm.Init type15 0x11f6ab8..0x11f6bb8.
+    state.entrance_x=-40;state.production_step=1;
+    state.speech=host.king_hall_voice();
+    host.king_hall_initialize_news(60);
+}
+bool update_king_hall(KingHallState& state,KingHallHost& host) {
+    // SubForm._update 0x11f9438, 0x11f9848 and the shared 0x11f9b98 suffix.
+    const auto step=state.production_step;
+    if(step==1||step==2) {
+        state.frame=increment_form_int32(state.frame);
+        if(state.frame>=8) {
+            state.frame=0;
+            if(step==2)host.king_hall_pop();
+            state.production_step=0;
+        }
+    }else{
+        state.movement_frame=increment_form_int32(state.movement_frame);
+        state.entrance_x=host.king_hall_easing(state.movement_frame);
+        // Native reloads this field after Easing; do not compare the argument.
+        if(state.movement_frame==39)host.execute_king_rewards();
+        if(host.king_hall_confirm_pulse()) {
+            host.king_hall_play_sound();
+            host.king_hall_save_game();host.king_hall_save_system();
+            if(state.selection==2)host.king_hall_push_tapjoy();
+            else if(state.selection==1)host.king_hall_push_notes();
+        }else if(host.king_hall_soft_label(3)) {
+            host.king_hall_play_sound();state.production_step=2;
+        }else if(host.king_hall_soft_label(11))host.king_hall_push_notes();
+    }
+    // This service also runs after Pop; the manager processes Finish afterward.
+    host.king_hall_update_news();return true;
 }
 PreparedTalkForm prepare_talk_form(std::int32_t character_index,
                                  NullablePresentationText text,

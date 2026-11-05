@@ -17,12 +17,23 @@ SelectAreaTouchRegion select_resident_gift_touch_region(std::int32_t x,std::int3
     // The reached desktop profile has scale100; preserve the selector in value.
     return {input_screen_rectangle({x,y,32,32},{10,10,10,10},width,height),{4,0x10019}};
 }
+SelectAreaTouchRegion select_building_touch_region(std::int32_t index,bool selected,
+    std::int32_t x,std::int32_t y,std::int32_t width,std::int32_t height){
+    const auto value=static_cast<std::uint32_t>(index)|0x220000U;
+    const auto encoded=value<=0x7fffffffU?static_cast<std::int32_t>(value):-1-static_cast<std::int32_t>(0xffffffffU-value);
+    return {input_screen_rectangle({x,y,80,90},{-10,-10,-10,selected?25:-10},width,height),{selected?4:10,selected?27:encoded}};
+}
 void select_widget_touch(const InputTouch* event,SelectWidgetHost& host){
     if(!event||!event->component)throw std::invalid_argument("missing town widget event/control");
     const auto& control=*event->component;
     auto encoded=static_cast<std::uint32_t>(control.value);
     const auto set=[&]{const auto flags=encoded&0xffff0000U;const auto low=encoded&0xffffU;
         if(flags)host.select_value(flags,low<=0x7fffU?static_cast<std::int32_t>(low):static_cast<std::int32_t>(low)-0x10000);};
+    if(control.group==10){
+        // GameView.OnTouchList0x10fd17c: reached option flags9 has no bit16.
+        if(event->type!=1&&event->type!=2)return;
+        set();if(event->type==1)host.click_key(0x100000U);return;
+    }
     if(control.group==29){
         if(event->type!=1&&event->type!=2)return;
         set();host.click_key(event->type==1?0x100000U:0x80000U);return;

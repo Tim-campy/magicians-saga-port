@@ -168,7 +168,119 @@ void test_popup_contents() {
         check(animation==7&&production.step==0&&production.frame==3&&h.calls==std::vector<std::string>{"pulse"},"failed input retains the animation prefix without initiating close");
     }
 }
+struct KingHost final:KingHallHost {
+    std::vector<std::string> calls;
+    std::function<void(const std::string&)> action;
+    NullablePresentationText voice=u"king speech";
+    bool pulse=false,back=false,notes=false;
+    std::int32_t eased=80,easing_frame=0,interval=0;
+    void call(std::string name){calls.push_back(name);if(action)action(name);}
+    NullablePresentationText king_hall_voice()override{call("voice");return voice;}
+    void king_hall_initialize_news(std::int32_t value)override{interval=value;call("initialize_news");}
+    std::int32_t king_hall_easing(std::int32_t value)override{easing_frame=value;call("easing");return eased;}
+    void execute_king_rewards()override{call("rewards");}
+    bool king_hall_confirm_pulse()override{call("pulse");return pulse;}
+    void king_hall_play_sound()override{call("sound");}
+    void king_hall_save_game()override{call("save_game");}
+    void king_hall_save_system()override{call("save_system");}
+    bool king_hall_soft_label(std::int32_t id)override{call("soft"+std::to_string(id));return id==3?back:notes;}
+    void king_hall_push_notes()override{call("notes");}
+    void king_hall_push_tapjoy()override{call("tapjoy");}
+    void king_hall_pop()override{call("pop");}
+    void king_hall_update_news()override{call("news");}
+};
+void test_king_hall() {
+    {KingHallState state;state.frame=12;state.movement_frame=17;state.selection=2;KingHost h;
+        initialize_king_hall(state,h);
+        check(state.production_step==1&&state.entrance_x==-40&&state.speech==u"king speech"&&h.interval==60,
+              "hall Init selects speech after its scalar prefix, then creates news60");
+        check(state.frame==12&&state.movement_frame==17&&state.selection==2&&h.calls==std::vector<std::string>({"voice","initialize_news"}),
+              "reached Init block preserves counters/selection owned by common Init or allocation");
+    }
+    for(const auto* failure:{"voice","initialize_news"}) {
+        KingHallState state;state.speech=u"old";KingHost h;
+        h.action=[&](const auto& call){if(call==failure)throw std::runtime_error(call);};
+        expect<std::runtime_error>([&]{initialize_king_hall(state,h);},"hall Init callback failure propagates");
+        check(state.production_step==1&&state.entrance_x==-40,"Init scalar stores survive either later failure");
+        check(state.speech==(std::string(failure)=="voice"?u"old":u"king speech"),"speech changes only after a successful voice call");
+    }
+    {KingHallState state;KingHost h;h.voice.reset();initialize_king_hall(state,h);
+        check(!state.speech&&h.calls.back()=="initialize_news","nullable voice text is retained without inventing text");}
+    {KingHallState state;state.production_step=1;KingHost h;
+        for(int i=1;i<=8;++i) {
+            check(update_king_hall(state,h),"hall update returns true during opening");
+            check(state.frame==(i==8?0:i)&&state.production_step==(i==8?0:1),"opening lasts eight updates and clears the animation counter first");
+        }
+        check(state.movement_frame==0&&h.calls==std::vector<std::string>(8,"news"),"opening still updates news without querying input/rewards");
+    }
+    {KingHallState state;KingHost h;h.back=true;state.movement_frame=9;
+        update_king_hall(state,h);
+        check(state.production_step==2&&state.movement_frame==10&&state.frame==0&&
+            h.calls==std::vector<std::string>({"easing","pulse","soft3","sound","news"}),"back short-circuits soft11 and starts closing after sound");
+        h.calls.clear();
+        for(int i=0;i<8;++i)update_king_hall(state,h);
+        auto expected=std::vector<std::string>(7,"news");expected.push_back("pop");expected.push_back("news");
+        check(state.production_step==0&&state.frame==0&&h.calls==expected,"closing Pop precedes the final news update on its eighth pass");
+    }
+    for(const auto selection:{-1,0,1,2,3}) {
+        KingHallState state;state.selection=selection;KingHost h;h.pulse=true;h.back=h.notes=true;
+        update_king_hall(state,h);
+        std::vector<std::string> expected{"easing","pulse","sound","save_game","save_system"};
+        if(selection==1)expected.push_back("notes");else if(selection==2)expected.push_back("tapjoy");expected.push_back("news");
+        check(state.production_step==0&&h.calls==expected,"confirm saves and routes selection without closing or checking softlabels");
+    }
+    {KingHallState state;KingHost h;h.notes=true;update_king_hall(state,h);
+        check(h.calls==std::vector<std::string>({"easing","pulse","soft3","soft11","notes","news"})&&state.production_step==0,
+              "soft11 pushes Notes without save or sound");}
+    {KingHallState state;state.movement_frame=38;KingHost h;
+        update_king_hall(state,h);
+        check(h.easing_frame==39&&state.entrance_x==80&&h.calls==std::vector<std::string>({"easing","rewards","pulse","soft3","soft11","news"}),
+              "reward grant occurs exactly at movement frame39 after publishing entrance position");
+        h.calls.clear();update_king_hall(state,h);
+        check(h.easing_frame==40&&h.calls==std::vector<std::string>({"easing","pulse","soft3","soft11","news"}),"subsequent frames do not repeat the reward request");
+    }
+    {KingHallState state;state.movement_frame=8;KingHost h;
+        h.action=[&](const auto& call){if(call=="easing")state.movement_frame=39;};update_king_hall(state,h);
+        check(h.easing_frame==9&&h.calls[1]=="rewards","reward equality uses the live counter after Easing");}
+    {KingHallState state;state.selection=1;KingHost h;h.pulse=true;
+        h.action=[&](const auto& call){if(call=="save_system")state.selection=2;};update_king_hall(state,h);
+        check(h.calls.at(5)=="tapjoy","confirm routing reads selection after both saves");}
+    {KingHallState state;state.production_step=2;state.frame=7;KingHost h;
+        h.action=[&](const auto& call){if(call=="pop"){
+            check(state.frame==0&&state.production_step==2,"Pop observes reset frame but closing step");state.frame=61;state.production_step=9;
+        }};
+        update_king_hall(state,h);
+        check(state.frame==61&&state.production_step==0&&h.calls==std::vector<std::string>({"pop","news"}),"post-Pop step clear preserves live frame mutations");}
+    {KingHallState state;state.production_step=2;state.frame=7;KingHost h;
+        h.action=[](const auto& call){if(call=="pop")throw std::runtime_error(call);};
+        expect<std::runtime_error>([&]{update_king_hall(state,h);},"hall Pop failure propagates");
+        check(state.frame==0&&state.production_step==2&&h.calls==std::vector<std::string>{"pop"},"failed Pop retains the reset frame/closing state and skips news");}
+    {KingHallState state;KingHost h;h.back=true;
+        h.action=[](const auto& call){if(call=="sound")throw std::runtime_error(call);};
+        expect<std::runtime_error>([&]{update_king_hall(state,h);},"back sound failure propagates");
+        check(state.production_step==0&&h.calls==std::vector<std::string>({"easing","pulse","soft3","sound"}),"failed back sound prevents the closing-step store and news suffix");}
+    {KingHallState state;state.production_step=1;state.frame=7;KingHost h;
+        h.action=[](const auto& call){if(call=="news")throw std::runtime_error(call);};
+        expect<std::runtime_error>([&]{update_king_hall(state,h);},"news failure propagates after opening completion");
+        check(state.frame==0&&state.production_step==0,"news failure does not roll back completed production");}
+    {KingHallState state;state.production_step=2;state.frame=std::numeric_limits<std::int32_t>::max();KingHost h;
+        update_king_hall(state,h);
+        check(state.frame==std::numeric_limits<std::int32_t>::min()&&state.production_step==2&&h.calls==std::vector<std::string>{"news"},"hall production increment wraps before signed eight-frame comparison");}
+    {KingHallState state;state.movement_frame=std::numeric_limits<std::int32_t>::max();KingHost h;update_king_hall(state,h);
+        check(state.movement_frame==std::numeric_limits<std::int32_t>::min()&&h.easing_frame==state.movement_frame,"idle movement counter wraps without modulo");}
+    const std::vector<std::string> order{"easing","rewards","pulse","sound","save_game","save_system","notes","news"};
+    for(const auto& failure:order) {
+        KingHallState state;state.movement_frame=38;state.entrance_x=7;state.selection=1;KingHost h;h.pulse=true;
+        h.action=[&](const auto& call){if(call==failure)throw std::runtime_error(call);};
+        expect<std::runtime_error>([&]{update_king_hall(state,h);},"hall callback failure propagates");
+        std::vector<std::string> prefix;
+        for(const auto& call:order){prefix.push_back(call);if(call==failure)break;}
+        check(h.calls==prefix&&state.movement_frame==39&&state.production_step==0,"hall failure retains only its ordered prefix");
+        check(state.entrance_x==(failure=="easing"?7:80),"position store follows successful Easing only");
+    }
+}
 int main() {
+    test_king_hall();
     test_popup_contents();
     Host h;
     std::vector<std::string> decoded_tokens;

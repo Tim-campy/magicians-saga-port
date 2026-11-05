@@ -20,7 +20,7 @@ using namespace core;
 namespace {
 [[noreturn]]void town_unbound(const char* what){throw std::logic_error(std::string("town path unbound: ")+what);}
 struct TownReplayAction {
-    enum class Kind { Camera, Pointer, PointerCancel, Widget, StageBack, Selection, Buttons, TalkPulse } kind;
+    enum class Kind { Camera, Pointer, PointerCancel, Widget, StageBack,FormBack, Selection, Buttons, TalkPulse } kind;
     std::uint64_t frame=0;
     std::array<std::int32_t,6> camera{}; // type,x,dx,dy,pinch delta,pointer count.
     std::uint32_t mask=0;
@@ -62,6 +62,7 @@ std::vector<TownReplayAction> read_town_replay(const std::filesystem::path& path
             for(std::size_t i=0;i<3;++i)if(!(row>>action.camera[i]))throw std::invalid_argument("widget requires type,x,y");
             if(action.camera[0]!=0&&action.camera[0]!=1&&action.camera[0]!=3)throw std::invalid_argument("widget supports down0/up1/cancel3");
         }else if(command=="stage-back")action.kind=TownReplayAction::Kind::StageBack;
+        else if(command=="form-back")action.kind=TownReplayAction::Kind::FormBack;
         else if(command=="select"){
             action.kind=TownReplayAction::Kind::Selection;
             if(!(row>>mask>>action.value))throw std::invalid_argument("select requires flags and int32 value");action.mask=replay_mask(mask);
@@ -78,7 +79,7 @@ std::vector<TownReplayAction> read_town_replay(const std::filesystem::path& path
 struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,SelectMarkerHost,
     SelectNavigationHost,SelectBuildingHost,SelectTownButtonsHost,SelectGuidanceSaveHost,
     SelectReviewHost,SelectTriggerHost,SelectGuideHost,SelectNotificationHost,TownPermissionHost,SelectTouchHost,SelectWidgetHost,FormStackHost,
-    MissionTownReturn,TownQuestReturnHost,SelectReturnPositionHost {
+    MissionTownReturn,TownQuestReturnHost,SelectReturnPositionHost,KingRewardExecutionHost,KingHallServices {
     TownBackground& town;
     ResourceArchive& tables;
     GameInitialization initial;
@@ -215,6 +216,7 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
             const auto& action=replay[replay_index++];
             if(action.kind==TownReplayAction::Kind::TalkPulse){pulse=true;++replay_applied;continue;}
             if(action.kind==TownReplayAction::Kind::Widget){widget(action.camera[0],action.camera[1],action.camera[2]);++replay_applied;continue;}
+            if(action.kind==TownReplayAction::Kind::FormBack){town.form_back();++replay_applied;continue;}
             if(action.kind==TownReplayAction::Kind::StageBack){if(!stage_pending)throw std::invalid_argument("stage-back requires selected menu");stage_back_requested=true;++replay_applied;continue;}
             if(action.kind==TownReplayAction::Kind::PointerCancel){cancel_pointer();++replay_applied;continue;}
             if(action.kind==TownReplayAction::Kind::Pointer){const auto& p=action.camera;
@@ -370,13 +372,46 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
     void make_transition(std::int32_t,bool,std::uint32_t,std::function<void()>)override{town_unbound("room transition");}
     EventObject room_form()override{town_unbound("room form");}
     EventObject make_shop(std::int32_t)override{town_unbound("shop form");}
-    std::shared_ptr<BuildingMenuCatalog> buildings()override{town_unbound("building menu records");}
+    std::shared_ptr<BuildingMenuCatalog> building_menu;
+    std::shared_ptr<BuildingMenuCatalog> buildings()override{
+        if(!building_menu){building_menu=std::make_shared<BuildingMenuCatalog>(town.building_records_.size());
+            for(std::size_t i=0;i<town.building_records_.size();++i)if(town.building_records_[i])
+                building_menu->at(i)=std::make_shared<BuildingMenuRecord>(BuildingMenuRecord{town.building_records_[i]->type});
+        }
+        return building_menu;
+    }
     std::shared_ptr<std::vector<EventObject>> living_members()override{town_unbound("building resident owners");}
     std::int32_t system_share_value()override{town_unbound("share save slot");}
     void set_shop_selection(EventObject,std::int32_t)override{town_unbound("shop selection");}
     EventObject make_build_list(std::int32_t)override{town_unbound("build list form");}
     EventObject make_human_house(EventObject,std::int32_t,bool)override{town_unbound("house form");}
-    EventObject make_subform(std::int32_t)override{town_unbound("subform factory");}
+    EventObject make_subform(std::int32_t type)override{
+        if(type!=15||!town.shared_world_)town_unbound("subform factory requires shared king hall");
+        return events.make_king_hall(*this);
+    }
+    std::shared_ptr<KingRewardRows> rewards()override{return town.king_rewards_;}
+    EventObject format_arguments(std::int32_t crystal,std::int32_t score)override{
+        return std::make_shared<std::u16string>(decode_mission_text(std::to_string(crystal)+"\t"+std::to_string(score)));
+    }
+    EventObject execute_instruction(const EventInstruction& row,const EventContext& context)override{return events.execute_unit(row,context);}
+    void push_form(EventObject form)override{events.push_script_result(std::move(form));}
+    void add_crystals(std::int32_t amount)override{
+        auto& result=town.shared_world_->humans->result_owner();result.set_crystals(add_decoded_currency(result.crystals(),amount));
+        town.resident_conditions_.crystals=result.crystals();
+    }
+    void mark_received(KingRewardDefinition& reward)override{reward.received=true;}
+    std::uint64_t king_grant_passes=0;
+    NullablePresentationText king_voice()override{
+        const auto catalog=voices();std::shared_ptr<TownVoice> selected;
+        for(const auto& row:*catalog){if(!row)throw std::invalid_argument("null voice before king match");if(row->type==2){selected=row;break;}}
+        if(!selected||!selected->texts)throw std::invalid_argument("king hall requires type2 Voice texts");
+        const auto texts=selected->texts;const auto index=town.app_random(static_cast<std::int32_t>(texts->size()));
+        const auto text=texts->at(static_cast<std::size_t>(index));return text?NullablePresentationText(decode_mission_text(*text)):std::nullopt;
+    }
+    void king_grant()override{++king_grant_passes;check_and_execute_king_rewards(true,*this);}
+    void king_sound()override{play_button_sound();}
+    void king_save_game()override{save_game(false,true);}
+    void king_save_system()override{save_system();}
     EventObject make_share_window(bool)override{town_unbound("share form");}
     EventObject area_form()override;
     EventObject make_obstacle(std::int32_t)override{town_unbound("obstacle form");}
@@ -858,6 +893,10 @@ bool TownBackground::widget_pointer(std::int32_t type,std::int32_t x,std::int32_
 }
 void TownBackground::cancel_widget_pointer(){if(update_owner_){if(update_owner_->stage_pending)update_owner_->stage_widget(3,0,0);update_owner_->cancel_widget();}}
 void TownBackground::stage_back(){if(update_owner_&&update_owner_->stage_pending)update_owner_->stage_back_requested=true;}
+void TownBackground::form_back(){
+    if(!update_owner_)return;
+    if(update_owner_->stage_pending)stage_back();else update_owner_->events.request_king_back();
+}
 void TownBackground::cancel_camera_pointer(){if(update_owner_)update_owner_->cancel_pointer();}
 std::string TownBackground::window_title()const{
     if(const auto* mission=active_mission()){
@@ -911,6 +950,10 @@ void TownBackground::report_update(std::ostream& out)const{
        <<",\"crystals\":"<<(shared_world_?shared_world_->humans->result_owner().crystals():*resident_conditions_.crystals)<<"},\"return_order\":[";
     for(std::size_t i=0;i<owner.return_order.size();++i){if(i)out<<',';out<<std::quoted(owner.return_order[i]);}
     out<<"],\"return_event_attempts\":[";for(std::size_t i=0;i<owner.return_event_attempts.size();++i){if(i)out<<',';out<<owner.return_event_attempts[i];}
+    out<<"],\"king_grant_passes\":"<<owner.king_grant_passes<<",\"king_rewards\":[";
+    bool first_reward=true;for(const auto& reward:*king_rewards_)if(reward){if(!first_reward)out<<',';first_reward=false;out<<'['<<reward->id<<','<<(reward->received?1:0)<<']';}
+    out<<"],\"building_progress\":[";bool first_building=true;
+    for(std::size_t i=0;i<building_progress_.size();++i)if(building_progress_[i]){if(!first_building)out<<',';first_building=false;const auto& b=*building_progress_[i];out<<'['<<i<<','<<b.discovery_state<<','<<(b.is_new?1:0)<<','<<b.have<<']';}
     out<<"],\"completed_missions\":[";
     for(std::size_t i=0;i<owner.completed.size();++i){if(i)out<<',';const auto& c=owner.completed[i];
         out<<"{\"frame\":"<<c.frame<<",\"delivery\":\"delivered\",\"event31\":["<<c.event.result<<','<<c.event.area_id<<','<<c.event.stage<<"],\"mission_at_return\":"<<c.state<<'}';}

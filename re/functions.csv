@@ -145,7 +145,7 @@ game:0x060000a3,game:0x060000a3,ui,,244,0x10fce40
 game:0x060000a4,game:0x060000a4,ui,,248,0x10fcf34
 game:0x060000a5,game:0x060000a5,ui,,236,0x10fd02c
 game:0x060000a6,game:0x060000a6,ui,,100,0x10fd118
-game:0x060000a7,game:0x060000a7,ui,,184,0x10fd17c
+game:0x060000a7,surface.GameView.OnTouchList,ui,traced,184,0x10fd17c
 game:0x060000a8,game:0x060000a8,ui,,184,0x10fd234
 game:0x060000a9,game:0x060000a9,ui,,364,0x10fd2ec
 game:0x060000aa,game:0x060000aa,ui,,460,0x10fd458
@@ -571,7 +571,7 @@ game:0x0600024d,main.AppData.DrawZSortObjects,boot,reimplemented,2548,0x1115e54
 game:0x0600024e,game:0x0600024e,boot,,68,0x1116848
 game:0x0600024f,game:0x0600024f,boot,,28,0x111688c
 game:0x06000250,game:0x06000250,boot,,284,0x11168a8
-game:0x06000251,main.AppData.CheckExeKingEvent,boot,traced,804,0x11169c4
+game:0x06000251,main.AppData.CheckExeKingEvent,boot,reimplemented,804,0x11169c4
 game:0x06000252,game:0x06000252,boot,,508,0x1116ce8
 game:0x06000253,game:0x06000253,boot,,304,0x1116ee4
 game:0x06000254,game:0x06000254,boot,,440,0x1117014
@@ -3941,7 +3941,7 @@ game:0x06001036,game:0x06001036,data,,40,0x116c73c
 game:0x06001037,game:0x06001037,data,,4,0x116c864
 game:0x06001038,data.BaseData.NewGame,data,documented,4,0x116bf98
 game:0x06001039,data.BaseData.Check,data,documented,16,0x1169924
-game:0x0600103a,data.BuildingData.NewGame,data,traced,132,0x116c868
+game:0x0600103a,data.BuildingData.NewGame,data,reimplemented,132,0x116c868
 game:0x0600103b,game:0x0600103b,data,,216,0x116c8ec
 game:0x0600103c,data.BuildingData.IsShop,data,reimplemented,44,0x116c9c4
 game:0x0600103d,data.BuildingData.IsDecoration,data,reimplemented,32,0x116c9f0
@@ -4475,7 +4475,7 @@ game:0x06001251,game:0x06001251,data,,8,0x1174068
 game:0x06001252,game:0x06001252,data,,8,0x1174070
 game:0x06001253,game:0x06001253,data,,8,0x1174078
 game:0x06001254,data.VoiceData.Load,data,reimplemented,168,0x1174080
-game:0x06001255,game:0x06001255,data,,128,0x1174128
+game:0x06001255,data.VoiceData.GetRandomText,data,documented,128,0x1174128
 game:0x06001256,game:0x06001256,data,,4,0x11741a8
 game:0x06001257,game:0x06001257,data,,4,0x11741ac
 game:0x06001258,game:0x06001258,data,,108,0x11741b0

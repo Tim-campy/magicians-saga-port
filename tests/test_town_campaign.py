@@ -107,6 +107,41 @@ class TownCampaignTests(unittest.TestCase):
                     path.write_text(payload)
                     self.assertNotEqual(self.run_host(root,62,*context,'--replay',str(replay)).returncode,0)
 
+    def test_king_hall_grants_all_eligible_rewards_once_then_returns(self):
+        from town_campaign_fixture import add_king_reward_case
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);self.fixture(root);add_king_reward_case(root)
+            before=self.state(root,60,'--high-score','20')
+            touch=next(row for row in before['buildings_draw']['touches'] if row[0]==1)
+            x,y=touch[2]+40,touch[3]+45
+            replay=root/'king.replay';replay.write_text(
+                f'61 widget 0 {x} {y}\n62 widget 1 {x} {y}\n63 widget 0 {x} {y}\n64 widget 1 {x} {y}\n'
+                '112 form-back\n151 form-back\n'
+                f'181 widget 0 {x} {y}\n182 widget 1 {x} {y}\n183 widget 0 {x} {y}\n184 widget 1 {x} {y}\n271 form-back\n')
+            args=('--high-score','20','--replay',str(replay))
+            selected=self.state(root,61,*args)['update'];self.assertTrue(selected['widgets']['captured'])
+            entered=self.state(root,64,*args)['update'];self.assertEqual(entered['talk']['id'],-15)
+            opening=self.state(root,65,*args)['update'];self.assertEqual(opening['king_hall']['frame'],1)
+            self.assertEqual(opening['king_hall']['production_state'],1)
+            ready=self.state(root,72,*args)['update'];self.assertEqual(ready['king_hall']['production_state'],0)
+            self.assertEqual(ready['king_hall']['movement_frame'],0)
+            threshold=self.state(root,110,*args)['update'];self.assertEqual(threshold['king_grant_passes'],0)
+            granted=self.state(root,111,*args)['update'];self.assertEqual(granted['king_grant_passes'],1)
+            self.assertEqual(granted['king_rewards'],[[0,1],[1,1]])
+            self.assertEqual(granted['wallet'],{'money':48,'crystals':53})
+            self.assertEqual(granted['talk']['id'],9)
+            self.assertEqual(granted['talk_lifecycle'].count('push:9'),1)
+            self.assertEqual(granted['talk_lifecycle'].count('reinsert:9'),1)
+            closed=self.state(root,160,*args)['update'];self.assertFalse(closed['talk_pending'])
+            self.assertEqual(closed['talk_lifecycle'].count('pop:-15'),1)
+            again=self.state(root,280,*args);self.assertEqual(again['update']['wallet'],granted['wallet'])
+            self.assertEqual(again['update']['king_grant_passes'],2);self.assertFalse(again['update']['talk_pending'])
+            self.assertEqual(again['update']['talk_lifecycle'].count('push:9'),1)
+            self.assertEqual(again['shared_world']['initialized_systems'],32)
+            self.assertTrue(again['shared_world']['same_hero'])
+            self.assertEqual(again['shared_world']['gameplay_rng_draws'],0)
+            self.assertTrue(any(b[0]==4 for b in again['update']['building_progress']))
+
     def test_full_world_initializes_once_and_shared_intro_pauses_town(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);self.fixture(root)

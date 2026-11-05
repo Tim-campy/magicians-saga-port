@@ -252,7 +252,7 @@ class TownUpdateTests(unittest.TestCase):
             args=(*self.replay(root,text),'--physical-input','--camera-x','300')
             selected=self.state(root,160,*args)
             self.assertEqual(selected['areas_draw']['selected'],0)
-            self.assertEqual(selected['update']['widgets']['regions'][0][:2],[4,28])
+            self.assertIn([4,28],[r[:2] for r in selected['update']['widgets']['regions']])
             pushed=self.state(root,163,*args)['update']
             self.assertTrue(pushed['stage_menu']['pending']);self.assertFalse(pushed['stage_menu']['initialized'])
             opened=self.state(root,164,*args)['update']

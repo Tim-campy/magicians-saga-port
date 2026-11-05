@@ -124,7 +124,7 @@ void run_town_window(TownBackground& town,const TownWindowOptions& options){
                 else if(event.type==SDL_EVENT_WINDOW_FOCUS_LOST&&!context.input_replay){town.cancel_camera_pointer();town.cancel_widget_pointer();pending_x=pending_y=pending_wheel=0;}
                 else if(event.type==SDL_EVENT_KEY_DOWN&&!event.key.repeat){
                     if(event.key.key==SDLK_ESCAPE)running=false;
-                    else if(!context.input_replay&&event.key.key==SDLK_BACKSPACE)town.stage_back();
+                    else if(!context.input_replay&&event.key.key==SDLK_BACKSPACE)town.form_back();
                     else if(!context.input_replay&&(event.key.key==SDLK_RETURN||event.key.key==SDLK_SPACE))pulse=true;
                 }else if(!context.input_replay&&event.type==SDL_EVENT_MOUSE_BUTTON_DOWN&&event.button.button==SDL_BUTTON_LEFT){
                     const auto p=coordinates(event.button.x,event.button.y);town.widget_pointer(0,p[0],p[1]);

@@ -19,11 +19,24 @@ struct MissionEventScenario {
     std::optional<MissionFontScenario> font;
 };
 std::u16string decode_mission_text(std::string_view);
+class KingHallServices {
+public:
+    virtual ~KingHallServices()=default;
+    virtual core::NullablePresentationText king_voice()=0;
+    virtual void king_grant()=0;
+    virtual void king_sound()=0;
+    virtual void king_save_game()=0;
+    virtual void king_save_system()=0;
+};
 class MissionEvents final:private core::EventEffectsHost,private core::EventFlowHost,
-    private core::PresentationFormHost,private core::FormStackHost,private core::TextRevealClock,private core::TalkPageHost,private core::EventNoticeHost,private core::PopupContentsHost {
+    private core::PresentationFormHost,private core::FormStackHost,private core::TextRevealClock,private core::TalkPageHost,private core::EventNoticeHost,private core::PopupContentsHost,private core::KingHallHost {
 public:
     MissionEvents(ResourceArchive&,MissionEventScenario,std::function<void()> clear_input);
     bool execute(std::int32_t);
+    core::EventObject make_king_hall(KingHallServices&);
+    bool request_king_back();
+    core::EventObject execute_unit(const core::EventInstruction& row,const core::EventContext& context){return dispatch(row,context);}
+    void push_script_result(core::EventObject form){push_form(std::move(form));}
     core::FormText format_popup_value(std::string_view,std::int64_t);
     core::EventObject make_popup_contents(std::int32_t,core::FormText,core::FormText,bool);
     core::EventDelayQueue& delays(){return delays_;}
@@ -51,11 +64,17 @@ private:
         bool option=false;
         std::string title,text;
     };
+    struct KingHall {
+        core::KingHallState state;
+        KingHallServices* services=nullptr;
+        std::uint64_t news_updates=0;
+    };
     struct Talk {
         std::int32_t id=0,state=0,frame=0,finish_frame=-1;
         core::PreparedTalkForm prepared;
         std::optional<core::PreparedEventForm> event_notice;
         std::optional<PopupContents> popup;
+        std::optional<KingHall> king;
         std::int32_t event_page=0,event_frame=0;
         bool event_resource_ready=false;
         core::TextRevealState reveal{};
@@ -75,6 +94,7 @@ private:
     std::int64_t now_=0;
     std::int32_t total_frames_=0;
     bool pulse_=false,held_=false;
+    bool king_back_requested_=false,king_back_pulse_=false;
     std::vector<std::int32_t> executed_;
     std::vector<std::string> lifecycle_;
     std::function<void()> clear_input_;
@@ -97,6 +117,19 @@ private:
     void frame_resource()override{} // SAGA_STUB(event-notice-presentation): native common Seb.Frame has cosmetic effects only.
     void set_event(std::int32_t)override;
     bool cancel_pressed()override{return false;} // SAGA_STUB(event-notice-touch): Enter/pulse is bound; softlabel3 hit routing remains unbound.
+    core::NullablePresentationText king_hall_voice()override;
+    void king_hall_initialize_news(std::int32_t)override;
+    std::int32_t king_hall_easing(std::int32_t)override;
+    void execute_king_rewards()override;
+    bool king_hall_confirm_pulse()override{return pulse_;}
+    void king_hall_play_sound()override;
+    void king_hall_save_game()override;
+    void king_hall_save_system()override;
+    bool king_hall_soft_label(std::int32_t id)override{return id==3&&king_back_pulse_;}
+    void king_hall_push_notes()override;
+    void king_hall_push_tapjoy()override;
+    void king_hall_pop()override;
+    void king_hall_update_news()override;
     void draw_event_notice_semantics(Talk&);
     std::u16string translated_popup_literal(std::string_view);
     bool popup_close_pulse()override{return pulse_;} // Desktop Enter/replay pulse maps to native mask0x02000000 for type19.

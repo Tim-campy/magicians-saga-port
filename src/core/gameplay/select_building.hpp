@@ -15,6 +15,17 @@ using BuildingTable=std::vector<std::optional<BuildingDefinition>>;
 // BuildingData.Load 0x116cca8. Static table fields only; saved have/discovery are separate.
 BuildingDefinition& load_building_definition(BuildingDefinition&,std::optional<std::string_view>,const EventIntegerParser&);
 BuildingTable load_building_table(std::string_view,bool normalize_crlf,const EventIntegerParser&);
+struct BuildingNewGameState {
+    std::int32_t discovery_state=0;
+    bool is_new=false;
+    std::int32_t have=0;
+};
+// BuildingData.NewGame0x116c868: conditional virtual Find(true), then fresh base_have.
+// Native initial mask1: cctor0x116cf8c..0x116cfa0, pair at ELF0x626c98.
+// The application owner supplies the mask explicitly.
+void reset_building_for_new_game(BuildingNewGameState&,const BuildingDefinition&,std::int32_t find_mask,
+                                 const std::function<void(bool)>& find);
+void reset_building_for_new_game(BuildingNewGameState&,const BuildingDefinition&,std::int32_t find_mask);
 // BuildingData.IsDecoration 0x116c9f0; shared by catalogue consumers and drawing.
 inline bool building_is_decoration(std::int32_t type){return type==8||type==12;}
 struct KingRewardDefinition {
@@ -37,6 +48,20 @@ public:
 };
 // CheckExeKingEvent(false), 0x11169c4: no scripts, reward grants or state writes.
 bool king_reward_available(KingRewardAvailabilityHost&);
+class KingRewardExecutionHost:public KingRewardAvailabilityHost {
+public:
+    // Native args = decimal(crystal_level) + TAB + decimal(score_value).
+    // Locale/number formatting is an explicit host boundary.
+    virtual EventObject format_arguments(std::int32_t crystal_level,std::int32_t score_value)=0;
+    virtual EventObject execute_instruction(const EventInstruction&,const EventContext&)=0;
+    virtual void push_form(EventObject)=0;
+    virtual void add_crystals(std::int32_t)=0;
+    virtual void mark_received(KingRewardDefinition&)=0; // Recieved0x1171d6c: received=true.
+};
+// CheckExeKingEvent0x11169c4: false queries only; true runs all eligible rewards.
+// Unit dispatch, not matrix execution: terms/timing and Event counters are unused.
+// Exceptions retain earlier effects; received follows scripts and crystal credit.
+bool check_and_execute_king_rewards(bool execute,KingRewardExecutionHost&);
 using BuildingSlots=std::vector<std::shared_ptr<EventIntegers>>;
 struct BuildingMenuRecord {std::int32_t kind;};
 using BuildingMenuCatalog=std::vector<std::shared_ptr<BuildingMenuRecord>>;

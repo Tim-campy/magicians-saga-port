@@ -117,8 +117,12 @@ TownBackground::TownBackground(ResourceArchive& tables,const GameArchiveEntry& s
             return std::string(reinterpret_cast<const char*>(data->bytes.data()),data->bytes.size());};
         building_records_=load_building_table(text("Building.txt"),false,parse_event_decimal);
         building_views_.resize(building_records_.size());
+        building_progress_.resize(building_records_.size());
         for(std::size_t i=0;i<building_records_.size();++i)if(building_records_[i]){
             const auto& row=*building_records_[i];
+            building_progress_[i]=BuildingNewGameState{};
+            // BuildingData.cctor0x116cf8c..0x116cfa0: first static int32=1 (ELF0x626c98).
+            reset_building_for_new_game(*building_progress_[i],row,1);
             building_views_[i]=std::make_shared<TownBuildingView>(TownBuildingView{row.image,row.type,std::make_shared<const std::string>(row.name)});
         }
         auto rewards=load_king_reward_table(text("KingReward.txt"),false,parse_event_decimal);
@@ -393,8 +397,13 @@ void TownBackground::town_label(FormText text,std::int32_t x,std::int32_t y){
     labels_.push_back({std::move(text),x,y});
 }
 void TownBackground::town_touch(std::int32_t slot,bool selected,std::int32_t x,std::int32_t y){
-    // SAGA_STUB(town-building-touch): retain native requests; interactive hit registration is unbound.
     touches_.push_back({slot,selected?1:0,x,y});
+    if(!context_.physical_input)return;
+    if(context_.form_scale!=100)throw std::logic_error("building touch requires scale100");
+    auto region=select_building_touch_region(slot,selected,x,y,context_.width,context_.height);
+    if(region.control.group==10)for(auto& earlier:area_pointer_regions_)
+        if(earlier.control.group==10)partition_input_rectangles(earlier.bounds,region.bounds);
+    area_pointer_regions_.push_back(region);
 }
 void TownBackground::resident_touch(std::int32_t kind,std::int32_t x,std::int32_t y){
     resident_touches_.push_back({kind,x,y});

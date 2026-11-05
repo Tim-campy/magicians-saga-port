@@ -29,6 +29,9 @@ SelectAreaTouchRegion select_area_touch_region(std::int32_t index,bool selected,
 // DrawTownHuman gift: group4/value0x10019, 32x32 and Margin(10,10,10,10).
 SelectAreaTouchRegion select_resident_gift_touch_region(std::int32_t x,std::int32_t y,
     std::int32_t width,std::int32_t height);
+// SelectForm building list10 and selected GO4, scale100 and TouchOption flags9.
+SelectAreaTouchRegion select_building_touch_region(std::int32_t index,bool selected,
+    std::int32_t x,std::int32_t y,std::int32_t width,std::int32_t height);
 class SelectWidgetHost {
 public:
     virtual ~SelectWidgetHost()=default;

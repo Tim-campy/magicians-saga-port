@@ -1,4 +1,5 @@
 #include "core/gameplay/select_building.hpp"
+#include <array>
 #include <cstdlib>
 #include <iostream>
 #include <limits>
@@ -85,6 +86,28 @@ void king_catalog_contract(){
     fails([&]{load_king_reward_definition(record,"1\tBad\t0\t0\t0\t1\t-1\t0",parser);});
     fails([&]{load_king_reward_table("-1\tBad\t0\t0\t0\t0\t0",false,parser);});
 }
+void building_new_game_contract(){
+    BuildingNewGameState state;check(state.discovery_state==0&&!state.is_new&&state.have==0);
+    BuildingDefinition record;record.flags=4;record.base_have=-17;
+    state={7,true,9};reset_building_for_new_game(state,record,2);
+    check(state.discovery_state==7&&state.is_new&&state.have==-17);
+    state={2,false,9};reset_building_for_new_game(state,record,4);
+    check(state.discovery_state==1&&state.is_new&&state.have==-17);
+    state={0,false,9};record.flags=1;reset_building_for_new_game(state,record,1);
+    check(state.discovery_state==1&&state.is_new&&state.have==-17);
+    record.flags=std::numeric_limits<std::int32_t>::min();record.base_have=1;int finds=0;
+    reset_building_for_new_game(state,record,std::numeric_limits<std::int32_t>::min(),[&](bool fresh){
+        check(fresh&&state.have==-17);++finds;record.base_have=std::numeric_limits<std::int32_t>::min();record.flags=0;
+    });
+    check(finds==1&&state.have==std::numeric_limits<std::int32_t>::min());
+    record.flags=4;record.base_have=23;state={7,false,9};
+    fails([&]{reset_building_for_new_game(state,record,4,[&](bool fresh){
+        check(fresh);state.discovery_state=3;state.is_new=true;record.base_have=42;throw std::runtime_error("Find failure");
+    });});
+    check(state.discovery_state==3&&state.is_new&&state.have==9);
+    finds=0;reset_building_for_new_game(state,record,0,[&](bool){++finds;});
+    check(finds==0&&state.discovery_state==3&&state.is_new&&state.have==42);
+}
 struct RewardHost:KingRewardAvailabilityHost {
     std::int64_t score=0;int score_reads=0,reads=0;
     std::shared_ptr<KingRewardRows> data=std::make_shared<KingRewardRows>();
@@ -116,9 +139,106 @@ void king_availability_contract(){
     {RewardHost h;h.add(-10);h.on_read=[&](int n){if(n==3)h.data->at(0).reset();};
         fails([&]{king_reward_available(h);});check(h.reads==3&&h.score_reads==1);}
 }
+struct ExecutionHost:KingRewardExecutionHost {
+    RewardHost source;
+    char failure=0;
+    EventObject child=std::make_shared<int>(1);
+    std::vector<std::array<std::int32_t,2>> formats;
+    std::vector<EventInstruction> instructions;
+    std::vector<EventContext> contexts;
+    std::vector<EventObject> pushed;
+    std::vector<std::int32_t> credits;
+    std::vector<KingRewardDefinition*> marked;
+    std::function<void()> on_format,on_execute,on_credit;
+    std::int64_t high_score()override{return source.high_score();}
+    std::shared_ptr<KingRewardRows> rewards()override{return source.rewards();}
+    void call(char value){source.log.push_back(value);if(value==failure)throw std::runtime_error("synthetic king service failure");}
+    EventObject format_arguments(std::int32_t crystal,std::int32_t score)override{
+        call('F');formats.push_back({crystal,score});
+        const auto args=std::make_shared<EventIntegers>(EventIntegers{crystal,score});if(on_format)on_format();return args;
+    }
+    EventObject execute_instruction(const EventInstruction& row,const EventContext& context)override{
+        call('X');instructions.push_back(row);contexts.push_back(context);if(on_execute)on_execute();return row?child:EventObject{};
+    }
+    void push_form(EventObject value)override{call('P');pushed.push_back(std::move(value));}
+    void add_crystals(std::int32_t value)override{call('C');credits.push_back(value);if(on_credit)on_credit();}
+    void mark_received(KingRewardDefinition& row)override{call('M');marked.push_back(&row);row.received=true;}
+    std::shared_ptr<KingRewardDefinition> add(std::int32_t threshold,std::int32_t crystals,EventScript script){
+        const auto row=source.add(threshold);row->crystal_level=crystals;row->execs=std::move(script);return row;
+    }
+    std::string log()const{return {source.log.begin(),source.log.end()};}
+};
+EventScript king_script(std::initializer_list<EventInstruction> rows){return std::make_shared<std::vector<EventInstruction>>(rows);}
+void king_execution_contract(){
+    const auto first=std::make_shared<EventIntegers>(EventIntegers{8,0});
+    const auto second=std::make_shared<EventIntegers>(EventIntegers{12,1});
+    const std::string complete="SRRRRRRRFXPRRCRMR";
+    {ExecutionHost h;const auto row=h.add(0,3,nullptr);h.failure='F';
+        check(check_and_execute_king_rewards(false,h)&&h.log()=="SRRR"&&!row->received&&h.credits.empty());}
+    {ExecutionHost h;const auto row=h.add(0,3,king_script({first}));
+        check(check_and_execute_king_rewards(true,h)&&h.log()==complete&&row->received&&h.credits==std::vector<std::int32_t>({3}));
+        check(h.formats==std::vector<std::array<std::int32_t,2>>({{3,0}})&&h.instructions==std::vector<EventInstruction>({first}));
+        check(h.pushed==std::vector<EventObject>({h.child})&&h.contexts.size()==1&&!h.contexts[0].argi&&
+              *std::static_pointer_cast<EventIntegers>(h.contexts[0].args)==EventIntegers({3,0}));
+        check(h.source.score_reads==1&&h.source.reads==11);}
+    {ExecutionHost h;h.source.score=0x10000000aLL;
+        const auto taken=h.add(-100,99,nullptr);taken->received=true;
+        const auto a=h.add(0,-3,king_script({first})),b=h.add(10,7,king_script({second}));
+        const auto later=h.add(11,100,nullptr);a->terms=nullptr;a->timing=std::numeric_limits<std::int32_t>::min();
+        h.on_execute=[&]{h.source.score=9999;};
+        check(check_and_execute_king_rewards(true,h)&&a->received&&b->received&&!later->received&&taken->received);
+        check(h.credits==std::vector<std::int32_t>({-3,7})&&h.instructions==std::vector<EventInstruction>({first,second})&&
+              h.pushed==std::vector<EventObject>({h.child,h.child})&&h.source.score_reads==1);}
+    {ExecutionHost h;h.source.score=0x80000000LL;const auto row=h.add(0,3,nullptr);
+        check(!check_and_execute_king_rewards(true,h)&&!row->received&&h.credits.empty());}
+    {ExecutionHost h;const auto row=h.add(0,0,king_script({}));
+        check(check_and_execute_king_rewards(true,h)&&row->received&&h.credits==std::vector<std::int32_t>({0})&&h.formats.empty());}
+    {ExecutionHost h;const auto row=h.add(0,2,king_script({nullptr}));
+        check(check_and_execute_king_rewards(true,h)&&row->received&&h.instructions.size()==1&&!h.instructions[0]&&h.pushed.empty());}
+    for(const auto failure:{'F','X','P','C','M'}){
+        ExecutionHost h;const auto row=h.add(0,3,king_script({first}));h.failure=failure;
+        fails([&]{check_and_execute_king_rewards(true,h);});
+        check(h.log()==complete.substr(0,complete.find(failure)+1)&&!row->received&&h.marked.empty());
+        check(h.credits.size()==(failure=='M'?1U:0U));
+    }
+    {ExecutionHost h;h.source.data.reset();fails([&]{check_and_execute_king_rewards(true,h);});check(h.log()=="SR");}
+    {ExecutionHost h;h.source.data->push_back(nullptr);fails([&]{check_and_execute_king_rewards(true,h);});check(h.log()=="SRR");}
+    {ExecutionHost h;const auto row=h.add(0,3,nullptr);fails([&]{check_and_execute_king_rewards(true,h);});check(h.log()=="SRRRR"&&!row->received);}
+    {ExecutionHost h;h.add(0,3,king_script({}));h.source.on_read=[&](int n){if(n==5)h.source.data->at(0).reset();};
+        fails([&]{check_and_execute_king_rewards(true,h);});check(h.log()=="SRRRRR"&&h.credits.empty());}
+    {ExecutionHost h;const auto row=h.add(0,3,king_script({first}));
+        h.source.on_read=[&](int n){if(n==5)row->execs=king_script({});};
+        fails([&]{check_and_execute_king_rewards(true,h);});check(h.log()=="SRRRRR"&&h.formats.empty()&&!row->received);}
+    {ExecutionHost h;const auto original=h.add(0,3,king_script({first}));
+        auto replacement=std::make_shared<KingRewardDefinition>();replacement->crystal_level=11;replacement->execs=king_script({});
+        h.on_format=[&]{h.source.data=std::make_shared<KingRewardRows>(KingRewardRows{replacement});};
+        check(check_and_execute_king_rewards(true,h)&&h.instructions==std::vector<EventInstruction>({first})&&!original->received&&replacement->received);
+        check(h.formats==std::vector<std::array<std::int32_t,2>>({{3,0}})&&h.credits==std::vector<std::int32_t>({11})&&h.marked[0]==replacement.get());}
+    {ExecutionHost h;const auto original=h.add(0,3,king_script({first}));
+        auto crystal=std::make_shared<KingRewardDefinition>();crystal->crystal_level=5;
+        auto score=std::make_shared<KingRewardDefinition>();score->crystal_level=9;score->score_value=7;score->execs=king_script({});
+        h.source.on_read=[&](int n){if(n==6)h.source.data=std::make_shared<KingRewardRows>(KingRewardRows{crystal});
+                                   if(n==7)h.source.data=std::make_shared<KingRewardRows>(KingRewardRows{score});};
+        check(check_and_execute_king_rewards(true,h)&&h.instructions[0]==first&&!original->received&&score->received);
+        check(h.formats==std::vector<std::array<std::int32_t,2>>({{5,7}})&&h.credits==std::vector<std::int32_t>({9}));}
+    {ExecutionHost h;const auto a=h.add(0,3,king_script({first}));
+        auto b=std::make_shared<KingRewardDefinition>();b->crystal_level=4;b->execs=king_script({});
+        h.on_execute=[&]{if(h.instructions.size()==1){a->execs=king_script({first,second});h.source.data=std::make_shared<KingRewardRows>(KingRewardRows{a,b});}};
+        check(check_and_execute_king_rewards(true,h)&&a->received&&b->received&&h.instructions==std::vector<EventInstruction>({first,second})&&
+              h.credits==std::vector<std::int32_t>({3,4}));}
+    {ExecutionHost h;const auto original=h.add(0,3,king_script({}));
+        auto replacement=std::make_shared<KingRewardDefinition>();replacement->crystal_level=9;replacement->execs=king_script({});
+        h.on_credit=[&]{h.source.data=std::make_shared<KingRewardRows>(KingRewardRows{replacement});};
+        check(check_and_execute_king_rewards(true,h)&&h.credits==std::vector<std::int32_t>({3})&&!original->received&&replacement->received);}
+    {ExecutionHost h;const auto row=h.add(0,3,king_script({first}));
+        h.source.on_read=[&](int n){if(n==10)h.source.data->at(0).reset();};
+        fails([&]{check_and_execute_king_rewards(true,h);});check(h.credits==std::vector<std::int32_t>({3})&&!row->received&&h.marked.empty());}
+    {ExecutionHost h;const auto a=h.add(0,3,king_script({})),b=h.add(0,4,nullptr);
+        fails([&]{check_and_execute_king_rewards(true,h);});check(a->received&&!b->received&&h.credits==std::vector<std::int32_t>({3}));}
+}
 int main() {
     catalog_contract();
-    king_catalog_contract();king_availability_contract();
+    building_new_game_contract();king_catalog_contract();king_availability_contract();king_execution_contract();
     for(auto kind:{1,2,3,4,5,9,10})check(building_is_shop(kind));
     for(auto kind:{-1,0,6,7,8,11,12,std::numeric_limits<int>::max()})check(!building_is_shop(kind));
     {Host h;h.button=false;check(!h.run() && h.log==std::vector<int>({1}));}

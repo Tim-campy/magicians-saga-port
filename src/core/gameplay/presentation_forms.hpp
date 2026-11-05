@@ -96,6 +96,37 @@ bool update_popup_production(PopupProductionState&,PopupContentsHost&);
 // SubForm._update type19, after the enclosing Update guards. False for entry
 // step1/2, true otherwise; this return is not a request to remove the form.
 bool update_popup_contents(std::int32_t& animation_frame,PopupProductionState&,PopupContentsHost&);
+struct KingHallState {
+    std::int32_t production_step=0;
+    std::int32_t frame=0;
+    std::int32_t movement_frame=0;
+    std::int32_t entrance_x=0;
+    std::int32_t selection=0;
+    NullablePresentationText speech;
+};
+class KingHallHost {
+public:
+    virtual ~KingHallHost()=default;
+    // Data.voiceData.FirstOrDefault(type==2), required, then GetRandomText.
+    virtual NullablePresentationText king_hall_voice()=0;
+    virtual void king_hall_initialize_news(std::int32_t interval)=0;
+    virtual std::int32_t king_hall_easing(std::int32_t frame)=0; // Graph.Easing(-40,80,40,frame,0).
+    virtual void execute_king_rewards()=0; // AppData.CheckExeKingEvent(true).
+    virtual bool king_hall_confirm_pulse()=0; // Canvas pulse0x100000.
+    virtual void king_hall_play_sound()=0;
+    virtual void king_hall_save_game()=0; // SaveRecorder.SaveGame(0,true).
+    virtual void king_hall_save_system()=0;
+    virtual bool king_hall_soft_label(std::int32_t)=0;
+    virtual void king_hall_push_notes()=0; // Fresh SubForm(5), FormBase.Push.
+    virtual void king_hall_push_tapjoy()=0; // MakeTapJoy(0), FormBase.Push.
+    virtual void king_hall_pop()=0;
+    virtual void king_hall_update_news()=0;
+};
+// SubForm.Init type15 block only, after common Init has reset frame to0.
+// The other counters/selection survive reinitialization; fresh allocation supplies0.
+void initialize_king_hall(KingHallState&,KingHallHost&);
+// SubForm._update type15 after the enclosing Update guards; returns true.
+bool update_king_hall(KingHallState&,KingHallHost&);
 class PresentationFormHost : public PresentationTextHost {
 public:
     // Boundary for JInteger.ParseInt/System.Int32.Parse. No guessed culture or
