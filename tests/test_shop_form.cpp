@@ -37,6 +37,22 @@ struct Host final:ShopFormHost {
     std::vector<MagicShopBuyRequest> notices;
     std::shared_ptr<EquipmentCombatTable> equipment=std::make_shared<EquipmentCombatTable>();
     std::vector<std::int32_t> equipment_stocks;
+    std::array<std::shared_ptr<EquipmentCombatTable>,2> apparel{{std::make_shared<EquipmentCombatTable>(),std::make_shared<EquipmentCombatTable>()}};
+    std::array<std::vector<std::int32_t>,2> apparel_stocks,apparel_reads;
+    std::vector<std::string> kind_queries;
+    std::shared_ptr<EquipmentCombatTable>& catalog_for(std::int32_t kind){
+        if(kind==2)return equipment;
+        if(kind==3||kind==4)return apparel.at(static_cast<std::size_t>(kind-3));
+        throw std::invalid_argument("unbound test catalog kind");
+    }
+    std::vector<std::int32_t>& stocks_for(std::int32_t kind){
+        if(kind==2)return equipment_stocks;
+        return apparel_stocks.at(static_cast<std::size_t>(kind-3));
+    }
+    std::vector<std::int32_t>& reads_for(std::int32_t kind){
+        if(kind==2)return equipment_reads;
+        return apparel_reads.at(static_cast<std::size_t>(kind-3));
+    }
     std::vector<std::array<std::int32_t,3>> equipment_notices;
     std::vector<std::int32_t> equipment_reads;
     std::int32_t equipment_count_override=-1,equipment_null_id=-1,equipment_null_read=-1,tier=2;
@@ -53,26 +69,33 @@ struct Host final:ShopFormHost {
     void shop_flag_system(std::int32_t value)override{note("flag:"+std::to_string(value));}
     std::int32_t shop_catalog_count()override{note("count");return count_override==-1?static_cast<std::int32_t>(records.size()):count_override;}
     bool shop_catalog_is_found(std::int32_t value)override{note("found:"+std::to_string(value));(void)records.at(static_cast<std::size_t>(value)).value();return found.at(static_cast<std::size_t>(value));}
-    std::int32_t shop_equipment_catalog_count()override{
-        note("equipment-count");return equipment_count_override==-1?static_cast<std::int32_t>(equipment->size()):equipment_count_override;
+    std::int32_t shop_equipment_catalog_count(std::int32_t kind)override{
+        kind_queries.push_back("count:"+std::to_string(kind));note("equipment-count");
+        return equipment_count_override==-1?static_cast<std::int32_t>(catalog_for(kind)->size()):equipment_count_override;
     }
-    std::shared_ptr<const EquipmentCombatTable> shop_equipment_catalog()override{
-        note("equipment-catalog");return null_equipment_source?nullptr:equipment;
+    std::shared_ptr<const EquipmentCombatTable> shop_equipment_catalog(std::int32_t kind)override{
+        kind_queries.push_back("catalog:"+std::to_string(kind));note("equipment-catalog");
+        return null_equipment_source?nullptr:catalog_for(kind);
     }
-    bool shop_equipment_owned(const EquipmentCombatRecord& record)override{
-        note("owned:"+std::to_string(record.id));return equipment_stocks.at(static_cast<std::size_t>(record.id))>0;
+    bool shop_equipment_owned(std::int32_t kind,const EquipmentCombatRecord& record)override{
+        kind_queries.push_back("owned:"+std::to_string(kind)+":"+std::to_string(record.id));
+        note("owned:"+std::to_string(record.id));return stocks_for(kind).at(static_cast<std::size_t>(record.id))>0;
     }
-    const EquipmentCombatRecord* shop_equipment_record(std::int32_t id)override{
-        note("equipment-record:"+std::to_string(id));
-        auto& reads=equipment_reads.at(static_cast<std::size_t>(id));++reads;
+    const EquipmentCombatRecord* shop_equipment_record(std::int32_t kind,std::int32_t id)override{
+        kind_queries.push_back("record:"+std::to_string(kind)+":"+std::to_string(id));note("equipment-record:"+std::to_string(id));
+        auto& reads=reads_for(kind).at(static_cast<std::size_t>(id));++reads;
         if(id==equipment_null_id&&reads==equipment_null_read)return nullptr;
-        auto& row=equipment->at(static_cast<std::size_t>(id));return row?&*row:nullptr;
+        auto& row=catalog_for(kind)->at(static_cast<std::size_t>(id));return row?&*row:nullptr;
     }
-    std::int32_t shop_unlock_value(std::int32_t kind)override{note("unlock:"+std::to_string(kind));return tier;}
-    void shop_add_equipment_stock(std::int32_t id,std::int32_t amount)override{
-        note("stock:"+std::to_string(id));auto& stock=equipment_stocks.at(static_cast<std::size_t>(id));stock=std::min(stock+amount,1);
+    std::int32_t shop_unlock_value(std::int32_t kind)override{
+        kind_queries.push_back("unlock:"+std::to_string(kind));note("unlock:"+std::to_string(kind));return tier;
+    }
+    void shop_add_equipment_stock(std::int32_t kind,std::int32_t id,std::int32_t amount)override{
+        kind_queries.push_back("stock:"+std::to_string(kind)+":"+std::to_string(id));
+        note("stock:"+std::to_string(id));auto& stock=stocks_for(kind).at(static_cast<std::size_t>(id));stock=std::min(stock+amount,1);
     }
     EventObject shop_make_equipment_confirmation(std::int32_t kind,std::int32_t id,std::int32_t option)override{
+        kind_queries.push_back("notice:"+std::to_string(kind)+":"+std::to_string(id));
         note("make-equipment:"+std::to_string(kind)+":"+std::to_string(id)+":"+std::to_string(option));
         equipment_notices.push_back({kind,id,option});return child;
     }
@@ -355,6 +378,87 @@ void equipment_purchase_failure_and_refusal(){
     check(fresh.money==960&&fresh.equipment_stocks[1]==0&&missing.entries==entries&&!fresh.has("stock:1"),"third record failure retains payment before stock");
 }
 
+void apparel_fixture(ShopFormState& state,Host& host,std::int32_t kind){
+    equipment_fixture(state,host);state.kind=kind;
+    for(const auto category:{3,4}){
+        host.catalog_for(category)->resize(5);host.stocks_for(category).assign(5,0);host.reads_for(category).assign(5,0);
+    }
+    const auto put=[&](std::int32_t category,std::int32_t id,std::int32_t unlock,std::int32_t price,std::int32_t flags){
+        EquipmentCombatRecord item;item.id=id;item.unlock_level=unlock;item.buy_price=price;item.flags=flags;
+        host.catalog_for(category)->at(static_cast<std::size_t>(id))=item;
+    };
+    put(3,0,0,5,0x10);put(3,1,2,7,0x4);put(3,2,1,20,0x4);put(3,4,2,30,0x4);
+    put(4,0,0,9,0x10);put(4,1,2,12,0x4);put(4,2,1,10,0x4);put(4,4,2,3,0x4);
+    host.stocks_for(3)[4]=1;host.stocks_for(4)[2]=1;
+}
+void apparel_reset_and_same_id_routing(){
+    for(const auto kind:{3,4}){
+        ShopFormState state;Host host;apparel_fixture(state,host,kind);host.money=10;host.tier=1;
+        reset_shop_form(state,host);
+        const auto expected=kind==3?std::vector<std::int32_t>{2,1}:std::vector<std::int32_t>{1,4};
+        check(*state.entries==expected,"apparel uses mask4, signed tier order and its own owned state");
+        check(!host.has("owned:0"),"apparel does not admit equipment-mask16 rows");
+        check(host.has("unlock:"+std::to_string(kind)),"apparel filter asks the current shop category tier");
+        check(host.has(kind==3?"check:7":"check:12"),"locked apparel still queries money");
+        check((kind==3&&state.filters->at(2)==1&&state.filters->at(1)==0)
+            ||(kind==4&&state.filters->at(1)==0&&state.filters->at(4)==0),"apparel filters combine unlock and affordability");
+        check(!host.kind_queries.empty()&&host.kind_queries[0]=="count:"+std::to_string(kind)
+            &&host.kind_queries[1]=="catalog:"+std::to_string(kind),"apparel allocation/source callbacks route the selected category");
+        check(std::none_of(host.kind_queries.begin(),host.kind_queries.end(),[](const auto& item){return item=="catalog:2"||item=="count:2";}),"apparel does not borrow equipment catalog by matching IDs");
+    }
+    ShopFormState hat;Host host;apparel_fixture(hat,host,3);host.stocks_for(3)[4]=0;
+    reset_shop_form(hat,host);check(*hat.entries==std::vector<std::int32_t>({2,1,4}),"equal apparel tiers preserve source order");
+    hat.state=1;hat.crossfade=-1;hat.selection=1;host.money=37;host.pulses={0x02000000U};host.kind_queries.clear();
+    bool buy=false;host.on_call=[&](const std::string& name){
+        if(name=="pulse:33554432")buy=true;
+        if(buy&&name=="check:7")host.catalog_for(3)->at(1)->buy_price=9;
+    };
+    update_shop_form(hat,host);
+    check(host.money==28&&host.stocks_for(3)[1]==1&&host.stocks_for(4)[1]==0&&host.equipment_stocks[1]==0,"hat purchase rechecks Hat price and changes Hat stock only");
+    check(hat.selection==-1&&host.equipment_notices==std::vector<std::array<std::int32_t,3>>({{3,1,0}}),"hat purchase makes kind3 notice and clears selection");
+    check(!host.has("total:3")&&host.notices.empty(),"apparel purchase does not query or upgrade hero parameters");
+}
+void cloth_check_and_cross_catalog_debit(){
+    ShopFormState state;Host host;apparel_fixture(state,host,4);host.money=37;host.tier=5;
+    host.catalog_for(3)->at(1)->buy_price=50;reset_shop_form(state,host);
+    state.state=1;state.crossfade=-1;state.selection=0;host.pulses={0x02000000U};host.log.clear();host.kind_queries.clear();
+    host.on_call=[&](const std::string& name){if(name=="pulse:33554432")host.kind_queries.clear();};
+    update_shop_form(state,host);
+    check(host.money==0&&host.stocks_for(4)[1]==1&&host.stocks_for(3)[1]==0&&host.equipment_stocks[1]==0,"Cloth checks12 but debits Hat50, floors37 to0, and adds only Cloth stock");
+    check(host.has("check:12")&&!host.has("check:50")&&host.has("subtract:50"),"Hat debit is not substituted into the earlier affordability check");
+    const std::vector<std::string> prefix{"record:4:1","record:3:1","record:4:1","stock:4:1","notice:4:1","count:4"};
+    check(host.kind_queries.size()>=prefix.size()&&std::equal(prefix.begin(),prefix.end(),host.kind_queries.begin()),"Cloth purchase queries preserve cross-catalog native order");
+    check(state.selection==-1&&*state.entries==std::vector<std::int32_t>({4}),"Cloth Reset removes newly owned item without changing Hat ownership");
+    check(host.equipment_notices==std::vector<std::array<std::int32_t,3>>({{4,1,0}})&&host.notices.empty(),"Cloth receives its own purchase notice rather than magic effects");
+}
+void cloth_failure_prefix_and_dispatch_capture(){
+    ShopFormState missing;Host host;apparel_fixture(missing,host,4);host.money=37;host.tier=5;
+    host.catalog_for(3)->at(1).reset();reset_shop_form(missing,host);
+    missing.state=1;missing.crossfade=-1;missing.selection=0;host.pulses={0x02000000U};auto entries=missing.entries;
+    host.on_call=[&](const std::string& name){if(name=="pulse:33554432")host.kind_queries.clear();};
+    fails([&]{update_shop_form(missing,host);},"Cloth buy requires same-ID Hat record for debit");
+    check(host.money==37&&host.stocks_for(4)[1]==0&&missing.entries==entries&&missing.selection==0,"missing Hat fails after Cloth check before debit/stock/Reset");
+    check(host.kind_queries==std::vector<std::string>({"record:4:1","record:3:1"})&&!host.has("subtract:12")&&!host.has("stock:1"),"missing Hat failure retains exact provider prefix");
+
+    ShopFormState refused;Host poor;apparel_fixture(refused,poor,4);poor.money=5;poor.catalog_for(3)->at(1).reset();reset_shop_form(refused,poor);
+    refused.state=1;refused.crossfade=-1;refused.selection=0;poor.pulses={0x02000000U};poor.kind_queries.clear();
+    update_shop_form(refused,poor);
+    check(poor.money==5&&poor.stocks_for(4)[1]==0&&refused.selection==-1&&poor.equipment_notices.empty(),"refused Cloth purchase clears selection without touching Hat debit source");
+    check(std::none_of(poor.kind_queries.begin(),poor.kind_queries.end(),[](const auto& value){return value=="record:3:1";}),"failed Cloth check never resolves missing Hat record");
+
+    ShopFormState captured;Host live;apparel_fixture(captured,live,4);live.money=37;live.tier=5;
+    live.catalog_for(3)->at(1)->buy_price=50;reset_shop_form(captured,live);
+    captured.state=1;captured.crossfade=-1;captured.selection=0;live.pulses={0x02000000U};bool buy=false;
+    live.on_call=[&](const std::string& name){
+        if(name=="pulse:33554432")buy=true;
+        if(name=="check:12"&&buy)captured.kind=3;
+    };
+    update_shop_form(captured,live);
+    check(live.money==0&&live.stocks_for(4)[1]==1&&live.stocks_for(3)[1]==0,"purchase dispatch kind survives affordability callback changes");
+    check(live.equipment_notices==std::vector<std::array<std::int32_t,3>>({{3,1,0}}),"purchase factory rereads the live kind after stock");
+    check(captured.kind==3&&captured.selection==-1&&*captured.entries==std::vector<std::int32_t>({2,1}),"plain Reset observes the changed live category");
+}
+
 void unsupported_and_widths(){
     ShopFormState state;Host host;state.kind=6;
     fails([&]{initialize_shop_form(state,host);},"other shop kind cannot invent a catalog");check(host.log.empty(),"unbound kind fails before callbacks");
@@ -370,4 +474,5 @@ int main(){
     reset_and_initialize();reset_failure_prefixes();opening_and_counters();purchase_order_and_live_values();
     purchase_failure_and_refusal();returned_children_paging_and_special_input();unsupported_and_widths();
     equipment_reset_and_filter();equipment_reset_failure_prefixes();equipment_purchase_order();equipment_purchase_failure_and_refusal();
+    apparel_reset_and_same_id_routing();cloth_check_and_cross_catalog_debit();cloth_failure_prefix_and_dispatch_capture();
 }

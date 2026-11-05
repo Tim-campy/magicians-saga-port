@@ -423,7 +423,9 @@ void MissionEvents::write_report(std::ostream& out)const{
     if(const auto* state=active_shop()){
         out<<(state->kind==1?",\"magic_shop\":{\"state\":":",\"equipment_shop\":{\"state\":")<<state->state<<",\"selected\":"<<state->selection<<",\"page\":"<<state->page
            <<",\"page_count\":"<<state->page_count<<",\"frame\":"<<state->frame<<",\"crossfade\":"<<state->crossfade<<",\"witch_x\":"<<state->witch_x<<",\"entries\":[";
-        if(state->entries)for(std::size_t i=0;i<state->entries->size();++i){if(i)out<<',';out<<state->entries->at(i);}out<<"]}";
+        if(state->entries)for(std::size_t i=0;i<state->entries->size();++i){if(i)out<<',';out<<state->entries->at(i);}out<<']';
+        if(state->kind!=1)out<<",\"kind\":"<<state->kind;
+        out<<'}';
     }
     if(pending()&&forms_.back()->magic_notice){const auto& n=*forms_.back()->magic_notice;
         if(forms_.back()->prepared.initial.type==13)out<<",\"equipment_purchase\":{\"kind\":"<<n.request.kind<<",\"item\":"<<n.item<<",\"option\":"<<n.option;

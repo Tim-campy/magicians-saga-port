@@ -2132,10 +2132,10 @@ game:0x0600087e,game:0x0600087e,unassigned,,92,0x1212028
 game:0x0600087f,game:0x0600087f,unassigned,,8,0x1212084
 game:0x06000880,<>c.<Reset>b__55_0,unassigned,reimplemented,12,0x121208c
 game:0x06000881,<>c.<Reset>b__55_1,unassigned,reimplemented,24,0x1212098
-game:0x06000882,game:0x06000882,unassigned,,12,0x12120b0
-game:0x06000883,game:0x06000883,unassigned,,24,0x12120bc
-game:0x06000884,game:0x06000884,unassigned,,12,0x12120d4
-game:0x06000885,game:0x06000885,unassigned,,24,0x12120e0
+game:0x06000882,<>c.<Reset>b__55_2,unassigned,reimplemented,12,0x12120b0
+game:0x06000883,<>c.<Reset>b__55_3,unassigned,reimplemented,24,0x12120bc
+game:0x06000884,<>c.<Reset>b__55_4,unassigned,reimplemented,12,0x12120d4
+game:0x06000885,<>c.<Reset>b__55_5,unassigned,reimplemented,24,0x12120e0
 game:0x06000886,game:0x06000886,unassigned,,12,0x12120f8
 game:0x06000887,game:0x06000887,unassigned,,24,0x1212104
 game:0x06000888,game:0x06000888,unassigned,,8,0x120b764
@@ -4049,7 +4049,7 @@ game:0x060010a2,game:0x060010a2,data,,296,0x116df80
 game:0x060010a3,game:0x060010a3,data,,472,0x116e0a8
 game:0x060010a4,data.CharaData..cctor,data,traced,432,0x116e280
 game:0x060010a5,game:0x060010a5,data,,8,0x116e430
-game:0x060010a6,game:0x060010a6,data,,16,0x116e438
+game:0x060010a6,data.ClothData.get_isHave,data,reimplemented,16,0x116e438
 game:0x060010a7,game:0x060010a7,data,,8,0x116e448
 game:0x060010a8,game:0x060010a8,data,,8,0x116e450
 game:0x060010a9,data.ClothData.NewGame,data,reimplemented,60,0x116e458
@@ -4249,7 +4249,7 @@ game:0x0600116f,game:0x0600116f,data,,8,0x1171724
 game:0x06001170,game:0x06001170,data,,8,0x117172c
 game:0x06001171,data.HatData.Load,data,documented,312,0x1171734
 game:0x06001172,game:0x06001172,data,,8,0x117186c
-game:0x06001173,game:0x06001173,data,,16,0x1171874
+game:0x06001173,data.HatData.get_isHave,data,reimplemented,16,0x1171874
 game:0x06001174,game:0x06001174,data,,8,0x1171884
 game:0x06001175,game:0x06001175,data,,8,0x117188c
 game:0x06001176,data.HatData.NewGame,data,reimplemented,60,0x1171894

@@ -217,7 +217,9 @@ int main(int argc,char** argv){
     check(hats[1]->flags==6&&hats[1]->parameters->at(12)->at(0)==100);
     check(hats[1]->image==8&&hats[1]->resource=="Res");
     check(hats[1]->initial_level==11);
-    check(hats[1]->unlock_level==0&&hats[1]->buy_price==0&&hats[1]->explanation=="D");
+    check(hats[1]->unlock_level==7&&hats[1]->buy_price==10&&hats[1]->explanation=="D");
+    const auto signed_clothing=load_equipment_combat_table("1\tCloth\t-2147483648\tRes\t8\t99\t2147483647\t11\t12\t"+endpoints()+"\tD\t4",EquipmentTableKind::cloth_or_hat,false,parse_event_decimal);
+    check(signed_clothing[1]->unlock_level==std::numeric_limits<std::int32_t>::min()&&signed_clothing[1]->buy_price==std::numeric_limits<std::int32_t>::max());
     for(const auto flags:{0,1,2,3,-1}){
         EquipmentCombatRecord r;r.flags=flags;r.initial_level=-7;
         EquipmentNewGameState state{99,{4,true,88}};reset_equipment_for_new_game(state,r);

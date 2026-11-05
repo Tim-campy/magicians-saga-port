@@ -26,7 +26,7 @@ template<class T>T& required(const std::shared_ptr<T>& value){
     return *value;
 }
 void require_kind(const ShopFormState& state){
-    if(state.kind!=1&&state.kind!=2)throw std::invalid_argument("only ShopForm kinds1/2 are bound");
+    if(state.kind<1||state.kind>4)throw std::invalid_argument("only ShopForm kinds1..4 are bound");
 }
 std::int32_t entry_count(const ShopFormState& state){
     const auto size=required(state.entries).size();
@@ -41,8 +41,9 @@ void check_filter(const ShopFormState& state,ShopFormHost& host){
         const auto id=required(state.entries).at(static_cast<std::size_t>(item));
         // kind1 fails the unsigned(type-2)<=7 dispatch gate after reading the first item.
         if(state.kind==1)return;
-        const auto unlock=required(host.shop_equipment_record(id)).unlock_level;
-        const auto price=required(host.shop_equipment_record(id)).buy_price;
+        const auto catalog_kind=state.kind;
+        const auto unlock=required(host.shop_equipment_record(catalog_kind,id)).unlock_level;
+        const auto price=required(host.shop_equipment_record(catalog_kind,id)).buy_price;
         const auto kind=state.kind;
         const auto tier=host.shop_unlock_value(kind);
         const auto filters=state.filters;
@@ -62,7 +63,7 @@ void reset_preserving_selection(ShopFormState& state,ShopFormHost& host){
     state.selection=selected;
 }
 void update_main(ShopFormState& state,ShopFormHost& host){
-    // Selected ShopForm._update0x120ba1c kinds1/2, thread0 path.
+    // Selected ShopForm._update0x120ba1c kinds1..4, thread0 path.
     if(state.thread_state!=0)throw std::invalid_argument("shop billing thread path is unbound");
     host.shop_find_building(state.kind);
     if(const auto result=host.shop_take_returned_child_result()){
@@ -79,7 +80,8 @@ void update_main(ShopFormState& state,ShopFormHost& host){
     }
     if(host.shop_key_pulse(0x02000000U)){
         const auto index=required(state.entries).at(static_cast<std::size_t>(state.selection));
-        if(state.kind==1){
+        const auto dispatch_kind=state.kind;
+        if(dispatch_kind==1){
             const auto price=host.shop_price(required(host.shop_record(index)));
             if(host.shop_check_money(static_cast<std::int64_t>(price))){
                 const auto payment=host.shop_price(required(host.shop_record(index)));
@@ -98,14 +100,15 @@ void update_main(ShopFormState& state,ShopFormHost& host){
             // Only kinds1/9 preserve selection after a successful or refused buy.
             reset_preserving_selection(state,host);
         }else{
-            // Equipment kind2: cost/check, fresh cost/debit, fresh record/stock,
-            // then MakeShopPurchase(kind,id,0), Push and a plain selection-clearing Reset.
-            const auto price=required(host.shop_equipment_record(index)).buy_price;
+            // Ordinary item branches retain their dispatched catalog across callbacks.
+            // Shipped kind4 checks Cloth.buyPrice but debits Hat.buyPrice at the same ID.
+            const auto price=required(host.shop_equipment_record(dispatch_kind,index)).buy_price;
             if(host.shop_check_money(static_cast<std::int64_t>(price))){
-                const auto payment=required(host.shop_equipment_record(index)).buy_price;
+                const auto debit_kind=dispatch_kind==4?3:dispatch_kind;
+                const auto payment=required(host.shop_equipment_record(debit_kind,index)).buy_price;
                 host.shop_subtract_money(payment);
-                (void)required(host.shop_equipment_record(index));
-                host.shop_add_equipment_stock(index,1);
+                (void)required(host.shop_equipment_record(dispatch_kind,index));
+                host.shop_add_equipment_stock(dispatch_kind,index,1);
                 const auto kind=state.kind;
                 const auto form=host.shop_make_equipment_confirmation(kind,index,0);
                 host.shop_push_form(form);
@@ -119,7 +122,7 @@ void update_main(ShopFormState& state,ShopFormHost& host){
 }
 }
 void reset_shop_form(ShopFormState& state,ShopFormHost& host){
-    // ShopForm.Reset0x1209ec8: kind1 at0x120a110, kind2 at0x120a1fc, common tail0x120b048.
+    // ShopForm.Reset0x1209ec8: kinds1..4 at0x120a110/a1fc/a448/a694; common tail0x120b048.
     require_kind(state);
     state.selection=-1;state.crossfade=-1;
     state.entries=std::make_shared<std::vector<std::int32_t>>();
@@ -130,13 +133,15 @@ void reset_shop_form(ShopFormState& state,ShopFormHost& host){
         for(std::int32_t index=0;index<host.shop_catalog_count();index=add32(index,1))
             if(host.shop_catalog_is_found(index))required(state.entries).push_back(index);
     }else{
-        const auto count=host.shop_equipment_catalog_count();
+        const auto kind=state.kind;
+        const auto count=host.shop_equipment_catalog_count(kind);
         if(count<0)throw std::length_error("negative equipment-shop catalog length");
         state.filters=std::make_shared<std::vector<std::uint8_t>>(static_cast<std::size_t>(count));
-        const auto catalog=host.shop_equipment_catalog();
+        const auto catalog=host.shop_equipment_catalog(kind);
         const auto& source=required(catalog);
-        append_equipment_shop_entries(required(state.entries),source,0x10U,
-            [&](const EquipmentCombatRecord& record){return host.shop_equipment_owned(record);});
+        const auto mask=kind==2?0x10U:0x4U;
+        append_equipment_shop_entries(required(state.entries),source,mask,
+            [&](const EquipmentCombatRecord& record){return host.shop_equipment_owned(kind,record);});
     }
     const auto maximum=add32(add32(entry_count(state),-1)/12,1);
     state.page_count=maximum;
@@ -145,7 +150,7 @@ void reset_shop_form(ShopFormState& state,ShopFormHost& host){
     check_filter(state,host);
 }
 void initialize_shop_form(ShopFormState& state,ShopFormHost& host){
-    // ShopForm.Init0x1209bc4 selected ordinary kinds1/2.
+    // ShopForm.Init0x1209bc4 selected ordinary kinds1..4.
     require_kind(state);
     host.shop_common_initialize();
     state.member_system=host.shop_member_system();

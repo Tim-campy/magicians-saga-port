@@ -69,7 +69,7 @@ EquipmentCombatTable load_equipment_combat_table(std::string_view text,Equipment
             r.use_mp=t.integer();r.initial_level=t.integer();t.integer();
         } else {
             // ClothData.Load 0x116e704 and HatData.Load 0x1171734 share token framing.
-            t.integer();r.resource=t.take();r.image=t.integer();t.integer();t.integer();r.initial_level=t.integer();t.integer();
+            r.unlock_level=t.integer();r.resource=t.take();r.image=t.integer();t.integer();r.buy_price=t.integer();r.initial_level=t.integer();t.integer();
         }
         r.parameters=t.script();r.explanation=t.take();r.flags=t.integer();return r;
     });

@@ -166,6 +166,107 @@ class TownCampaignTests(unittest.TestCase):
                     path.write_text(bad,encoding='ascii');rejected=self.run_host(root,1,*args)
                     self.assertNotEqual(rejected.returncode,0);self.assertIn('shop',rejected.stderr.lower())
 
+    def open_apparel_shop(self,root,kind):
+        from town_campaign_fixture import add_apparel_shop_case
+        self.fixture(root);add_apparel_shop_case(root,kind)
+        context=('--camera-x','0');before=self.state(root,60,*context)
+        touch=next(t for t in before['buildings_draw']['touches'] if t[0]==0)
+        x,y=touch[2]+40,touch[3]+45
+        replay=root/'apparel.replay'
+        replay.write_text(''.join(f'{61+i} widget {i%2} {x} {y}\n' for i in range(4)),encoding='ascii')
+        args=(*context,'--replay',str(replay))
+        return before,replay,args,self.state(root,140,*args)
+
+    def test_apparel_purchase_changes_only_its_canonical_stock_and_survives_mission_entry(self):
+        for kind,stock_name,remaining in ((3,'hat_stock',25),(4,'cloth_stock',0)):
+            with self.subTest(kind=kind),tempfile.TemporaryDirectory() as directory:
+                root=Path(directory);before,replay,args,opened=self.open_apparel_shop(root,kind)
+                update=opened['update'];menu=update['equipment_shop']
+                self.assertEqual((menu['kind'],menu['state'],menu['entries'],menu['selected']),
+                                 (kind,1,[2,3] if kind==3 else [2,3,4],-1))
+                self.assertIn([2,0,12,1],update['equipment_shop_widgets']['quotes'])
+                x,y=self.equipment_row_point(update,2)
+                with replay.open('a') as out:out.write(f'141 widget 0 {x} {y}\n142 widget 1 {x} {y}\n')
+                selected=self.state(root,142,*args)['update']
+                self.assertEqual(selected['wallet'],before['update']['wallet'])
+                self.assertEqual(selected['equipment_purchases'],0)
+                self.assertEqual(next(r for r in selected[stock_name] if r[0]==2),[2,0,0,0])
+                buy=next(r for r in selected['equipment_shop_widgets']['regions'] if r[:2]==[4,25])
+                bx,by=buy[2]+buy[4]//2,buy[3]+buy[5]//2
+                with replay.open('a') as out:out.write(f'143 widget 0 {bx} {by}\n144 widget 1 {bx} {by}\n')
+                bought=self.state(root,144,*args);purchase=bought['update']['equipment_purchase']
+                self.assertEqual((purchase['kind'],purchase['item'],purchase['option'],purchase['frame']),(kind,2,0,0))
+                # Cloth2 quotes12, passes CheckMoney(12), then debits Hat2.price50.
+                # Native SubMoney floors the wallet37 to0; Hat2 stock is untouched.
+                self.assertEqual((bought['update']['equipment_purchases'],bought['update']['wallet']['money']),(1,remaining))
+                self.assertEqual(bought['update']['wallet']['crystals'],before['update']['wallet']['crystals'])
+                for catalog in ('equipment_stock','hat_stock','cloth_stock'):
+                    expected=[row.copy() for row in before['update'][catalog]]
+                    if catalog==stock_name:next(row for row in expected if row[0]==2)[1:]=[1,1,1]
+                    self.assertEqual(bought['update'][catalog],expected)
+                self.assertEqual(bought['hero']['equipment'],before['hero']['equipment'])
+                self.assertEqual(bought['hero']['textures'],before['hero']['textures'])
+                resumed=self.state(root,190,*args)['update']
+                self.assertEqual(resumed['equipment_shop']['entries'],[3] if kind==3 else [3,4])
+                self.assertEqual(resumed['equipment_shop']['selected'],-1)
+                self.assertEqual(resumed['equipment_purchases'],1);self.assertNotIn('equipment_purchase',resumed)
+                with replay.open('a') as out:out.write('191 form-back\n')
+                city=self.state(root,200,*args);self.assert_waiting_world(city)
+                self.assertNotIn('equipment_shop',city['update'])
+                self.assertEqual(city['update']['town_initializations'],1)
+                self.assertEqual(city['update']['wallet'],bought['update']['wallet'])
+                with replay.open('a') as out:out.write('201 select 0xc0000 0\n202 buttons 0x10000000\n216 widget 0 250 250\n216 widget 1 250 250\n216 widget 0 250 250\n217 widget 1 250 250\n')
+                entered=self.state(root,258,*args)
+                self.assertTrue(entered['update']['mission_active'])
+                self.assertEqual(entered['shared_world']['initialized_systems'],32)
+                self.assertTrue(entered['shared_world']['same_hero'])
+                for catalog in ('equipment_stock','hat_stock','cloth_stock'):
+                    self.assertEqual(entered['update'][catalog],bought['update'][catalog])
+                self.assertEqual(entered['hero']['equipment'],before['hero']['equipment'])
+
+    def test_apparel_locked_second_tap_resets_after_one_event_and_back_retains_world(self):
+        for kind,locked in ((3,3),(4,4)):
+            with self.subTest(kind=kind),tempfile.TemporaryDirectory() as directory:
+                root=Path(directory);before,replay,args,opened=self.open_apparel_shop(root,kind)
+                x,y=self.equipment_row_point(opened['update'],locked)
+                with replay.open('a') as out:out.write(f'141 widget 0 {x} {y}\n142 widget 1 {x} {y}\n')
+                selected=self.state(root,142,*args)['update']
+                self.assertGreaterEqual(selected['equipment_shop']['selected'],9999)
+                self.assertNotIn(8,dict(selected['event_execution_counts']))
+                with replay.open('a') as out:out.write(f'143 widget 0 {x} {y}\n144 widget 1 {x} {y}\n')
+                event=self.state(root,144,*args)['update']
+                self.assertEqual(dict(event['event_execution_counts'])[8],1)
+                self.assertEqual(event['equipment_purchases'],0);self.assertTrue(event['talk_pending'])
+                self.assertNotIn('equipment_purchase',event)
+                resumed=self.state(root,200,*args)['update']
+                self.assertEqual(resumed['equipment_shop']['kind'],kind)
+                self.assertEqual(resumed['equipment_shop']['selected'],-1)
+                self.assertEqual(dict(resumed['event_execution_counts'])[8],1)
+                self.assertEqual(resumed['wallet'],before['update']['wallet'])
+                for catalog in ('equipment_stock','hat_stock','cloth_stock'):
+                    self.assertEqual(resumed[catalog],before['update'][catalog])
+                with replay.open('a') as out:out.write('201 form-back\n')
+                city=self.state(root,210,*args);self.assert_waiting_world(city)
+                self.assertNotIn('equipment_shop',city['update'])
+                self.assertEqual(city['hero']['equipment'],before['hero']['equipment'])
+
+    def test_cloth_shop_checks_cloth_quote_before_any_hat_debit_or_stock_change(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);before,replay,args,opened=self.open_apparel_shop(root,4)
+            self.assertIn([3,0,50,0],opened['update']['equipment_shop_widgets']['quotes'])
+            x,y=self.equipment_row_point(opened['update'],3)
+            with replay.open('a') as out:out.write(f'141 widget 0 {x} {y}\n142 widget 1 {x} {y}\n')
+            selected=self.state(root,142,*args)['update']
+            self.assertLess(selected['equipment_shop']['selected'],9999)
+            self.assertFalse(any(r[:2]==[4,25] for r in selected['equipment_shop_widgets']['regions']))
+            with replay.open('a') as out:out.write('143 buttons 0x02000000\n')
+            refused=self.state(root,144,*args)['update']
+            self.assertEqual(refused['wallet'],before['update']['wallet'])
+            self.assertEqual(refused['equipment_purchases'],0)
+            self.assertNotIn('equipment_purchase',refused)
+            for catalog in ('equipment_stock','hat_stock','cloth_stock'):
+                self.assertEqual(refused[catalog],before['update'][catalog])
+
     def test_magic_shop_purchase_changes_shared_combat_parameters_and_resumes_town(self):
         from town_campaign_fixture import add_magic_shop_case
         with tempfile.TemporaryDirectory() as directory:

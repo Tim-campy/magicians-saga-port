@@ -8,7 +8,7 @@
 #include <vector>
 
 namespace saga::core {
-// Selected ShopForm(kind1 magic/kind2 equipment) fields; other kinds and billing are external.
+// Selected ShopForm kinds1..4 (magic, equipment, hats, clothes); recruitment and billing are external.
 struct ShopFormState {
     std::int32_t kind=1,state=0,selected_item=0; // +0xfc/+0xf8/+0x100.
     std::int32_t selection=0,page=0,page_count=0; // +0x134/+0x140/+0x144.
@@ -35,14 +35,14 @@ public:
     // Each call resolves the live catalog. Row null/bounds checks belong to the provider.
     virtual std::int32_t shop_catalog_count()=0;
     virtual bool shop_catalog_is_found(std::int32_t index)=0;
-    // Kind2 takes a length from the first query, then captures the next source
+    // Kinds2..4 take a length from the first query, then capture the next source
     // array for Where(nonnull), stable OrderBy(unlock_level) and publication.
-    virtual std::int32_t shop_equipment_catalog_count()=0;
-    virtual std::shared_ptr<const EquipmentCombatTable> shop_equipment_catalog()=0;
-    virtual bool shop_equipment_owned(const EquipmentCombatRecord&)=0;
-    virtual const EquipmentCombatRecord* shop_equipment_record(std::int32_t id)=0;
+    virtual std::int32_t shop_equipment_catalog_count(std::int32_t kind)=0;
+    virtual std::shared_ptr<const EquipmentCombatTable> shop_equipment_catalog(std::int32_t kind)=0;
+    virtual bool shop_equipment_owned(std::int32_t kind,const EquipmentCombatRecord&)=0;
+    virtual const EquipmentCombatRecord* shop_equipment_record(std::int32_t kind,std::int32_t id)=0;
     virtual std::int32_t shop_unlock_value(std::int32_t kind)=0;
-    virtual void shop_add_equipment_stock(std::int32_t id,std::int32_t amount)=0;
+    virtual void shop_add_equipment_stock(std::int32_t kind,std::int32_t id,std::int32_t amount)=0;
     virtual EventObject shop_make_equipment_confirmation(std::int32_t kind,std::int32_t id,std::int32_t option)=0;
     virtual void shop_town_buildings()=0;
     virtual void shop_base_update()=0;

@@ -55,6 +55,39 @@ class TownBackgroundPixels(unittest.TestCase):
             self.assertNotEqual(captures[140],captures[142]);self.assertNotEqual(captures[190],captures[192])
 
     @unittest.skipUnless(os.environ.get('SAGA_TEST_FONT'),'public CTest font required')
+    def test_hat_and_cloth_icons_purchase_and_return_match_window(self):
+        from town_campaign_fixture import create_campaign_fixture,add_apparel_shop_case
+        for kind in (3,4):
+            with self.subTest(kind=kind),tempfile.TemporaryDirectory() as directory:
+                root=Path(directory);create_campaign_fixture(root);add_apparel_shop_case(root,kind)
+                replay=root/'apparel.replay';replay.write_text('')
+                base=[str(EXE),'--data',str(root),'--foreground','--shared-world','--physical-input',
+                      '--camera-x','0','--talk-pulse-every','10','--replay',str(replay)]
+                def run(frame,*extra):
+                    r=subprocess.run([*base,'--update-passes',str(frame),*extra],capture_output=True,text=True,encoding='utf8',timeout=45)
+                    self.assertEqual(r.returncode,0,r.stderr);return json.loads(r.stdout)
+                before=run(60)['background'];t=next(t for t in before['buildings_draw']['touches'] if t[0]==0)
+                x,y=t[2]+40,t[3]+45
+                replay.write_text(''.join(f'{61+i} widget {i%2} {x} {y}\n' for i in range(4)))
+                opened=run(140)['background']['update'];t=next(t for t in opened['equipment_shop_widgets']['regions'] if t[:2]==[10,0x20000])
+                x,y=t[2]+t[4]//2,t[3]+t[5]//2
+                with replay.open('a') as out:out.write(f'141 widget 0 {x} {y}\n142 widget 1 {x} {y}\n')
+                selected=run(142)['background']['update'];t=next(t for t in selected['equipment_shop_widgets']['regions'] if t[:2]==[4,25])
+                x,y=t[2]+t[4]//2,t[3]+t[5]//2
+                with replay.open('a') as out:out.write(f'145 widget 0 {x} {y}\n146 widget 1 {x} {y}\n201 form-back\n')
+                for frame in (140,142,146,190,210):
+                    cpu=run(frame);still=root/f'still-{frame}.bmp';window=root/f'window-{frame}.bmp'
+                    self.assertEqual(run(frame,'--capture',str(still)),cpu)
+                    self.assertEqual(run(frame,'--interactive','--hidden','--capture',str(window)),cpu)
+                    self.assertEqual(still.read_bytes(),window.read_bytes())
+                    scene=cpu['background'];update=scene['update']
+                    if frame>=146:
+                        self.assertEqual(update['wallet']['money'],25 if kind==3 else 0)
+                        self.assertEqual(next(r for r in update['hat_stock' if kind==3 else 'cloth_stock'] if r[0]==2),[2,1,1,1])
+                        self.assertEqual(scene['hero']['equipment'],before['hero']['equipment'])
+                    if frame==210:self.assertNotIn('equipment_shop',update)
+
+    @unittest.skipUnless(os.environ.get('SAGA_TEST_FONT'),'public CTest font required')
     def test_magic_shop_rows_purchase_notice_and_town_return_match_window(self):
         from town_campaign_fixture import create_campaign_fixture,add_magic_shop_case
         with tempfile.TemporaryDirectory() as directory:

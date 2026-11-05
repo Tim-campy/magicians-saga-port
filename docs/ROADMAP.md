@@ -31,7 +31,7 @@ Host: `saga_mission` (headless or SDL window; fresh --data/--quest entry or expl
 
 Host: `saga_town`. Acceptance: SelectForm town runs with the real map and residents; choosing a quest starts S1's mission; the result returns to town and progression (EXP, money, levels, stock, quest record) is applied in memory; event scripts fire on return (event 31, 1133).
 
-- [ ] Bind shop kinds3..6/9..11, occupied-house, room and remaining town menu dispatch, retaining camera capture, native-event replay, resident speech and shared event/save owners.
+- [ ] Bind shop kinds5..6/9..11, occupied-house, room and remaining town menu dispatch, retaining camera capture, native-event replay, resident speech and shared event/save owners.
 - [ ] Bind Building have/discovery and living-member state to recruitment/occupied-house consumers.
 - [ ] Bind capture callbacks to the town Update host.
 - [ ] Bind billing-item/catalog providers as stubs and the notification manager adapters, preserving task execution gates.

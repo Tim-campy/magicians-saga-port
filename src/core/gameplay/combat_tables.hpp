@@ -37,7 +37,7 @@ struct EquipmentCombatRecord {std::int32_t id=0,attribute=0,flags=0;EventScript 
     std::int32_t image=0;std::string resource;
     std::int32_t initial_level=0; // Equipment +0x80, cloth +0x4c, hat +0x44.
     std::string name; // BaseData name, selected resource-language table token1.
-    std::int32_t unlock_level=0,buy_price=0; // Equipment tokens4/12, +0x40/+0x64.
+    std::int32_t unlock_level=0,buy_price=0; // Equipment tokens4/12; cloth/hat tokens2/6.
     std::string explanation;}; // Equipment token22; cloth/hat token10.
 struct EquipmentNewGameState {
     std::int32_t level=0;

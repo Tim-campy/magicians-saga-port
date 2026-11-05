@@ -214,3 +214,37 @@ def add_equipment_shop_case(root):
            if line.split()[:2]==['resource','22'] else line for line in lines]
     index.write_text('\n'.join(lines)+'\n')
     (root/'shop-defaults.tsv').write_text('shop_defaults\t1\nnormal_levels\t8\t1\t1\t1\t1\t1\t1\t1\t1\n',encoding='ascii')
+
+
+def add_apparel_shop_case(root,kind):
+    """Hat/cloth offers with distinct stocks and Cloth2's native Hat2 debit source."""
+    from test_sprite_preview import seb
+    if kind not in (3,4):raise ValueError('apparel fixture requires shop kind3 or4')
+    root=Path(root);add_magic_shop_case(root);read=_container_reader()
+    archive=root/'textassets/tables.bin';tables=dict(read(archive.read_bytes()))
+    buildings=[line.split('\t') for line in tables['English.lproj/Building.txt'].decode().splitlines() if line]
+    for row in buildings:
+        if row[0]=='0':row[5]=str(kind)
+    tables['English.lproj/Building.txt']=('\n'.join('\t'.join(row) for row in buildings)+'\n').encode()
+    for name in ('Hat','Cloth'):
+        key=f'English.lproj/{name}.txt'
+        rows=[line.split('\t') for line in tables[key].decode().splitlines() if line]
+        template=next(row for row in rows if row[0]=='0')
+        for item in (2,3,4):
+            row=template.copy();row[0]=str(item);row[1]=f'Shop {name} {item}'
+            row[2]='0' if item==2 else '2' if item==4 or (name=='Hat' and kind==3) else '1'
+            row[4]='7' # Existing hat.png is valid in both resource21 and resource1.
+            row[6]='7' if item==4 else '50' if item==3 or (name=='Hat' and kind==4) else '12'
+            offered=(name=='Hat' and kind==3 and item!=4) or (name=='Cloth' and kind==4)
+            row[-2]=f'Synthetic {name} {item}';row[-1]='4' if offered else '0';rows.append(row)
+        tables[key]=('\n'.join('\t'.join(row) for row in rows)+'\n').encode()
+    tables['English.lproj/Event.txt']+=b'\n8\tLocked apparel\t0\t1\t3\t1\t0\t3\t1\t2\t8\t9\n'
+    tables['English.lproj/Talk.txt']+=b'\n9\t0\t1\tSynthetic locked apparel\n'
+    archive.write_bytes(jar(list(tables.items())))
+    shop=root/'textassets/shop.bin';members=dict(read(shop.read_bytes()))
+    members['seb.inf']=_merge_rows(members['seb.inf'],b'9\tapparel-cell.seb\n')
+    members['apparel-cell.seb']=seb([(0,0,0,0,48,48,0,0,0,0),(1,0,48,0,48,48,0,0,0,0)])
+    shop.write_bytes(jar(list(members.items())))
+    # Existing hero clips0/37 span frames0..3; their nonzero2x2 sprite can be
+    # reused at hat frame0 / cloth frame1 without changing any combat animation.
+    (root/'shop-defaults.tsv').write_text('shop_defaults\t1\nnormal_levels\t8\t1\t-10\t1\t1\t1\t1\t1\t1\n',encoding='ascii')

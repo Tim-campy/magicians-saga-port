@@ -15,3 +15,5 @@ game:0x060011a2	reimplemented	src/core/gameplay/combat_tables.cpp	GetGoupBuyCoun
 game:0x060010e9	reimplemented	src/platform/desktop/town_update.cpp	Equipment isHave is signed stock>0 from canonical MissionResults inventory; shop exclusion before/after purchase covered by campaign tests.
 game:0x06001249	documented	docs/subsystems/town.md	GetLockValue rejects categories outside1..11/mask0x71f before storage; selected key from normal save, kind2=21; startup seed extracted, live writes retained.
 game:0x06001248	documented	docs/subsystems/town.md	GetSaveKeyForCategory maps1..11 to signed category key table, otherwise-1; storage tier consumer documented.
+game:0x06001173	reimplemented	src/platform/desktop/town_update.cpp	Hat isHave compares canonical signed stock>0; bounded ELF comparison proves stock+0x64; campaign mask4/exclusion/grant tests.
+game:0x060010a6	reimplemented	src/platform/desktop/town_update.cpp	Cloth isHave compares canonical signed stock>0; bounded ELF comparison proves stock+0x24; independent stocks and grant tests.

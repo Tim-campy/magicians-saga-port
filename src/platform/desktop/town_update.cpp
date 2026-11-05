@@ -440,7 +440,7 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
     void make_transition(std::int32_t,bool,std::uint32_t,std::function<void()>)override{town_unbound("room transition");}
     EventObject room_form()override{town_unbound("room form");}
     EventObject make_shop(std::int32_t kind)override{
-        if((kind!=1&&kind!=2)||!town.shared_world_)town_unbound("only retained shop kinds1/2 are bound");
+        if(kind<1||kind>4||!town.shared_world_)town_unbound("only retained shop kinds1..4 are bound");
         return events.make_shop(*this,kind);
     }
     std::shared_ptr<BuildingMenuCatalog> building_menu;
@@ -489,24 +489,34 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
         const auto* row=shop_record(index);if(!row)throw std::invalid_argument("null magic shop catalog row");
         return town.shared_world_->initial_shop_state(row->id).discovery_state==1;
     }
-    std::int32_t shop_equipment_catalog_count()override{return static_cast<std::int32_t>(town.shared_world_->catalog->equipment.size());}
-    std::shared_ptr<const EquipmentCombatTable> shop_equipment_catalog()override{
-        return {town.shared_world_->catalog,&town.shared_world_->catalog->equipment};
+    const EquipmentCombatTable& shop_equipment_table(std::int32_t kind)const{
+        const auto& catalog=*town.shared_world_->catalog;
+        switch(kind){case 2:return catalog.equipment;case 3:return catalog.hats;case 4:return catalog.cloth;}
+        town_unbound("shop equipment catalog category");
     }
-    const EquipmentCombatRecord* shop_equipment_record(std::int32_t id)override{
-        const auto& row=town.shared_world_->catalog->equipment.at(static_cast<std::size_t>(id));return row?&*row:nullptr;
+    static RewardItem shop_stock_kind(std::int32_t kind){
+        switch(kind){case 2:return RewardItem::weapon;case 3:return RewardItem::hat;case 4:return RewardItem::cloth;}
+        town_unbound("shop inventory category");
     }
-    bool shop_equipment_owned(const EquipmentCombatRecord& row)override{
-        return town.shared_world_->humans->result_owner().inventory(RewardItem::weapon,row.id).stock>0;
+    std::int32_t shop_equipment_catalog_count(std::int32_t kind)override{return static_cast<std::int32_t>(shop_equipment_table(kind).size());}
+    std::shared_ptr<const EquipmentCombatTable> shop_equipment_catalog(std::int32_t kind)override{
+        return {town.shared_world_->catalog,&shop_equipment_table(kind)};
+    }
+    const EquipmentCombatRecord* shop_equipment_record(std::int32_t kind,std::int32_t id)override{
+        const auto& row=shop_equipment_table(kind).at(static_cast<std::size_t>(id));return row?&*row:nullptr;
+    }
+    bool shop_equipment_owned(std::int32_t kind,const EquipmentCombatRecord& row)override{
+        return town.shared_world_->humans->result_owner().inventory(shop_stock_kind(kind),row.id).stock>0;
     }
     std::int32_t shop_unlock_value(std::int32_t kind)override{
-        // UnlockShopData.GetLockValue0x1173c70, selected kind2 -> normal-save21.
-        if(kind!=2)town_unbound("shop unlock category");
+        // UnlockShopData.GetLockValue0x1173c70: category keys are not sequential.
+        const auto key=kind==2?21:kind==3?23:kind==4?22:-1;
+        if(key<0)town_unbound("shop unlock category");
         if(!shop_defaults_bound)throw std::invalid_argument("equipment shop requires --shop-defaults extraction");
-        return town.save_integers_->at(21);
+        return town.save_integers_->at(static_cast<std::size_t>(key));
     }
-    void shop_add_equipment_stock(std::int32_t id,std::int32_t amount)override{
-        town.shared_world_->humans->result_owner().add_inventory_stock(RewardItem::weapon,id,amount);
+    void shop_add_equipment_stock(std::int32_t kind,std::int32_t id,std::int32_t amount)override{
+        town.shared_world_->humans->result_owner().add_inventory_stock(shop_stock_kind(kind),id,amount);
         ++equipment_purchases;refresh_progression();
     }
     EventObject shop_make_equipment_confirmation(std::int32_t kind,std::int32_t id,std::int32_t option)override{
@@ -567,7 +577,7 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
     }
     void draw_magic_shop(BitmapBackend& backend){
         magic_regions.clear();magic_quotes.clear();const auto* state=events.active_shop();
-        equipment_menu_drawn=state&&state->kind==2;
+        equipment_menu_drawn=state&&state->kind>=2&&state->kind<=4;
         if(!state||state->state!=1||state->crossfade>=0||!state->entries)return;
         const auto ox=(town.context_.width-240)/2,oy=(town.context_.height-240)/2;
         const auto cx=(town.context_.width+1)/2-ox,cy=(town.context_.height+1)/2-oy;
@@ -586,17 +596,18 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
         }
         else{
             const auto start=static_cast<std::int64_t>(state->page)*12;
-            auto* resource=town.actor_resource(22);
-            auto* sprite=resource->animations->clips->at(0);if(!sprite)throw std::invalid_argument("equipment icon requires weapon clip0");
+            const auto kind=state->kind,resource_id=kind==3?21:kind==4?1:22,clip=kind==4?37:0,frame=kind==3?0:1;
+            auto* resource=town.actor_resource(resource_id);
+            auto* sprite=resource->animations->clips->at(static_cast<std::size_t>(clip));if(!sprite)throw std::invalid_argument("missing shop icon clip");
             for(auto i=start;i<start+12&&i<static_cast<std::int64_t>(state->entries->size());++i){
-                const auto id=state->entries->at(static_cast<std::size_t>(i));const auto& row=*shop_equipment_record(id);
+                const auto id=state->entries->at(static_cast<std::size_t>(i));const auto& row=*shop_equipment_record(kind,id);
                 const auto n=static_cast<std::int32_t>(i-start),x=ox+cx-116+58*(n%4),y=oy+cy-92+42*(n/4);
-                const auto locked=row.unlock_level>shop_unlock_value(2),selected=state->selection==i;
+                const auto locked=row.unlock_level>shop_unlock_value(kind),selected=state->selection==i;
                 const auto affordable=shop_check_money(row.buy_price);
-                const auto stock=town.shared_world_->humans->result_owner().inventory(RewardItem::weapon,id).stock;
+                const auto stock=town.shared_world_->humans->result_owner().inventory(shop_stock_kind(kind),id).stock;
                 magic_quotes.push_back({id,stock,row.buy_price,affordable?1:0});
                 backend.draw_seb_frame(magic_resource,9,selected?0:1,static_cast<float>(x),static_cast<float>(y));
-                draw_fixed_image_seb(&backend.graphics(),x+29,y+21,sprite->sprites,resource->images->at(static_cast<std::size_t>(row.image)),1,shop_icon_work);
+                draw_fixed_image_seb(&backend.graphics(),x+29,y+21,sprite->sprites,resource->images->at(static_cast<std::size_t>(row.image)),frame,shop_icon_work);
                 // SAGA_STUB(town-magic-presentation): public-font price/lock labels
                 // replace native filtering/tint and selected-stat layout.
                 draw_magic_text(backend,locked?"Locked":std::to_string(row.buy_price),x+56,y+27,affordable?0xffffffffU:0xffcc4040U,true);
@@ -621,7 +632,7 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
             const auto bounds=seb_bounding_rect(*clip->sprites,1);const auto font=magic_text_bitmap("0",0xffffffffU).font_height;
             auto y=town.context_.height-oy-font-bounds[3]-61;
             if(town.context_.width<=240)y-=32;
-            if(town.context_.motion_low_aspect&&(state->kind==2||town.context_.width<=240))y=town.context_.height-font-bounds[3]-3;
+            if(town.context_.motion_low_aspect&&(state->kind>=2||town.context_.width<=240))y=town.context_.height-font-bounds[3]-3;
             backend.draw_seb_frame(&town.common_->manager.drawing(),70,1,static_cast<float>(ox+cx),static_cast<float>(oy+y));
             magic_regions.push_back({input_screen_rectangle({ox+cx-bounds[2]/2,oy+y,bounds[2],bounds[3]},{30,30,5,5},town.context_.width,town.context_.height),{4,25}});
         }
@@ -1263,6 +1274,14 @@ void TownBackground::report_update(std::ostream& out)const{
             const auto& v=shared_world_->humans->result_owner().inventory(RewardItem::weapon,row->id);
             if(!first)out<<',';first=false;out<<'['<<row->id<<','<<v.discovery_state<<','<<(v.is_new?1:0)<<','<<v.stock<<']';
         }out<<']';
+        for(const auto kind:{3,4}){
+            out<<(kind==3?",\"hat_unlock_level\":":",\"cloth_unlock_level\":")<<save_integers_->at(kind==3?23:22);
+            out<<(kind==3?",\"hat_stock\":[":",\"cloth_stock\":[");
+            bool first_item=true;if(shared_world_)for(const auto& row:owner.shop_equipment_table(kind))if(row){
+                const auto& v=shared_world_->humans->result_owner().inventory(UpdateOwner::shop_stock_kind(kind),row->id);
+                if(!first_item)out<<',';first_item=false;out<<'['<<row->id<<','<<v.discovery_state<<','<<(v.is_new?1:0)<<','<<v.stock<<']';
+            }out<<']';
+        }
     }
     out<<(owner.equipment_menu_drawn?",\"equipment_shop_widgets\":{\"regions\":[":",\"magic_shop_widgets\":{\"regions\":[");
     for(std::size_t i=0;i<owner.magic_regions.size();++i){if(i)out<<',';const auto& r=owner.magic_regions[i];out<<'['<<r.control.group<<','<<r.control.value<<','<<r.bounds.x<<','<<r.bounds.y<<','<<r.bounds.width<<','<<r.bounds.height<<']';}
