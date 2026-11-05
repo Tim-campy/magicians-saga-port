@@ -382,8 +382,8 @@ std::string MissionEvents::title()const{
     if(forms_.empty())return {};
     const auto& talk=*forms_.back();
     if(talk.build_list)return "Construction - select an item twice; Backspace returns";
-    if(talk.magic_shop)return talk.magic_shop->state.kind==1?"Magic shop - select a row, then Buy; Backspace returns":"Equipment shop - select an item, then Buy; Backspace returns";
-    if(talk.magic_notice)return talk.prepared.initial.type==13?"Equipment purchased - Enter continues":"Magic improved - Enter continues";
+    if(talk.magic_shop)return talk.magic_shop->state.kind==1?"Magic shop - select a row, then Buy; Backspace returns":talk.magic_shop->state.kind==5?"Recruitment - select a character, then Buy; Backspace returns":"Equipment shop - select an item, then Buy; Backspace returns";
+    if(talk.magic_notice)return talk.prepared.initial.type==13?(talk.magic_notice->request.kind==5?"Character recruited - Enter continues":"Equipment purchased - Enter continues"):"Magic improved - Enter continues";
     if(talk.building_complete)return "Construction complete - Enter continues";
     if(talk.king)return "King hall - Backspace returns to town";
     if(talk.popup)return talk.popup->title+" - Enter continues";
@@ -421,7 +421,7 @@ void MissionEvents::write_report(std::ostream& out)const{
            <<",\"speech_present\":"<<(k.speech?"true":"false")<<",\"news_updates\":"<<hall.news_updates<<'}';
     }
     if(const auto* state=active_shop()){
-        out<<(state->kind==1?",\"magic_shop\":{\"state\":":",\"equipment_shop\":{\"state\":")<<state->state<<",\"selected\":"<<state->selection<<",\"page\":"<<state->page
+        out<<(state->kind==1?",\"magic_shop\":{\"state\":":state->kind==5?",\"recruitment_shop\":{\"state\":":",\"equipment_shop\":{\"state\":")<<state->state<<",\"selected\":"<<state->selection<<",\"page\":"<<state->page
            <<",\"page_count\":"<<state->page_count<<",\"frame\":"<<state->frame<<",\"crossfade\":"<<state->crossfade<<",\"witch_x\":"<<state->witch_x<<",\"entries\":[";
         if(state->entries)for(std::size_t i=0;i<state->entries->size();++i){if(i)out<<',';out<<state->entries->at(i);}out<<']';
         if(state->kind!=1)out<<",\"kind\":"<<state->kind;

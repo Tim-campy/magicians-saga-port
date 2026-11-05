@@ -228,13 +228,13 @@ game:0x060008b1	documented	docs/subsystems/town.md	MakeBuildingComplete creates 
 game:0x060008da	documented	docs/subsystems/town.md	SetTouchValue routes masks0x20000/0x130000/0x140000 to selected/+0x248/+0x24c; remaining masks delegate base.
 kairo:0x060009ba	documented	docs/subsystems/town.md	Parameterless GetKey packs uint32(group)<<32 | uint32(value); retained construction marker contract.
 game:0x06000086	documented	docs/subsystems/town.md	One-argument OnKeyDown ignores supplied key and calls ClearMarker after metadata setup; SDL town keys clear retained row marker.
-game:0x06000860	documented	docs/subsystems/town.md	Typed constructor writes frame98/32 before base form construction and requested kind afterward; ordinary kinds1..4 factory bound.
-game:0x06000861	documented	docs/subsystems/town.md	MakeShopForm allocates fresh typed ShopForm preserving requested kind; Building kinds1..4 host-bound; other shop kinds explicit errors.
-game:0x06000862	traced	docs/subsystems/town.md	Kinds1..4 Init common/resource14/member/view, binary32 positions, labels/state/flag/reset ported and host-bound; kind11 NewsBanner remains uncovered.
-game:0x06000863	traced	docs/subsystems/town.md	Kinds1..4 Reset: found indices or stable nonnull unlock order with live stock exclusion, fresh arrays and inclusive page clamp; remaining kinds uncovered.
-game:0x06000864	traced	docs/subsystems/town.md	Kinds1..4 filters: Town cache first, ordinary item fresh unlock/price/tier and eager money before captured filter validation; remaining kinds uncovered.
-game:0x06000865	traced	docs/subsystems/town.md	Kinds1..4 complete outer Update clock/motion/crossfade/BGM/Back ports; domain executes retained shop; other kinds uncovered.
-game:0x06000866	traced	docs/subsystems/town.md	Kinds1..4 thread0 buy/returned-child/repeat/optional-input path ported with native ordering; billing/unlock/other kinds remain uncovered.
+game:0x06000860	documented	docs/subsystems/town.md	Typed constructor writes frame98/32 before base form construction and requested kind afterward; ordinary kinds1..5 factory bound.
+game:0x06000861	documented	docs/subsystems/town.md	MakeShopForm allocates fresh typed ShopForm preserving requested kind; Building kinds1..5 host-bound; other shop kinds explicit errors.
+game:0x06000862	traced	docs/subsystems/town.md	Kinds1..5 Init common/resource14/member/view, binary32 positions, labels/state/flag/reset ported and host-bound; kind11 NewsBanner remains uncovered.
+game:0x06000863	traced	docs/subsystems/town.md	Kinds1..5 Reset: found indices or stable nonnull unlock order with live stock exclusion, fresh arrays and inclusive page clamp; remaining kinds uncovered.
+game:0x06000864	traced	docs/subsystems/town.md	Kinds1..5 filters: item price-before-tier, recruit tier/filter-capture-before-fresh-cost; eager fund checks precede captured target validation; remaining kinds uncovered.
+game:0x06000865	traced	docs/subsystems/town.md	Kinds1..5 complete outer Update clock/motion/crossfade/BGM/Back ports; domain executes retained shop; other kinds uncovered.
+game:0x06000866	traced	docs/subsystems/town.md	Kinds1..5 thread0 buy/returned-child/repeat/optional-input path ported with native ordering; billing/unlock/other kinds remain uncovered.
 game:0x06000871	reimplemented	src/core/gameplay/shop_form.cpp	ChangeState labels-before-state/frame stores; initialize/crossfade and callback-failure tests; retained magic shop bound.
 game:0x06000873	documented	docs/subsystems/town.md	SetTouchValue masks0x20000/0xc0000 write selection/selected_item; other selectors delegate base; reached row selection bound.
 game:0x06000874	documented	docs/subsystems/town.md	GetTouchValue masks0x20000/0xc0000 return selection/selected_item; other selectors delegate base.
@@ -251,3 +251,5 @@ game:0x06000882	reimplemented	src/core/gameplay/combat_tables.cpp	Hat Reset nonn
 game:0x06000883	reimplemented	src/core/gameplay/combat_tables.cpp	Hat unlock key signed load+0x28 captured before live flags/owned callbacks; shared stable sort and hat controller tests.
 game:0x06000884	reimplemented	src/core/gameplay/combat_tables.cpp	Cloth Reset nonnull predicate before stable unlock sort; catalog isolation and mask4 tests.
 game:0x06000885	reimplemented	src/core/gameplay/combat_tables.cpp	Cloth unlock key signed load+0x30 captured before live flags/owned callbacks; null/tie/signed key and cloth controller tests.
+game:0x06000886	reimplemented	src/core/gameplay/progression_tables.cpp	Character Reset nonnull predicate before stable lockLevel order and live discovery/mask/recruit checks; callback/source/failure tests.
+game:0x06000887	reimplemented	src/core/gameplay/progression_tables.cpp	Character signed lockLevel+0x68 key captured before eligibility callbacks; stable ties, widths, source mutation and retained-prefix tests.

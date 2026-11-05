@@ -40,6 +40,7 @@ public:
     std::int64_t crystals()const{return state_.crystals;}
     const core::ItemStock& inventory(core::RewardItem kind,std::int32_t id)const{return inventory_.at(static_cast<std::size_t>(kind)).at(id);}
     const core::RecruitmentState& recruit(std::int32_t id)const{return recruits_.at(id);}
+    void recruit_character(std::int32_t id){core::recruit_character(character(id));}
     void grant();
     void report(std::ostream&);
     bool check_crystals(std::int64_t amount)const;

@@ -51,7 +51,7 @@ game:0x06000fc9	documented	docs/subsystems/rewards.md	signed max of bestTotalGav
 game:0x060011f1	documented	docs/subsystems/rewards.md	QuestData+0xa0 += n (32-bit)
 game:0x06001078	reimplemented	src/core/gameplay/experience_progression.cpp	GetNextExp clamps level and uses decoded TableData.exp_ and needExpRate_; tests preserve gaps and wrapping product
 game:0x0600106c	reimplemented	src/core/gameplay/quest_return.cpp	Saved level clamp tested at both bounds; EXP copied separately without clamp
-game:0x0600107b	reimplemented	src/core/gameplay/quest_rewards.cpp	Recruitment state reset tested
+game:0x0600107b	reimplemented	src/core/gameplay/quest_rewards.cpp	Recruit writes1 then Find(true); shared canonical treasure/shop5 owner; no entity, formation or living-address mutation
 game:0x06001021	documented	docs/subsystems/rewards.md	state_ == 0
 game:0x060010ee	reimplemented	src/core/gameplay/stage_rewards.cpp	add_item_stock; tests/test_stage_rewards.cpp
 game:0x060010aa	reimplemented	src/core/gameplay/stage_rewards.cpp	add_item_stock; tests/test_stage_rewards.cpp

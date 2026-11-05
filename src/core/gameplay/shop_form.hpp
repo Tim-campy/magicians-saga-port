@@ -1,6 +1,7 @@
 #pragma once
 #include "combat_tables.hpp"
 #include "event_flow.hpp"
+#include "progression_tables.hpp"
 #include <array>
 #include <cstdint>
 #include <memory>
@@ -8,7 +9,7 @@
 #include <vector>
 
 namespace saga::core {
-// Selected ShopForm kinds1..4 (magic, equipment, hats, clothes); recruitment and billing are external.
+// Selected ShopForm kinds1..5 (magic, equipment, hats, clothes, recruitment).
 struct ShopFormState {
     std::int32_t kind=1,state=0,selected_item=0; // +0xfc/+0xf8/+0x100.
     std::int32_t selection=0,page=0,page_count=0; // +0x134/+0x140/+0x144.
@@ -44,6 +45,14 @@ public:
     virtual std::int32_t shop_unlock_value(std::int32_t kind)=0;
     virtual void shop_add_equipment_stock(std::int32_t kind,std::int32_t id,std::int32_t amount)=0;
     virtual EventObject shop_make_equipment_confirmation(std::int32_t kind,std::int32_t id,std::int32_t option)=0;
+    virtual std::int32_t shop_character_catalog_count()=0;
+    virtual std::shared_ptr<const CharacterProgressionTable> shop_character_catalog()=0;
+    virtual bool shop_character_found(const CharacterProgressionRecord&)=0;
+    virtual bool shop_character_recruited(const CharacterProgressionRecord&)=0;
+    virtual const CharacterProgressionRecord* shop_character_record(std::int32_t id)=0;
+    virtual bool shop_check_crystals(std::int64_t amount)=0;
+    virtual void shop_subtract_crystals(std::int32_t amount)=0;
+    virtual void shop_recruit_character(std::int32_t id)=0;
     virtual void shop_town_buildings()=0;
     virtual void shop_base_update()=0;
     virtual void shop_reset_image_animations()=0;

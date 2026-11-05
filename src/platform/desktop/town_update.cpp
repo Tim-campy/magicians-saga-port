@@ -440,7 +440,7 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
     void make_transition(std::int32_t,bool,std::uint32_t,std::function<void()>)override{town_unbound("room transition");}
     EventObject room_form()override{town_unbound("room form");}
     EventObject make_shop(std::int32_t kind)override{
-        if(kind<1||kind>4||!town.shared_world_)town_unbound("only retained shop kinds1..4 are bound");
+        if(kind<1||kind>5||!town.shared_world_)town_unbound("only retained shop kinds1..5 are bound");
         return events.make_shop(*this,kind);
     }
     std::shared_ptr<BuildingMenuCatalog> building_menu;
@@ -455,12 +455,14 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
     std::int32_t system_share_value()override{town_unbound("share save slot");}
     void set_shop_selection(EventObject,std::int32_t)override{town_unbound("shop selection");}
     std::uint64_t magic_purchases=0,magic_returns=0,magic_sounds=0,equipment_purchases=0;
+    std::uint64_t recruitments=0;
     EventObject shop_touch_identity=std::make_shared<int>(0),shop_member_identity=std::make_shared<int>(0);
     RenderDrawResource* magic_resource=nullptr;
     std::vector<SelectAreaTouchRegion> magic_regions;
     std::optional<SelectAreaTouchRegion> magic_capture;
     std::vector<std::array<std::int32_t,4>> magic_quotes;
     bool equipment_menu_drawn=false;
+    bool recruitment_menu_drawn=false;
     SebStaticWork shop_icon_work;
     std::map<std::pair<std::string,std::uint32_t>,std::unique_ptr<DesktopTextBitmap>> magic_texts;
     const std::int32_t* saved_purchases(std::int32_t slot)override{return &town.shared_world_->progress.shop_purchases.at(slot);}
@@ -508,9 +510,30 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
     bool shop_equipment_owned(std::int32_t kind,const EquipmentCombatRecord& row)override{
         return town.shared_world_->humans->result_owner().inventory(shop_stock_kind(kind),row.id).stock>0;
     }
+    std::int32_t shop_character_catalog_count()override{return static_cast<std::int32_t>(town.shared_world_->catalog->characters.size());}
+    std::shared_ptr<const CharacterProgressionTable> shop_character_catalog()override{
+        return {town.shared_world_->catalog,&town.shared_world_->catalog->characters};
+    }
+    const CharacterProgressionRecord* shop_character_record(std::int32_t id)override{
+        const auto& row=town.shared_world_->catalog->characters.at(static_cast<std::size_t>(id));return row?&*row:nullptr;
+    }
+    bool shop_character_found(const CharacterProgressionRecord& row)override{
+        return town.shared_world_->humans->result_owner().recruit(row.id).discovery_state==1;
+    }
+    bool shop_character_recruited(const CharacterProgressionRecord& row)override{
+        return town.shared_world_->humans->result_owner().recruit(row.id).recruited!=0;
+    }
+    bool shop_check_crystals(std::int64_t amount)override{return town.shared_world_->humans->result_owner().check_crystals(amount);}
+    void shop_subtract_crystals(std::int32_t amount)override{
+        auto& results=town.shared_world_->humans->result_owner();results.subtract_crystals(amount,initial.yugami);
+        town.resident_conditions_.crystals=results.crystals();
+    }
+    void shop_recruit_character(std::int32_t id)override{
+        town.shared_world_->humans->result_owner().recruit_character(id);++recruitments;refresh_progression();
+    }
     std::int32_t shop_unlock_value(std::int32_t kind)override{
         // UnlockShopData.GetLockValue0x1173c70: category keys are not sequential.
-        const auto key=kind==2?21:kind==3?23:kind==4?22:-1;
+        const auto key=kind==2?21:kind==3?23:kind==4?22:kind==5?24:-1;
         if(key<0)town_unbound("shop unlock category");
         if(!shop_defaults_bound)throw std::invalid_argument("equipment shop requires --shop-defaults extraction");
         return town.save_integers_->at(static_cast<std::size_t>(key));
@@ -578,6 +601,7 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
     void draw_magic_shop(BitmapBackend& backend){
         magic_regions.clear();magic_quotes.clear();const auto* state=events.active_shop();
         equipment_menu_drawn=state&&state->kind>=2&&state->kind<=4;
+        recruitment_menu_drawn=state&&state->kind==5;
         if(!state||state->state!=1||state->crossfade>=0||!state->entries)return;
         const auto ox=(town.context_.width-240)/2,oy=(town.context_.height-240)/2;
         const auto cx=(town.context_.width+1)/2-ox,cy=(town.context_.height+1)/2-oy;
@@ -597,23 +621,31 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
         else{
             const auto start=static_cast<std::int64_t>(state->page)*12;
             const auto kind=state->kind,resource_id=kind==3?21:kind==4?1:22,clip=kind==4?37:0,frame=kind==3?0:1;
-            auto* resource=town.actor_resource(resource_id);
-            auto* sprite=resource->animations->clips->at(static_cast<std::size_t>(clip));if(!sprite)throw std::invalid_argument("missing shop icon clip");
+            auto* resource=kind==5?nullptr:town.actor_resource(resource_id);
+            auto* sprite=resource?resource->animations->clips->at(static_cast<std::size_t>(clip)):nullptr;
+            if(kind!=5&&!sprite)throw std::invalid_argument("missing shop icon clip");
             for(auto i=start;i<start+12&&i<static_cast<std::int64_t>(state->entries->size());++i){
-                const auto id=state->entries->at(static_cast<std::size_t>(i));const auto& row=*shop_equipment_record(kind,id);
+                const auto id=state->entries->at(static_cast<std::size_t>(i));
+                const auto* row=kind==5?nullptr:shop_equipment_record(kind,id);
+                const auto* character=kind==5?shop_character_record(id):nullptr;
+                if((kind==5&&!character)||(kind!=5&&!row))throw std::invalid_argument("null shop display record");
+                const auto unlock=character?character->unlock_level:row->unlock_level,price=character?character->recruit_cost:row->buy_price;
                 const auto n=static_cast<std::int32_t>(i-start),x=ox+cx-116+58*(n%4),y=oy+cy-92+42*(n/4);
-                const auto locked=row.unlock_level>shop_unlock_value(kind),selected=state->selection==i;
-                const auto affordable=shop_check_money(row.buy_price);
-                const auto stock=town.shared_world_->humans->result_owner().inventory(shop_stock_kind(kind),id).stock;
-                magic_quotes.push_back({id,stock,row.buy_price,affordable?1:0});
+                const auto locked=unlock>shop_unlock_value(kind),selected=state->selection==i;
+                const auto affordable=character?shop_check_crystals(price):shop_check_money(price);
+                const auto owned=character?town.shared_world_->humans->result_owner().recruit(id).recruited:town.shared_world_->humans->result_owner().inventory(shop_stock_kind(kind),id).stock;
+                magic_quotes.push_back({id,owned,price,affordable?1:0});
                 backend.draw_seb_frame(magic_resource,9,selected?0:1,static_cast<float>(x),static_cast<float>(y));
-                draw_fixed_image_seb(&backend.graphics(),x+29,y+21,sprite->sprites,resource->images->at(static_cast<std::size_t>(row.image)),frame,shop_icon_work);
+                if(character){
+                    if(!locked)draw_scaled_human({x+29,y+32,38,1,id,100,0},&backend.graphics(),town,town.human_work_);
+                }else draw_fixed_image_seb(&backend.graphics(),x+29,y+21,sprite->sprites,resource->images->at(static_cast<std::size_t>(row->image)),frame,shop_icon_work);
                 // SAGA_STUB(town-magic-presentation): public-font price/lock labels
                 // replace native filtering/tint and selected-stat layout.
-                draw_magic_text(backend,locked?"Locked":std::to_string(row.buy_price),x+56,y+27,affordable?0xffffffffU:0xffcc4040U,true);
+                draw_magic_text(backend,locked?"Locked":std::to_string(price),x+56,y+27,affordable?0xffffffffU:0xffcc4040U,true);
                 if(selected&&!locked){
-                    buy=shop_check_money(row.buy_price);
-                    draw_magic_text(backend,row.name,ox+cx-110,oy+cy+48,0xffffffffU);
+                    buy=character?shop_check_crystals(price):shop_check_money(price);
+                    const auto* name=character?town.character_states_.at(static_cast<std::size_t>(id))->name.get():&row->name;
+                    if(name)draw_magic_text(backend,*name,ox+cx-110,oy+cy+48,0xffffffffU);
                 }
                 const auto value=static_cast<std::uint32_t>(i)+(locked?9999U:0U);
                 magic_regions.push_back({input_screen_rectangle({x,y,58,42},{0,0,0,0},town.context_.width,town.context_.height),{10,static_cast<std::int32_t>(0x20000U|value)}});
@@ -1283,7 +1315,22 @@ void TownBackground::report_update(std::ostream& out)const{
             }out<<']';
         }
     }
-    out<<(owner.equipment_menu_drawn?",\"equipment_shop_widgets\":{\"regions\":[":",\"magic_shop_widgets\":{\"regions\":[");
+    if(owner.shop_defaults_bound){
+        out<<",\"recruitments\":"<<owner.recruitments<<",\"recruitment_unlock_level\":"<<save_integers_->at(24)<<",\"recruitment_state\":[";
+        bool first_recruit=true;
+        if(shared_world_)for(const auto& row:shared_world_->catalog->characters)if(row){
+            const auto& state=shared_world_->humans->result_owner().recruit(row->id);
+            const auto& projected=character_states_.at(static_cast<std::size_t>(row->id));
+            if(!projected)throw std::invalid_argument("null town character projection");
+            if(!first_recruit)out<<',';first_recruit=false;
+            out<<'['<<row->id<<','<<state.discovery_state<<','<<(state.is_new?1:0)<<','<<state.recruited<<','<<projected->living_address<<']';
+        }
+        out<<"],\"recruitment_progress\":[";bool first_progress=true;
+        if(shared_world_)for(const auto& row:shared_world_->progress.characters){
+            if(!first_progress)out<<',';first_progress=false;out<<'['<<row.first<<','<<row.second.level<<','<<row.second.experience<<']';
+        }out<<']';
+    }
+    out<<(owner.recruitment_menu_drawn?",\"recruitment_shop_widgets\":{\"regions\":[":owner.equipment_menu_drawn?",\"equipment_shop_widgets\":{\"regions\":[":",\"magic_shop_widgets\":{\"regions\":[");
     for(std::size_t i=0;i<owner.magic_regions.size();++i){if(i)out<<',';const auto& r=owner.magic_regions[i];out<<'['<<r.control.group<<','<<r.control.value<<','<<r.bounds.x<<','<<r.bounds.y<<','<<r.bounds.width<<','<<r.bounds.height<<']';}
     out<<"],\"quotes\":[";for(std::size_t i=0;i<owner.magic_quotes.size();++i){if(i)out<<',';const auto& q=owner.magic_quotes[i];out<<'['<<q[0]<<','<<q[1]<<','<<q[2]<<','<<q[3]<<']';}
     out<<"]},\"shop_purchases\":[";if(shared_world_){bool first_shop=true;for(const auto& row:shared_world_->progress.shop_purchases){if(!first_shop)out<<',';first_shop=false;out<<'['<<row.first<<','<<row.second<<']';}}

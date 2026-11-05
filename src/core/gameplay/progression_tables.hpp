@@ -2,6 +2,7 @@
 #include "event_catalog.hpp"
 #include "experience_progression.hpp"
 #include <array>
+#include <functional>
 #include <string>
 
 namespace saga::core {
@@ -20,6 +21,7 @@ struct CharacterProgressionRecord {
     std::string resource,secondary_resource;
     std::int32_t voice_id=0,town_id=0,area_id=0,appear_rate=0;
     EventScript resident_terms;
+    std::int32_t unlock_level=0,recruit_cost=0; // CharaData tokens2/8, +0x68/+0x90.
 };
 struct CharacterNewGameState {
     std::shared_ptr<const std::string> name;
@@ -37,6 +39,11 @@ using CharacterProgressionTable = std::vector<std::optional<CharacterProgression
 LevelTable load_level_table(std::string_view, bool normalize_crlf, const EventIntegerParser&);
 CharacterProgressionTable load_character_progression_table(std::string_view, bool normalize_crlf,
                                                           const EventIntegerParser&);
+// ShopForm.Reset kind5: capture nonnull unlock keys, stable sort, then live
+// discovery, any flag0x14 and !isRecruit checks. Callbacks must retain the catalog.
+void append_character_shop_entries(std::vector<std::int32_t>&,const CharacterProgressionTable&,
+    const std::function<bool(const CharacterProgressionRecord&)>& found,
+    const std::function<bool(const CharacterProgressionRecord&)>& recruited);
 // Adapter holds references so subsequent changes to decoded records remain visible.
 class TableExperienceHost final : public ExperienceProgressionHost {
 public:

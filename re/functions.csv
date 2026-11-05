@@ -2136,8 +2136,8 @@ game:0x06000882,<>c.<Reset>b__55_2,unassigned,reimplemented,12,0x12120b0
 game:0x06000883,<>c.<Reset>b__55_3,unassigned,reimplemented,24,0x12120bc
 game:0x06000884,<>c.<Reset>b__55_4,unassigned,reimplemented,12,0x12120d4
 game:0x06000885,<>c.<Reset>b__55_5,unassigned,reimplemented,24,0x12120e0
-game:0x06000886,game:0x06000886,unassigned,,12,0x12120f8
-game:0x06000887,game:0x06000887,unassigned,,24,0x1212104
+game:0x06000886,<>c.<Reset>b__55_6,unassigned,reimplemented,12,0x12120f8
+game:0x06000887,<>c.<Reset>b__55_7,unassigned,reimplemented,24,0x1212104
 game:0x06000888,game:0x06000888,unassigned,,8,0x120b764
 game:0x06000889,game:0x06000889,unassigned,,152,0x121211c
 game:0x0600088a,game:0x0600088a,unassigned,,8,0x120b76c
@@ -3989,7 +3989,7 @@ game:0x06001066,game:0x06001066,data,,108,0x116d524
 game:0x06001067,data.CharaData.get_isMain,data,documented,12,0x116d590
 game:0x06001068,data.CharaData.get_isSub,data,reimplemented,12,0x116abdc
 game:0x06001069,game:0x06001069,data,,16,0x116abe8
-game:0x0600106a,game:0x0600106a,data,,16,0x116d59c
+game:0x0600106a,data.CharaData.get_isRecruit,data,reimplemented,16,0x116d59c
 game:0x0600106b,data.CharaData.get_level,data,documented,8,0x116d5ac
 game:0x0600106c,data.CharaData.set_level,data,reimplemented,116,0x116d5b4
 game:0x0600106d,data.CharaData.NewGame,data,reimplemented,304,0x116d628

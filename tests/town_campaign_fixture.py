@@ -248,3 +248,34 @@ def add_apparel_shop_case(root,kind):
     # Existing hero clips0/37 span frames0..3; their nonzero2x2 sprite can be
     # reused at hat frame0 / cloth frame1 without changing any combat animation.
     (root/'shop-defaults.tsv').write_text('shop_defaults\t1\nnormal_levels\t8\t1\t-10\t1\t1\t1\t1\t1\t1\n',encoding='ascii')
+
+
+def add_recruitment_shop_case(root):
+    """Found sub/owner offers, ineligible rows and a locked tier; no saved recruits."""
+    from test_sprite_preview import seb
+    root=Path(root);add_magic_shop_case(root);read=_container_reader()
+    archive=root/'textassets/tables.bin';tables=dict(read(archive.read_bytes()))
+    buildings=[line.split('\t') for line in tables['English.lproj/Building.txt'].decode().splitlines() if line]
+    for row in buildings:
+        if row[0]=='0':row[5]='5'
+    tables['English.lproj/Building.txt']=('\n'.join('\t'.join(row) for row in buildings)+'\n').encode()
+    characters=[line.split('\t') for line in tables['English.lproj/Chara.txt'].decode().splitlines() if line]
+    template=next(row for row in characters if row[0]=='2')
+    for character,unlock,cost,flags in ((10,0,12,5),(11,1,50,17),(12,2,7,5),(13,-1,3,4),(14,-2,3,1)):
+        row=template.copy();row[0]=str(character);row[1]=f'Shop character {character}'
+        row[2]=str(unlock);row[4]='10';row[8]=str(cost);row[-1]=str(flags);characters.append(row)
+    tables['English.lproj/Chara.txt']=('\n'.join('\t'.join(row) for row in characters)+'\n').encode()
+    tables['English.lproj/Event.txt']+=b'\n8\tLocked recruit\t0\t1\t3\t1\t0\t3\t1\t2\t8\t9\n'
+    tables['English.lproj/Talk.txt']+=b'\n9\t0\t1\tSynthetic locked recruit\n'
+    archive.write_bytes(jar(list(tables.items())))
+    shop=root/'textassets/shop.bin';members=dict(read(shop.read_bytes()))
+    members['seb.inf']=_merge_rows(members['seb.inf'],b'9\trecruitment-cell.seb\n')
+    members['recruitment-cell.seb']=seb([(0,0,0,0,48,48,0,0,0,0),(1,0,48,0,48,48,0,0,0,0)])
+    shop.write_bytes(jar(list(members.items())))
+    # Portraits reuse the existing body10 and weapon1 record. Supply that
+    # record's image12 from the fixture's weapon PNG; preserve every clip.
+    actor=root/'textassets/hero.bin';members=dict(read(actor.read_bytes()))
+    members['img.inf']=_merge_rows(members['img.inf'],b'12\tweapon.png,bin\n')
+    members['seb.inf']=_merge_rows(members['seb.inf'],b'38\ta.seb\n')
+    actor.write_bytes(jar(list(members.items())))
+    (root/'shop-defaults.tsv').write_text('shop_defaults\t1\nnormal_levels\t8\t1\t-10\t-10\t-10\t1\t1\t1\t1\n',encoding='ascii')

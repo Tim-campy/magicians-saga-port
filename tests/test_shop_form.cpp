@@ -57,6 +57,12 @@ struct Host final:ShopFormHost {
     std::vector<std::int32_t> equipment_reads;
     std::int32_t equipment_count_override=-1,equipment_null_id=-1,equipment_null_read=-1,tier=2;
     bool null_equipment_source=false;
+    std::shared_ptr<CharacterProgressionTable> characters=std::make_shared<CharacterProgressionTable>();
+    std::vector<bool> character_found;
+    std::vector<std::int32_t> character_recruited,character_reads;
+    std::int32_t character_count_override=-1,character_null_id=-1,character_null_read=-1;
+    bool null_character_source=false;
+    std::int64_t crystals=1000;
     int image_resets=0,images=0,blurs=0,bgm=0,backs=0,transitions=0,executed=-1;bool transition_result=true;
     void note(std::string value){log.push_back(value);if(on_call)on_call(value);if(value==fail_at)throw std::runtime_error(value);}
     bool has(std::string value)const{return std::find(log.begin(),log.end(),value)!=log.end();}
@@ -98,6 +104,33 @@ struct Host final:ShopFormHost {
         kind_queries.push_back("notice:"+std::to_string(kind)+":"+std::to_string(id));
         note("make-equipment:"+std::to_string(kind)+":"+std::to_string(id)+":"+std::to_string(option));
         equipment_notices.push_back({kind,id,option});return child;
+    }
+    std::int32_t shop_character_catalog_count()override{
+        note("character-count");return character_count_override==-1?static_cast<std::int32_t>(characters->size()):character_count_override;
+    }
+    std::shared_ptr<const CharacterProgressionTable> shop_character_catalog()override{
+        note("character-catalog");return null_character_source?nullptr:characters;
+    }
+    bool shop_character_found(const CharacterProgressionRecord& row)override{
+        note("character-found:"+std::to_string(row.id));return character_found.at(static_cast<std::size_t>(row.id));
+    }
+    bool shop_character_recruited(const CharacterProgressionRecord& row)override{
+        note("character-recruited:"+std::to_string(row.id));return character_recruited.at(static_cast<std::size_t>(row.id))!=0;
+    }
+    const CharacterProgressionRecord* shop_character_record(std::int32_t id)override{
+        note("character-record:"+std::to_string(id));auto& reads=character_reads.at(static_cast<std::size_t>(id));++reads;
+        if(id==character_null_id&&reads==character_null_read)return nullptr;
+        const auto& row=characters->at(static_cast<std::size_t>(id));return row?&*row:nullptr;
+    }
+    bool shop_check_crystals(std::int64_t value)override{
+        note("check-crystals:"+std::to_string(value));return value<1||crystals>=value;
+    }
+    void shop_subtract_crystals(std::int32_t value)override{
+        note("subtract-crystals:"+std::to_string(value));crystals=std::max<std::int64_t>(crystals-value,0);
+    }
+    void shop_recruit_character(std::int32_t id)override{
+        note("recruit:"+std::to_string(id));character_recruited.at(static_cast<std::size_t>(id))=1;
+        character_found.at(static_cast<std::size_t>(id))=true;
     }
     void shop_town_buildings()override{note("buildings");}
     void shop_base_update()override{note("base");}
@@ -459,6 +492,150 @@ void cloth_failure_prefix_and_dispatch_capture(){
     check(captured.kind==3&&captured.selection==-1&&*captured.entries==std::vector<std::int32_t>({2,1}),"plain Reset observes the changed live category");
 }
 
+void recruitment_fixture(ShopFormState& state,Host& host){
+    state.kind=5;host.state=&state;host.characters->resize(9);
+    host.character_found.assign(9,true);host.character_recruited.assign(9,0);host.character_reads.assign(9,0);
+    const auto row=[&](std::int32_t slot,std::int32_t id,std::int32_t unlock,std::int32_t cost,std::int32_t flags){
+        CharacterProgressionRecord item;item.id=id;item.unlock_level=unlock;item.recruit_cost=cost;item.flags=flags;
+        host.characters->at(static_cast<std::size_t>(slot))=item;
+    };
+    row(0,0,9,100,0x10);row(1,1,1,40,0x4); // Either bit in mask0x14 is enough.
+    row(3,3,1,80,0x14);row(4,4,0,-10,0);row(5,5,2,300,0x14);
+    row(6,6,0,10,0x10);row(7,7,-1,5,0x14);row(8,8,-2,5,0x14);
+    host.character_recruited[3]=2;host.character_recruited[8]=-1;host.character_found[7]=false;
+}
+void recruitment_reset_and_filters(){
+    ShopFormState state;Host host;recruitment_fixture(state,host);host.crystals=60;host.money=0;
+    initialize_shop_form(state,host);
+    check(*state.entries==std::vector<std::int32_t>({6,1,5,0}),"recruitment sorts signed unlocks stably, accepts either flag and excludes any nonzero recruited state");
+    check(state.filters->size()==9&&state.filters->at(5)==1&&state.filters->at(0)==0&&state.filters->at(1)==0,"recruitment filter combines tier and crystal affordability");
+    check(host.has("check-crystals:100")&&!host.has("check:100")&&host.kind_queries==std::vector<std::string>({"unlock:5","unlock:5","unlock:5","unlock:5"}),"recruitment uses crystals and native kind5 tier, never equipment stock");
+    check(host.has("character-found:4")&&!host.has("character-recruited:4")&&!host.has("character-recruited:7")&&!host.has("character-found:2"),"found precedes flag gate; recruit predicate follows both; nulls removed");
+    const auto first=std::find(host.log.begin(),host.log.end(),"character-found:8");
+    check(first!=host.log.end()&&*(first+1)=="character-recruited:8","sorted first row uses found before recruited");
+    const auto filter=std::find(host.log.begin(),host.log.end(),"buildings");
+    check(filter!=host.log.end()&&std::vector<std::string>(filter,filter+6)==std::vector<std::string>({"buildings","character-record:6","unlock:5","character-record:6","check-crystals:10","character-record:1"}),"recruitment filter reads unlock, tier, fresh cost, then crystal check");
+    host.character_recruited[3]=0;reset_shop_form(state,host);
+    check(*state.entries==std::vector<std::int32_t>({6,1,3,5,0}),"equal recruitment tiers retain catalog order");
+
+    // Allocation length and retained source are independent; the source survives provider replacement.
+    auto source=host.characters;
+    host.on_call=[&](const std::string& name){if(name=="character-found:6"){
+        host.characters=std::make_shared<CharacterProgressionTable>(*source);host.characters->at(1)->flags=0;
+        host.characters->at(1)->recruit_cost=500;
+    }};
+    reset_shop_form(state,host);
+    check(*state.entries==std::vector<std::int32_t>({6,1,3,5,0})&&state.filters->at(1)==1,"Reset captures source while filter reads live character records");
+
+    state.state=1;state.crossfade=-1;host.on_call={};reset_shop_form(state,host);
+    auto captured=state.filters;
+    host.on_call=[&](const std::string& name){if(name=="check-crystals:100"){
+        captured=state.filters;state.filters=std::make_shared<std::vector<std::uint8_t>>(9,9);
+    }};
+    update_shop_form(state,host);
+    check(captured->at(0)==0&&*state.filters==std::vector<std::uint8_t>(9,9),"recruitment captures filter before eager CheckCrystal even when locked");
+
+    host.on_call={};reset_shop_form(state,host);auto before_tier=state.filters;bool changed=false;
+    host.on_call=[&](const std::string& name){if(name=="unlock:5"&&!changed){
+        changed=true;state.filters=std::make_shared<std::vector<std::uint8_t>>(9,9);
+        host.characters->at(6)->recruit_cost=500;
+    }};
+    update_shop_form(state,host);
+    check(state.filters!=before_tier&&state.filters->at(6)==1&&before_tier->at(6)==0,"filter publication and fresh cost are captured after tier callback");
+
+    ShopFormState live;Host provider;recruitment_fixture(live,provider);reset_shop_form(live,provider);
+    live.state=1;live.crossfade=-1;provider.log.clear();
+    provider.on_call=[&](const std::string& name){if(name=="character-record:6")live.kind=2;};
+    provider.fail_at="unlock:2";
+    fails([&]{update_shop_form(live,provider);},"recruitment tier uses live kind after unlock record callback");
+    check(provider.has("unlock:2")&&!provider.has("check-crystals:10"),"tier failure precedes fresh cost and crystal query");
+}
+void recruitment_failure_prefixes(){
+    ShopFormState state;Host host;recruitment_fixture(state,host);state.page=7;state.page_count=88;
+    state.filters=std::make_shared<std::vector<std::uint8_t>>(1,9);auto old=state.filters;
+    host.character_count_override=-2;
+    fails([&]{reset_shop_form(state,host);},"negative recruitment length fails");
+    check(state.selection==-1&&state.crossfade==-1&&state.entries->empty()&&state.filters==old&&!host.has("character-catalog"),"negative count retains only fresh list and prior scalar stores");
+    host.character_count_override=-1;host.null_character_source=true;
+    fails([&]{reset_shop_form(state,host);},"null recruitment source fails");
+    check(state.filters!=old&&state.filters->size()==9&&state.entries->empty()&&state.page_count==88,"source failure follows new filter publication, before common tail");
+    host.null_character_source=false;host.fail_at="character-found:5";
+    fails([&]{reset_shop_form(state,host);},"late recruitment predicate failure propagates");
+    check(*state.entries==std::vector<std::int32_t>({6,1})&&state.page==7&&state.page_count==88,"predicate failure retains sorted append prefix and old page state");
+    host.fail_at.clear();host.character_count_override=1;host.log.clear();
+    fails([&]{reset_shop_form(state,host);},"separate first catalog length determines filter bounds");
+    check(*state.entries==std::vector<std::int32_t>({6,1,5,0})&&host.has("check-crystals:10"),"bounds check occurs after materialization and eager crystal check");
+
+    host.character_count_override=-1;host.character_null_id=6;host.character_null_read=2;host.character_reads.assign(9,0);host.log.clear();
+    fails([&]{reset_shop_form(state,host);},"fresh recruitment cost record is required");
+    check(host.has("unlock:5")&&!host.has("check-crystals:10"),"second lookup failure follows tier but precedes affordability and filter store");
+
+    host.character_null_id=-1;host.character_reads.assign(9,0);host.on_call=[&](const std::string& name){if(name=="unlock:5")state.filters.reset();};host.log.clear();
+    fails([&]{reset_shop_form(state,host);},"captured null recruitment filter fails");
+    check(host.has("check-crystals:10"),"captured filter null check follows fresh cost and eager crystal check");
+}
+void recruitment_purchase_order(){
+    ShopFormState state;Host host;recruitment_fixture(state,host);reset_shop_form(state,host);
+    state.state=1;state.crossfade=-1;state.selection=1;host.pulses={0x02000000U};host.log.clear();
+    bool buy=false;host.on_call=[&](const std::string& name){
+        if(name=="pulse:33554432")buy=true;
+        if(name=="check-crystals:40"&&buy)host.characters->at(1)->recruit_cost=70;
+        if(name=="push")state.selection=99;
+    };
+    update_shop_form(state,host);
+    check(host.crystals==930&&host.money==1000&&host.character_recruited[1]==1,"recruitment rechecks cost and writes recruitment with crystals only");
+    check(host.equipment_notices==std::vector<std::array<std::int32_t,3>>({{5,1,0}})&&host.notices.empty(),"recruitment creates shared purchase notice with kind5 and option0");
+    check(state.selection==-1&&*state.entries==std::vector<std::int32_t>({6,5,0}),"recruitment plain Reset removes recruited row and clears post-Push selection");
+    const auto begin=std::find(host.log.begin(),host.log.end(),"pulse:33554432"),end=std::find(begin,host.log.end(),"character-count");
+    check(begin!=host.log.end()&&end!=host.log.end()&&std::vector<std::string>(begin,end)==std::vector<std::string>({
+        "pulse:33554432","character-record:1","check-crystals:40","character-record:1","subtract-crystals:70",
+        "character-record:1","recruit:1","make-equipment:5:1:0","push"}),"recruitment purchase exact provider order");
+    check(std::all_of(host.kind_queries.begin(),host.kind_queries.end(),[](const auto& query){return query=="unlock:5"||query=="notice:5:1";}),"recruitment never calls equipment catalog, owned or stock providers");
+    host.on_call={};host.returned=-1;host.log.clear();const auto balance=host.crystals;
+    update_shop_form(state,host);
+    check(!host.returned&&state.selection==-1&&host.crystals==balance&&!host.has("pulse:33554432")&&host.bgm==2,"returned recruitment notice Resets and skips buy before outer BGM");
+    host.returned=0;host.log.clear();
+    fails([&]{update_shop_form(state,host);},"recruitment zero-result unlock branch remains unbound");
+    check(!host.returned&&!host.has("character-count"),"zero result consumed before unbound failure, without Reset");
+
+    ShopFormState captured;Host live;recruitment_fixture(captured,live);reset_shop_form(captured,live);
+    captured.state=1;captured.crossfade=-1;captured.selection=1;live.pulses={0x02000000U};bool buying=false;
+    live.on_call=[&](const std::string& name){
+        if(name=="pulse:33554432")buying=true;
+        if(name=="check-crystals:40"&&buying)captured.kind=1;
+    };
+    update_shop_form(captured,live);
+    check(live.character_recruited[1]==1&&live.crystals==960&&live.money==1000,"recruitment dispatch survives live kind mutation during affordability callback");
+    check(live.equipment_notices==std::vector<std::array<std::int32_t,3>>({{1,1,0}})&&*captured.entries==std::vector<std::int32_t>({0,2}),"notice and plain Reset use live post-recruitment kind");
+}
+void recruitment_purchase_failures_and_controller(){
+    ShopFormState refused;Host poor;recruitment_fixture(refused,poor);poor.crystals=20;reset_shop_form(refused,poor);
+    refused.state=1;refused.crossfade=-1;refused.selection=1;poor.pulses={0x02000000U};update_shop_form(refused,poor);
+    check(poor.crystals==20&&poor.character_recruited[1]==0&&poor.equipment_notices.empty()&&refused.selection==-1,"insufficient crystals skip debit/recruit/notice but plain Reset clears selection");
+
+    ShopFormState negative;Host signed_host;recruitment_fixture(negative,signed_host);
+    signed_host.characters->at(1)->recruit_cost=std::numeric_limits<std::int32_t>::min();signed_host.crystals=0;
+    reset_shop_form(negative,signed_host);negative.state=1;negative.crossfade=-1;negative.selection=1;signed_host.pulses={0x02000000U};
+    update_shop_form(negative,signed_host);
+    check(signed_host.has("check-crystals:-2147483648")&&signed_host.crystals==2147483648LL&&signed_host.character_recruited[1]==1,"negative recruitment cost preserves signed int32 through check and debit");
+
+    ShopFormState partial;Host failed;recruitment_fixture(partial,failed);reset_shop_form(partial,failed);
+    partial.state=1;partial.crossfade=-1;partial.selection=1;failed.pulses={0x02000000U};failed.fail_at="make-equipment:5:1:0";auto entries=partial.entries;
+    fails([&]{update_shop_form(partial,failed);},"recruitment notice failure propagates");
+    check(failed.crystals==960&&failed.character_recruited[1]==1&&partial.entries==entries&&partial.selection==1&&!failed.has("push")&&failed.bgm==0,"notice failure retains paid/recruited prefix without Reset or suffix");
+
+    ShopFormState missing;Host fresh;recruitment_fixture(missing,fresh);reset_shop_form(missing,fresh);
+    missing.state=1;missing.crossfade=-1;missing.selection=1;fresh.pulses={0x02000000U};fresh.character_reads.assign(9,0);
+    fresh.character_null_id=1;fresh.character_null_read=5;entries=missing.entries;
+    fails([&]{update_shop_form(missing,fresh);},"recruitment requires fresh receiver after payment");
+    check(fresh.crystals==960&&fresh.character_recruited[1]==0&&missing.entries==entries&&!fresh.has("recruit:1"),"receiver failure preserves debit before recruit and Reset");
+
+    ShopFormState locked;Host direct;recruitment_fixture(locked,direct);reset_shop_form(locked,direct);
+    locked.state=1;locked.crossfade=-1;locked.selection=3;direct.tier=0;direct.pulses={0x02000000U};
+    update_shop_form(locked,direct);
+    check(direct.character_recruited[0]==1&&direct.crystals==900,"controller buy does not invent a second unlock gate beyond UI selection");
+}
+
 void unsupported_and_widths(){
     ShopFormState state;Host host;state.kind=6;
     fails([&]{initialize_shop_form(state,host);},"other shop kind cannot invent a catalog");check(host.log.empty(),"unbound kind fails before callbacks");
@@ -475,4 +652,5 @@ int main(){
     purchase_failure_and_refusal();returned_children_paging_and_special_input();unsupported_and_widths();
     equipment_reset_and_filter();equipment_reset_failure_prefixes();equipment_purchase_order();equipment_purchase_failure_and_refusal();
     apparel_reset_and_same_id_routing();cloth_check_and_cross_catalog_debit();cloth_failure_prefix_and_dispatch_capture();
+    recruitment_reset_and_filters();recruitment_failure_prefixes();recruitment_purchase_order();recruitment_purchase_failures_and_controller();
 }

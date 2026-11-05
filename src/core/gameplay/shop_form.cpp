@@ -26,7 +26,7 @@ template<class T>T& required(const std::shared_ptr<T>& value){
     return *value;
 }
 void require_kind(const ShopFormState& state){
-    if(state.kind<1||state.kind>4)throw std::invalid_argument("only ShopForm kinds1..4 are bound");
+    if(state.kind<1||state.kind>5)throw std::invalid_argument("only ShopForm kinds1..5 are bound");
 }
 std::int32_t entry_count(const ShopFormState& state){
     const auto size=required(state.entries).size();
@@ -42,6 +42,17 @@ void check_filter(const ShopFormState& state,ShopFormHost& host){
         // kind1 fails the unsigned(type-2)<=7 dispatch gate after reading the first item.
         if(state.kind==1)return;
         const auto catalog_kind=state.kind;
+        if(catalog_kind==5){
+            // Kind5 captures the filter after the live tier query but before
+            // the fresh cost record and eager CheckCrystal (0x120b4bc).
+            const auto unlock=required(host.shop_character_record(id)).unlock_level;
+            const auto tier=host.shop_unlock_value(state.kind);
+            const auto filters=state.filters;
+            const auto cost=required(host.shop_character_record(id)).recruit_cost;
+            const auto affordable=host.shop_check_crystals(static_cast<std::int64_t>(cost));
+            required(filters).at(static_cast<std::size_t>(id))=static_cast<std::uint8_t>(unlock<=tier&&!affordable);
+            continue;
+        }
         const auto unlock=required(host.shop_equipment_record(catalog_kind,id)).unlock_level;
         const auto price=required(host.shop_equipment_record(catalog_kind,id)).buy_price;
         const auto kind=state.kind;
@@ -63,7 +74,7 @@ void reset_preserving_selection(ShopFormState& state,ShopFormHost& host){
     state.selection=selected;
 }
 void update_main(ShopFormState& state,ShopFormHost& host){
-    // Selected ShopForm._update0x120ba1c kinds1..4, thread0 path.
+    // Selected ShopForm._update0x120ba1c kinds1..5, thread0 path.
     if(state.thread_state!=0)throw std::invalid_argument("shop billing thread path is unbound");
     host.shop_find_building(state.kind);
     if(const auto result=host.shop_take_returned_child_result()){
@@ -99,6 +110,20 @@ void update_main(ShopFormState& state,ShopFormHost& host){
             }
             // Only kinds1/9 preserve selection after a successful or refused buy.
             reset_preserving_selection(state,host);
+        }else if(dispatch_kind==5){
+            // Kind5 (0x120c8bc) checks a quoted crystal cost, then reloads
+            // payment and the recruitment receiver before its separate writes.
+            const auto cost=required(host.shop_character_record(index)).recruit_cost;
+            if(host.shop_check_crystals(static_cast<std::int64_t>(cost))){
+                const auto payment=required(host.shop_character_record(index)).recruit_cost;
+                host.shop_subtract_crystals(payment);
+                (void)required(host.shop_character_record(index));
+                host.shop_recruit_character(index);
+                const auto kind=state.kind;
+                const auto form=host.shop_make_equipment_confirmation(kind,index,0);
+                host.shop_push_form(form);
+            }
+            reset_shop_form(state,host);
         }else{
             // Ordinary item branches retain their dispatched catalog across callbacks.
             // Shipped kind4 checks Cloth.buyPrice but debits Hat.buyPrice at the same ID.
@@ -122,7 +147,7 @@ void update_main(ShopFormState& state,ShopFormHost& host){
 }
 }
 void reset_shop_form(ShopFormState& state,ShopFormHost& host){
-    // ShopForm.Reset0x1209ec8: kinds1..4 at0x120a110/a1fc/a448/a694; common tail0x120b048.
+    // ShopForm.Reset0x1209ec8: kinds1..5 at0x120a110/a1fc/a448/a694/a8e0; common tail0x120b048.
     require_kind(state);
     state.selection=-1;state.crossfade=-1;
     state.entries=std::make_shared<std::vector<std::int32_t>>();
@@ -132,6 +157,14 @@ void reset_shop_form(ShopFormState& state,ShopFormHost& host){
         state.filters=std::make_shared<std::vector<std::uint8_t>>(static_cast<std::size_t>(count));
         for(std::int32_t index=0;index<host.shop_catalog_count();index=add32(index,1))
             if(host.shop_catalog_is_found(index))required(state.entries).push_back(index);
+    }else if(state.kind==5){
+        const auto count=host.shop_character_catalog_count();
+        if(count<0)throw std::length_error("negative recruitment-shop catalog length");
+        state.filters=std::make_shared<std::vector<std::uint8_t>>(static_cast<std::size_t>(count));
+        const auto catalog=host.shop_character_catalog();
+        append_character_shop_entries(required(state.entries),required(catalog),
+            [&](const CharacterProgressionRecord& record){return host.shop_character_found(record);},
+            [&](const CharacterProgressionRecord& record){return host.shop_character_recruited(record);});
     }else{
         const auto kind=state.kind;
         const auto count=host.shop_equipment_catalog_count(kind);
@@ -150,7 +183,7 @@ void reset_shop_form(ShopFormState& state,ShopFormHost& host){
     check_filter(state,host);
 }
 void initialize_shop_form(ShopFormState& state,ShopFormHost& host){
-    // ShopForm.Init0x1209bc4 selected ordinary kinds1..4.
+    // ShopForm.Init0x1209bc4 selected ordinary kinds1..5.
     require_kind(state);
     host.shop_common_initialize();
     state.member_system=host.shop_member_system();

@@ -267,6 +267,112 @@ class TownCampaignTests(unittest.TestCase):
             for catalog in ('equipment_stock','hat_stock','cloth_stock'):
                 self.assertEqual(refused[catalog],before['update'][catalog])
 
+    def open_recruitment_shop(self,root):
+        from town_campaign_fixture import add_recruitment_shop_case
+        self.fixture(root);add_recruitment_shop_case(root)
+        context=('--camera-x','0');before=self.state(root,60,*context)
+        touch=next(t for t in before['buildings_draw']['touches'] if t[0]==0)
+        x,y=touch[2]+40,touch[3]+45
+        replay=root/'recruitment.replay'
+        replay.write_text(''.join(f'{61+i} widget {i%2} {x} {y}\n' for i in range(4)),encoding='ascii')
+        args=(*context,'--replay',str(replay))
+        return before,replay,args,self.state(root,140,*args)
+
+    def recruitment_row_point(self,update,character):
+        widgets=update['recruitment_shop_widgets']
+        position=next(i for i,q in enumerate(widgets['quotes']) if q[0]==character)
+        region=[r for r in widgets['regions'] if r[0]==10][position]
+        return region[2]+region[4]//2,region[3]+region[5]//2
+
+    def test_recruitment_spends_only_crystals_and_preserves_progression_formation_and_world(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);before,replay,args,opened=self.open_recruitment_shop(root)
+            update=opened['update'];menu=update['recruitment_shop']
+            self.assertEqual((menu['kind'],menu['state'],menu['entries'],menu['selected']),(5,1,[10,11,12],-1))
+            self.assertIn([10,0,12,1],update['recruitment_shop_widgets']['quotes'])
+            self.assertEqual(next(r for r in update['recruitment_state'] if r[0]==13),[13,0,0,0,-1])
+            self.assertEqual(next(r for r in update['recruitment_state'] if r[0]==14),[14,1,1,0,-1])
+            x,y=self.recruitment_row_point(update,10)
+            with replay.open('a') as out:out.write(f'141 widget 0 {x} {y}\n142 widget 1 {x} {y}\n')
+            selected=self.state(root,142,*args)['update']
+            self.assertEqual(selected['recruitment_shop']['selected'],0)
+            self.assertEqual(selected['wallet'],before['update']['wallet']);self.assertEqual(selected['recruitments'],0)
+            self.assertEqual(next(r for r in selected['recruitment_state'] if r[0]==10),[10,1,1,0,-1])
+            buy=next(r for r in selected['recruitment_shop_widgets']['regions'] if r[:2]==[4,25])
+            bx,by=buy[2]+buy[4]//2,buy[3]+buy[5]//2
+            with replay.open('a') as out:out.write(f'143 widget 0 {bx} {by}\n144 widget 1 {bx} {by}\n')
+            bought=self.state(root,144,*args);purchase=bought['update']['equipment_purchase']
+            self.assertEqual((purchase['kind'],purchase['item'],purchase['option'],purchase['frame']),(5,10,0,0))
+            self.assertEqual(bought['update']['wallet'],dict(before['update']['wallet'],crystals=before['update']['wallet']['crystals']-12))
+            self.assertEqual(bought['update']['recruitments'],1)
+            expected=[row.copy() for row in before['update']['recruitment_state']]
+            next(row for row in expected if row[0]==10)[1:]=[1,1,1,-1]
+            self.assertEqual(bought['update']['recruitment_state'],expected)
+            self.assertEqual(bought['update']['recruitment_progress'],before['update']['recruitment_progress'])
+            self.assertEqual(bought['shared_world'],before['shared_world'])
+            for field in ('entity','character','level','experience','formation','equipment','textures'):
+                self.assertEqual(bought['hero'][field],before['hero'][field])
+            for catalog in ('equipment_stock','hat_stock','cloth_stock'):
+                self.assertEqual(bought['update'][catalog],before['update'][catalog])
+            resumed=self.state(root,190,*args)['update']
+            self.assertEqual(resumed['recruitment_shop']['entries'],[11,12])
+            self.assertEqual(resumed['recruitment_shop']['selected'],-1)
+            self.assertEqual(resumed['recruitments'],1);self.assertNotIn('equipment_purchase',resumed)
+            with replay.open('a') as out:out.write('191 form-back\n')
+            city=self.state(root,200,*args)
+            self.assertNotIn('recruitment_shop',city['update']);self.assertTrue(city['shared_world']['awaiting_quest'])
+            self.assertEqual(city['shared_world'],before['shared_world'])
+            self.assertEqual(city['update']['wallet'],bought['update']['wallet'])
+            self.assertEqual(city['update']['recruitment_state'],expected)
+            self.assertEqual(city['update']['recruitment_progress'],before['update']['recruitment_progress'])
+            with replay.open('a') as out:out.write('201 select 0xc0000 0\n202 buttons 0x10000000\n216 widget 0 250 250\n216 widget 1 250 250\n216 widget 0 250 250\n217 widget 1 250 250\n')
+            entered=self.state(root,258,*args)
+            self.assertTrue(entered['update']['mission_active']);self.assertTrue(entered['shared_world']['same_hero'])
+            self.assertEqual(entered['shared_world']['initialized_systems'],32)
+            self.assertEqual(entered['update']['recruitment_state'],expected)
+            self.assertEqual(entered['update']['recruitment_progress'],before['update']['recruitment_progress'])
+            self.assertEqual(entered['hero']['entity'],before['hero']['entity'])
+            self.assertEqual(entered['hero']['formation'],before['hero']['formation'])
+
+    def test_recruitment_insufficient_crystals_never_spends_money_or_recruits(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);before,replay,args,opened=self.open_recruitment_shop(root)
+            self.assertIn([11,0,50,0],opened['update']['recruitment_shop_widgets']['quotes'])
+            x,y=self.recruitment_row_point(opened['update'],11)
+            with replay.open('a') as out:out.write(f'141 widget 0 {x} {y}\n142 widget 1 {x} {y}\n')
+            selected=self.state(root,142,*args)['update']
+            self.assertLess(selected['recruitment_shop']['selected'],9999)
+            self.assertFalse(any(r[:2]==[4,25] for r in selected['recruitment_shop_widgets']['regions']))
+            with replay.open('a') as out:out.write('143 buttons 0x02000000\n')
+            refused=self.state(root,144,*args)['update']
+            self.assertEqual(refused['wallet'],before['update']['wallet']);self.assertEqual(refused['recruitments'],0)
+            self.assertEqual(refused['recruitment_state'],before['update']['recruitment_state'])
+            self.assertEqual(refused['recruitment_progress'],before['update']['recruitment_progress'])
+            self.assertNotIn('equipment_purchase',refused)
+
+    def test_recruitment_locked_second_tap_delivers_one_child_result_and_returns(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);before,replay,args,opened=self.open_recruitment_shop(root)
+            x,y=self.recruitment_row_point(opened['update'],12)
+            with replay.open('a') as out:out.write(f'141 widget 0 {x} {y}\n142 widget 1 {x} {y}\n')
+            selected=self.state(root,142,*args)['update']
+            self.assertGreaterEqual(selected['recruitment_shop']['selected'],9999)
+            self.assertNotIn(8,dict(selected['event_execution_counts']))
+            with replay.open('a') as out:out.write(f'143 widget 0 {x} {y}\n144 widget 1 {x} {y}\n')
+            event=self.state(root,144,*args)['update']
+            self.assertEqual(dict(event['event_execution_counts'])[8],1)
+            self.assertTrue(event['talk_pending']);self.assertNotIn('equipment_purchase',event)
+            resumed=self.state(root,200,*args)['update']
+            self.assertEqual(resumed['recruitment_shop']['selected'],-1)
+            self.assertEqual(dict(resumed['event_execution_counts'])[8],1)
+            self.assertEqual(resumed['wallet'],before['update']['wallet']);self.assertEqual(resumed['recruitments'],0)
+            self.assertEqual(resumed['recruitment_state'],before['update']['recruitment_state'])
+            self.assertEqual(resumed['recruitment_progress'],before['update']['recruitment_progress'])
+            with replay.open('a') as out:out.write('201 form-back\n')
+            city=self.state(root,210,*args)
+            self.assertNotIn('recruitment_shop',city['update']);self.assertEqual(city['shared_world'],before['shared_world'])
+            self.assertEqual(city['hero']['formation'],before['hero']['formation'])
+
     def test_magic_shop_purchase_changes_shared_combat_parameters_and_resumes_town(self):
         from town_campaign_fixture import add_magic_shop_case
         with tempfile.TemporaryDirectory() as directory:

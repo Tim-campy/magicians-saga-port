@@ -23,8 +23,8 @@ CharacterProgressionTable load_character_progression_table(std::string_view text
     // CharaData.Load 0x116dcc4. Consume the entire schema, retaining progression and combat inputs.
     return detail::load_table_records<CharacterProgressionRecord>(text,normalize,parser,[](detail::TableTokens& t){
         CharacterProgressionRecord r;
-        r.id=t.integer();r.base_name=std::make_shared<const std::string>(t.take());t.integer();r.resource=t.take();r.image=t.integer();r.secondary_resource=t.take();
-        r.weapon_id=t.integer();t.integer();t.integer();
+        r.id=t.integer();r.base_name=std::make_shared<const std::string>(t.take());r.unlock_level=t.integer();r.resource=t.take();r.image=t.integer();r.secondary_resource=t.take();
+        r.weapon_id=t.integer();t.integer();r.recruit_cost=t.integer();
         r.initial_level=t.integer();t.integer(); // rank
         r.required_experience_rate=t.integer();
         r.parameters=t.script(); // Same framing as event scripts.
@@ -33,6 +33,19 @@ CharacterProgressionTable load_character_progression_table(std::string_view text
         r.appear_rate=t.integer();r.flags=t.integer();
         return r;
     });
+}
+void append_character_shop_entries(std::vector<std::int32_t>& output,const CharacterProgressionTable& records,
+    const std::function<bool(const CharacterProgressionRecord&)>& found,
+    const std::function<bool(const CharacterProgressionRecord&)>& recruited){
+    // ShopForm.Reset0x120a8e0: Where(nonnull), OrderBy(lockLevel), ToArray,
+    // then isFound, Check(0x14), !isRecruit and publication of the live record.id.
+    struct Ranked {const CharacterProgressionRecord* record;std::int32_t key;};
+    std::vector<Ranked> ordered;ordered.reserve(records.size());
+    for(const auto& row:records)if(row)ordered.push_back({&*row,row->unlock_level});
+    std::stable_sort(ordered.begin(),ordered.end(),[](const auto& a,const auto& b){return a.key<b.key;});
+    for(const auto& entry:ordered){const auto& row=*entry.record;
+        if(found(row)&&(static_cast<std::uint32_t>(row.flags)&0x14U)!=0&&!recruited(row))output.push_back(row.id);
+    }
 }
 void reset_character_for_new_game(CharacterNewGameState& state,const CharacterProgressionRecord& record,const std::function<void(bool)>& find){
     state.name=record.base_name;state.status_definition=record.parameters;

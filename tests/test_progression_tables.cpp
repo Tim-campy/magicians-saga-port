@@ -3,6 +3,7 @@
 #include <fstream>
 #include <iterator>
 #include <iostream>
+#include <limits>
 using namespace saga::core;
 void check(bool b){if(!b)std::abort();}
 std::string read(const char* path){
@@ -34,9 +35,36 @@ int main(int argc,char** argv){
     auto characters=load_character_progression_table(character,false,parse_event_decimal);
     check(characters.size()==3&&!characters[1]&&characters[2]->required_experience_rate==150&&characters[2]->image==8);
     check(characters[2]->base_name&&*characters[2]->base_name=="Name");
+    check(characters[2]->unlock_level==7&&characters[2]->recruit_cost==3);
     check(characters[2]->resource=="res"&&characters[2]->secondary_resource=="res2");
     check(characters[2]->voice_id==6&&characters[2]->town_id==7&&characters[2]->area_id==8&&characters[2]->appear_rate==9&&!characters[2]->resident_terms&&characters[2]->flags==10);
     const auto fails=[](auto action){bool caught=false;try{action();}catch(const std::exception&){caught=true;}check(caught);};
+    {auto signed_input=character;signed_input.replace(signed_input.find("\t7\tres"),6,"\t-2147483648\tres");
+     signed_input.replace(signed_input.find("res2\t1\t2\t3\t4"),12,"res2\t1\t2\t2147483647\t4");
+     const auto signed_records=load_character_progression_table(signed_input,false,parse_event_decimal);
+     check(signed_records[2]->unlock_level==std::numeric_limits<std::int32_t>::min()&&signed_records[2]->recruit_cost==std::numeric_limits<std::int32_t>::max());}
+    {CharacterProgressionTable catalog(6);
+     const auto make=[](std::int32_t id,std::int32_t key,std::int32_t flags){CharacterProgressionRecord row;row.id=id;row.unlock_level=key;row.flags=flags;return row;};
+     catalog[1]=make(5,-1,4);catalog[2]=make(6,-1,16);
+     catalog[3]=make(7,std::numeric_limits<std::int32_t>::min(),20);
+     catalog[4]=make(8,std::numeric_limits<std::int32_t>::max(),1);catalog[5]=make(9,0,4);
+     std::vector<std::int32_t> output{99};std::vector<std::string> calls;
+     const auto found=[&](const auto& row){calls.push_back("F"+std::to_string(row.id));return row.id!=7;};
+     const auto recruited=[&](const auto& row){calls.push_back("R"+std::to_string(row.id));return row.id==9;};
+     append_character_shop_entries(output,catalog,found,recruited);
+     check(output==std::vector<std::int32_t>({99,5,6}));
+     check(calls==std::vector<std::string>({"F7","F5","R5","F6","R6","F9","R9","F8"}));
+     output={99};calls.clear();
+     append_character_shop_entries(output,catalog,[&](const auto& row){
+         const auto result=found(row);if(row.id==5){catalog[2]->unlock_level=std::numeric_limits<std::int32_t>::min();catalog[2]->flags=0;}
+         return result;
+     },[&](const auto& row){const auto result=recruited(row);if(row.id==5)catalog[1]->id=105;return result;});
+     check(output==std::vector<std::int32_t>({99,105}));
+     check(calls==std::vector<std::string>({"F7","F5","R5","F6","F9","R9","F8"}));
+     catalog[1]->id=5;catalog[2]->unlock_level=-1;catalog[2]->flags=16;output={99};
+     fails([&]{append_character_shop_entries(output,catalog,[&](const auto& row){if(row.id==6)throw std::runtime_error("late found");return row.id!=7;},recruited);});
+     check(output==std::vector<std::int32_t>({99,5}));
+     output={99};append_character_shop_entries(output,CharacterProgressionTable(3),found,recruited);check(output==std::vector<std::int32_t>{99});}
     {auto record=*characters[2];CharacterNewGameState state;state.discovery_state=7;state.is_new=true;
      state.level=99;state.experience=8;state.living_address=6;state.recruited=5;state.sorties=12;state.equipped_cane=4;
      reset_character_for_new_game(state,record);
