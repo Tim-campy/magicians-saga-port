@@ -39,6 +39,8 @@ struct MissionBootstrapOptions {
     std::int32_t debug_flags=0; // Explicit diagnostic mask, applied after native Debug.Init resets flags.
     bool automatic_images=false,application_update=true;
     bool debug_controls=false,short_words=false,held_advance=false,print=false;
+    // Build the application-lifetime world before a town chooses its first quest.
+    bool defer_stage_start=false;
 };
 // Shared typed mission bootstrap and strict diagnostic loader.
 // An empty decoder decodes only images needed by Gauge22 logic.
@@ -51,6 +53,12 @@ public:
     MissionProfile(const MissionProfile&)=delete;
     MissionProfile& operator=(const MissionProfile&)=delete;
     bool step(); // False at an explicitly held deferred transition; no further old-mission logic.
+    bool awaiting_quest()const{return awaiting_quest_;}
+    std::size_t initialized_system_count()const{return initialized_order_.size();}
+    core::TownInitializationState& initialized_town(){return town_state_;}
+    std::int32_t initialized_town_capacity()const{return saved_town_count_.value();}
+    MissionEvents& event_owner(){return *events_;}
+    core::CharacterNewGameState& initial_character_state(std::int32_t id){return initial_character_records_.at(id);}
     bool resizable_viewport()const{return offscreen_camera_.has_value();}
     bool accepts_live_viewport()const{return resizable_viewport()&&!replay_bound_;}
     void resize_viewport(std::int32_t width,std::int32_t height);
@@ -83,7 +91,7 @@ public:
     std::map<std::int32_t,core::SubmissionMaterial> materials;
     std::map<std::tuple<std::size_t,std::uint32_t,std::int32_t>,std::int32_t> material_bindings;
     bool native_materials=false;
-    std::unique_ptr<ResourceArchive> tables;std::unique_ptr<GameplayCatalog> catalog;MissionProgress progress;
+    std::unique_ptr<ResourceArchive> tables;std::shared_ptr<GameplayCatalog> catalog;MissionProgress progress;
     std::optional<std::int32_t> selected_quest;
     std::optional<core::StageGeometry> geometry;
     MissionView view{};bool has_view=false,has_slots=false,has_animation=false;std::int32_t slots=0,frames=0,automatic=0,application_update=0;
@@ -110,6 +118,7 @@ private:
     friend struct MissionCheckpoint;
     MissionProfile(const std::filesystem::path&,bool,ArchiveImageSet::Decoder,std::optional<MissionRuntimeConfig>,std::optional<std::filesystem::path>,MissionSelection,const MissionBootstrapOptions*);
     std::optional<MissionBootstrapOptions> bootstrap_options_;
+    bool awaiting_quest_=false;
     float instance_view_scale_=100,base_view_scale_=100;
     std::unique_ptr<MissionEvents> events_;
     struct TextBitmap:DesktopTextBitmap {

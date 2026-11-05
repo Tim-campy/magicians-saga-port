@@ -31,7 +31,7 @@ Host: `saga_mission` (headless or SDL window; fresh --data/--quest entry or expl
 
 Host: `saga_town`. Acceptance: SelectForm town runs with the real map and residents; choosing a quest starts S1's mission; the result returns to town and progression (EXP, money, levels, stock, quest record) is applied in memory; event scripts fire on return (event 31, 1133).
 
-- [ ] (blocking) Bind the retained SelectStageForm production41 quest-entry request to the mission controller in `saga_town`, sharing town/save/catalog/event owners and progression on return.
+- [ ] (blocking) Bind production41 to Stage.Start on saga_town's retained --shared-world instance with live save/event owners; connect return and refresh town projections from canonical progression.
 - [ ] Bind remaining town widget/menu dispatch, retaining camera capture, native-event replay, resident speech and shared event/save owners.
 - [ ] Bind Building/KingReward NewGame state to town menus and return consumers before those paths become reachable.
 - [ ] Connect town quest selection and retained mission return to one shared progression owner in `saga_town`.

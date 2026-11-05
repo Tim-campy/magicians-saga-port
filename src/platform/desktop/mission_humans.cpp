@@ -22,6 +22,10 @@ MissionHumans::MissionHumans(MissionEntities& world,const GameplayCatalog& data,
     stage_.quest=scenario.quest?std::move(scenario.quest):std::make_shared<StageQuest>();
     if(!table_quest_)stage_.quest->distance=scenario.distance;
     native_state_=scenario.native_state;
+    if(scenario.awaiting_quest){
+        if(!native_state_||!defer||table_quest_)throw std::invalid_argument("quest-free world requires native deferred initialization");
+        stage_.quest.reset();
+    }
     if(native_state_&&!defer)throw std::invalid_argument("native mission state requires ordered Init and Stage.Start");
     if(!native_state_){
         stage_.min_z_rate=scenario.min_z_rate;stage_.max_z_rate=scenario.max_z_rate;stage_.attack_attribute=scenario.attribute;

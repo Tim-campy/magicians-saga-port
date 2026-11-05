@@ -312,8 +312,9 @@ void MissionProfile::load_replay(const std::filesystem::path& path){
 MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,ArchiveImageSet::Decoder decoder,std::optional<MissionRuntimeConfig> config,std::optional<std::filesystem::path> replay,MissionSelection selection)
     :MissionProfile(scene,native,std::move(decoder),std::move(config),std::move(replay),std::move(selection),nullptr){}
 MissionProfile::MissionProfile(const MissionBootstrapOptions& options,ArchiveImageSet::Decoder decoder,MissionRuntimeConfig config,std::optional<std::filesystem::path> replay)
-    :MissionProfile({},true,std::move(decoder),std::move(config),std::move(replay),MissionSelection{options.data_root,options.quest},&options){}
+    :MissionProfile({},true,std::move(decoder),std::move(config),std::move(replay),MissionSelection{options.data_root,options.defer_stage_start?std::optional<std::int32_t>{}:std::optional<std::int32_t>{options.quest}},&options){}
 MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,ArchiveImageSet::Decoder decoder,std::optional<MissionRuntimeConfig> config,std::optional<std::filesystem::path> replay,MissionSelection selection,const MissionBootstrapOptions* bootstrap):runtime(std::move(config)){
+    awaiting_quest_=bootstrap&&bootstrap->defer_stage_start;
     if(selection.quest&&*selection.quest<0)throw std::invalid_argument("quest ID must be nonnegative");
     if(selection.data_root&&!std::filesystem::is_directory(*selection.data_root/"textassets"))throw std::invalid_argument("data root requires the extractor's textassets directory");
     const auto archive_path=[&](const std::string& path){
@@ -807,7 +808,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
            human_scenario||rewards||notifications||collection||input_scenario||enemy_config||enemy_population||enemy_pool||
            stage_loop||stage_events||stage_scenario.boss||(has_formation&&!fresh_formation))
             throw std::invalid_argument("mission_state new_game requires new_game_save/fresh hero/system_init0/system_construct/quest_frame and excludes human/reward/enemy/notification/collection/input/stage snapshots or numeric formation");
-        human_scenario=MissionHumanScenario{};human_scenario->native_state=true;
+        human_scenario=MissionHumanScenario{};human_scenario->native_state=true;human_scenario->awaiting_quest=awaiting_quest_;
         rewards=MissionRewardScenario{};notifications=MissionNotificationScenario{};notifications->held_keys=native_held_keys;
         quest_completion_new_game=true;collection=true;
         input_scenario=MissionInputScenario{};input_scenario->held_keys=native_held_keys;
@@ -823,29 +824,30 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         const auto defaults=read_new_game_save_defaults(*selection.data_root);
         saved_mission_selection_=SavedMissionSelection{defaults.area8,defaults.quest9};saved_town_count_=defaults.town_capacity;
         result_state.money=defaults.money;result_state.crystals=defaults.crystals;
-        selected_quest=selection.quest.value_or(defaults.quest9);stage_entry=*selected_quest;stage_area_id=defaults.area8;
+        stage_area_id=defaults.area8;
+        if(!awaiting_quest_){selected_quest=selection.quest.value_or(defaults.quest9);stage_entry=*selected_quest;}
         native_stage_entry_=true;wallet=record=true;
     }else if(quest_completion_new_game)throw std::invalid_argument("completion new_game requires new_game_save");
-    if(selection.quest&&!selected_quest)throw std::invalid_argument("--quest requires a scenario quest row, mission_selection or new_game_save provider");
+    if(selection.quest&&!selected_quest&&!awaiting_quest_)throw std::invalid_argument("--quest requires a scenario quest row, mission_selection or new_game_save provider");
     if(!has_world)throw std::invalid_argument("an explicit world matrix is required");
     if(event_context&&(!quest_frame_||!tick_ms))throw std::invalid_argument("mission_events requires quest_frame and an explicit tick_ms clock");
     if(!event_context&&!event_scenario.page_lengths.empty())throw std::invalid_argument("talk_layout requires mission_events");
     if(event_scenario.font&&(!event_context||!event_scenario.page_lengths.empty()))throw std::invalid_argument("talk_font requires mission_events and excludes provisional talk_layout rows");
-    if(fresh_hero_&&(!initialized_loaded_||*initialized_loaded_!=0||!construct_systems_||!stage_entry||!saved_town_count_||selected.size()!=1))
+    if(fresh_hero_&&(!initialized_loaded_||*initialized_loaded_!=0||!construct_systems_||(!stage_entry&&!awaiting_quest_)||!saved_town_count_||selected.size()!=1))
         throw std::invalid_argument("hero fresh requires system_init 0, system_construct, native stage entry, town_save19 and no other selected actors");
     if(!fresh_hero_&&((initialized_loaded_&&*initialized_loaded_==0)||saved_town_count_))
         throw std::invalid_argument("system_init 0 and town_save19 require hero fresh");
-    if(fresh_formation&&(!fresh_hero_||!initialized_loaded_||*initialized_loaded_!=0||!construct_systems_||!stage_entry))
+    if(fresh_formation&&(!fresh_hero_||!initialized_loaded_||*initialized_loaded_!=0||!construct_systems_||(!stage_entry&&!awaiting_quest_)))
         throw std::invalid_argument("party_formation new_game requires fresh hero/system_init0/system_construct and native stage entry");
     const bool result_requested=wallet||record||recruits||stocks[0]||stocks[1]||stocks[2]||gear_new_game_||character_shop_new_game_mask_.has_value();
     if(character_shop_new_game_mask_&&(!fresh_hero_||!initialized_loaded_||*initialized_loaded_!=0||!construct_systems_||!progress.characters.empty()||!progress.shop_purchases.empty()||!progress.sortie_counts.empty()||recruits))
         throw std::invalid_argument("character_shop_new_game requires fresh hero/system_init0/system_construct and excludes progress/purchase/sorties/result_recruits snapshots");
     if(gear_new_game_&&(!fresh_hero_||!initialized_loaded_||*initialized_loaded_!=0||!construct_systems_||!gear_defaults.empty()||stocks[0]||stocks[1]||stocks[2]))
         throw std::invalid_argument("gear_new_game requires fresh hero/system_init0/system_construct and excludes gear_levels/result_inventory snapshots");
-    if(construct_systems_&&(!initialized_loaded_||!stage_entry||menu_snapshot||std::find(enabled_rows.begin(),enabled_rows.end(),true)!=enabled_rows.end()))
+    if(construct_systems_&&(!initialized_loaded_||(!stage_entry&&!awaiting_quest_)||menu_snapshot||std::find(enabled_rows.begin(),enabled_rows.end(),true)!=enabled_rows.end()))
         throw std::invalid_argument("system_construct requires system_init and stage_start without system_enabled/menu_visible snapshot overrides");
     if(menu_snapshot&&!initialized_loaded_)throw std::invalid_argument("menu_visible snapshot requires system_init");
-    if(quest_frame_&&(!construct_systems_||!stage_entry||!stage_loop||stage_scenario.fade_frame!=0))
+    if(quest_frame_&&(!construct_systems_||(!stage_entry&&!awaiting_quest_)||!stage_loop||stage_scenario.fade_frame!=0))
         throw std::invalid_argument("quest_frame requires system_construct, stage_start and explicit stage_loop fade0");
     if(std::find(enabled_rows.begin(),enabled_rows.end(),true)!=enabled_rows.end()&&!initialized_loaded_)
         throw std::invalid_argument("system_enabled snapshot requires system_init");
@@ -854,9 +856,9 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
         if(!selected_quest||!initialized_loaded_||!human_scenario||!stage_loop||!result_requested||!has_formation||!states.empty())
             throw std::invalid_argument("stage_start requires quest, system_init, human_system, stage_loop, results, party_formation and no actor_state override");
         human_scenario->stage_entry=true;
-    }else if(has_formation||!progress.sortie_counts.empty())throw std::invalid_argument("party_formation/sorties require stage_start");
-    if(!quest_fields.empty()&&!selected_quest)throw std::invalid_argument("quest source requires a quest selection row");
-    if(selected_quest){
+    }else if(!awaiting_quest_&&(has_formation||!progress.sortie_counts.empty()))throw std::invalid_argument("party_formation/sorties require stage_start");
+    if(!quest_fields.empty()&&!selected_quest&&!awaiting_quest_)throw std::invalid_argument("quest source requires a quest selection row");
+    if(selected_quest||awaiting_quest_){
         if(!tables||selected.empty()||!human_scenario||!notifications)throw std::invalid_argument("quest requires tables, selected actors, human_system and stage_notifications");
         for(const auto* required:{"human_system","stage_notifications"})if(!quest_fields.count(required))throw std::invalid_argument("selected quest requires quest source for static fields");
         for(const auto& field:std::vector<std::pair<bool,const char*>>{{enemy_config,"enemy_system"},{stage_events,"stage_events"},{stage_scenario.boss.has_value(),"stage_boss"},{static_cast<bool>(map_images),"mission_map"},{geometry.has_value(),"geometry"}})
@@ -872,31 +874,33 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             const auto main=std::find_if(catalog->characters.begin(),catalog->characters.end(),[](const auto& r){return r&&(r->flags&2)!=0;});
             if(main==catalog->characters.end()||!progress.characters.count((*main)->id))throw std::invalid_argument("hero fresh requires saved progression for the first table main character");
         }
-        const QuestDefinition* definition=nullptr;
-        if(saved_mission_selection_){
-            const auto records=select_mission_records(*catalog->areas,*catalog->quests,*stage_area_id,*selected_quest);
-            definition=records.quest;
-            if(records.area)stage_area=std::shared_ptr<AreaDefinition>(catalog->areas,records.area);
-        }else if(stage_area_id){
-            auto& area=catalog->areas->at(static_cast<std::size_t>(*stage_area_id));
-            if(!area)throw std::invalid_argument("selected area ID is a table gap");
-            stage_area=std::shared_ptr<AreaDefinition>(catalog->areas,&*area);
-        }
-        if(!saved_mission_selection_){
-            const auto& row=catalog->quests->at(static_cast<std::size_t>(*selected_quest));definition=row?&*row:nullptr;
-        }
-        if(!definition)throw std::invalid_argument("selected quest ID is a table gap");
-        if(new_game_save_){
-            result_state.quest_record=definition->record;result_state.rescued=definition->stage.rescued_prisoners;
-            notifications->quest_completed=definition->stage.completed!=0;rescued_prisoners=result_state.rescued;
-        }
-        auto q=std::make_shared<StageQuest>(definition->stage);q->rescued_prisoners=rescued_prisoners;
-        human_scenario->distance=q->distance;human_scenario->quest=q;notifications->quest_flags=q->flags;
-        enemy.maximum=q->enemy_maximum;enemy.total=q->enemy_total_limit;enemy.interval=q->enemy_interval;enemy.level=q->base_level;
-        if(enemy_config)enemy_pool=true;
-        if(stage_scenario.boss)stage_scenario.boss=MissionBossScenario{q->boss_id,q->boss_level};
-        if(map_images){map_images=q->chip_images;if(!map_images||map_images->size()<4)throw std::invalid_argument("selected quest requires four map chips");}
-        if(geometry){const auto initial=initial_mission_map_creation();*geometry={initial.step_x,initial.step_z,stage_quest_height(*q)};}
+        if(!awaiting_quest_){
+            const QuestDefinition* definition=nullptr;
+            if(saved_mission_selection_){
+                const auto records=select_mission_records(*catalog->areas,*catalog->quests,*stage_area_id,*selected_quest);
+                definition=records.quest;
+                if(records.area)stage_area=std::shared_ptr<AreaDefinition>(catalog->areas,records.area);
+            }else if(stage_area_id){
+                auto& area=catalog->areas->at(static_cast<std::size_t>(*stage_area_id));
+                if(!area)throw std::invalid_argument("selected area ID is a table gap");
+                stage_area=std::shared_ptr<AreaDefinition>(catalog->areas,&*area);
+            }
+            if(!saved_mission_selection_){
+                const auto& row=catalog->quests->at(static_cast<std::size_t>(*selected_quest));definition=row?&*row:nullptr;
+            }
+            if(!definition)throw std::invalid_argument("selected quest ID is a table gap");
+            if(new_game_save_){
+                result_state.quest_record=definition->record;result_state.rescued=definition->stage.rescued_prisoners;
+                notifications->quest_completed=definition->stage.completed!=0;rescued_prisoners=result_state.rescued;
+            }
+            auto q=std::make_shared<StageQuest>(definition->stage);q->rescued_prisoners=rescued_prisoners;
+            human_scenario->distance=q->distance;human_scenario->quest=q;notifications->quest_flags=q->flags;
+            enemy.maximum=q->enemy_maximum;enemy.total=q->enemy_total_limit;enemy.interval=q->enemy_interval;enemy.level=q->base_level;
+            if(enemy_config)enemy_pool=true;
+            if(stage_scenario.boss)stage_scenario.boss=MissionBossScenario{q->boss_id,q->boss_level};
+            if(map_images){map_images=q->chip_images;if(!map_images||map_images->size()<4)throw std::invalid_argument("selected quest requires four map chips");}
+            if(geometry){const auto initial=initial_mission_map_creation();*geometry={initial.step_x,initial.step_z,stage_quest_height(*q)};}
+        }else enemy_pool=true;
     }
     const bool enemy_requested=enemy_config||enemy_population||enemy_pool;
     if(initialized_loaded_&&(!native||!human_scenario||!input_scenario||!map_images))throw std::invalid_argument("system_init requires native Human, Input and mission_map providers");
@@ -925,8 +929,8 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
     if(map_images){
         if(!human_scenario||!geometry||players.size()!=1||!get_application_resource(application,18))throw std::invalid_argument("mission_map requires human_system, geometry, one player and AppData18 chips");
         const auto initial=initial_mission_map_creation();const auto distance=human_scenario->distance;
-        if(distance<0||distance>1022)throw std::invalid_argument("mission_map diagnostic distance limit0..1022");
-        if(geometry->step_x!=initial.step_x||geometry->step_z!=initial.step_z||geometry->height!=distance+2)throw std::invalid_argument("mission_map geometry must match InitWorld steps and quest height");
+        if(!awaiting_quest_&&(distance<0||distance>1022))throw std::invalid_argument("mission_map diagnostic distance limit0..1022");
+        if(geometry->step_x!=initial.step_x||geometry->step_z!=initial.step_z||(!awaiting_quest_&&geometry->height!=distance+2))throw std::invalid_argument("mission_map geometry must match InitWorld steps and quest height");
     }
     if(!buttons.empty()&&!map_images)throw std::invalid_argument("button scenario requires mission_map fresh; dedicated widget drawing is unbound");
     if(!selected.empty()){
@@ -978,7 +982,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             if(notifications)humans->enable_notifications(*notifications);
             if(collection)humans->enable_collection();
             if(result_requested)humans->enable_results(std::move(result_state));
-            if(stage_loop)humans->enable_stage_loop(std::move(stage_scenario));
+            if(stage_loop&&!awaiting_quest_)humans->enable_stage_loop(std::move(stage_scenario));
             if(input_scenario)humans->enable_input(*input_scenario);
             if(input_scenario&&!initialized_loaded_)humans->observe_input_touch([this](const InputTouch* event){mission->deliver_button_touch(event);},"ecs.ButtonSystem.OnTouchEvent");
             if(map_images){spatial=std::make_unique<MissionSpatial>(*entity_world,*live_map,view,humans->quest_form(),humans->quest(),map_images,initialized_loaded_.has_value());mission->bind_spatial(*spatial,!initialized_loaded_);
@@ -1023,14 +1027,15 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
             else if((action.kind==InputKind::pointer||action.kind==InputKind::pointer_cancel)&&(!spatial||!input_scenario||!offscreen_camera_))throw std::invalid_argument("pointer replay requires native mission presentation/map/input");
             else if((action.kind==InputKind::cursor||action.kind==InputKind::click)&&!spatial)throw std::invalid_argument("cursor/click replay requires mission_map fresh");
         for(std::int32_t i=0;i<frames;++i)mission->advance_animations({automatic!=0,application_update!=0});
-        if(spatial)spatial->advance_visibility();
+        if(spatial&&!awaiting_quest_)spatial->advance_visibility();
         if(event_context){
-            if(!tables||!humans||!humans->stage_input_enabled())throw std::invalid_argument("mission_events requires table-backed Stage Update");
+            if(!tables||!humans||(!humans->stage_input_enabled()&&!awaiting_quest_))throw std::invalid_argument("mission_events requires table-backed Stage Update");
             events_=std::make_unique<MissionEvents>(*tables,std::move(event_scenario),[this]{humans->clear_form_input();});
             prepare_notice_texts();
             humans->bind_stage_events([this](std::int32_t id){return events_->execute(id);});
         }
-        if(simulate&&*simulate>0){for(std::int32_t i=0;i<*simulate;++i)if(!step())break;}else{queue=mission->render();if(!mission->faults().empty())throw std::invalid_argument("entity render fault: "+mission->faults().front().message);}
+        if(awaiting_quest_){/* Native world waits in town; QuestForm owns Stage.Start later. */}
+        else if(simulate&&*simulate>0){for(std::int32_t i=0;i<*simulate;++i)if(!step())break;}else{queue=mission->render();if(!mission->faults().empty())throw std::invalid_argument("entity render fault: "+mission->faults().front().message);}
         commands=static_cast<std::size_t>(queue.counts->at(0))+static_cast<std::size_t>(queue.counts->at(1));
     }
     if(simulate&&!mission)throw std::invalid_argument("simulate requires a table-backed entity scene");
@@ -1046,6 +1051,7 @@ MissionProfile::MissionProfile(const std::filesystem::path& scene,bool native,Ar
 }
 void MissionProfile::prepare_drawing_state(){draw_dynamic_hud();draw_stage_hud();draw_stage_controls();draw_entity_buttons(false);}
 bool MissionProfile::step(){
+    if(awaiting_quest_)throw std::logic_error("mission update requires QuestForm entry on the retained world");
     if(!mission)throw std::invalid_argument("selected logic requires a table-backed entity scene");
     if(talk_pending()||(humans&&(humans->stage_modal_pending()||humans->transition_pending()))){cancel_map_pointer();cancel_control_pointer();}
     if(held_move_control_&&humans->stage_state()!=1)cancel_control_pointer();

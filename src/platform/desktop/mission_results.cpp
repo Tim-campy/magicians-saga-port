@@ -17,7 +17,7 @@ MissionResults::MissionResults(MissionHumans& owner,MissionResultScenario scenar
         inventory_[k].emplace(row->id,state_.inventory_records?state_.inventory_records->at(k).at(row->id):state_.inventory[k]);
     for(const auto& row:owner_.catalog_.characters)if(row)
         recruits_.emplace(row->id,state_.recruit_records?state_.recruit_records->at(row->id):state_.recruits);
-    owner_.stage_.quest->rescued_prisoners=state_.rescued;
+    if(owner_.stage_.quest)owner_.stage_.quest->rescued_prisoners=state_.rescued;
 }
 std::optional<QuestMemberId> MissionResults::next(Cursor& cursor){
     auto& list=required(cursor.list.get());if(list.version()!=cursor.version)throw std::runtime_error("result member list changed");

@@ -23,6 +23,7 @@ struct MissionHumanScenario {
     std::shared_ptr<core::StageQuest> quest; // Selected static table plus explicit saved state.
     bool stage_entry=false; // Fresh roster for native Start; selected mid-mission actors otherwise.
     bool native_state=false; // Retain constructor/Init/Start state instead of applying scenario snapshots.
+    bool awaiting_quest=false; // Native world exists before QuestForm.Init selects a quest.
 };
 struct MissionRewardScenario {std::int32_t defeated,remaining,saved_defeat_count;};
 struct MissionNotificationScenario {
@@ -85,6 +86,7 @@ public:
     void write_result_report(std::ostream&);
     std::shared_ptr<core::StageQuest> quest(){return stage_.quest;}
     core::StageQuestForm& quest_form(){return quest_form_;}
+    core::MemberRoster& member_roster(){return members_;}
     void enable_input(MissionInputScenario);
     bool input_enabled()const{return static_cast<bool>(input_);}
     void advance_input(std::int32_t pass=0,bool enabled=true);

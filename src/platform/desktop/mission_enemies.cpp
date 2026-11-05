@@ -9,7 +9,7 @@ using namespace core;
 void MissionHumans::enable_enemies(MissionEnemyScenario scenario){
     if(enemy_scenario_)throw std::invalid_argument("enemy system requires one explicit scenario");
     if(!native_state_&&reward_scenario_&&(scenario.defeated!=enemies_.defeated_enemies||scenario.remaining!=enemies_.remaining_enemies))throw std::invalid_argument("enemy_population counters conflict with rewards");
-    if(!table_quest_){
+    if(!table_quest_&&stage_.quest){
         auto& quest=*stage_.quest;quest.enemy_maximum=scenario.maximum;quest.enemy_total_limit=scenario.total;
         quest.enemy_interval=scenario.interval;quest.base_level=scenario.level;
         auto rows=std::make_shared<std::vector<EventInstruction>>();

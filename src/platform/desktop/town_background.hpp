@@ -16,6 +16,7 @@
 #include <stdexcept>
 
 namespace saga::desktop {
+class MissionProfile;
 struct TownBackgroundContext {
     // Provisional desktop viewport/scale; AppData cctor supplies VIEW_X/Y=0/53.
     std::int32_t width=600,height=640,view_x=0,view_y=53;
@@ -37,13 +38,15 @@ struct TownBackgroundContext {
     std::int32_t motion_passes=0;
     bool full_update=false;
     bool physical_input=false; // Selected outer Draw prefix + control17 registration.
+    bool shared_world=false; // Retained application world; legacy drawing diagnostics omit it.
+    std::int32_t gameplay_seed=42; // Independent provisional gameplay RNG; never AppData/Lib.
     std::int32_t stamina_up_state=0,menu_font=10; // Provisional billing/text provider inputs.
     std::int64_t server_time=0; // Provisional fixed GetServerTime result, seconds.
     std::optional<std::filesystem::path> input_replay;
 };
 class TownBackground final:private core::SelectBackgroundHost,private core::SelectActiveAreaHost,private core::SelectCameraHost,private core::SelectSceneryHost,private core::SelectFloorHost,private core::SelectTownDrawingHost,private core::KingRewardAvailabilityHost,private core::SelectAreaDrawingHost,private core::TownResidentInitializationHost,private core::TownResidentGeometryHost,private core::ScaledHumanDrawingHost,private core::SelectResidentDrawingHost,private core::SelectHeroDrawingHost,private core::SelectForegroundDrawingHost,private core::SelectNoticeDrawingHost,private core::TownResidentUpdateHost,private core::SelectCloudHost {
 public:
-    TownBackground(ResourceArchive& tables,const GameArchiveEntry& selected,ResourceProfile,std::int32_t capacity,TownBackgroundContext,core::EventScript buildings=nullptr,std::shared_ptr<std::vector<std::uint8_t>> enabled=nullptr,const GameArchiveEntry* background=nullptr,const GameArchiveEntry* common=nullptr,const GameResourceIndex* actor_resources=nullptr,const GameArchiveEntry* stage=nullptr);
+    TownBackground(ResourceArchive& tables,const GameArchiveEntry& selected,ResourceProfile,std::int32_t capacity,TownBackgroundContext,core::EventScript buildings=nullptr,std::shared_ptr<std::vector<std::uint8_t>> enabled=nullptr,const GameArchiveEntry* background=nullptr,const GameArchiveEntry* common=nullptr,const GameResourceIndex* actor_resources=nullptr,const GameArchiveEntry* stage=nullptr,std::shared_ptr<MissionProfile> world=nullptr);
     ~TownBackground();
     void draw(BitmapBackend&);
     // Exact selected state0 counter/cloud/decor/resident blocks, not a complete
@@ -72,6 +75,7 @@ private:
     core::SelectTownButtonsState town_state_{-1,100};
     core::SelectGuideState guide_state_{std::make_shared<std::vector<std::uint8_t>>(2,std::uint8_t{0})};
     struct UpdateOwner;
+    std::shared_ptr<MissionProfile> shared_world_;
     std::shared_ptr<UpdateOwner> update_owner_;
     void report_update(std::ostream&)const;
     core::SelectCameraState camera_;
@@ -89,7 +93,8 @@ private:
         std::int32_t next()override{++draws;return source.next();}
     };
     Random app_random_,lib_random_;
-    core::AreaTable areas_;
+    core::AreaTable local_areas_;
+    core::AreaTable& areas_;
     std::vector<std::optional<core::AreaProgressState>> progress_;
     std::shared_ptr<core::CameraAreas> camera_areas_;
     core::EventInstruction save_integers_;
@@ -150,7 +155,8 @@ private:
     core::EventInstruction resident_active_range_;
     core::DecodedEventConditionState resident_conditions_;
     std::shared_ptr<core::DecodedEventConditionHost> resident_condition_host_;
-    core::QuestTable quest_records_;
+    core::QuestTable local_quest_records_;
+    core::QuestTable& quest_records_;
     std::int32_t resident_challenges_=0;
     std::map<std::int32_t,GameArchiveEntry> actor_entries_;
     std::map<std::int32_t,std::unique_ptr<DrawingArchive>> actor_archives_;

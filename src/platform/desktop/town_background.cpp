@@ -3,6 +3,7 @@
 #include "core/gameplay/render_frame.hpp"
 #include "core/gameplay/quest_rewards.hpp"
 #include "mission_entities.hpp"
+#include "mission_profile.hpp"
 #include "core/gameplay/hero_bootstrap.hpp"
 #include <iomanip>
 #include <limits>
@@ -31,15 +32,21 @@ void json_text(std::ostream& out,const FormText& text){
     out<<'"';
 }
 }
-// Reuse the same entity ownership/factories as missions, without creating a
-// Stage, map, enemies or mission system schedule. MemberSystem.Init owns entry.
+// The campaign aliases its application-lifetime world. Legacy drawing profiles
+// keep the narrow MemberSystem.Init owner without the full system schedule.
 struct TownBackground::HeroOwner final:HeroBootstrapHost,PartyHumanFactory {
-    GameplayCatalog catalog;
-    MissionProgress progress;
-    MemberRoster roster;
-    std::unique_ptr<MissionEntities> entities;
+    GameplayCatalog local_catalog;
+    MissionProgress local_progress;
+    MemberRoster local_roster;
+    GameplayCatalog& catalog;MissionProgress& progress;MemberRoster& roster;
+    std::unique_ptr<MissionEntities> owned_entities;
+    MissionEntities* entities=nullptr;
     EnemyTable unused_enemies; // CombatRecordTables requires an enemy catalog; hero getters never read it.
-    HeroOwner(TownBackground& owner,ResourceArchive& tables){
+    HeroOwner(TownBackground& owner,ResourceArchive& tables)
+        :catalog(owner.shared_world_?*owner.shared_world_->catalog:local_catalog),
+         progress(owner.shared_world_?owner.shared_world_->progress:local_progress),
+         roster(owner.shared_world_?owner.shared_world_->humans->member_roster():local_roster){
+        if(owner.shared_world_){entities=owner.shared_world_->entity_world.get();return;}
         catalog.characters=*owner.characters_;catalog.equipment=*owner.resident_weapons_;
         const auto load=[&](const char* name){const auto data=tables.data(name);
             if(!data)throw std::invalid_argument(std::string("town hero requires ")+name);
@@ -49,10 +56,11 @@ struct TownBackground::HeroOwner final:HeroBootstrapHost,PartyHumanFactory {
             const auto& state=*owner.character_states_[i];
             progress.characters.emplace(static_cast<std::int32_t>(i),SavedCharacterProgression{state.level,state.experience});
         }
-        entities=std::make_unique<MissionEntities>(catalog,progress,35,nullptr,
+        owned_entities=std::make_unique<MissionEntities>(catalog,progress,35,nullptr,
             [&owner](std::int32_t id){return owner.actor_resource(id)->animations;},
             [&owner](std::string_view name){for(const auto& entry:owner.actor_entries_)if(entry.second.name==name)return entry.first;
                 throw std::invalid_argument("missing town actor resource name");});
+        entities=owned_entities.get();
         initialize_member_system(roster,&entities->player_world(),*this);
     }
     PartyCharacters character_table()override{return entities->character_table();}
@@ -71,17 +79,20 @@ struct TownBackground::HeroOwner final:HeroBootstrapHost,PartyHumanFactory {
 TownBackground::~TownBackground()=default;
 TownBackground::DrawingArchive::DrawingArchive(const GameArchiveEntry& entry,ResourceProfile profile)
     :archive(read_game_archive(entry.path),std::move(profile)),manager(archive),images(manager,decode_png),clocks(archive.image_animation_infos()){}
-TownBackground::TownBackground(ResourceArchive& tables,const GameArchiveEntry& selected,ResourceProfile profile,std::int32_t capacity,TownBackgroundContext context,EventScript buildings,std::shared_ptr<std::vector<std::uint8_t>> enabled,const GameArchiveEntry* background,const GameArchiveEntry* common,const GameResourceIndex* actor_resources,const GameArchiveEntry* stage)
-    :camera_{false,0,0,prelude_.camera_x,building_state_.camera_y,0,0},context_(context),
+TownBackground::TownBackground(ResourceArchive& tables,const GameArchiveEntry& selected,ResourceProfile profile,std::int32_t capacity,TownBackgroundContext context,EventScript buildings,std::shared_ptr<std::vector<std::uint8_t>> enabled,const GameArchiveEntry* background,const GameArchiveEntry* common,const GameResourceIndex* actor_resources,const GameArchiveEntry* stage,std::shared_ptr<MissionProfile> world)
+    :shared_world_(std::move(world)),camera_{false,0,0,prelude_.camera_x,building_state_.camera_y,0,0},context_(context),
      app_random_(context.app_seed),lib_random_(context.lib_seed),
+     areas_(shared_world_?*shared_world_->catalog->areas:local_areas_),
      camera_areas_(std::make_shared<CameraAreas>()),save_integers_(std::make_shared<EventIntegers>(20)),
-     archive_(read_game_archive(selected.path),std::move(profile)),manager_(archive_),images_(manager_,decode_png){
+     archive_(read_game_archive(selected.path),std::move(profile)),manager_(archive_),images_(manager_,decode_png),
+     quest_records_(shared_world_?*shared_world_->catalog->quests:local_quest_records_){
+    if(context.shared_world!=static_cast<bool>(shared_world_)||(shared_world_&&!shared_world_->awaiting_quest()))throw std::invalid_argument("town shared world requires a deferred native world owner");
     if(context.width<1||context.height<2||context.width>8192||context.height>8192||static_cast<std::uint64_t>(context.width)*context.height>16U*1024U*1024U)
         throw std::invalid_argument("invalid town viewport");
     if(context.view_scale!=100.0F||context.form_scale!=100)throw std::invalid_argument("town background projection requires scale100");
     if(selected.kind!="resource"||selected.id!=11||selected.name!="select")throw std::invalid_argument("town background requires native select resource11");
     const auto table=tables.data("Area.txt");if(!table)throw std::invalid_argument("town background requires Area.txt");
-    areas_=load_area_table(std::string_view(reinterpret_cast<const char*>(table->bytes.data()),table->bytes.size()),false,parse_event_decimal);
+    if(!shared_world_)areas_=load_area_table(std::string_view(reinterpret_cast<const char*>(table->bytes.data()),table->bytes.size()),false,parse_event_decimal);
     progress_.resize(areas_.size());camera_areas_->resize(areas_.size());
     for(std::size_t i=0;i<areas_.size();++i)if(areas_[i]){
         progress_[i].emplace();reset_area_for_new_game(*progress_[i],*areas_[i]);
@@ -115,10 +126,12 @@ TownBackground::TownBackground(ResourceArchive& tables,const GameArchiveEntry& s
         for(std::size_t i=0;i<rewards.size();++i)if(rewards[i]){
             reset_king_reward_for_new_game(*rewards[i]);king_rewards_->at(i)=std::make_shared<KingRewardDefinition>(std::move(*rewards[i]));
         }
-        *characters_=load_character_progression_table(text("Chara.txt"),false,parse_event_decimal);
+        if(shared_world_)characters_=std::shared_ptr<CharacterProgressionTable>(shared_world_,&shared_world_->catalog->characters);
+        else *characters_=load_character_progression_table(text("Chara.txt"),false,parse_event_decimal);
         character_states_.resize(characters_->size());
         for(std::size_t i=0;i<characters_->size();++i)if(characters_->at(i)){
-            character_states_[i]=std::make_shared<CharacterNewGameState>();reset_character_for_new_game(*character_states_[i],*characters_->at(i));
+            if(shared_world_)character_states_[i]=std::shared_ptr<CharacterNewGameState>(shared_world_,&shared_world_->initial_character_state(static_cast<std::int32_t>(i)));
+            else{character_states_[i]=std::make_shared<CharacterNewGameState>();reset_character_for_new_game(*character_states_[i],*characters_->at(i));}
         }
         image_clocks_=archive_.image_animation_infos();
         image_clock_values_->push_back(image_clocks_);
@@ -150,11 +163,11 @@ void TownBackground::initialize_resident_data(ResourceArchive& tables,const Game
     resident_conditions_.debug_enabled=context_.debug;resident_conditions_.debug_rescue_count=context_.debug_rescue_count;
     resident_conditions_.area_states=std::make_shared<ConditionCatalog<std::int32_t>>(progress_.size());
     for(std::size_t i=0;i<progress_.size();++i)if(progress_[i])resident_conditions_.area_states->at(i)=std::make_shared<std::int32_t>(progress_[i]->discovery_state);
-    quest_records_=load_quest_table(text("Quest.txt"),false,parse_event_decimal);auto& quests=quest_records_;
+    if(!shared_world_)quest_records_=load_quest_table(text("Quest.txt"),false,parse_event_decimal);auto& quests=quest_records_;
     resident_conditions_.quests=std::make_shared<ConditionCatalog<QuestConditionState>>(quests.size());
     std::uint32_t challenges=0;
     for(std::size_t i=0;i<quests.size();++i)if(quests[i]){
-        reset_quest_for_new_game(*quests[i]);const auto& q=*quests[i];const auto& r=*q.record;
+        if(!shared_world_)reset_quest_for_new_game(*quests[i]);const auto& q=*quests[i];const auto& r=*q.record;
         resident_conditions_.quests->at(i)=std::make_shared<QuestConditionState>(QuestConditionState{static_cast<std::uint8_t>(q.stage.flags),q.stage.completed!=0,QuestConditionRecord{r.challenges,r.clears,r.rescued}});
         challenges+=static_cast<std::uint32_t>(r.challenges);
     }
@@ -475,6 +488,16 @@ void TownBackground::report(std::ostream& out)const{
         for(std::size_t i=0;i<resident_touches_.size();++i){if(i)out<<',';const auto& row=resident_touches_[i];out<<'['<<row[0]<<','<<row[1]<<','<<row[2]<<']';}
         out<<"],\"label_requests\":[";
         for(std::size_t i=0;i<resident_labels_.size();++i){if(i)out<<',';out<<'[';const auto& row=resident_labels_[i];for(std::size_t j=0;j<row.size();++j){if(j)out<<',';out<<row[j];}out<<']';}out<<"]}";
+    }
+    if(shared_world_){
+        const auto* hero=member_hero(&shared_world_->entity_world->player_world());
+        out<<",\"shared_world\":{\"awaiting_quest\":"<<(shared_world_->awaiting_quest()?"true":"false")
+           <<",\"initialized_systems\":"<<shared_world_->initialized_system_count()<<",\"same_hero\":"<<((hero&&hero==&hero_owner_->hero())?"true":"false")
+           <<",\"canonical_quests\":"<<((&quest_records_==&*shared_world_->catalog->quests)?"true":"false")
+           <<",\"canonical_areas\":"<<((&areas_==shared_world_->catalog->areas.get())?"true":"false")
+           <<",\"gameplay_seed\":"<<context_.gameplay_seed<<",\"gameplay_rng_draws\":"<<shared_world_->humans->random_draws()
+           <<",\"config_debug\":"<<(shared_world_->accepts_fast_forward()?"true":"false")<<",\"damage_debug\":"<<(shared_world_->runtime->debug?"true":"false")
+           <<",\"characters\":"<<shared_world_->progress.characters.size()<<",\"formation_slots\":"<<shared_world_->humans->member_roster().formation->size()<<'}';
     }
     if(context_.hero){
         auto& hero=hero_owner_->hero();const auto* human=dynamic_cast<HumanRecordLink*>(hero.get(14));

@@ -9,8 +9,8 @@ MissionSpatial::MissionSpatial(MissionEntities& world,MapComponent& map,MissionV
     std::shared_ptr<StageQuest> quest,EventInstruction images,bool defer)
     :world_(world),map_(map),view_(view),formation_(*this),form_{state,this,this},
      visible_([](auto* e){return e!=nullptr;},[&world](const auto& e){return world.id(e);}),cell_view_(*this,scratch_){
-    if(!quest)throw std::invalid_argument("mission map requires a live quest");
-    state.scale=view.scale;quest->chip_images=std::move(images);
+    if(!quest&&!defer)throw std::invalid_argument("mission map requires a live quest");
+    state.scale=view.scale;if(quest)quest->chip_images=std::move(images);
     selected_quest_=std::move(quest);
     if(!defer){for(const auto id:{1,8,17,20})initialize_system(id);load_selected_map();initialize_system(24);}
 }

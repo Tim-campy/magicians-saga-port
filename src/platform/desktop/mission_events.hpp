@@ -32,6 +32,7 @@ public:
     // Town supplies its SelectForm flag writes; mission retains its existing base Push.
     void bind_application_push(std::function<void(core::EventObject)> callback){application_push_=std::move(callback);}
     void bind_normal_save(core::EventInstruction values){normal_save_=std::move(values);}
+    void bind_clear_input(std::function<void()> callback){clear_input_=std::move(callback);}
     bool pending()const{return !forms_.empty();}
     // True when the selected modal consumes this dispatch; false permits the underlying Quest update.
     bool advance(std::uint64_t frame,std::int32_t tick_ms,bool pulse,bool held);

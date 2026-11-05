@@ -1,6 +1,7 @@
 // Persistent SelectForm controller binding. Game rules remain in portable kernels.
 #include "town_background.hpp"
 #include "mission_events.hpp"
+#include "mission_profile.hpp"
 #include "core/gameplay/quest_rewards.hpp"
 #include "core/gameplay/input_frame.hpp"
 #include "core/gameplay/stage_menu.hpp"
@@ -80,7 +81,8 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
     TownBackground& town;
     ResourceArchive& tables;
     GameInitialization initial;
-    MissionEvents events;
+    std::unique_ptr<MissionEvents> local_events;
+    MissionEvents& events;
     std::filesystem::path data_root;
     std::shared_ptr<StageStaminaValues> system_longs=std::make_shared<StageStaminaValues>(13,0);
     FormStackHost* talk_manager=nullptr;
@@ -188,7 +190,10 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
         result.font=MissionFontScenario{mission_font_path(root),100,0,0,100.0F,100.0F,false,false};return result;
     }
     UpdateOwner(TownBackground& value,ResourceArchive& data_tables,const std::filesystem::path& root)
-        :town(value),tables(data_tables),initial(read_game_initialization(root)),events(data_tables,scenario(root,initial),[this]{clear_input();}),data_root(root){
+        :town(value),tables(data_tables),initial(read_game_initialization(root)),
+         local_events(town.shared_world_?nullptr:std::make_unique<MissionEvents>(data_tables,scenario(root,initial),[this]{clear_input();})),
+         events(town.shared_world_?town.shared_world_->event_owner():*local_events),data_root(root){
+        events.bind_clear_input([this]{clear_input();});
         if(town.context_.input_replay)replay=read_town_replay(*town.context_.input_replay);
         if(tables.selected_profile().language_folder!="English.lproj")throw std::invalid_argument("town Update font binding requires English/default skin");
         const auto data=tables.data("Town.txt");if(!data)throw std::invalid_argument("town Update requires Town.txt");

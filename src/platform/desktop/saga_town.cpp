@@ -1,6 +1,8 @@
 // Native fresh Town/Area data and selected SelectForm drawing contracts.
 #include "gameplay_catalog.hpp"
 #include "town_background.hpp"
+#include "mission_profile.hpp"
+#include "decoded_image.hpp"
 #ifdef SAGA_TOWN_WINDOW
 #include "town_window.hpp"
 #endif
@@ -42,6 +44,8 @@ int main(int argc,char** argv)try{
             "Add --foreground for the native fresh foreground, leaves and final notice flush (implies --hero).\n"
             "Diagnostic --motion-passes N advances selected counter/cloud/decor/resident blocks (requires --foreground); this is not full Update.\n"
             "Full controller: --update-passes N --foreground; optional --talk-pulse-every N supplies explicit dialogue inputs.\n"
+            "Add --shared-world for native World initialization before town; retain its hero/formation/catalog/event owners, awaiting Stage.Start.\n"
+            "--gameplay-seed 42 is a provisional independent gameplay stream; AppData/Lib retain their own seeds.\n"
             "Interactive viewer: --foreground --interactive; right click walks/right drag pans; left click selects an area/GO; Backspace returns from its menu; Enter/Space advances dialogue; Escape closes.\n"
             "Add --update-passes N --hidden for a bounded automated window; --physical-input enables the same hit path headlessly.\n"
             "Add --replay file for ordered native camera/selection/button/pulse input plus physical widget/stage-back actions; default town input is neutral.\n"
@@ -63,9 +67,10 @@ int main(int argc,char** argv)try{
     std::set<std::string> options;
     for(int i=1;i<argc;++i){
         const std::string key=argv[i];
-        if(key=="--interactive"||key=="--hidden"||key=="--physical-input"){
+        if(key=="--interactive"||key=="--hidden"||key=="--physical-input"||key=="--shared-world"){
             if(!options.insert(key).second)throw std::invalid_argument("duplicate town window option");
-            if(key=="--hidden")hidden=true;
+            if(key=="--shared-world")context.shared_world=true;
+            else if(key=="--hidden")hidden=true;
             else{context.physical_input=true;if(key=="--interactive"){interactive=true;context.full_update=true;}}
             continue;
         }
@@ -77,7 +82,7 @@ int main(int argc,char** argv)try{
             if(key=="--residents"||key=="--hero"||key=="--foreground")context.residents=true;
             if(key=="--hero"||key=="--foreground")context.hero=true;
             if(key=="--foreground")context.foreground=true;continue;}
-        const std::set<std::string> allowed{"--data","--language","--dpi","--capture","--width","--height","--view-x","--view-y","--camera-x","--camera-y","--app-seed","--lib-seed","--high-score","--top-form","--automatic-images","--store-kairo-limit","--condition-characters","--debug","--debug-rescue-count","--motion-passes","--motion-low-aspect","--update-passes","--talk-pulse-every","--replay","--stamina-up-state","--server-time","--menu-font"};
+        const std::set<std::string> allowed{"--data","--language","--dpi","--capture","--width","--height","--view-x","--view-y","--camera-x","--camera-y","--app-seed","--lib-seed","--high-score","--top-form","--automatic-images","--store-kairo-limit","--condition-characters","--debug","--debug-rescue-count","--motion-passes","--motion-low-aspect","--update-passes","--talk-pulse-every","--replay","--stamina-up-state","--server-time","--menu-font","--gameplay-seed"};
         if(!allowed.count(key)||i+1>=argc||!options.insert(key).second)throw std::invalid_argument("unsupported, incomplete or duplicate town option");
         const std::string value=argv[++i];
         if(key=="--data")root=std::filesystem::u8path(value);
@@ -96,6 +101,7 @@ int main(int argc,char** argv)try{
             else if(key=="--camera-x")context.camera_request_x=parsed;else if(key=="--camera-y")context.camera_request_y=parsed;
             else if(key=="--app-seed")context.app_seed=parsed;else if(key=="--lib-seed")context.lib_seed=parsed;
             else if(key=="--stamina-up-state")context.stamina_up_state=parsed;
+            else if(key=="--gameplay-seed")context.gameplay_seed=parsed;
             else if(key=="--menu-font"){if(parsed<1||parsed>100)throw std::invalid_argument("town menu font requires1..100");context.menu_font=parsed;}
             else if(key=="--store-kairo-limit")context.store_limit=parsed;
             else if(key=="--debug-rescue-count")context.debug_rescue_count=parsed;
@@ -108,6 +114,8 @@ int main(int argc,char** argv)try{
                 if(key=="--top-form")context.top_form=parsed!=0;else if(key=="--debug")context.debug=parsed!=0;else context.automatic_images=parsed!=0;}}
     }
     if(hidden&&(!interactive||update_passes==0))throw std::invalid_argument("hidden town window requires --interactive and positive --update-passes");
+    if(options.count("--gameplay-seed")&&!context.shared_world)throw std::invalid_argument("gameplay seed requires shared world");
+    if(context.shared_world&&!context.full_update)throw std::invalid_argument("shared world requires full town Update");
     if(context.physical_input&&!context.full_update)throw std::invalid_argument("physical input requires full town Update");
     if(interactive&&!context.foreground)throw std::invalid_argument("interactive town requires --foreground");
     if(!root)throw std::invalid_argument("town data root required; see --help");
@@ -140,7 +148,14 @@ int main(int argc,char** argv)try{
     const auto defaults=read_new_game_save_defaults(*root);
     TownData town;town.records=std::make_shared<TownTable>(load_town_table(std::string_view(reinterpret_cast<const char*>(table->bytes.data()),table->bytes.size()),false,parse_event_decimal));
     town.capacity=defaults.town_capacity;
-    initialize_fresh_town(town.state,town);
+    std::shared_ptr<MissionProfile> shared_world;
+    if(context.shared_world){
+        MissionBootstrapOptions b;b.data_root=*root;b.defer_stage_start=true;b.width=context.width;b.height=context.height;b.language=language;b.dpi=dpi;
+        b.camera=context.projection;b.depth_bits=context.depth_bits;b.depth_step=context.depth_step?1:0;b.debug_controls=context.debug;
+        const auto runtime=initial_game_frame_configuration;
+        shared_world=std::make_shared<MissionProfile>(b,decode_png,MissionRuntimeConfig{runtime.fps,runtime.damage_debug,context.gameplay_seed,"system"});
+        town.records=shared_world->catalog->towns;town.state=shared_world->initialized_town();town.capacity=shared_world->initialized_town_capacity();
+    }else initialize_fresh_town(town.state,town);
     // SelectForm.Init 0x11eaf88 invokes this cache reset; this host projects only
     // the Town data subsequence, not the earlier decoration/resident RNG phase.
     town.rebuild_town();
@@ -160,7 +175,7 @@ int main(int argc,char** argv)try{
                 throw std::invalid_argument("unexpected town background resource index entry");
         }
         if(!matching_tables||!selected)throw std::invalid_argument("town background requires matching tables and select resource");
-        backdrop=std::make_unique<TownBackground>(archive,*selected,ResourceProfile{language,dpi},town.capacity,context,buildings,town.state.build_enable,bg_entry,common_entry,&index,stage_entry);
+        backdrop=std::make_unique<TownBackground>(archive,*selected,ResourceProfile{language,dpi},town.capacity,context,buildings,town.state.build_enable,bg_entry,common_entry,&index,stage_entry,shared_world);
         for(std::int32_t pass=0;pass<context.motion_passes;++pass)backdrop->advance_motion();
         if(context.full_update)backdrop->initialize_update(archive,*root);
         if(interactive){

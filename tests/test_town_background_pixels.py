@@ -37,6 +37,26 @@ class TownBackgroundPixels(unittest.TestCase):
                     self.assertEqual(cpu['background']['update']['stage_menu']['pending'],count<184)
 
     @unittest.skipUnless(os.environ.get('SAGA_TEST_FONT'),'public CTest font required')
+    def test_shared_world_menu_preserves_state_across_cpu_and_window(self):
+        from town_campaign_fixture import create_campaign_fixture
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);create_campaign_fixture(root)
+            replay=root/'world.replay';replay.write_text('160 widget 0 200 450\n161 widget 1 200 450\n162 widget 0 200 480\n163 widget 1 200 480\n165 widget 0 250 250\n166 widget 1 250 250\n')
+            base=[str(EXE),'--data',str(root),'--foreground','--shared-world','--camera-x','300','--talk-pulse-every','10','--server-time','123','--replay',str(replay)]
+            def run(*args):
+                result=subprocess.run([*base,*args],capture_output=True,text=True,timeout=45)
+                self.assertEqual(result.returncode,0,result.stderr);return json.loads(result.stdout)
+            for count in (1,166,207):
+                with self.subTest(count=count):
+                    args=['--update-passes',str(count)];cpu=run(*args,'--physical-input')
+                    still=root/f'world-still-{count}.bmp';window=root/f'world-window-{count}.bmp'
+                    self.assertEqual(run(*args,'--physical-input','--capture',str(still)),cpu)
+                    self.assertEqual(run(*args,'--interactive','--hidden','--capture',str(window)),cpu)
+                    self.assertEqual(still.read_bytes(),window.read_bytes())
+                    self.assertTrue(cpu['background']['shared_world']['same_hero'])
+                    self.assertEqual(cpu['background']['shared_world']['initialized_systems'],32)
+
+    @unittest.skipUnless(os.environ.get('SAGA_TEST_FONT'),'public CTest font required')
     def test_stage_row_statistics_and_held_entry_match_window(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);add_town_background(root,update=True,stage_entries=True)

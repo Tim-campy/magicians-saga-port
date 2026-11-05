@@ -1,0 +1,138 @@
+"""Retained native World ownership before the S2 mission-entry boundary."""
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+import unittest
+
+EXE=Path(sys.argv.pop(1)).resolve() if len(sys.argv)>1 else None
+sys.path.insert(0,str(Path(__file__).resolve().parent))
+from town_campaign_fixture import create_campaign_fixture
+
+
+@unittest.skipUnless(EXE and os.environ.get('SAGA_TEST_FONT'),'CTest host and public font required')
+class TownCampaignTests(unittest.TestCase):
+    opening=('160 widget 0 200 450\n161 widget 1 200 450\n'
+             '162 widget 0 200 480\n163 widget 1 200 480\n')
+
+    def fixture(self,root):
+        return create_campaign_fixture(root)
+
+    def run_host(self,root,n,*args):
+        return subprocess.run([str(EXE),'--data',str(root),'--foreground','--shared-world',
+            '--update-passes',str(n),'--physical-input','--camera-x','300',
+            '--talk-pulse-every','10','--server-time','123',*args],
+            capture_output=True,text=True,timeout=30)
+
+    def state(self,root,n,*args):
+        result=self.run_host(root,n,*args)
+        self.assertEqual(result.returncode,0,result.stderr)
+        return json.loads(result.stdout)['background']
+
+    def replay(self,root,tail=''):
+        path=root/'campaign.replay';path.write_text(self.opening+tail,encoding='ascii')
+        return ('--replay',str(path))
+
+    def assert_waiting_world(self,scene,seed=42):
+        shared=scene['shared_world']
+        self.assertTrue(shared['awaiting_quest'])
+        self.assertEqual(shared['initialized_systems'],32)
+        self.assertTrue(shared['same_hero'] and shared['canonical_quests'] and shared['canonical_areas'])
+        self.assertEqual((shared['gameplay_seed'],shared['gameplay_rng_draws']),(seed,0))
+        self.assertEqual((shared['characters'],shared['formation_slots']),(10,16))
+        hero=scene['hero']
+        self.assertEqual((hero['character'],hero['level'],hero['experience']),(2,1,0))
+        self.assertEqual(hero['formation'],[-1]*10+[2]+[-1]*5)
+
+    def test_full_world_initializes_once_and_shared_intro_pauses_town(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);self.fixture(root)
+            first=self.state(root,1);self.assert_waiting_world(first)
+            self.assertEqual(first['update']['event_execution_counts'],[[0,1]])
+            self.assertEqual(first['update']['delay_count'],1)
+            self.assertEqual(first['update']['talk_forms_opened'],0)
+            paused=self.state(root,3);later=self.state(root,5)
+            for scene in (paused,later):
+                self.assert_waiting_world(scene)
+                update=scene['update']
+                self.assertEqual((update['calls'],update['talk_forms_opened']),(2,2))
+                self.assertTrue(update['talk_pending'])
+                self.assertEqual(update['event_execution_counts'],[[0,1]])
+                self.assertEqual(update['talk_lifecycle'].count('push:0'),1)
+                self.assertEqual(update['talk_lifecycle'].count('push:1'),1)
+            self.assertEqual(paused['shared_world'],later['shared_world'])
+            self.assertEqual(paused['scenery'],later['scenery'])
+            resumed=self.state(root,160);self.assert_waiting_world(resumed)
+            self.assertEqual((resumed['update']['talk_forms_opened'],resumed['update']['talk_forms_closed']),(2,2))
+            self.assertFalse(resumed['update']['talk_pending'])
+            self.assertEqual(resumed['update']['event_execution_counts'],[[0,1]])
+            self.assertIsNone(resumed['update']['stage_menu'])
+
+    def test_town_config_debug_does_not_enable_damage_debug(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);self.fixture(root)
+            normal=self.state(root,1)['shared_world']
+            debug=self.state(root,1,'--debug','1','--debug-rescue-count','0')['shared_world']
+            self.assertFalse(normal['config_debug'] or normal['damage_debug'])
+            self.assertTrue(debug['config_debug']);self.assertFalse(debug['damage_debug'])
+            self.assertEqual(debug['initialized_systems'],32)
+
+    def test_menu_confirmation_retains_world_without_starting_stage(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);self.fixture(root)
+            args=self.replay(root,'165 widget 0 250 250\n166 widget 1 250 250\n')
+            opened=self.state(root,164,*args);self.assert_waiting_world(opened)
+            menu=opened['update']['stage_menu']
+            self.assertEqual((menu['entries'],menu['selected'],menu['saved_quest']),([2],-1,-1))
+            self.assertEqual(menu['rows'],[[10,0x20000,195,232,210,40]])
+            down=self.state(root,165,*args);self.assert_waiting_world(down)
+            self.assertEqual((down['update']['stage_menu']['selected'],down['update']['stamina']),(0,10))
+            confirmed=self.state(root,166,*args);self.assert_waiting_world(confirmed)
+            menu=confirmed['update']['stage_menu']
+            self.assertEqual((menu['state'],menu['saved_quest'],menu['stamina_uses']),(1,2,1))
+            self.assertEqual((confirmed['update']['stamina'],menu['stamina_timer'],menu['stamina_timestamp']),(9,900,123))
+            self.assertEqual(menu['server_queries'],1)
+            before=self.state(root,206,*args);self.assert_waiting_world(before)
+            self.assertEqual(before['update']['stage_menu']['production_frame'],40)
+            self.assertFalse(before['update']['stage_menu']['quest_handoff_pending'])
+            held=self.state(root,207,*args);self.assert_waiting_world(held)
+            menu=held['update']['stage_menu']
+            self.assertEqual(menu['production_frame'],41)
+            self.assertTrue(menu['quest_handoff_pending'] and menu['shared_owner_retained'])
+            self.assertEqual(held['update']['event_execution_counts'],[[0,1]])
+            self.assertEqual((held['update']['talk_forms_opened'],held['update']['talk_forms_closed']),(2,2))
+            self.assertEqual(held['shared_world'],opened['shared_world'])
+            self.assertEqual(self.state(root,300,*args),held)
+
+    def test_back_returns_to_same_world_and_formation_without_consumption(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);self.fixture(root)
+            args=self.replay(root,'165 widget 0 250 250\n166 stage-back\n')
+            selected=self.state(root,165,*args);resumed=self.state(root,166,*args)
+            self.assert_waiting_world(resumed)
+            self.assertEqual(selected['shared_world'],resumed['shared_world'])
+            menu=resumed['update']['stage_menu']
+            self.assertFalse(menu['pending'] or menu['quest_handoff_pending'])
+            self.assertEqual((menu['closed'],menu['saved_quest'],menu['stamina_uses']),(1,-1,0))
+            self.assertEqual(resumed['update']['stamina'],10)
+            self.assertEqual(resumed['update']['calls'],selected['update']['calls']+1)
+            self.assertEqual(resumed['update']['event_execution_counts'],[[0,1]])
+
+    def test_shared_world_and_gameplay_seed_require_typed_context(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);self.fixture(root)
+            def direct(*args):
+                return subprocess.run([str(EXE),'--data',str(root),'--foreground',*args],capture_output=True,text=True,timeout=30)
+            rejected=direct('--shared-world')
+            self.assertNotEqual(rejected.returncode,0);self.assertIn('shared world requires full town Update',rejected.stderr)
+            rejected=direct('--update-passes','1','--gameplay-seed','42')
+            self.assertNotEqual(rejected.returncode,0);self.assertIn('gameplay seed requires shared world',rejected.stderr)
+            for seed in ('2147483648','-2147483649','1.0','unknown'):
+                with self.subTest(seed=seed):self.assertNotEqual(self.run_host(root,1,'--gameplay-seed',seed).returncode,0)
+            for seed in (-2147483648,2147483647):
+                with self.subTest(seed=seed):self.assert_waiting_world(self.state(root,1,'--gameplay-seed',str(seed)),seed)
+
+
+if __name__=='__main__':unittest.main()
