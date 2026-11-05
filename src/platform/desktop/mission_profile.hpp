@@ -112,11 +112,9 @@ private:
     std::optional<MissionBootstrapOptions> bootstrap_options_;
     float instance_view_scale_=100,base_view_scale_=100;
     std::unique_ptr<MissionEvents> events_;
-    struct TextBitmap {
+    struct TextBitmap:DesktopTextBitmap {
         core::EffectText source;
         std::string display;
-        ReadyArchiveImage ready;
-        float width=0,ascent=0,scale=1;std::int32_t left=0,top=0,font_height=0;
     };
     std::array<std::unique_ptr<TextBitmap>,4> notice_texts_;
     struct NoticeTextDraw {std::int32_t notice,x,y,anchor,font;bool bound;};

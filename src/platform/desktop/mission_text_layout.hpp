@@ -1,5 +1,6 @@
 #pragma once
 #include "text_font_backend.hpp"
+#include "archive_image_set.hpp"
 #include "core/gameplay/text_blocks.hpp"
 #include "core/gameplay/text_fit.hpp"
 #include "core/gameplay/text_font.hpp"
@@ -12,6 +13,16 @@ struct MissionFontScenario {
     float application_ratio=0,layout_scale=0;
     bool japanese=false,japanese_style=false;
 };
+// Shared public-provider bitmap for mission and town UI text. The owner keeps
+// its address stable after binding ReadyArchiveImage into BitmapTextures.
+struct DesktopTextBitmap {
+    ReadyArchiveImage ready;
+    float width=0,ascent=0,scale=1;
+    std::int32_t left=0,top=0,font_height=0;
+};
+class BitmapTextures;
+void rasterize_desktop_text(DesktopTextBitmap&,const MissionFontScenario&,DesktopTextFont&,
+    const std::u16string&,std::int32_t request,std::uint32_t color,BitmapTextures&);
 // A concrete public font provider with an explicit unverified GUIStyle-equivalence boundary.
 // Native layout/font numeric kernels run above that boundary.
 class MissionTextLayout final:private core::TextBlockHost,private core::TextFitHost {

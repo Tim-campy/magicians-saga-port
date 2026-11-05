@@ -175,6 +175,34 @@ def write_debug_drawing(apk, root):
     return write_mission_seed(apk, root, 'mission-debug.tsv', debug_drawing_payload)
 
 
+def stage_menu_payload(metadata):
+    """Only the reached SelectStageForm title, row format and selected statistics literals."""
+    if len(metadata) < 256 or struct.unpack_from('<II', metadata) != (0xfab11baf, 31):
+        raise ValueError('Stage menu requires v31 metadata')
+    table, table_size, data, data_size = struct.unpack_from('<IIII', metadata, 8)
+    if table < 256 or data < 256 or table_size % 8 or table+table_size > len(metadata) or data+data_size > len(metadata):
+        raise ValueError('Invalid stage menu literal sections')
+    lines = ['stage_menu 1']
+    for name, index in (('heading',321),('name_format',814),('level_prefix',5671),
+                        ('best_experience',15045),('challenges',14998),('defeated',15164),
+                        ('best_money',15046),('clears',14667),('rescued',15015),
+                        ('separator',1057),('stamina',15374),('negative',861)):
+        if index >= table_size//8:
+            raise ValueError('Missing stage menu literal')
+        size, offset = struct.unpack_from('<II', metadata, table+8*index)
+        if offset+size > data_size:
+            raise ValueError('Stage menu literal outside data section')
+        value = metadata[data+offset:data+offset+size].decode('utf-8')
+        if any(ord(c) < 32 for c in value):
+            raise ValueError('Unsupported stage menu control character')
+        lines.append(name+' '+json.dumps(value,ensure_ascii=False))
+    return ('\n'.join(lines)+'\n').encode('utf-8')
+
+
+def write_stage_menu(apk, root):
+    return write_mission_seed(apk, root, 'stage-menu.tsv', stage_menu_payload)
+
+
 def write_resource_index(root, label, signature, filename, resources):
     """Publish an index from existing decoded archives without extracting payloads."""
     manifest = json.loads((root / 'manifest.json').read_text(encoding='utf-8'))
@@ -836,6 +864,7 @@ def main():
     p.add_argument('--mission-font', action='store_true', help='Index the existing hash-checked LegacyRuntime font for English/default-skin mission entry')
     p.add_argument('--new-game-save', action='store_true', help='Export the reached normal-save NewGame seeds from the supported APK metadata only')
     p.add_argument('--mission-initialization', action='store_true', help='Export reached initial system/event/town save inputs from the supported APK metadata')
+    p.add_argument('--stage-menu', action='store_true', help='Export reached stage-menu title/format/prefix literals from the supported APK')
     p.add_argument('--debug-drawing', action='store_true', help='Export only reached debug parameter/state labels and format strings from supported APK metadata')
     p.add_argument('--collation-indexers', action='store_true', help='Include native indexer configurations and collation resources')
     p.add_argument('--collation', action='store_true', help='Include seven original version-3 collation resources')
@@ -849,21 +878,21 @@ def main():
     try:
         if args.town_resources:
             if args.apk or args.check or any((args.mission_index, args.mission_font, args.new_game_save,
-                    args.mission_initialization, args.debug_drawing, args.unity_media, args.culture_signs,
+                    args.mission_initialization, args.debug_drawing, args.stage_menu, args.unity_media, args.culture_signs,
                     args.culture_names, args.culture_neutral, args.culture_lower, args.runtime_tables,
                     args.collation, args.collation_indexers)):
                 raise ValueError('--town-resources requires existing --out only; cannot combine export/check modes')
             print('Town resource index: ' + str(write_town_index(args.out)))
         elif args.mission_font:
-            if args.apk or args.check or any((args.mission_index, args.new_game_save, args.mission_initialization, args.debug_drawing,
+            if args.apk or args.check or any((args.mission_index, args.new_game_save, args.mission_initialization, args.debug_drawing, args.stage_menu,
                     args.unity_media, args.culture_signs, args.culture_names, args.culture_neutral,
                     args.culture_lower, args.runtime_tables, args.collation, args.collation_indexers)):
                 raise ValueError('--mission-font requires existing --out only; cannot combine export/check modes')
             print('Mission font index: ' + str(write_mission_font(args.out)))
-        elif args.new_game_save or args.mission_initialization or args.debug_drawing:
-            if not args.apk or args.check or args.mission_index or sum((args.new_game_save,args.mission_initialization,args.debug_drawing))!=1 or any((args.unity_media, args.culture_signs, args.culture_names, args.culture_neutral, args.culture_lower, args.runtime_tables, args.collation, args.collation_indexers)):
+        elif args.new_game_save or args.mission_initialization or args.debug_drawing or args.stage_menu:
+            if not args.apk or args.check or args.mission_index or sum((args.new_game_save,args.mission_initialization,args.debug_drawing,args.stage_menu))!=1 or any((args.unity_media, args.culture_signs, args.culture_names, args.culture_neutral, args.culture_lower, args.runtime_tables, args.collation, args.collation_indexers)):
                 raise ValueError('Select one mission seed export with APK and --out only')
-            writer=write_new_game_save if args.new_game_save else write_mission_initialization if args.mission_initialization else write_debug_drawing
+            writer=write_new_game_save if args.new_game_save else write_mission_initialization if args.mission_initialization else write_debug_drawing if args.debug_drawing else write_stage_menu
             print('Mission defaults: ' + str(writer(args.apk, args.out)))
         elif args.mission_index:
             if args.apk or args.check:

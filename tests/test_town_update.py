@@ -14,8 +14,8 @@ from town_fixture import add_town_background
 
 @unittest.skipUnless(EXE and os.environ.get('SAGA_TEST_FONT'),'CTest host and public font required')
 class TownUpdateTests(unittest.TestCase):
-    def fixture(self,root):
-        add_town_background(root,update=True)
+    def fixture(self,root,stage_entries=False):
+        add_town_background(root,update=True,stage_entries=stage_entries)
         font=root/'unity/Font/public.ttf';font.parent.mkdir(parents=True)
         font.write_bytes(Path(os.environ['SAGA_TEST_FONT']).read_bytes())
         (root/'mission-font.tsv').write_text(f'mission_font 1\nfont "unity/Font/public.ttf" {font.stat().st_size}\n')
@@ -218,6 +218,80 @@ class TownUpdateTests(unittest.TestCase):
             path.write_text(valid)
             for n,args in ((-1,()),(1,('--motion-passes','1')),(1,('--talk-pulse-every','0')),(1,('--top-form','0'))):
                 self.assertNotEqual(self.run_host(root,n,*args).returncode,0)
+
+    def stage_args(self,root,extra=''):
+        opening='160 widget 0 200 450\n161 widget 1 200 450\n162 widget 0 200 480\n163 widget 1 200 480\n'
+        return (*self.replay(root,opening+extra),'--physical-input','--camera-x','300','--server-time','123','--stamina-up-state','0')
+
+    def test_stage_row_down_selects_without_debit_and_cancel_keeps_selection(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);self.fixture(root,stage_entries=True)
+            args=self.stage_args(root,'165 widget 0 250 250\n166 widget 3 0 0\n')
+            opened=self.state(root,164,*args)['update']
+            self.assertEqual(opened['stage_menu']['entries'],[0])
+            self.assertEqual(opened['stage_menu']['rows'],[[10,0x20000,195,232,210,40]])
+            down=self.state(root,165,*args)['update'];menu=down['stage_menu']
+            self.assertEqual((menu['selected'],menu['last_touched'],menu['state']),(0,0,0))
+            self.assertTrue(menu['row_captured']);self.assertGreater(menu['text_draws'],opened['stage_menu']['text_draws'])
+            self.assertEqual((down['stamina'],menu['stamina_uses'],menu['saved_quest']),(10,0,-1))
+            cancelled=self.state(root,166,*args)['update'];menu=cancelled['stage_menu']
+            self.assertFalse(menu['row_captured']);self.assertEqual(menu['selected'],0)
+            self.assertEqual((cancelled['stamina'],menu['stamina_uses'],menu['server_queries']),(10,0,0))
+            args=self.stage_args(root,'165 widget 0 250 250\n166 widget 1 -1 -1\n')
+            outside=self.state(root,166,*args)['update'];menu=outside['stage_menu']
+            self.assertFalse(menu['row_captured']);self.assertEqual((menu['selected'],menu['state']),(0,0))
+            self.assertEqual((outside['stamina'],menu['stamina_uses'],menu['saved_quest']),(10,0,-1))
+
+    def test_stage_confirmation_debits_once_then_holds_production41_handoff(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);self.fixture(root,stage_entries=True)
+            args=self.stage_args(root,'165 widget 0 250 250\n166 widget 1 250 250\n167 widget 1 250 250\n168 widget 0 250 250\n169 widget 1 250 250\n')
+            confirmed=self.state(root,166,*args)['update'];menu=confirmed['stage_menu']
+            self.assertEqual((menu['state'],menu['production_frame'],menu['saved_quest']),(1,0,0))
+            self.assertEqual((confirmed['stamina'],menu['stamina_uses'],menu['stamina_timer'],menu['stamina_timestamp']),(9,1,900,123))
+            self.assertEqual(menu['server_queries'],1);self.assertFalse(menu['quest_handoff_pending'])
+            before=self.state(root,206,*args)['update']
+            self.assertEqual(before['stage_menu']['production_frame'],40)
+            # Production keeps the native row callback live; its Update ignores
+            # the extra confirmation pulse rather than charging stamina again.
+            self.assertEqual(before['stage_menu']['row_events'],4)
+            self.assertFalse(before['stage_menu']['quest_handoff_pending'])
+            held=self.state(root,207,*args)['update'];menu=held['stage_menu']
+            self.assertEqual(menu['production_frame'],41);self.assertTrue(menu['quest_handoff_pending'])
+            self.assertTrue(menu['camera_reset']);self.assertTrue(menu['shared_owner_retained'])
+            self.assertEqual((held['stamina'],menu['stamina_uses'],menu['server_queries']),(9,1,1))
+            self.assertEqual(menu['row_rejected'],1)
+            self.assertEqual(held['save_requests'],before['save_requests']+1)
+            later=self.state(root,300,*args)['update']
+            self.assertEqual(later,held) # A held handoff stops dispatch, saves and consumption.
+
+    def test_selected_stage_back_resumes_shared_town_without_spending(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);self.fixture(root,stage_entries=True)
+            args=self.stage_args(root,'165 widget 0 250 250\n166 stage-back\n')
+            before=self.state(root,165,*args)['update'];after=self.state(root,166,*args)['update']
+            menu=after['stage_menu'];self.assertFalse(menu['pending']);self.assertEqual(menu['closed'],1)
+            self.assertFalse(menu['row_captured']) # Closing a form clears its live pointer capture.
+            self.assertEqual((menu['selected'],menu['saved_quest'],menu['stamina_uses'],after['stamina']),(0,-1,0,10))
+            self.assertEqual(after['calls'],before['calls']+1);self.assertFalse(menu['quest_handoff_pending'])
+
+    def test_stage_projection_and_provider_inputs_are_bounded(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);self.fixture(root)
+            args=self.stage_args(root);path=root/'stage-menu.tsv';valid=path.read_text()
+            for bad in (valid.replace('stage_menu 1','stage_menu 2'),valid.replace('heading "Quests"\n',''),
+                        valid+'extra "value"\n',valid.replace('", +17, , 4"','"unsupported"'),valid+' '*65536):
+                with self.subTest(projection=bad[:80]):
+                    path.write_text(bad);self.assertNotEqual(self.run_host(root,164,*args).returncode,0)
+            path.unlink();self.assertNotEqual(self.run_host(root,164,*args).returncode,0)
+            path.write_text(valid)
+            for option,value in (('--menu-font','0'),('--menu-font','101'),('--menu-font','bad'),
+                                 ('--stamina-up-state','2147483648'),('--server-time','9223372036854775808')):
+                with self.subTest(option=option,value=value):
+                    self.assertNotEqual(self.run_host(root,1,option,value).returncode,0)
+            for option,value in (('--menu-font','10'),('--stamina-up-state','0'),('--server-time','123')):
+                result=subprocess.run([str(EXE),'--data',str(root),'--foreground',option,value],capture_output=True,text=True,timeout=20)
+                self.assertNotEqual(result.returncode,0);self.assertIn('stage providers require full town Update',result.stderr)
 
 
 if __name__=='__main__':unittest.main()

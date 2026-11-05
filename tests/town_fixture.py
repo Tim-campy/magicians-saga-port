@@ -3,7 +3,7 @@ import struct
 from test_sprite_preview import jar,png,seb
 
 
-def add_town_background(root,scenery=False,buildings=False,areas=False,residents=False,hero=False,foreground=False,motion=False,update=False):
+def add_town_background(root,scenery=False,buildings=False,areas=False,residents=False,hero=False,foreground=False,motion=False,update=False,stage_entries=False):
     motion=motion or update
     foreground=foreground or motion
     hero=hero or foreground
@@ -17,6 +17,7 @@ def add_town_background(root,scenery=False,buildings=False,areas=False,residents
         (root/'new-game-save.tsv').write_text('new_game_save 1\nselection 0 -1\ntown_capacity 3\nwallet 37 43\n')
     rows=[f'{i}\t{7+i}\t0\t-1\t1' for i in range(3)]
     area='0\tFirst\t0\t0\t1\n1\tSecond\t0\t0\t0'
+    if stage_entries:area='0\tFirst\t0\t1\t0\t1\n1\tSecond\t0\t0\t0'
     tables=[('English.lproj/Town.txt','\n'.join(rows).encode()),('English.lproj/Area.txt',area.encode())]
     if buildings:
         (root/'new-game-save.tsv').write_text('new_game_save 1\nselection 0 -1\ntown_capacity 4\nwallet 37 43\n')
@@ -33,6 +34,7 @@ def add_town_background(root,scenery=False,buildings=False,areas=False,residents
         tables[-1]=('English.lproj/Chara.txt','\n'.join([character(0,0,[0],96),character(1,-1,[1,2,4,1]),character(2,-1,[1,3,7,1,1])]).encode())
         gear=['0','Wand','0','0','0','0','weapon','3']+['0']*13+['0','Description','0']
         quest=[0,'Quest',0,'quest',0,'','',1,1,1,100,1,1,1,100,0,0,-1,0,0,0,-1,-1,1,0]
+        if stage_entries:quest[-1]=1
         tables.extend([('English.lproj/Equipment.txt','\t'.join(gear).encode()),('English.lproj/Quest.txt','\t'.join(map(str,quest)).encode())])
         if hero:
             # Initial saved level7 deliberately differs from World.CreateHero's live level1.
@@ -108,6 +110,11 @@ def add_town_background(root,scenery=False,buildings=False,areas=False,residents
             ('map.png',png(3,2,[10,200,100,255]*6)),('map.seb',seb([(0,0,0,0,3,2,0,0,0,0)]))]))
         (root/'textassets/com.bin').write_bytes(jar([('img.inf',b'0\ticon.png,bin\n'),('seb.inf',b'15\ticon.seb\n'),
             ('icon.png',png(2,2,[200,100,10,255]*4)),('icon.seb',seb([(0,0,0,0,2,2,0,0,0,0)]))]))
+        if update:
+            (root/'textassets/com.bin').write_bytes(jar([('img.inf',b'0\ticon.png,bin\n1\theader.png,bin\n'),
+                ('seb.inf',b'15\ticon.seb\n66\theader.seb\n'),('icon.png',png(2,2,[200,100,10,255]*4)),
+                ('icon.seb',seb([(0,0,0,0,2,2,0,0,0,0)])),('header.png',png(210,20,[30,60,90,255]*(210*20))),
+                ('header.seb',seb([(0,1,0,0,210,20,0,0,0,0)]))]))
     (root/'textassets/select.bin').write_bytes(jar(members))
     (root/'town-resources.tsv').write_text('town_resources 1\ntables -1 "textassets/tables.bin" "xls"\nresource 11 "textassets/select.bin" "select"\n')
     if areas:
@@ -128,6 +135,17 @@ def add_town_background(root,scenery=False,buildings=False,areas=False,residents
                 ('wrong.png',png(2,2,[255,0,0,255]*4)),('hat.png',png(2,2,[40,190,80,255]*4))]))
 
     if update:
+        (root/'textassets/select_stage.bin').write_bytes(jar([
+            ('img.inf',b'0\tpanel.png,bin\n'),('seb.inf',b'0\trow.seb\n1\tcompleted.seb\n2\tpanel.seb\n'),
+            ('panel.png',png(210,80,[40,70,100,255]*(210*80))),
+            ('row.seb',seb([(0,0,0,0,210,40,0,0,0,0)])),
+            ('completed.seb',seb([(frame,0,0,0,2,2,0,0,0,0) for frame in range(2)])),
+            ('panel.seb',seb([(0,0,0,0,210,80,0,0,0,0)]))]))
+        with (root/'town-resources-v2.tsv').open('a') as out:
+            out.write('resource 13 "textassets/select_stage.bin" "select_stage"\n')
+        (root/'stage-menu.tsv').write_text('stage_menu 1\nheading "Quests"\nname_format ", +17, , 4"\nlevel_prefix "Lv "\n'
+            'best_experience "Experience"\nchallenges "Challenges"\ndefeated "Defeated"\nbest_money "Money"\n'
+            'clears "Clears"\nrescued "Rescued"\nseparator "/"\nstamina "Stamina"\nnegative "-"\n')
         (root/'textassets/effect.bin').write_bytes(jar([('img.inf',b'28\ttarget.png,bin\n'),('seb.inf',b''),
             ('target.png',png(10,2,[80,120,210,255]*20))]))
         with (root/'mission-resources.tsv').open('a') as out:out.write('resource 20 "textassets/effect.bin" "effect"\n')

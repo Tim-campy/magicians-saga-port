@@ -205,6 +205,14 @@ int main()try{
     backend.clear_quads();backend.draw_bitmap(*raster.image,10,10,4,6);
     check(backend.quads().size()==1&&backend.quads()[0].texture==raster_key);
     const auto raster_box=box();check(raster_box[2]-raster_box[0]==4&&raster_box[3]-raster_box[1]==6);
+    // Menu viewport clips both glyph/SEB geometry through Image.DrawImage,
+    // before the backend's surface-height Y inversion.
+    backend.set_clip_rectangle(std::array<float,4>{11,12,2,3});
+    backend.clear_quads();backend.draw_bitmap(*raster.image,10,10,4,6);
+    const auto clipped=box();check(clipped[0]==11&&clipped[2]==13&&clipped[1]==49&&clipped[3]==52);
+    backend.clear_quads();backend.draw_bitmap(*raster.image,20,20,4,6);check(backend.quads().empty());
+    backend.set_clip_rectangle(std::nullopt);
+    backend.draw_bitmap(*raster.image,10,10,4,6);check(box()==raster_box);
     // The int64 path uses common-resource digit frames with a local scale scope,
     // independently of the string route used by the Stage MP display.
     auto digits=file(2);digits.header_value=11;digits.groups[0].record_count=11;

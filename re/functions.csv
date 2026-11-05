@@ -520,7 +520,7 @@ game:0x0600021a,game:0x0600021a,boot,,16,0x1111b44
 game:0x0600021b,game:0x0600021b,boot,,16,0x1111b54
 game:0x0600021c,game:0x0600021c,boot,,376,0x1111b70
 game:0x0600021d,game:0x0600021d,boot,,300,0x1111ce8
-game:0x0600021e,game:0x0600021e,boot,,864,0x1111e14
+game:0x0600021e,main.AppData.UseStamina,boot,reimplemented,864,0x1111e14
 game:0x0600021f,game:0x0600021f,boot,,156,0x11121ec
 game:0x06000220,game:0x06000220,boot,,8,0x11121e4
 game:0x06000221,game:0x06000221,boot,,48,0x1112288
@@ -2082,14 +2082,14 @@ game:0x0600084c,game:0x0600084c,ui,,144,0x1207578
 game:0x0600084d,form.SelectStageForm.Init,ui,reimplemented,1340,0x1207608
 game:0x0600084e,form.SelectStageForm.Update,ui,reimplemented,1604,0x1207d5c
 game:0x0600084f,game:0x0600084f,ui,,3000,0x12083a0
-game:0x06000850,game:0x06000850,ui,,924,0x1209270
+game:0x06000850,form.SelectStageForm.DrawStageContents,ui,reimplemented,924,0x1209270
 game:0x06000851,form.SelectStageForm.ChangeState,ui,reimplemented,276,0x1207b44
 game:0x06000852,form.SelectStageForm.SetTouchValue,ui,reimplemented,44,0x120960c
 game:0x06000853,form.SelectStageForm.GetTouchValue,ui,reimplemented,44,0x1209638
 game:0x06000854,form.SelectStageForm.OnTouchEvent,ui,reimplemented,112,0x1209664
 game:0x06000855,form.SelectStageForm.Resume,ui,reimplemented,24,0x12096d4
 game:0x06000856,form.SelectStageForm.Finish,ui,reimplemented,48,0x12096ec
-game:0x06000857,game:0x06000857,ui,,792,0x1208f58
+game:0x06000857,form.SelectStageForm.DrawScrollList,ui,reimplemented,792,0x1208f58
 game:0x06000858,game:0x06000858,ui,,260,0x120971c
 game:0x06000859,game:0x06000859,unassigned,,260,0x1207c58
 game:0x0600085a,game:0x0600085a,unassigned,,20,0x1209820
@@ -2502,7 +2502,7 @@ game:0x06000a1e,game:0x06000a1e,util,,28,0x11248f8
 game:0x06000a1f,game:0x06000a1f,util,,24,0x1124088
 game:0x06000a20,game:0x06000a20,util,,8,0x1124914
 game:0x06000a21,game:0x06000a21,util,,1084,0x112491c
-game:0x06000a22,game:0x06000a22,util,,48,0x1124d58
+game:0x06000a22,ext.util.ScrollList.OnTouchList,util,reimplemented,48,0x1124d58
 game:0x06000a23,game:0x06000a23,util,,376,0x1124d88
 game:0x06000a24,game:0x06000a24,util,,8,0x1124f00
 game:0x06000a25,game:0x06000a25,util,,16,0x1123f48

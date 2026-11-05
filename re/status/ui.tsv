@@ -210,3 +210,6 @@ game:0x0600009a	documented	docs/subsystems/town.md	Required event; types1/2 invo
 game:0x060000a0	documented	docs/subsystems/town.md	Value0 substitutes20; type5 dispatches split selector or shifted Canvas pulse; selected GO28 binding tested.
 kairo:0x060009bf	documented	docs/subsystems/town.md	Signed base priority from component+0x48 and ordered optional flag2/4/8 overrides; area and GO default1.
 game:0x06000a0a	traced	docs/subsystems/town.md	Selected neutral fresh geometry, repeat/held query order, clamping and fade bound to retained stage menu; navigation/gestures remain unavailable.
+game:0x06000857	reimplemented	src/core/gameplay/stage_menu.cpp	Native vertical stage list with bounded clipping, captured geometry and ordered row callbacks; wired into saga_town; synthetic contracts.
+game:0x06000850	reimplemented	src/core/gameplay/stage_menu.cpp	Stage row content with captured quest, bounds, name/level and completed/pending SEBs; live town rendering and contracts.
+game:0x06000a22	reimplemented	src/core/gameplay/stage_menu.cpp	Stage row touch types0/2 retain unsigned low16; no dereference for other types; host delivery and contracts.

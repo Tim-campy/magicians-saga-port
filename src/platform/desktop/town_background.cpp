@@ -71,7 +71,7 @@ struct TownBackground::HeroOwner final:HeroBootstrapHost,PartyHumanFactory {
 TownBackground::~TownBackground()=default;
 TownBackground::DrawingArchive::DrawingArchive(const GameArchiveEntry& entry,ResourceProfile profile)
     :archive(read_game_archive(entry.path),std::move(profile)),manager(archive),images(manager,decode_png),clocks(archive.image_animation_infos()){}
-TownBackground::TownBackground(ResourceArchive& tables,const GameArchiveEntry& selected,ResourceProfile profile,std::int32_t capacity,TownBackgroundContext context,EventScript buildings,std::shared_ptr<std::vector<std::uint8_t>> enabled,const GameArchiveEntry* background,const GameArchiveEntry* common,const GameResourceIndex* actor_resources)
+TownBackground::TownBackground(ResourceArchive& tables,const GameArchiveEntry& selected,ResourceProfile profile,std::int32_t capacity,TownBackgroundContext context,EventScript buildings,std::shared_ptr<std::vector<std::uint8_t>> enabled,const GameArchiveEntry* background,const GameArchiveEntry* common,const GameResourceIndex* actor_resources,const GameArchiveEntry* stage)
     :camera_{false,0,0,prelude_.camera_x,building_state_.camera_y,0,0},context_(context),
      app_random_(context.app_seed),lib_random_(context.lib_seed),
      camera_areas_(std::make_shared<CameraAreas>()),save_integers_(std::make_shared<EventIntegers>(20)),
@@ -93,6 +93,7 @@ TownBackground::TownBackground(ResourceArchive& tables,const GameArchiveEntry& s
     set_select_active_x(camera_,*this);
     set_select_camera_position(camera_,context.camera_request_x,context.camera_request_y,*this);
     application_.selection=&manager_.drawing();textures_.bind(images_);
+    if(stage)stage_entry_=*stage;
     solid_.pixels={1,1,{0,0,0,255}};solid_.image=std::make_unique<PixelImage>();
     solid_.image->width=solid_.image->height=solid_.image->standard_width=solid_.image->standard_height=1;
     textures_.bind(solid_);
@@ -295,8 +296,9 @@ void TownBackground::draw(BitmapBackend& backend){
                 }
             }
         }
+        draw_stage_overlay(backend);
     }
-    catch(...){backend_=nullptr;throw;}
+    catch(...){backend.set_clip_rectangle(std::nullopt);backend_=nullptr;throw;}
     quads_=backend.quads().size()-before;backend_=nullptr;
 }
 std::int32_t TownBackground::foreground_clip(std::int32_t field){

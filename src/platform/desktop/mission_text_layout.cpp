@@ -1,4 +1,5 @@
 #include "mission_text_layout.hpp"
+#include "bitmap_backend.hpp"
 #include "core/gameplay/event_catalog.hpp"
 #include <algorithm>
 #include <charconv>
@@ -8,6 +9,30 @@
 
 namespace saga::desktop {
 using namespace core;
+void rasterize_desktop_text(DesktopTextBitmap& result,const MissionFontScenario& scenario,DesktopTextFont& provider,
+    const std::u16string& contents,std::int32_t request,std::uint32_t color,BitmapTextures& textures){
+    const std::vector<std::int32_t> presets{12,24,30};
+    TextFontState font{0,0,true,0,1,scenario.requested_scale};
+    set_text_font_size(font,request,true,&presets);update_text_font_scale(font,scenario.requested_scale,&presets);adjust_text_font_size(font,scenario.layout_scale);
+    const auto pixels=text_gui_pixel_size(font.adjusted_size,scenario.application_ratio);
+    auto raster=provider.rasterize_run(contents,pixels,scenario.load_flags,scenario.kerning_mode);
+    auto measured=contents;std::replace(measured.begin(),measured.end(),u' ',u'.');
+    result.width=text_run_logical_width(provider.run_width(measured,pixels,scenario.load_flags,scenario.kerning_mode),scenario.application_ratio);
+    result.ascent=raster.ascent;result.left=raster.left;result.top=raster.top;
+    result.font_height=font.size;result.scale=100.0F/scenario.application_ratio;result.ready.pixels=std::move(raster.pixels);
+    if(!result.ready.pixels.rgba.empty()){
+        auto& ready=result.ready;ready.image=std::make_unique<PixelImage>();auto& image=*ready.image;
+        image.width=image.standard_width=ready.pixels.width;image.height=image.standard_height=ready.pixels.height;
+        ImageAlphaClassifier alpha;
+        for(std::size_t i=0;i<ready.pixels.rgba.size();i+=4){
+            ready.pixels.rgba[i]=static_cast<std::uint8_t>((color>>16)&255U);
+            ready.pixels.rgba[i+1]=static_cast<std::uint8_t>((color>>8)&255U);ready.pixels.rgba[i+2]=static_cast<std::uint8_t>(color&255U);
+            ready.pixels.rgba[i+3]=static_cast<std::uint8_t>((static_cast<std::uint32_t>(ready.pixels.rgba[i+3])*(color>>24)+127U)/255U);
+            alpha.add(static_cast<float>(ready.pixels.rgba[i+3])/255.0F);
+        }
+        ready.alpha_type=alpha.finish(image.width*image.height);textures.bind(ready);
+    }
+}
 namespace {
 std::string ascii(const std::u16string& value){
     std::string result;for(const auto unit:value){if(unit>127)throw ManagedTextParseError("invariant text number outside ASCII subset");result.push_back(static_cast<char>(unit));}return result;

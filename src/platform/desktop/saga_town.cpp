@@ -46,6 +46,8 @@ int main(int argc,char** argv)try{
             "Add --update-passes N --hidden for a bounded automated window; --physical-input enables the same hit path headlessly.\n"
             "Add --replay file for ordered native camera/selection/button/pulse input plus physical widget/stage-back actions; default town input is neutral.\n"
             "Requires v2 --mission-initialization and --mission-font extraction; default talk input is neutral.\n"
+            "Mission menu requires --stage-menu extraction; left down selects a row, release inside confirms.\n"
+            "Provisional menu providers: --stamina-up-state 0 (billing state), --server-time 0 (fixed seconds), --menu-font 10.\n"
             "Motion context: --motion-low-aspect 0 supplies the provisional cloud-wrap aspect gate.\n"
             "Resident context: --store-kairo-limit 0 --condition-characters 1 --debug 0; DEBUG1 requires --debug-rescue-count.\n"
             "Area clock context: --automatic-images 0 (provisional Seb.AutoAnimation gate; true branch unbound).\n"
@@ -54,7 +56,7 @@ int main(int argc,char** argv)try{
             "Camera requests: --camera-x 0 --camera-y -9999, clamped by native fresh Area/Town bounds.\n"
             "S2 data projection: fresh Town.Init, ResetBuildingList and GetBuildingList.\n"
             "Reads the existing resource index and APK-derived new-game defaults.\n"
-            "Full Update supports native-event replay or neutral town input and explicit dialogue pulses. Camera hit registration and the SDL viewer are bound; Area/GO dispatch opens the retained mission menu; list gestures, other menus, unlock information and quest/mission return remain unbound.\n";return 0;
+            "Full Update binds camera, Area/GO, mission rows/stats and stamina; production41 retains quest entry and stops dispatch. Shared mission entry/return, list gestures, other menus and unlock information remain unbound.\n";return 0;
     }
     std::optional<std::filesystem::path> root,capture;std::string language="English.lproj";std::int32_t dpi=1;
     bool background=false,interactive=false,hidden=false;TownBackgroundContext context;std::int32_t update_passes=0,talk_pulse_every=0;
@@ -75,16 +77,17 @@ int main(int argc,char** argv)try{
             if(key=="--residents"||key=="--hero"||key=="--foreground")context.residents=true;
             if(key=="--hero"||key=="--foreground")context.hero=true;
             if(key=="--foreground")context.foreground=true;continue;}
-        const std::set<std::string> allowed{"--data","--language","--dpi","--capture","--width","--height","--view-x","--view-y","--camera-x","--camera-y","--app-seed","--lib-seed","--high-score","--top-form","--automatic-images","--store-kairo-limit","--condition-characters","--debug","--debug-rescue-count","--motion-passes","--motion-low-aspect","--update-passes","--talk-pulse-every","--replay"};
+        const std::set<std::string> allowed{"--data","--language","--dpi","--capture","--width","--height","--view-x","--view-y","--camera-x","--camera-y","--app-seed","--lib-seed","--high-score","--top-form","--automatic-images","--store-kairo-limit","--condition-characters","--debug","--debug-rescue-count","--motion-passes","--motion-low-aspect","--update-passes","--talk-pulse-every","--replay","--stamina-up-state","--server-time","--menu-font"};
         if(!allowed.count(key)||i+1>=argc||!options.insert(key).second)throw std::invalid_argument("unsupported, incomplete or duplicate town option");
         const std::string value=argv[++i];
         if(key=="--data")root=std::filesystem::u8path(value);
         else if(key=="--replay")context.input_replay=std::filesystem::u8path(value);
         else if(key=="--language")language=value;
         else if(key=="--capture"){capture=std::filesystem::u8path(value);background=true;}
-        else if(key=="--high-score"){
-            const auto n=std::from_chars(value.data(),value.data()+value.size(),context.high_score);
-            if(n.ec!=std::errc{}||n.ptr!=value.data()+value.size())throw std::invalid_argument("town high score requires int64");}
+        else if(key=="--high-score"||key=="--server-time"){
+            auto& target=key=="--high-score"?context.high_score:context.server_time;
+            const auto n=std::from_chars(value.data(),value.data()+value.size(),target);
+            if(n.ec!=std::errc{}||n.ptr!=value.data()+value.size())throw std::invalid_argument("town numeric option requires int64");}
         else{std::int32_t parsed=0;const auto n=std::from_chars(value.data(),value.data()+value.size(),parsed);
             if(n.ec!=std::errc{}||n.ptr!=value.data()+value.size())throw std::invalid_argument("town numeric option requires int32");
             if(key=="--dpi"){if(parsed<0)throw std::invalid_argument("town dpi requires nonnegative int32");dpi=parsed;}
@@ -92,6 +95,8 @@ int main(int argc,char** argv)try{
             else if(key=="--view-x")context.view_x=parsed;else if(key=="--view-y")context.view_y=parsed;
             else if(key=="--camera-x")context.camera_request_x=parsed;else if(key=="--camera-y")context.camera_request_y=parsed;
             else if(key=="--app-seed")context.app_seed=parsed;else if(key=="--lib-seed")context.lib_seed=parsed;
+            else if(key=="--stamina-up-state")context.stamina_up_state=parsed;
+            else if(key=="--menu-font"){if(parsed<1||parsed>100)throw std::invalid_argument("town menu font requires1..100");context.menu_font=parsed;}
             else if(key=="--store-kairo-limit")context.store_limit=parsed;
             else if(key=="--debug-rescue-count")context.debug_rescue_count=parsed;
             else if(key=="--update-passes"){if(parsed<0)throw std::invalid_argument("negative town update passes");context.full_update=true;update_passes=parsed;}
@@ -108,6 +113,7 @@ int main(int argc,char** argv)try{
     if(!root)throw std::invalid_argument("town data root required; see --help");
     if(context.full_update&&(!context.foreground||context.motion))throw std::invalid_argument("full town Update requires --foreground and excludes --motion-passes");
     if(context.input_replay&&!context.full_update)throw std::invalid_argument("town replay requires --update-passes");
+    if(!context.full_update)for(const auto* key:{"--stamina-up-state","--server-time","--menu-font"})if(options.count(key))throw std::invalid_argument("stage providers require full town Update");
     if(options.count("--talk-pulse-every")&&!context.full_update)throw std::invalid_argument("talk pulses require --update-passes");
     if(context.motion&&!context.foreground)throw std::invalid_argument("town motion requires --foreground");
     if(options.count("--motion-low-aspect")&&!context.motion&&!context.full_update)throw std::invalid_argument("motion aspect requires --motion-passes or --update-passes");
@@ -141,7 +147,7 @@ int main(int argc,char** argv)try{
     const auto buildings=get_town_buildings(town.state,town.cache,town);
     std::unique_ptr<TownBackground> backdrop;
     if(background){
-        const auto draw_index=read_game_resource_index(*root,true);const GameArchiveEntry* selected=nullptr;const GameArchiveEntry* bg_entry=nullptr;const GameArchiveEntry* common_entry=nullptr;bool matching_tables=false;
+        const auto draw_index=read_game_resource_index(*root,true);const GameArchiveEntry* selected=nullptr;const GameArchiveEntry* bg_entry=nullptr;const GameArchiveEntry* common_entry=nullptr;const GameArchiveEntry* stage_entry=nullptr;bool matching_tables=false;
         std::set<std::int32_t> draw_ids;std::set<std::string> draw_names;
         for(const auto& entry:draw_index.entries){
             if(!draw_ids.insert(entry.id).second||!draw_names.insert(entry.name).second)throw std::invalid_argument("duplicate town background resource index entry");
@@ -149,11 +155,12 @@ int main(int argc,char** argv)try{
             else if(entry.kind=="resource"&&entry.id==11&&entry.name=="select"&&!selected)selected=&entry;
             else if(entry.kind=="resource"&&entry.id==0&&entry.name=="bg"&&!bg_entry)bg_entry=&entry;
             else if(entry.kind=="resource"&&entry.id==2&&entry.name=="com"&&!common_entry)common_entry=&entry;
+            else if(entry.kind=="resource"&&entry.id==13&&entry.name=="select_stage"&&!stage_entry)stage_entry=&entry;
             else if(entry.kind!="resource"||((entry.id!=8||entry.name!="resident")&&(entry.id!=13||entry.name!="select_stage")))
                 throw std::invalid_argument("unexpected town background resource index entry");
         }
         if(!matching_tables||!selected)throw std::invalid_argument("town background requires matching tables and select resource");
-        backdrop=std::make_unique<TownBackground>(archive,*selected,ResourceProfile{language,dpi},town.capacity,context,buildings,town.state.build_enable,bg_entry,common_entry,&index);
+        backdrop=std::make_unique<TownBackground>(archive,*selected,ResourceProfile{language,dpi},town.capacity,context,buildings,town.state.build_enable,bg_entry,common_entry,&index,stage_entry);
         for(std::int32_t pass=0;pass<context.motion_passes;++pass)backdrop->advance_motion();
         if(context.full_update)backdrop->initialize_update(archive,*root);
         if(interactive){
@@ -168,6 +175,7 @@ int main(int argc,char** argv)try{
             for(std::uint64_t frame=1;frame<=static_cast<std::uint64_t>(update_passes);++frame){
                 backdrop->advance_update(frame,talk_pulse_every>0&&frame%static_cast<std::uint64_t>(talk_pulse_every)==0);
                 backdrop->draw(cpu_draw);
+                if(backdrop->quest_handoff_pending())break;
             }
         }
         if(!interactive&&capture){
@@ -187,6 +195,6 @@ int main(int argc,char** argv)try{
     std::cout<<"],\"source_buildings\":";write_rows(std::cout,town.state.building_list);
     std::cout<<",\"buildings\":";write_rows(std::cout,buildings);
     if(backdrop)backdrop->report(std::cout);
-    std::cout<<",\"scope\":\""<<(context.full_update?(context.physical_input?"Persistent full town Update with physical camera/area/GO input and retained stage menu; list selection, other menus, dialogue/bubble glyphs and quest/mission return unbound":context.input_replay?"Persistent full town Update with native camera/selection replay, movement and resident voice selection; physical hit registration, dialogue/bubble glyphs and menu/quest/return forms unbound":"Persistent full town Update with real event selection/delays and modal pause; neutral town input, provisional font metrics, dialogue drawing and quest/return forms unbound"):context.motion?"Selected native active-motion subsequence and town drawing; full Update permission/event/form gates remain unbound":context.foreground?"Native fresh town drawing through foreground and notice flush; glyph/input/clip services stubbed; persistent Update, unlock information, quest selection and mission return unbound":context.hero?"Native Member/hero Init and drawing through resident lanes1/2; notices queued, glyph/input/clip services stubbed; foreground, quest selection and mission return unbound":context.residents?"Native resident Init and lane0 composition; notices queued, glyph/input/clip services stubbed; hero, later lanes/foreground, quest selection and mission return unbound":context.areas?"Native drawing through town areas and locked fence; notices queued, text/input, inherited clip, residents, foreground, quest selection and mission return unbound":context.buildings?"Native drawing through initial buildings; notices queued, text/input services, residents, foreground, quest selection and mission return unbound":context.scenery?"Native cloud/decor initialization and drawing through floor/gate prefix; buildings, residents, quest selection and mission return unbound":backdrop?"Town data and native background prefix; decorations, buildings, residents, quest selection and mission return unbound":"Town data/cache projection; SelectForm drawing, residents, quest selection and mission return unbound")<<"\"}\n";
+    std::cout<<",\"scope\":\""<<(context.full_update?(context.physical_input?"Persistent full town Update with camera/area/GO and stage list/stats/selection/stamina; production41 retains quest entry; shared mission entry/return, list gestures, other menus and dialogue/bubble glyphs unbound":context.input_replay?"Persistent full town Update with native camera/selection replay, movement and resident voice selection; physical hit registration, dialogue/bubble glyphs and menu/quest/return forms unbound":"Persistent full town Update with real event selection/delays and modal pause; neutral town input, provisional font metrics, dialogue drawing and quest/return forms unbound"):context.motion?"Selected native active-motion subsequence and town drawing; full Update permission/event/form gates remain unbound":context.foreground?"Native fresh town drawing through foreground and notice flush; glyph/input/clip services stubbed; persistent Update, unlock information, quest selection and mission return unbound":context.hero?"Native Member/hero Init and drawing through resident lanes1/2; notices queued, glyph/input/clip services stubbed; foreground, quest selection and mission return unbound":context.residents?"Native resident Init and lane0 composition; notices queued, glyph/input/clip services stubbed; hero, later lanes/foreground, quest selection and mission return unbound":context.areas?"Native drawing through town areas and locked fence; notices queued, text/input, inherited clip, residents, foreground, quest selection and mission return unbound":context.buildings?"Native drawing through initial buildings; notices queued, text/input services, residents, foreground, quest selection and mission return unbound":context.scenery?"Native cloud/decor initialization and drawing through floor/gate prefix; buildings, residents, quest selection and mission return unbound":backdrop?"Town data and native background prefix; decorations, buildings, residents, quest selection and mission return unbound":"Town data/cache projection; SelectForm drawing, residents, quest selection and mission return unbound")<<"\"}\n";
     return 0;
 }catch(const std::exception& error){std::cerr<<"saga_town: "<<error.what()<<'\n';return 1;}

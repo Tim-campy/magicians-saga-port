@@ -14,6 +14,85 @@ extractor = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(extractor)
 
 
+class StageMenuTests(unittest.TestCase):
+    indices=(321,814,5671,15045,14998,15164,15046,14667,15015,1057,15374,861)
+
+    def metadata(self):
+        count=15394;pool=256+count*8
+        values=('synthetic "route" \u6c34',', +17, , 4','rank\\',
+                'experience!','attempt!','foes!','money!','clears!','rescued!',':','energy!','minus!')
+        encoded=[value.encode('utf-8') for value in values]
+        unused=b'\x01unreached';payload=unused+b''.join(encoded)
+        data=bytearray(pool+len(payload));struct.pack_into('<II',data,0,0xfab11baf,31)
+        struct.pack_into('<IIII',data,8,256,count*8,pool,len(payload))
+        data[pool:]=payload
+        for index in range(count):struct.pack_into('<II',data,256+index*8,len(unused),0)
+        offset=len(unused)
+        for index,value in zip(self.indices,encoded):
+            struct.pack_into('<II',data,256+index*8,len(value),offset);offset+=len(value)
+        return data
+
+    def test_only_exact_reached_indices_and_json_projection(self):
+        self.assertEqual(extractor.stage_menu_payload(self.metadata()),
+                         ('stage_menu 1\nheading "synthetic \\"route\\" \u6c34"\n'
+                          'name_format ", +17, , 4"\nlevel_prefix "rank\\\\"\n'
+                          'best_experience "experience!"\nchallenges "attempt!"\ndefeated "foes!"\n'
+                          'best_money "money!"\nclears "clears!"\nrescued "rescued!"\n'
+                          'separator ":"\nstamina "energy!"\nnegative "minus!"\n').encode('utf-8'))
+        # Every unselected literal contains a control byte: traversing the whole
+        # metadata catalogue would reject this valid bounded projection.
+        data=self.metadata();struct.pack_into('<II',data,256+8*320,999999,999999)
+        self.assertEqual(extractor.stage_menu_payload(data),extractor.stage_menu_payload(self.metadata()))
+
+    def test_bad_header_version_and_section_boundaries(self):
+        for data in (b'',b'bad',bytes(255)):
+            with self.subTest(length=len(data)),self.assertRaisesRegex(ValueError,'v31'):
+                extractor.stage_menu_payload(data)
+        for offset,value in ((0,0),(4,30),(8,255),(12,15394*8-1),(8,999999),
+                             (12,999992),(16,255),(16,999999),(20,999999)):
+            data=self.metadata();struct.pack_into('<I',data,offset,value)
+            with self.subTest(offset=offset,value=value),self.assertRaises(ValueError):
+                extractor.stage_menu_payload(data)
+
+    def test_missing_literal_indices_and_data_bounds(self):
+        for count in (0,*self.indices):
+            data=self.metadata();struct.pack_into('<I',data,12,count*8)
+            with self.subTest(count=count),self.assertRaisesRegex(ValueError,'Missing stage menu literal'):
+                extractor.stage_menu_payload(data)
+        for index in self.indices:
+            for size,offset in ((1,999999),(999999,0)):
+                data=self.metadata();struct.pack_into('<II',data,256+8*index,size,offset)
+                with self.subTest(index=index,size=size,offset=offset),self.assertRaisesRegex(ValueError,'outside data section'):
+                    extractor.stage_menu_payload(data)
+
+    def test_controls_in_each_reached_literal(self):
+        for index in self.indices:
+            for control in (0,9,10,13,31):
+                data=self.metadata();pool=struct.unpack_from('<I',data,16)[0]
+                offset=struct.unpack_from('<I',data,256+8*index+4)[0];data[pool+offset]=control
+                with self.subTest(index=index,control=control),self.assertRaisesRegex(ValueError,'control character'):
+                    extractor.stage_menu_payload(data)
+
+    def test_synthetic_writer_preserves_existing_outputs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);apk=root/'synthetic.apk';metadata=self.metadata()
+            with extractor.zipfile.ZipFile(apk,'w') as archive:archive.writestr(extractor.METADATA,metadata)
+            checksum=hashlib.sha256(apk.read_bytes()).hexdigest()
+            manifest=json.dumps({'schema':3,'apk_sha256':checksum})
+            (root/'manifest.json').write_text(manifest)
+            other=root/'mission-debug.tsv';other.write_bytes(b'keep another seed')
+            with patch.object(extractor,'APK_SHA',checksum):
+                output=extractor.write_stage_menu(apk,root)
+                self.assertEqual(output.name,'stage-menu.tsv')
+                self.assertEqual(output.read_bytes(),extractor.stage_menu_payload(metadata))
+                self.assertEqual(extractor.write_stage_menu(apk,root),output)
+                output.write_bytes(b'keep user file')
+                with self.assertRaisesRegex(ValueError,'replace differing'):extractor.write_stage_menu(apk,root)
+                self.assertEqual(output.read_bytes(),b'keep user file')
+                self.assertEqual(other.read_bytes(),b'keep another seed')
+                self.assertEqual((root/'manifest.json').read_text(),manifest)
+
+
 class DebugDrawingTests(unittest.TestCase):
     def metadata(self):
         count=15394;fields=256+8*count;defaults=fields+12;pool=defaults+52

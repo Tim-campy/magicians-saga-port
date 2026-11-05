@@ -37,6 +37,31 @@ class TownBackgroundPixels(unittest.TestCase):
                     self.assertEqual(cpu['background']['update']['stage_menu']['pending'],count<184)
 
     @unittest.skipUnless(os.environ.get('SAGA_TEST_FONT'),'public CTest font required')
+    def test_stage_row_statistics_and_held_entry_match_window(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);add_town_background(root,update=True,stage_entries=True)
+            font=root/'unity/Font/public.ttf';font.parent.mkdir(parents=True)
+            font.write_bytes(Path(os.environ['SAGA_TEST_FONT']).read_bytes())
+            (root/'mission-font.tsv').write_text(f'mission_font 1\nfont "unity/Font/public.ttf" {font.stat().st_size}\n')
+            replay=root/'row.replay';replay.write_text('160 widget 0 200 450\n161 widget 1 200 450\n162 widget 0 200 480\n163 widget 1 200 480\n165 widget 0 250 250\n166 widget 1 250 250\n')
+            base=[str(EXE),'--data',str(root),'--foreground','--camera-x','300','--talk-pulse-every','10','--replay',str(replay),'--server-time','123']
+            def run(*args):
+                result=subprocess.run([*base,*args],capture_output=True,text=True,timeout=45)
+                self.assertEqual(result.returncode,0,result.stderr);return json.loads(result.stdout)
+            for count in (165,166,207):
+                with self.subTest(count=count):
+                    args=['--update-passes',str(count)];cpu=run(*args,'--physical-input')
+                    still=root/f'row-still-{count}.bmp';window=root/f'row-window-{count}.bmp'
+                    self.assertEqual(run(*args,'--physical-input','--capture',str(still)),cpu)
+                    self.assertEqual(run(*args,'--interactive','--hidden','--capture',str(window)),cpu)
+                    self.assertEqual(still.read_bytes(),window.read_bytes())
+                    update=cpu['background']['update'];menu=update['stage_menu']
+                    self.assertEqual(menu['rows'],[[10,131072,195,232,210,40]])
+                    self.assertEqual((menu['text_draws'],menu['missing_text'],menu['selected']),(17,0,0))
+                    self.assertEqual(update['stamina'],10 if count==165 else 9)
+                    self.assertEqual(menu['quest_handoff_pending'],count==207)
+
+    @unittest.skipUnless(os.environ.get('SAGA_TEST_FONT'),'public CTest font required')
     def test_hidden_interactive_loop_matches_physical_headless_state_and_pixels(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);add_town_background(root,update=True)

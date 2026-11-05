@@ -37,11 +37,13 @@ struct TownBackgroundContext {
     std::int32_t motion_passes=0;
     bool full_update=false;
     bool physical_input=false; // Selected outer Draw prefix + control17 registration.
+    std::int32_t stamina_up_state=0,menu_font=10; // Provisional billing/text provider inputs.
+    std::int64_t server_time=0; // Provisional fixed GetServerTime result, seconds.
     std::optional<std::filesystem::path> input_replay;
 };
 class TownBackground final:private core::SelectBackgroundHost,private core::SelectActiveAreaHost,private core::SelectCameraHost,private core::SelectSceneryHost,private core::SelectFloorHost,private core::SelectTownDrawingHost,private core::KingRewardAvailabilityHost,private core::SelectAreaDrawingHost,private core::TownResidentInitializationHost,private core::TownResidentGeometryHost,private core::ScaledHumanDrawingHost,private core::SelectResidentDrawingHost,private core::SelectHeroDrawingHost,private core::SelectForegroundDrawingHost,private core::SelectNoticeDrawingHost,private core::TownResidentUpdateHost,private core::SelectCloudHost {
 public:
-    TownBackground(ResourceArchive& tables,const GameArchiveEntry& selected,ResourceProfile,std::int32_t capacity,TownBackgroundContext,core::EventScript buildings=nullptr,std::shared_ptr<std::vector<std::uint8_t>> enabled=nullptr,const GameArchiveEntry* background=nullptr,const GameArchiveEntry* common=nullptr,const GameResourceIndex* actor_resources=nullptr);
+    TownBackground(ResourceArchive& tables,const GameArchiveEntry& selected,ResourceProfile,std::int32_t capacity,TownBackgroundContext,core::EventScript buildings=nullptr,std::shared_ptr<std::vector<std::uint8_t>> enabled=nullptr,const GameArchiveEntry* background=nullptr,const GameArchiveEntry* common=nullptr,const GameResourceIndex* actor_resources=nullptr,const GameArchiveEntry* stage=nullptr);
     ~TownBackground();
     void draw(BitmapBackend&);
     // Exact selected state0 counter/cloud/decor/resident blocks, not a complete
@@ -53,6 +55,7 @@ public:
     bool widget_pointer(std::int32_t type,std::int32_t x,std::int32_t y);
     void cancel_widget_pointer();
     void stage_back();
+    bool quest_handoff_pending()const;
     void cancel_camera_pointer();
     std::string window_title()const;
     void report(std::ostream&)const;
@@ -60,6 +63,7 @@ public:
     BitmapTextures& textures(){return textures_;}
     const TownBackgroundContext& context()const{return context_;}
 private:
+    void draw_stage_overlay(BitmapBackend&);
     struct Draw {std::int32_t clip,frame;float x,y;};
     core::SelectPreludeState prelude_{0,0,0,0};
     core::SelectTouchMoveState movement_{false,40.0F,40.0F,1,0};
@@ -133,7 +137,8 @@ private:
         std::shared_ptr<core::ImageAnimationGroup> clocks;
         DrawingArchive(const GameArchiveEntry&,ResourceProfile);
     };
-    std::unique_ptr<DrawingArchive> area_background_,common_;
+    std::unique_ptr<DrawingArchive> area_background_,common_,stage_archive_;
+    std::optional<GameArchiveEntry> stage_entry_;
     struct AreaDraw {std::int32_t resource,clip;std::optional<std::int32_t> frame;std::int32_t x,y;};
     std::vector<AreaDraw> area_draws_;
     std::vector<Label> area_labels_;

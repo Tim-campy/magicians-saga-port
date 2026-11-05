@@ -83,6 +83,7 @@ void run_town_window(TownBackground& town,const TownWindowOptions& options){
             ++dispatch;town.advance_update(dispatch,pulse||(options.pulse_every>0&&dispatch%static_cast<std::uint64_t>(options.pulse_every)==0));
             submit();renderer.present();const auto next_title=town.window_title();
             if(title!=next_title){require(SDL_SetWindowTitle(window.get(),next_title.c_str()),"SDL town title");title=next_title;}
+            if(town.quest_handoff_pending())break; // Retain the shared owner at the unbound QuestForm service boundary.
             const auto current=SDL_GetTicks();if(!options.hidden&&current<deadline)SDL_Delay(static_cast<Uint32>(deadline-current));
         }
         // A frame limit observes the same retained state as headless replay.

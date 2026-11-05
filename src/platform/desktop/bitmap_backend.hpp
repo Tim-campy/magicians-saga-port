@@ -72,6 +72,8 @@ public:
     const std::vector<BitmapQuad>& quads()const;
     std::optional<std::array<std::int32_t,12>> last_sprite()const;
     void clear_quads(); // Retains buffers and graphics/SEB caches between frames.
+    // Reuse the portable Image.DrawImage clip kernel before world transforms.
+    void set_clip_rectangle(std::optional<std::array<float,4>>);
     void draw_parameter_gauge(const core::ParameterGaugeRequest&,core::QuestCameraHost&,core::GaugeDrawState* shared=nullptr);
     void set_matrix(const core::SpriteMatrix*);
     void set_depth_host(BitmapDepthHost*); // Borrowed; null selects the existing 2D diagnostic profile.

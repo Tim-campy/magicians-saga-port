@@ -432,6 +432,10 @@ RenderMatrix& BitmapBackend::matrix(){return impl_->application_matrix;}
 const std::vector<BitmapQuad>& BitmapBackend::quads()const{return impl_->output;}
 std::optional<std::array<std::int32_t,12>> BitmapBackend::last_sprite()const{return impl_->last;}
 void BitmapBackend::clear_quads(){impl_->output.clear();impl_->last.reset();}
+void BitmapBackend::set_clip_rectangle(std::optional<std::array<float,4>> rectangle){
+    auto& clip=*impl_->image_state.clip;
+    for(std::size_t i=0;i<4;++i)clip.at(i)=rectangle?rectangle->at(i):std::numeric_limits<float>::quiet_NaN();
+}
 void BitmapBackend::set_matrix(const SpriteMatrix* matrix){set_graphics_matrix(impl_->transform,matrix);}
 void BitmapBackend::set_depth_host(BitmapDepthHost* host){impl_->depth_host=host;}
 void BitmapBackend::set_depth_layer(std::int32_t layer){
