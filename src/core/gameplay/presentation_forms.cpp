@@ -1,5 +1,6 @@
 #include "presentation_forms.hpp"
 #include "table_catalog.hpp"
+#include <limits>
 #include <utility>
 
 namespace saga::core {
@@ -84,6 +85,35 @@ void update_event_notice(const PreparedEventForm& form,std::int32_t& page,
         host.set_event(page);
     }
     if(host.cancel_pressed())close_counter=8;
+}
+bool update_popup_production(PopupProductionState& production,PopupContentsHost& host) {
+    // SubForm.UpdateWindowProduction 0x11fa02c..0x11fa098.
+    const auto step=production.step;
+    if(step!=1&&step!=2)return false;
+    const auto bits=static_cast<std::uint32_t>(production.frame)+1U;
+    production.frame=bits<=0x7fffffffU?static_cast<std::int32_t>(bits)
+        : -1-static_cast<std::int32_t>(0xffffffffU-bits);
+    if(production.frame>=5) {
+        if(step==2)host.pop_popup();
+        // The native 64-bit zero store clears both fields after successful Pop,
+        // including replacements made by that callback. Failure keeps the prefix.
+        production.step=0;production.frame=0;
+    }
+    return true;
+}
+bool update_popup_contents(std::int32_t& animation_frame,PopupProductionState& production,
+                           PopupContentsHost& host) {
+    // SubForm._update type19 0x11f947c..0x11f94cc; production suffix0x11f9838.
+    if(production.step==1||production.step==2) {
+        update_popup_production(production,host);
+        return false;
+    }
+    const auto bits=static_cast<std::uint32_t>(animation_frame)+1U;
+    const auto next=bits<=0x7fffffffU?static_cast<std::int32_t>(bits)
+        : -1-static_cast<std::int32_t>(0xffffffffU-bits);
+    animation_frame=next%std::numeric_limits<std::int32_t>::max();
+    if(host.popup_close_pulse())production.step=2;
+    return true;
 }
 PreparedTalkForm prepare_talk_form(std::int32_t character_index,
                                  NullablePresentationText text,

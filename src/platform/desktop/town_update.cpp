@@ -331,7 +331,11 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
     std::int32_t touch_count()override{return pointer_count;}
     void set_camera_position(std::int32_t x,std::int32_t y)override{set_select_camera_position(town.camera_,x,y,town);}
     void set_scale(std::int32_t)override{town_unbound("pinch SetScale lifecycle");}
-    void base_set_touch_value(std::uint32_t,std::int32_t)override{town_unbound("base form touch-value selector");}
+    void base_set_touch_value(std::uint32_t flags,std::int32_t value)override{
+        if(flags!=0x10000U)town_unbound("base form touch-value selector");
+        // MyFormBase.SetTouchValue0x11d60f4: Canvas.KeyClick(1 << value), ARM shift masks to5 bits.
+        click_key(1U<<(static_cast<std::uint32_t>(value)&31U));
+    }
     std::int32_t base_get_touch_value(std::uint32_t,std::int32_t)override{town_unbound("base form touch-value selector");}
     std::shared_ptr<EventConditionHost> condition_context()override{return town.resident_condition_host_;}
     bool is_top_form()override{return top();}
@@ -378,9 +382,31 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
     EventObject make_obstacle(std::int32_t)override{town_unbound("obstacle form");}
     EventObject make_store_invite()override{town_unbound("store form");}
     std::int32_t store_limit_slot()override{town_unbound("store limit slot");}
-    void add_money(std::int32_t)override{town_unbound("present progression owner");}
-    FormText format_present_value(std::int32_t)override{town_unbound("present text");}
-    EventObject make_present_popup(FormText)override{town_unbound("present popup");}
+    void add_money(std::int32_t amount)override{
+        if(!town.shared_world_)town_unbound("resident gift requires shared campaign wallet");
+        auto& results=town.shared_world_->humans->result_owner();
+        results.set_money(add_decoded_currency(results.money(),amount));
+        town.resident_conditions_.money=results.money();
+    }
+    std::optional<std::array<std::string,2>> gift_literals;
+    const std::array<std::string,2>& present_literals(){
+        if(gift_literals)return *gift_literals;
+        const auto path=data_root/"town-messages.tsv";
+        if(!std::filesystem::exists(path)||std::filesystem::file_size(path)>65536)throw std::invalid_argument("resident gift requires bounded --town-messages extraction");
+        std::ifstream input(path);input.imbue(std::locale::classic());std::string tag;std::int32_t version;
+        if(!(input>>tag>>version)||tag!="town_messages"||version!=1)throw std::invalid_argument("invalid town message version");
+        std::array<std::string,2> values;std::size_t index=0;
+        for(const auto* key:{"gift_title","gift_format"}){
+            input>>tag>>std::ws;
+            if(tag!=key||input.peek()!='"'||!(input>>std::quoted(values[index++])))throw std::invalid_argument("invalid town message field");
+        }
+        input>>std::ws;if(!input.eof())throw std::invalid_argument("trailing town message fields");
+        gift_literals=std::move(values);return *gift_literals;
+    }
+    FormText format_present_value(std::int32_t amount)override{return events.format_popup_value(present_literals()[1],amount);}
+    EventObject make_present_popup(FormText text)override{
+        return events.make_popup_contents(3,std::make_shared<const std::string>(present_literals()[0]),std::move(text),false);
+    }
     void save_game(bool,bool)override{++save_requests; /* SAGA_STUB(town-update-save): save envelope deferred; memory retained. */}
     void report_autosave_error(const SelectSaveError&)override{town_unbound("save error adapter");}
     void save_system()override{ /* SAGA_STUB(town-update-save): persistence output. */ }

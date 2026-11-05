@@ -26,6 +26,9 @@ struct SelectAreaTouchRegion {InputRectangle bounds;InputControl control;};
 // Selected _Draw area29/GO4 registrations; host owns list lifetime/capture.
 SelectAreaTouchRegion select_area_touch_region(std::int32_t index,bool selected,bool locked,
     std::int32_t x,std::int32_t y,std::int32_t width,std::int32_t height);
+// DrawTownHuman gift: group4/value0x10019, 32x32 and Margin(10,10,10,10).
+SelectAreaTouchRegion select_resident_gift_touch_region(std::int32_t x,std::int32_t y,
+    std::int32_t width,std::int32_t height);
 class SelectWidgetHost {
 public:
     virtual ~SelectWidgetHost()=default;

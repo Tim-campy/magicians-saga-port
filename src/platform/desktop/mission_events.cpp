@@ -9,6 +9,8 @@
 #include <limits>
 #include <stdexcept>
 #include <algorithm>
+#include <sstream>
+#include <iomanip>
 
 namespace saga::desktop {
 using namespace core;
@@ -32,6 +34,41 @@ MissionEvents::MissionEvents(ResourceArchive& archive,MissionEventScenario scena
     execution_.print_enabled=scenario_.print;
     execution_.diagnostic=[](auto,std::int32_t){ /* SAGA_STUB(mission-event-diagnostic): Config.PRINT logging only. */ };
 }
+std::u16string MissionEvents::translated_popup_literal(std::string_view source){
+    // SAGA_STUB(town-gift-translation): reuse the selected text.txt exact lookup;
+    // concatenated/localized transformations beyond this literal remain unbound.
+    if(const auto data=archive_.data("text.txt")){
+        std::istringstream rows(std::string(data->bytes.begin(),data->bytes.end()));
+        for(std::string line;std::getline(rows,line);){
+            if(!line.empty()&&line.back()=='\r')line.pop_back();const auto tab=line.find('\t');
+            if(tab==std::string::npos||std::string_view(line).substr(0,tab)!=source)continue;
+            const auto end=line.find('\t',tab+1);const auto display=line.substr(tab+1,end==std::string::npos?end:end-tab-1);
+            if(!display.empty())return decode_mission_text(display);
+            break;
+        }
+    }
+    return decode_mission_text(source);
+}
+FormText MissionEvents::format_popup_value(std::string_view pattern,std::int64_t amount){
+    // MyFormBase.LT0x11d8220: TranslateText(true), JString.ValueOf(int64), then StringUtil.Replace.
+    auto translated=translated_popup_literal(pattern);
+    const auto text=substitute_form_arguments(std::move(translated),decode_mission_text(std::to_string(amount)),*this);
+    std::wstring_convert<std::codecvt_utf8_utf16<char16_t>,char16_t> converter;
+    return std::make_shared<const std::string>(converter.to_bytes(*text));
+}
+EventObject MissionEvents::make_popup_contents(std::int32_t kind,FormText title,FormText text,bool option){
+    if(kind!=3||option||!title||!text)throw std::invalid_argument("unsupported resident popup content");
+    auto form=std::make_shared<Talk>();form->id=-1;form->prepared={};form->prepared.initial.type=19;
+    std::wstring_convert<std::codecvt_utf8_utf16<char16_t>,char16_t> converter;
+    form->popup=PopupContents{{1,0},kind,option,converter.to_bytes(translated_popup_literal(*title)),*text};
+    // SAGA_STUB(town-gift-popup-output): title acknowledgement replaces native
+    // window/glyph/SEB output and its soft-label25 hit target; domain clocks run.
+    creating_=form;return form;
+}
+void MissionEvents::pop_popup(){
+    if(!updating_||!updating_->popup)throw std::logic_error("popup Pop requires selected type19 form");
+    updating_->state=4;lifecycle_.push_back("pop:"+std::to_string(updating_->id));
+}
 bool MissionEvents::execute(std::int32_t id){
     const auto result=execute_indexed_event(id,{},delays_,executor_);executed_.push_back(id);return static_cast<bool>(result);
 }
@@ -42,6 +79,7 @@ bool MissionEvents::advance(std::uint64_t frame,std::int32_t tick_ms,bool pulse,
     for(auto& form:forms_)if(form->state==0){
         // SAGA_STUB(mission-talk-common-ui): non-gameplay Init providers, softlabels, blur and resource release.
         if(form->event_notice){updating_=form;set_event(0);updating_.reset();}
+        if(form->popup){form->popup->production={1,0};form->event_frame=0;}
         form->state=1;clear_input_();pulse_=held_=false;
         lifecycle_.push_back("init:"+std::to_string(form->id));
     }
@@ -49,6 +87,19 @@ bool MissionEvents::advance(std::uint64_t frame,std::int32_t tick_ms,bool pulse,
         updating_=forms_.back();auto& talk=*updating_;
         if(talk.state==1){clear_input_();pulse_=held_=false;talk.state=2;lifecycle_.push_back("resume:"+std::to_string(talk.id));} // Manager.Resume, no form Resume callback.
         ++ticks_;
+        if(talk.popup){
+            // Type19 config[3]=-1 skips the generic five-pass window gate.
+            talk.frame=advance_select_loop_counter(talk.frame);
+            update_popup_contents(talk.event_frame,talk.popup->production,*this);
+            if(talk.state==4){
+                if(!finish_talk(talk)||talk.state!=4)return true;
+                lifecycle_.push_back("remove:"+std::to_string(talk.id));forms_.pop_back();++closed_;
+                updating_.reset();clear_input_();pulse_=held_=false;
+                if(!forms_.empty()&&forms_.back()->state==3)forms_.back()->state=1;
+                continue;
+            }
+            talk.state=3;updating_.reset();return true;
+        }
         if(talk.finish_frame>=0){
             --talk.finish_frame;
             if(talk.finish_frame<=0){
@@ -192,6 +243,7 @@ NullablePresentationText MissionEvents::translate_argument(const std::u16string&
 std::string MissionEvents::title()const{
     if(forms_.empty())return {};
     const auto& talk=*forms_.back();
+    if(talk.popup)return talk.popup->title+" - Enter continues";
     if(talk.finish_frame>=0)return talk.event_notice?"Notice - closing":"Dialogue - closing";
     if(talk.event_notice)return "Notice "+std::to_string(talk.event_page+1)+"/"+std::to_string(talk.event_notice->texts.size())+" - Enter continues";
     return "Dialogue "+std::to_string(talk.prepared.text_index+1)+"/"+std::to_string(talk.prepared.texts.size())+" - Enter reveals or advances";
@@ -213,6 +265,12 @@ void MissionEvents::write_report(std::ostream& out)const{
     if(pending()&&forms_.back()->event_notice){const auto& form=*forms_.back();
         out<<",\"event_notice\":{\"id\":"<<form.id<<",\"page\":"<<form.event_page<<",\"frame\":"<<form.event_frame
            <<",\"pages\":"<<form.event_notice->event_ids.size()<<",\"window_provider\":\"provisional ready foreground\",\"full_view_touch\":2}";
+    }
+    if(pending()&&forms_.back()->popup){const auto& form=*forms_.back();const auto& popup=*form.popup;
+        out<<",\"popup_contents\":{\"type\":19,\"kind\":"<<popup.kind<<",\"option\":"<<(popup.option?"true":"false")
+           <<",\"production_state\":"<<popup.production.step<<",\"production_frame\":"<<popup.production.frame
+           <<",\"animation_frame\":"<<form.event_frame<<",\"title\":"<<std::quoted(popup.title)<<",\"text\":"<<std::quoted(popup.text)
+           <<",\"close_pulse\":33554432,\"presentation\":\"provisional title acknowledgement\"}";
     }
     out<<",\"talk_lifecycle\":[";for(std::size_t i=0;i<lifecycle_.size();++i){if(i)out<<',';out<<'"'<<lifecycle_[i]<<'"';}out<<']';
     out<<",\"event_execution_counts\":[";bool first=true;

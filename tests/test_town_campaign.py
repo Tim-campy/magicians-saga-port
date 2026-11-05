@@ -46,6 +46,67 @@ class TownCampaignTests(unittest.TestCase):
         self.assertEqual((hero['character'],hero['level'],hero['experience']),(2,1,0))
         self.assertEqual(hero['formation'],[-1]*10+[2]+[-1]*5)
 
+    def test_resident_gift_credits_shared_wallet_once_and_native_popup_returns(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);self.fixture(root)
+            context=('--lib-seed','1') # Native gift lottery; no resident state injection.
+            before=self.state(root,60,*context);gifts=[r for r in before['residents']['rows'] if r[8]==3]
+            self.assertEqual(len(gifts),1)
+            amount=before['residents']['present'];self.assertEqual(amount,300)
+            target=next(t for t in before['residents']['touches'] if t[0]==3)
+            x,y=target[1]+16,target[2]+16
+            replay=root/'gift.replay';replay.write_text(f'61 widget 0 {x} {y}\n62 widget 1 {x} {y}\n80 buttons 0x02000000\n')
+            args=(*context,'--replay',str(replay))
+            down=self.state(root,61,*args)['update']
+            self.assertTrue(down['widgets']['captured']);self.assertEqual(down['wallet'],before['update']['wallet'])
+            credited=self.state(root,62,*args);state=credited['update']
+            self.assertEqual(state['wallet']['money'],before['update']['wallet']['money']+amount)
+            self.assertEqual(state['wallet']['crystals'],before['update']['wallet']['crystals'])
+            self.assertEqual(credited['residents']['rows'][0][8],0)
+            popup=state['popup_contents']
+            self.assertEqual((popup['type'],popup['kind'],popup['option']),(19,3,False))
+            self.assertEqual((popup['title'],popup['text']),('Synthetic gift','Gift 300G'))
+            self.assertEqual((popup['production_state'],popup['production_frame'],popup['animation_frame']),(1,0,0))
+            first=self.state(root,63,*args)['update'];opened=self.state(root,67,*args)['update']
+            self.assertEqual(first['calls'],state['calls']);self.assertEqual(first['popup_contents']['production_frame'],1)
+            self.assertEqual((opened['popup_contents']['production_state'],opened['popup_contents']['production_frame']),(0,0))
+            closing=self.state(root,70,*args)['update'];near=self.state(root,74,*args)['update']
+            self.assertEqual((closing['popup_contents']['production_state'],closing['popup_contents']['production_frame']),(2,0))
+            self.assertEqual(near['popup_contents']['production_frame'],4);self.assertTrue(near['talk_pending'])
+            resumed=self.state(root,75,*args)['update'];again=self.state(root,100,*args)['update']
+            self.assertFalse(resumed['talk_pending']);self.assertNotIn('popup_contents',resumed)
+            self.assertGreater(resumed['calls'],state['calls']);self.assertEqual(again['wallet'],state['wallet'])
+            self.assertEqual(again['talk_lifecycle'].count('push:-1'),1)
+            self.assertEqual(again['talk_lifecycle'].count('pop:-1'),1)
+            self.assertTrue(credited['shared_world']['same_hero']);self.assertEqual(credited['shared_world']['initialized_systems'],32)
+
+    def test_gift_template_translation_precedes_numeric_substitution(self):
+        from town_campaign_fixture import _container_reader
+        from test_sprite_preview import jar
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);self.fixture(root)
+            archive=root/'textassets/tables.bin';members=dict(_container_reader()(archive.read_bytes()))
+            members['English.lproj/text.txt']=b'Synthetic gift\tOffer\nGift <0>G\tBonus <0> credits\n'
+            archive.write_bytes(jar(list(members.items())))
+            replay=root/'gift.replay';replay.write_text('62 buttons 0x02000000\n')
+            state=self.state(root,62,'--lib-seed','1','--replay',str(replay))['update']
+            self.assertEqual((state['popup_contents']['title'],state['popup_contents']['text']),('Offer','Bonus 300 credits'))
+
+    def test_gift_message_projection_is_lazy_and_rejects_invalid_schema(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);self.fixture(root);context=('--lib-seed','1')
+            replay=root/'gift.replay';replay.write_text('62 buttons 0x02000000\n')
+            path=root/'town-messages.tsv';path.unlink()
+            self.assertEqual(self.run_host(root,60,*context).returncode,0)
+            failed=self.run_host(root,62,*context,'--replay',str(replay))
+            self.assertNotEqual(failed.returncode,0);self.assertIn('--town-messages',failed.stderr)
+            for payload in ('town_messages 2\n','town_messages 1\ngift_format "wrong order"\n',
+                            'town_messages 1\ngift_title unquoted\n',
+                            'town_messages 1\ngift_title "x"\ngift_format "<0>"\nextra 1\n'):
+                with self.subTest(payload=payload):
+                    path.write_text(payload)
+                    self.assertNotEqual(self.run_host(root,62,*context,'--replay',str(replay)).returncode,0)
+
     def test_full_world_initializes_once_and_shared_intro_pauses_town(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);self.fixture(root)

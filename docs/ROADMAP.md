@@ -31,7 +31,7 @@ Host: `saga_mission` (headless or SDL window; fresh --data/--quest entry or expl
 
 Host: `saga_town`. Acceptance: SelectForm town runs with the real map and residents; choosing a quest starts S1's mission; the result returns to town and progression (EXP, money, levels, stock, quest record) is applied in memory; event scripts fire on return (event 31, 1133).
 
-- [ ] Bind remaining town widget/menu dispatch, retaining camera capture, native-event replay, resident speech and shared event/save owners.
+- [ ] Bind building, room and remaining town menu dispatch, retaining camera capture, native-event replay, resident speech and shared event/save owners.
 - [ ] Bind Building/KingReward NewGame state to town menus and return consumers before those paths become reachable.
 - [ ] Bind capture callbacks to the town Update host.
 - [ ] Bind billing-item/catalog providers as stubs and the notification manager adapters, preserving task execution gates.
@@ -62,6 +62,7 @@ Host: `saga`. Acceptance: talk and event forms show their text with the correct 
 - [ ] (blocking, runtime oracle) Compare FreeType/LegacyRuntime and notice geometry/alpha/Graphics routing with original GUIStyle; establish live font/scale/language inputs.
 - [ ] Extend the fresh ASCII block builder to the remaining reached tags/non-ASCII paths, including EventMsg `po`, and bind glyph drawing to the host.
 - [ ] Bind type-4 event window, glyph and physical touch output; preserve the recovered page/clock/close contract and trace remaining nextIndex_ producers.
+- [ ] Bind type19 contents popup window/icon/glyph output and its soft-label25 hit target, retaining the native production controller.
 - [ ] Port the font localization scope with its two cleanup scopes, plus the `Frame` blink and draw counters.
 - [ ] Close the translation path (`CallTranslateText` flags and fallback, `UnicodeToChanakya`), the boot language state and SanSanRemove.
 - [ ] Decide the audio path (FSB5 Vorbis from the extractor output, streaming policy for 74 MB of PCM) and play BGM/SE through SDL.

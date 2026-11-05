@@ -41,6 +41,18 @@ The clock producer is eligible **Draw**, not Update. Outer Draw calls `_draw` on
 
 The portable `update_event_notice` kernel supplies the exact reached Update branch. `saga_town`/`MissionEvents` binds the EventMsg factory and retained type4 form identity, title-page controls and Enter/pulse acknowledgement. Its explicit `SAGA_STUB(event-notice-window)` provider reports a foreground, nonclosing window ready and performs one semantic Draw per dispatch; the clock/cosmetic counters follow that declared cadence. Window animation, glyph/resource/audio output and physical full-view touch registration remain presentation services. This provider does not establish native opening/closing timing, GUIStyle metrics or original-runtime equivalence. EventMsg is a lazy immutable source catalogue, excluded from mutable checkpoints; the source archive is fingerprinted separately.
 
+### Contents popup (type19)
+
+`SubForm.MakePopUpContens` (`game:0x060008b3`, ELF0x11f6480,136 bytes) allocates SubForm(19), stores content kind at+0x170, header/text at+0x1e8/+0x1f0 and option at+0x174. Resident gifts pass kind3 and optionfalse. Fresh allocation supplies productionFrame+0x164=0; Init sets productionStep+0x160=1 without independently resetting that frame. The selected configData[19][3]=-1 bypasses the generic window-end wait.
+
+The type19 `_update` branch (`0x11f947c..0x11f94cc`, suffix0x11f9838) calls UpdateWindowProduction for production steps1/2 and returns false. Otherwise increment frame+0x158 with int32 wrap, take signed remainder2147483647, then query Canvas pulse0x02000000 and write productionStep2 on acknowledgement; return true. It does not set the generic close8 counter or use the type4 frame17 gate.
+
+`UpdateWindowProduction` (`game:0x06000905`, ELF0x11fa02c,108 bytes) accepts step1/open or2/close. It wraps productionFrame+1, compares signed >=5, and for close calls Pop before clearing the adjacent step/frame pair. Opening clears the pair without Pop. Both active steps return true; all others return false. A failed Pop preserves its increment and prevents clearing; successful callback mutations are overwritten by the final clear. `PopupProductionState`, `update_popup_production` and `update_popup_contents` in presentation_forms.cpp port these rules with edge/order/failure tests.
+
+The type19 Draw prefix applies black alpha128, queries center dimensions and delegates active production to DrawWindowProduction (0x1202760,740 bytes) using resource11 and the native popup clip. Idle contents start at0x11fe1e4; its title/text/icon/acknowledgement geometry is not reconstructed. The desktop `town-gift-popup-output` provider uses the title and an explicit Enter/replay pulse while running the actual domain controller. Fresh Finish/removal and input clearing reuse the existing retained modal manager; town resumes after Pop. A conditional type19 checkpoint variant records content/production state without changing type0 schema2 bytes.
+
+Evidence: complete ignored town-resident-gift/{SubForm_MakePopUpContens,SubForm_UpdateWindowProduction,SubForm_PopupDrawPrefix,SubForm_DrawWindowProduction}.asm; cached form-update/M36150.asm and mission-talk-modal/SubForm_Init.asm; fresh zero allocation plus constructors in mission-talk-modal/. Confidence high for the selected static controller; presentation equivalence remains unverified.
+
 ### Page advance and close (type 0)
 
 `SubForm.Update` (`0x11f7a44`) first runs `MyFormBase.Update`, the close counter (+0x244: if ≥0 decrement; ≤0 → `FormBase.Pop`) and `IsDrawWindowEnd`, then dispatches on type via a 12-entry uint16 table at `0x645ddc` (target = `0x11f7dec` + entry×4; type 0 → `0x11f829c`, type 4 → `0x11f80cc`). Type 0:
@@ -205,7 +217,7 @@ Compare float `Graphics`+0x5c with `scaleRatio_`(+0x7c) (FCMP/B.EQ: NaN ≠, ±0
 
 Tools: `tools/inspect_presentation_table.py` (record layout audit + lexical `<...>` inventory; ASCII-decimal Int32 subset; keeps CR, extra tokens, null vs empty; no translation) with `tests/test_presentation_table.py`; `tools/inspect_exception_callsites.py` (LSDA call-site ranges + landing pads with ELF SHA-256, pyelftools from `.tools/python-libs`; does not decode catch types/action chains) with `tests/test_exception_callsites.py`. Desktop `mission_profile_contract` exercises the font-bound modal path with synthetic tables and a pinned public test font; real-data observations are in [integration](integration.md#mission-event-dialogues-s1-a1a4). No comparison with the original.
 
-Missing: real `TranslateText`/`UnicodeToChanakya`, SanSanRemove state, non-ASCII/other-tag block paths, equivalent GUIStyle metrics, `_makeTextRubies`, parser cleanup, TextLayout.Frame blink/draw counters, non-factory talk continuation and complete TextLayout/TextBlock/SubForm rendering. Type4 domain input is bound separately from its declared window/output services.
+Missing: real `TranslateText`/`UnicodeToChanakya`, SanSanRemove state, non-ASCII/other-tag block paths, equivalent GUIStyle metrics, `_makeTextRubies`, parser cleanup, TextLayout.Frame blink/draw counters, non-factory talk continuation and complete TextLayout/TextBlock/SubForm rendering, including the type19 idle popup. Type4 domain input is bound separately from its declared window/output services.
 
 ## Evidence
 

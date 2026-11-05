@@ -93,6 +93,103 @@ class StageMenuTests(unittest.TestCase):
                 self.assertEqual((root/'manifest.json').read_text(),manifest)
 
 
+class TownMessagesTests(unittest.TestCase):
+    indices=(14776,15103)
+
+    def metadata(self):
+        count=15104;pool=256+count*8
+        values=('synthetic "gift" \\ \u6c34','Received<br><0> tokens')
+        encoded=[value.encode('utf8') for value in values]
+        payload=b'\x01'+b''.join(encoded)
+        data=bytearray(pool+len(payload));struct.pack_into('<II',data,0,0xfab11baf,31)
+        struct.pack_into('<IIII',data,8,256,count*8,pool,len(payload));data[pool:]=payload
+        for index in range(count):struct.pack_into('<II',data,256+index*8,1,0)
+        offset=1
+        for index,value in zip(self.indices,encoded):
+            struct.pack_into('<II',data,256+index*8,len(value),offset);offset+=len(value)
+        return data
+
+    def test_only_two_selected_literals_and_exact_json_keys(self):
+        expected=('town_messages 1\ngift_title '+json.dumps('synthetic "gift" \\ \u6c34',ensure_ascii=False)+
+                  '\ngift_format "Received<br><0> tokens"\n').encode('utf8')
+        self.assertEqual(extractor.town_messages_payload(self.metadata()),expected)
+        # Invalid offsets and control bytes outside the two reached literals
+        # must not make this bounded export traverse the whole metadata pool.
+        data=self.metadata()
+        for index in (0,14775,15102):struct.pack_into('<II',data,256+index*8,999999,999999)
+        self.assertEqual(extractor.town_messages_payload(data),expected)
+
+    def test_malformed_metadata_headers_and_selected_literal_bounds(self):
+        for data in (b'',b'bad',bytes(255)):
+            with self.subTest(length=len(data)),self.assertRaisesRegex(ValueError,'v31'):
+                extractor.town_messages_payload(data)
+        for offset,value in ((0,0),(4,30),(8,255),(12,15104*8-1),(8,999999),
+                             (12,999992),(16,255),(16,256),(16,999999),(20,999999)):
+            data=self.metadata();struct.pack_into('<I',data,offset,value)
+            with self.subTest(offset=offset,value=value),self.assertRaises(ValueError):
+                extractor.town_messages_payload(data)
+        for count in (0,*self.indices):
+            data=self.metadata();struct.pack_into('<I',data,12,count*8)
+            with self.subTest(count=count),self.assertRaisesRegex(ValueError,'Missing town message literal'):
+                extractor.town_messages_payload(data)
+        for index in self.indices:
+            for size,offset in ((1,999999),(999999,0),(0,999999)):
+                data=self.metadata();struct.pack_into('<II',data,256+8*index,size,offset)
+                with self.subTest(index=index,size=size,offset=offset),self.assertRaisesRegex(ValueError,'outside data section'):
+                    extractor.town_messages_payload(data)
+
+    def test_selected_controls_and_invalid_utf8_are_rejected(self):
+        for index in self.indices:
+            for byte in (0,9,10,13,31,255):
+                data=self.metadata();pool=struct.unpack_from('<I',data,16)[0]
+                offset=struct.unpack_from('<I',data,256+8*index+4)[0];data[pool+offset]=byte
+                error=UnicodeDecodeError if byte==255 else ValueError
+                with self.subTest(index=index,byte=byte),self.assertRaises(error):
+                    extractor.town_messages_payload(data)
+
+    def test_writer_is_repeatable_and_preserves_differing_output_and_other_seeds(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);apk=root/'synthetic.apk';metadata=self.metadata()
+            with extractor.zipfile.ZipFile(apk,'w') as archive:archive.writestr(extractor.METADATA,metadata)
+            checksum=hashlib.sha256(apk.read_bytes()).hexdigest()
+            manifest=json.dumps({'schema':3,'apk_sha256':checksum});(root/'manifest.json').write_text(manifest)
+            other=root/'stage-menu.tsv';other.write_bytes(b'keep stage projection')
+            with patch.object(extractor,'APK_SHA',checksum):
+                output=extractor.write_town_messages(apk,root)
+                self.assertEqual(output.name,'town-messages.tsv')
+                self.assertEqual(output.read_bytes(),extractor.town_messages_payload(metadata))
+                self.assertEqual(extractor.write_town_messages(apk,root),output)
+                output.write_bytes(b'town_messages 1\ngift_title "edited"\n')
+                with self.assertRaisesRegex(ValueError,'replace differing'):
+                    extractor.write_town_messages(apk,root)
+                self.assertEqual(output.read_bytes(),b'town_messages 1\ngift_title "edited"\n')
+            self.assertEqual(other.read_bytes(),b'keep stage projection')
+            self.assertEqual((root/'manifest.json').read_text(),manifest)
+
+    def test_cli_routes_only_the_bounded_writer(self):
+        with patch.object(extractor.sys,'argv',['extract_assets.py','owned.apk','--town-messages','--out','synthetic']),\
+                patch.object(extractor,'write_town_messages',return_value=Path('synthetic/town-messages.tsv')) as writer,\
+                patch.object(extractor,'extract') as extraction,patch.object(extractor.zipfile,'ZipFile') as archive,\
+                patch.object(extractor.sys,'stdout',io.StringIO()):
+            extractor.main()
+            writer.assert_called_once_with(Path('owned.apk'),Path('synthetic'))
+            extraction.assert_not_called();archive.assert_not_called()
+
+    def test_cli_requires_apk_and_rejects_other_modes_before_io(self):
+        flags=('--check','--mission-index','--town-resources','--mission-font','--new-game-save',
+               '--mission-initialization','--debug-drawing','--stage-menu','--unity-media',
+               '--culture-signs','--culture-names','--culture-neutral','--culture-lower',
+               '--runtime-tables','--collation','--collation-indexers')
+        arguments=[['--town-messages']]+[['owned.apk','--town-messages',flag] for flag in flags]
+        for args in arguments:
+            with self.subTest(args=args),patch.object(extractor.sys,'argv',['extract_assets.py',*args]),\
+                    patch.object(extractor,'write_town_messages') as writer,patch.object(extractor,'extract') as extraction,\
+                    patch.object(extractor.sys,'stderr',io.StringIO()):
+                with self.assertRaises(SystemExit) as result:extractor.main()
+                self.assertEqual(result.exception.code,1)
+                writer.assert_not_called();extraction.assert_not_called()
+
+
 class DebugDrawingTests(unittest.TestCase):
     def metadata(self):
         count=15394;fields=256+8*count;defaults=fields+12;pool=defaults+52
@@ -353,7 +450,7 @@ class MissionFontTests(unittest.TestCase):
             self.assertEqual(output.read_bytes(),b'keep user index')
 
     def test_cli_font_mode_is_exclusive_before_reading_or_extracting(self):
-        flags=('owned.apk','--check','--mission-index','--new-game-save','--mission-initialization',
+        flags=('owned.apk','--check','--mission-index','--new-game-save','--mission-initialization','--town-messages',
                '--unity-media','--culture-signs','--culture-names','--culture-neutral','--culture-lower',
                '--runtime-tables','--collation','--collation-indexers')
         for flag in flags:
@@ -498,7 +595,7 @@ class TownResourceIndexTests(unittest.TestCase):
             extraction.assert_not_called();archive.assert_not_called()
 
     def test_cli_mode_is_exclusive_before_reading_or_extracting(self):
-        flags=('owned.apk','--check','--mission-index','--mission-font','--new-game-save',
+        flags=('owned.apk','--check','--mission-index','--mission-font','--new-game-save','--town-messages',
                '--mission-initialization','--debug-drawing','--unity-media','--culture-signs',
                '--culture-names','--culture-neutral','--culture-lower','--runtime-tables',
                '--collation','--collation-indexers')

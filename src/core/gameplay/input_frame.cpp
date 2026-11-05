@@ -11,6 +11,12 @@ SelectAreaTouchRegion select_area_touch_region(std::int32_t index,bool selected,
     const std::array<std::int32_t,4> margins=locked?std::array<std::int32_t,4>{5,5,20,5}:std::array<std::int32_t,4>{15,15,50,5};
     return {input_screen_rectangle({x,y,selected?29:129,selected?37:82},margins,width,height),{selected?4:29,signed_value}};
 }
+SelectAreaTouchRegion select_resident_gift_touch_region(std::int32_t x,std::int32_t y,
+    std::int32_t width,std::int32_t height){
+    // DrawTownHuman0x11f3d18..0x11f3d60 through MyFormBase.AddTouchListExScale.
+    // The reached desktop profile has scale100; preserve the selector in value.
+    return {input_screen_rectangle({x,y,32,32},{10,10,10,10},width,height),{4,0x10019}};
+}
 void select_widget_touch(const InputTouch* event,SelectWidgetHost& host){
     if(!event||!event->component)throw std::invalid_argument("missing town widget event/control");
     const auto& control=*event->component;

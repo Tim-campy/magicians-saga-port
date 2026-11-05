@@ -80,6 +80,22 @@ public:
 // Selected SubForm.Update type4 branch only. Draw owns animation-frame advance.
 void update_event_notice(const PreparedEventForm&,std::int32_t& page,
     std::int32_t& animation_frame,std::int32_t& close_counter,EventNoticeHost&);
+// SubForm type19 Init supplies step1; the managed production counter starts0.
+struct PopupProductionState {
+    std::int32_t step=1;
+    std::int32_t frame=0;
+};
+class PopupContentsHost {
+public:
+    virtual ~PopupContentsHost()=default;
+    virtual bool popup_close_pulse()=0; // Canvas pulse mask0x02000000.
+    virtual void pop_popup()=0; // FormBase.Pop; its return value is ignored.
+};
+// SubForm.UpdateWindowProduction 0x11fa02c. True for entry step1/2, false otherwise.
+bool update_popup_production(PopupProductionState&,PopupContentsHost&);
+// SubForm._update type19, after the enclosing Update guards. False for entry
+// step1/2, true otherwise; this return is not a request to remove the form.
+bool update_popup_contents(std::int32_t& animation_frame,PopupProductionState&,PopupContentsHost&);
 class PresentationFormHost : public PresentationTextHost {
 public:
     // Boundary for JInteger.ParseInt/System.Int32.Parse. No guessed culture or

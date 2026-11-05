@@ -286,7 +286,7 @@ private:
     std::int32_t resident_arrow_frames(std::int32_t clip)override{return town_clip_frames(clip);}
     void resident_push_font(std::int32_t font)override{town_push_font(font);}
     void resident_pop_font()override{town_pop_font();}
-    void resident_touch(std::int32_t kind,std::int32_t x,std::int32_t y)override{resident_touches_.push_back({kind,x,y});}
+    void resident_touch(std::int32_t kind,std::int32_t x,std::int32_t y)override;
     void resident_label_color()override{} // SAGA_STUB(town-building-text): native color+0x34, no glyph output.
     void resident_special_label(std::int32_t x,std::int32_t y)override{resident_labels_.push_back({0,x,y,4,8});}
     void resident_level_label(std::int32_t,std::int32_t,std::int32_t)override;

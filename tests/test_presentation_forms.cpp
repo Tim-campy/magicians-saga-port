@@ -1,6 +1,7 @@
 #include "core/gameplay/presentation_forms.hpp"
 #include "core/gameplay/event_dispatch.hpp"
 #include <cstdlib>
+#include <functional>
 #include <iostream>
 #include <limits>
 #include <stdexcept>
@@ -102,7 +103,73 @@ struct NoticeHost final:EventNoticeHost {
     }
     bool cancel_pressed()override{call("cancel");return cancel;}
 };
+struct PopupHost final:PopupContentsHost {
+    bool pulse=false;
+    std::vector<std::string> calls;
+    std::function<void()> pulse_action,pop_action;
+    bool popup_close_pulse()override {
+        calls.push_back("pulse");if(pulse_action)pulse_action();return pulse;
+    }
+    void pop_popup()override {calls.push_back("pop");if(pop_action)pop_action();}
+};
+void test_popup_contents() {
+    {PopupProductionState production;PopupHost h;std::int32_t animation=71;
+        for(int i=1;i<=5;++i) {
+            check(!update_popup_contents(animation,production,h),"production returns false to the enclosing SubForm.Update");
+            check(production.step==(i==5?0:1)&&production.frame==(i==5?0:i),"opening clears both production fields on fifth update");
+        }
+        check(animation==71&&h.calls.empty(),"opening neither advances idle animation nor queries close input");
+        h.pulse=true;check(update_popup_contents(animation,production,h),"idle update returns true even when close is requested");
+        check(animation==72&&production.step==2&&production.frame==0&&h.calls==std::vector<std::string>{"pulse"},"close pulse changes only production step after the animation clock");
+        h.calls.clear();
+        for(int i=1;i<=5;++i) {
+            check(!update_popup_contents(animation,production,h),"closing keeps the production return value");
+            check(production.step==(i==5?0:2)&&production.frame==(i==5?0:i),"closing retains state until fifth update");
+        }
+        check(animation==72&&h.calls==std::vector<std::string>{"pop"},"closing calls Pop once without querying pulse");
+    }
+    for(const auto step:{0,3,-1,std::numeric_limits<std::int32_t>::min(),std::numeric_limits<std::int32_t>::max()}) {
+        PopupProductionState production{step,99};PopupHost h;
+        check(!update_popup_production(production,h)&&production.step==step&&production.frame==99&&h.calls.empty(),"other steps leave production untouched");
+        std::int32_t animation=4;
+        check(update_popup_contents(animation,production,h)&&animation==5&&production.step==step&&production.frame==99&&h.calls==std::vector<std::string>{"pulse"},"all nonproduction steps run the idle branch");
+    }
+    {PopupProductionState production{2,4};PopupHost h;
+        h.pop_action=[&]{check(production.step==2&&production.frame==5,"Pop observes incremented closing counter");production={7,80};};
+        check(update_popup_production(production,h)&&production.step==0&&production.frame==0,"successful Pop mutations are overwritten by the native paired clear");
+    }
+    {PopupProductionState production{2,4};PopupHost h;
+        h.pop_action=[]{throw std::runtime_error("Pop failure");};
+        expect<std::runtime_error>([&]{update_popup_production(production,h);},"Pop failure propagates");
+        check(production.step==2&&production.frame==5&&h.calls==std::vector<std::string>{"pop"},"failed Pop keeps incremented state without clearing");
+        h.pop_action={};check(update_popup_production(production,h)&&h.calls.size()==2&&production.step==0&&production.frame==0,"a failed Pop is retried after another wrapped counter increment");
+    }
+    for(const auto step:{1,2}) {
+        PopupProductionState production{step,std::numeric_limits<std::int32_t>::max()};PopupHost h;
+        check(update_popup_production(production,h)&&production.step==step&&production.frame==std::numeric_limits<std::int32_t>::min()&&h.calls.empty(),"production increment wraps before the signed five-frame comparison");
+    }
+    {PopupProductionState production{1,8};PopupHost h;
+        check(update_popup_production(production,h)&&production.step==0&&production.frame==0&&h.calls.empty(),"opening also completes from a counter beyond five");
+    }
+    struct Boundary {std::int32_t initial,expected;};
+    for(const auto boundary:{Boundary{-1,0},Boundary{0,1},Boundary{std::numeric_limits<std::int32_t>::max()-1,0},
+            Boundary{std::numeric_limits<std::int32_t>::max(),-1},Boundary{std::numeric_limits<std::int32_t>::min(),0}}) {
+        PopupProductionState production{0,12};PopupHost h;auto animation=boundary.initial;
+        h.pulse_action=[&]{check(animation==boundary.expected,"pulse observes wrapped animation modulo INT32_MAX");};
+        check(update_popup_contents(animation,production,h)&&animation==boundary.expected&&production.frame==12,"idle clock retains native signed remainder");
+    }
+    {PopupProductionState production{0,3};PopupHost h;std::int32_t animation=6;h.pulse=true;
+        h.pulse_action=[&]{production={9,81};};update_popup_contents(animation,production,h);
+        check(production.step==2&&production.frame==81,"close pulse replaces only the live step and preserves callback counter mutations");
+    }
+    {PopupProductionState production{0,3};PopupHost h;std::int32_t animation=6;
+        h.pulse_action=[]{throw std::runtime_error("pulse failure");};
+        expect<std::runtime_error>([&]{update_popup_contents(animation,production,h);},"pulse failure propagates");
+        check(animation==7&&production.step==0&&production.frame==3&&h.calls==std::vector<std::string>{"pulse"},"failed input retains the animation prefix without initiating close");
+    }
+}
 int main() {
+    test_popup_contents();
     Host h;
     std::vector<std::string> decoded_tokens;
     const PresentationStringDecoder decode=[&](std::string_view token){

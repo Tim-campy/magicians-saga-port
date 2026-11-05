@@ -216,3 +216,8 @@ game:0x06000a22	reimplemented	src/core/gameplay/stage_menu.cpp	Stage row touch t
 game:0x060007b4	reimplemented	src/core/gameplay/quest_catalog.cpp	Increment selected quest stageDetail[global exploreStage][3] with int32 wrap; null bounds short-row and Load/NewGame preservation contracts tested.
 game:0x0600082e	reimplemented	src/core/gameplay/select_camera.cpp	Native SetReturnPos int32 wrap/binary32 ordering, dimension callbacks and live post-camera witchX; shared town return and edge/failure tests.
 game:0x060007a4	documented	docs/subsystems/town.md	QuestForm.Finish touch teardown, resBg disposal, resQuest clock removal/disposal; bounded desktop resource retention is an explicit service stub.
+game:0x06000905	reimplemented	src/core/gameplay/presentation_forms.cpp	Five-step open/close production, int32 wrap, Pop-before-clear and failure-prefix tests; shared resident gift popup.
+game:0x060008b3	documented	docs/subsystems/text.md	MakePopUpContens allocates type19; kind, title/text and option stores; fresh gift factory wired with explicit output service.
+game:0x060008b9	traced	docs/subsystems/text.md	Selected type19 production/idle counter/pulse branch ported and host-bound; remaining _update types are not covered.
+game:0x0600076d	documented	docs/subsystems/town.md	LT template/int64 wrapper: TranslateText(true), JString.ValueOf then existing StringUtil.Replace; gift host with declared locale provider.
+game:0x06000771	traced	docs/subsystems/town.md	SetTouchValue mask0x10000 forwards ARM-masked bit shift to Canvas.KeyClick; gift uses low value25; other selectors remain unbound.

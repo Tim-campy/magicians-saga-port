@@ -238,6 +238,10 @@ struct MissionCheckpoint {
             if(!x.event_notice)throw std::logic_error("event form checkpoint requires notice state");
             archive.tag("event-notice");fields(x.event_notice->initial,x.event_notice->event_ids,x.event_notice->texts,x.event_notice->animation,x.event_page,x.event_frame,x.event_resource_ready);
         }else if(x.event_notice)throw std::logic_error("notice payload on non-event form");
+        if(x.prepared.initial.type==19){
+            if(!x.popup)throw std::logic_error("type19 checkpoint requires popup content");
+            archive.tag("popup-contents");fields(x.popup->production.step,x.popup->production.frame,x.popup->kind,x.popup->option,x.popup->title,x.popup->text,x.event_frame);
+        }else if(x.popup)throw std::logic_error("popup payload on non-popup form");
     });}
     void value(const MissionTextLayout& x){object("mission-text-layout",x,[&]{fields(x.scenario_,x.font_,x.fit_,x.blocks_,x.text_,x.presets_,x.measurements_,x.length_);});}
 

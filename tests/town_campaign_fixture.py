@@ -93,6 +93,7 @@ def create_campaign_fixture(root,font_file=None,quest_time_limit=None):
     (root/'tables.bin').write_bytes((assets/'tables.bin').read_bytes())
 
     common=_merge_resources(mission['common'],dict(read((assets/'com.bin').read_bytes())))
+    common['seb.inf']=_merge_rows(common['seb.inf'],b'73\ticon.seb\n') # Reached resident gift uses the existing synthetic icon image.
     effect=_merge_resources(mission['effect'],dict(read((assets/'effect.bin').read_bytes())))
     actor=mission['hero']
     for name in ('chara','hat','weapon'):
@@ -108,4 +109,5 @@ def create_campaign_fixture(root,font_file=None,quest_time_limit=None):
     town_index=(root/'town-resources-v2.tsv').read_text().replace('"textassets/com.bin"','"textassets/common.bin"')
     (root/'town-resources-v2.tsv').write_text(town_index)
     seed=root/'new-game-save.tsv';seed.write_text(seed.read_text(encoding='utf-8').replace('new_game_save 1','new_game_save 2')+'town_scale 100\n',encoding='ascii')
+    (root/'town-messages.tsv').write_text('town_messages 1\ngift_title "Synthetic gift"\ngift_format "Gift <0>G"\n',encoding='utf-8')
     return control

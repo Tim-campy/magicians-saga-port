@@ -396,6 +396,12 @@ void TownBackground::town_touch(std::int32_t slot,bool selected,std::int32_t x,s
     // SAGA_STUB(town-building-touch): retain native requests; interactive hit registration is unbound.
     touches_.push_back({slot,selected?1:0,x,y});
 }
+void TownBackground::resident_touch(std::int32_t kind,std::int32_t x,std::int32_t y){
+    resident_touches_.push_back({kind,x,y});
+    if(!context_.physical_input||kind!=3)return;
+    if(context_.form_scale!=100)throw std::logic_error("resident gift touch requires scale100");
+    area_pointer_regions_.push_back(select_resident_gift_touch_region(x,y,context_.width,context_.height));
+}
 void TownBackground::area_touch(std::int32_t index,bool selected,bool locked,std::int32_t x,std::int32_t y){
     area_touches_.push_back({index,selected?1:0,locked?1:0,x,y});
     if(!context_.physical_input)return;

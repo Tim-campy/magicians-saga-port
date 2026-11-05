@@ -16,6 +16,30 @@ from test_sprite_preview import bmp_pixels
 @unittest.skipUnless(EXE,'viewer saga_town supplied by CTest')
 class TownBackgroundPixels(unittest.TestCase):
     @unittest.skipUnless(os.environ.get('SAGA_TEST_FONT'),'public CTest font required')
+    def test_resident_gift_capture_popup_and_resume_match_cpu_and_window(self):
+        from town_campaign_fixture import create_campaign_fixture
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);create_campaign_fixture(root)
+            replay=root/'gift.replay';replay.write_text('61 widget 0 430 505\n62 widget 1 430 505\n80 buttons 0x02000000\n')
+            base=[str(EXE),'--data',str(root),'--foreground','--shared-world','--physical-input',
+                  '--camera-x','300','--lib-seed','1','--talk-pulse-every','10','--replay',str(replay)]
+            def run(*args):
+                r=subprocess.run([*base,*args],capture_output=True,text=True,timeout=45)
+                self.assertEqual(r.returncode,0,r.stderr);return json.loads(r.stdout)
+            images={}
+            for frame in (61,62,63,67,70,75,100):
+                with self.subTest(frame=frame):
+                    args=['--update-passes',str(frame)];cpu=run(*args)
+                    still=root/f'gift-still-{frame}.bmp';window=root/f'gift-window-{frame}.bmp'
+                    self.assertEqual(run(*args,'--capture',str(still)),cpu)
+                    self.assertEqual(run(*args,'--interactive','--hidden','--capture',str(window)),cpu)
+                    self.assertEqual(still.read_bytes(),window.read_bytes());images[frame]=still.read_bytes()
+                    u=cpu['background']['update'];self.assertEqual(u['wallet']['money'],37 if frame==61 else 337)
+                    if 62<=frame<75:self.assertEqual(u['popup_contents']['type'],19)
+                    elif frame>=75:self.assertFalse(u['talk_pending'])
+            self.assertNotEqual(images[61],images[62]) # Gift icon removed only after the native release callback.
+
+    @unittest.skipUnless(os.environ.get('SAGA_TEST_FONT'),'public CTest font required')
     def test_hidden_area_menu_open_pause_and_back_match_cpu_and_still_capture(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);add_town_background(root,update=True)

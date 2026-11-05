@@ -20,10 +20,12 @@ struct MissionEventScenario {
 };
 std::u16string decode_mission_text(std::string_view);
 class MissionEvents final:private core::EventEffectsHost,private core::EventFlowHost,
-    private core::PresentationFormHost,private core::FormStackHost,private core::TextRevealClock,private core::TalkPageHost,private core::EventNoticeHost {
+    private core::PresentationFormHost,private core::FormStackHost,private core::TextRevealClock,private core::TalkPageHost,private core::EventNoticeHost,private core::PopupContentsHost {
 public:
     MissionEvents(ResourceArchive&,MissionEventScenario,std::function<void()> clear_input);
     bool execute(std::int32_t);
+    core::FormText format_popup_value(std::string_view,std::int64_t);
+    core::EventObject make_popup_contents(std::int32_t,core::FormText,core::FormText,bool);
     core::EventDelayQueue& delays(){return delays_;}
     const core::EventDelayQueue& delays()const{return delays_;}
     core::DecodedEventExecutionHost& executor(){return executor_;}
@@ -43,10 +45,17 @@ public:
     const std::optional<MissionFontScenario>& font_scenario()const{return scenario_.font;}
 private:
     friend struct MissionCheckpoint;
+    struct PopupContents {
+        core::PopupProductionState production;
+        std::int32_t kind=3;
+        bool option=false;
+        std::string title,text;
+    };
     struct Talk {
         std::int32_t id=0,state=0,frame=0,finish_frame=-1;
         core::PreparedTalkForm prepared;
         std::optional<core::PreparedEventForm> event_notice;
+        std::optional<PopupContents> popup;
         std::int32_t event_page=0,event_frame=0;
         bool event_resource_ready=false;
         core::TextRevealState reveal{};
@@ -89,6 +98,9 @@ private:
     void set_event(std::int32_t)override;
     bool cancel_pressed()override{return false;} // SAGA_STUB(event-notice-touch): Enter/pulse is bound; softlabel3 hit routing remains unbound.
     void draw_event_notice_semantics(Talk&);
+    std::u16string translated_popup_literal(std::string_view);
+    bool popup_close_pulse()override{return pulse_;} // Desktop Enter/replay pulse maps to native mask0x02000000 for type19.
+    void pop_popup()override;
     void push_form(core::EventObject)override;
     void push(core::EventObject,core::EventObject,bool)override;
     core::EventObject dispatch(const core::EventInstruction&,const core::EventContext&)override;
