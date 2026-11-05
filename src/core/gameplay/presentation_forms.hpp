@@ -127,6 +127,46 @@ public:
 void initialize_king_hall(KingHallState&,KingHallHost&);
 // SubForm._update type15 after the enclosing Update guards; returns true.
 bool update_king_hall(KingHallState&,KingHallHost&);
+struct BuildListState {
+    std::int32_t selected=0,town_slot=0,production_step=0,frame=0;
+    std::shared_ptr<std::vector<std::int32_t>> entries;
+};
+class BuildListHost {
+public:
+    virtual ~BuildListHost()=default;
+    // Fill the already-published list using the native catalogue-order eligibility
+    // kernel: nonnull, !FLAG_DISABLE_BUILDING, have>=1, stop after six IDs.
+    virtual void fill_build_list(std::vector<std::int32_t>&)=0;
+    virtual bool build_key_pulse(std::int32_t mask)=0;
+    virtual std::int32_t build_price(std::int32_t building)=0;
+    virtual bool check_build_crystals(std::int64_t price)=0;
+    virtual void subtract_build_crystals(std::int32_t price)=0;
+    virtual void install_building(std::int32_t town_slot,std::int32_t building)=0;
+    virtual void build_sound()=0;
+    virtual void push_building_complete(std::int32_t building)=0;
+    virtual std::int32_t& construction_stock(std::int32_t building)=0;
+    virtual void pop_build_list()=0; // Pop this parent identity, even after pushing its child.
+    virtual bool build_back_pressed()=0; // AppData softlabel3.
+    virtual void push_build_tapjoy()=0; // MakeTapJoy(0), FormBase.Push.
+};
+// Reached SubForm.Init type12 block, after common Init's frame reset.
+void initialize_build_list(BuildListState&,BuildListHost&);
+// SubForm._update type12: production does not suppress input; insufficient
+// crystals produce no dialog and still reach optional-action/back handling.
+bool update_build_list(BuildListState&,BuildListHost&);
+struct BuildingCompleteState {
+    std::int32_t building_id=0,production_step=0,frame=0;
+};
+class BuildingCompleteHost {
+public:
+    virtual ~BuildingCompleteHost()=default;
+    virtual void completion_sound()=0;
+    virtual bool completion_close_pulse()=0; // Canvas pulse0x02000000.
+    virtual void pop_building_complete()=0;
+};
+// SubForm.Init type17 sets only production_step; common Init owns frame0.
+void initialize_building_complete(BuildingCompleteState&);
+bool update_building_complete(BuildingCompleteState&,BuildingCompleteHost&);
 class PresentationFormHost : public PresentationTextHost {
 public:
     // Boundary for JInteger.ParseInt/System.Int32.Parse. No guessed culture or

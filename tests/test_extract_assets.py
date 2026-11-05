@@ -177,7 +177,7 @@ class TownMessagesTests(unittest.TestCase):
 
     def test_cli_requires_apk_and_rejects_other_modes_before_io(self):
         flags=('--check','--mission-index','--town-resources','--mission-font','--new-game-save',
-               '--mission-initialization','--debug-drawing','--stage-menu','--unity-media',
+               '--mission-initialization','--debug-drawing','--stage-menu','--building-defaults','--unity-media',
                '--culture-signs','--culture-names','--culture-neutral','--culture-lower',
                '--runtime-tables','--collation','--collation-indexers')
         arguments=[['--town-messages']]+[['owned.apk','--town-messages',flag] for flag in flags]
@@ -188,6 +188,74 @@ class TownMessagesTests(unittest.TestCase):
                 with self.assertRaises(SystemExit) as result:extractor.main()
                 self.assertEqual(result.exception.code,1)
                 writer.assert_not_called();extraction.assert_not_called()
+
+
+class BuildingDefaultsTests(unittest.TestCase):
+    rates=(-2147483648,-7,-1,0,3,11,42,99,2147483647)
+
+    def metadata(self):
+        data=bytearray(548);struct.pack_into('<II',data,0,0xfab11baf,31)
+        struct.pack_into('<IIII',data,64,256,12,512,36)
+        struct.pack_into('<iii',data,256,24275,77,0)
+        struct.pack_into('<9i',data,512,*self.rates)
+        return data
+
+    def test_exact_nine_signed_rates_and_bounded_initializer(self):
+        expected=b'building_defaults 1\nresident_rates 9 -2147483648 -7 -1 0 3 11 42 99 2147483647\n'
+        self.assertEqual(extractor.building_defaults_payload(self.metadata()),expected)
+        data=self.metadata();struct.pack_into('<I',data,68,24)
+        struct.pack_into('<iii',data,268,7,88,-1) # Unselected malformed initializer is not read.
+        data.extend(b'unreached');struct.pack_into('<I',data,76,45)
+        self.assertEqual(extractor.building_defaults_payload(data),expected)
+
+    def test_invalid_headers_sections_missing_duplicate_and_short_rates(self):
+        for data in (b'',b'bad',bytes(255)):
+            with self.subTest(length=len(data)),self.assertRaises(ValueError):extractor.building_defaults_payload(data)
+        for offset,value in ((0,0),(4,30),(64,255),(68,13),(64,99999),(72,256),
+                             (72,99999),(76,99999),(76,35),(256,24276),(264,-1),(264,1)):
+            data=self.metadata();struct.pack_into('<i',data,offset,value)
+            with self.subTest(offset=offset,value=value),self.assertRaises(ValueError):
+                extractor.building_defaults_payload(data)
+        data=self.metadata();struct.pack_into('<I',data,68,24);struct.pack_into('<iii',data,268,24275,88,0)
+        with self.assertRaisesRegex(ValueError,'duplicate'):extractor.building_defaults_payload(data)
+        with self.assertRaises(ValueError):extractor.building_defaults_payload(self.metadata()[:-1])
+
+    def test_writer_preserves_user_output_other_seeds_and_manifest(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);apk=root/'synthetic.apk';metadata=self.metadata()
+            with extractor.zipfile.ZipFile(apk,'w') as archive:archive.writestr(extractor.METADATA,metadata)
+            checksum=hashlib.sha256(apk.read_bytes()).hexdigest()
+            manifest=json.dumps({'schema':3,'apk_sha256':checksum});(root/'manifest.json').write_text(manifest)
+            other=root/'new-game-save.tsv';other.write_bytes(b'keep other seed')
+            with patch.object(extractor,'APK_SHA',checksum):
+                output=extractor.write_building_defaults(apk,root)
+                self.assertEqual(output.name,'building-defaults.tsv')
+                self.assertEqual(output.read_bytes(),extractor.building_defaults_payload(metadata))
+                self.assertEqual(extractor.write_building_defaults(apk,root),output)
+                output.write_bytes(b'building_defaults 1\nresident_rates 1 5\n')
+                with self.assertRaisesRegex(ValueError,'replace differing'):extractor.write_building_defaults(apk,root)
+                self.assertEqual(output.read_bytes(),b'building_defaults 1\nresident_rates 1 5\n')
+            self.assertEqual(other.read_bytes(),b'keep other seed')
+            self.assertEqual((root/'manifest.json').read_text(),manifest)
+
+    def test_cli_routes_bounded_writer_and_rejects_mixed_modes_before_io(self):
+        with patch.object(extractor.sys,'argv',['extract_assets.py','owned.apk','--building-defaults','--out','synthetic']),\
+                patch.object(extractor,'write_building_defaults',return_value=Path('synthetic/building-defaults.tsv')) as writer,\
+                patch.object(extractor,'extract') as extraction,patch.object(extractor.zipfile,'ZipFile') as archive,\
+                patch.object(extractor.sys,'stdout',io.StringIO()):
+            extractor.main();writer.assert_called_once_with(Path('owned.apk'),Path('synthetic'))
+            extraction.assert_not_called();archive.assert_not_called()
+        flags=('--check','--mission-index','--town-resources','--mission-font','--new-game-save',
+               '--mission-initialization','--debug-drawing','--stage-menu','--town-messages','--unity-media',
+               '--culture-signs','--culture-names','--culture-neutral','--culture-lower',
+               '--runtime-tables','--collation','--collation-indexers')
+        arguments=[['--building-defaults']]+[['owned.apk','--building-defaults',flag] for flag in flags]
+        for args in arguments:
+            with self.subTest(args=args),patch.object(extractor.sys,'argv',['extract_assets.py',*args]),\
+                    patch.object(extractor,'write_building_defaults') as writer,patch.object(extractor,'extract') as extraction,\
+                    patch.object(extractor.sys,'stderr',io.StringIO()):
+                with self.assertRaises(SystemExit) as result:extractor.main()
+                self.assertEqual(result.exception.code,1);writer.assert_not_called();extraction.assert_not_called()
 
 
 class DebugDrawingTests(unittest.TestCase):
@@ -450,7 +518,7 @@ class MissionFontTests(unittest.TestCase):
             self.assertEqual(output.read_bytes(),b'keep user index')
 
     def test_cli_font_mode_is_exclusive_before_reading_or_extracting(self):
-        flags=('owned.apk','--check','--mission-index','--new-game-save','--mission-initialization','--town-messages',
+        flags=('owned.apk','--check','--mission-index','--new-game-save','--mission-initialization','--town-messages','--building-defaults',
                '--unity-media','--culture-signs','--culture-names','--culture-neutral','--culture-lower',
                '--runtime-tables','--collation','--collation-indexers')
         for flag in flags:
@@ -595,7 +663,7 @@ class TownResourceIndexTests(unittest.TestCase):
             extraction.assert_not_called();archive.assert_not_called()
 
     def test_cli_mode_is_exclusive_before_reading_or_extracting(self):
-        flags=('owned.apk','--check','--mission-index','--mission-font','--new-game-save','--town-messages',
+        flags=('owned.apk','--check','--mission-index','--mission-font','--new-game-save','--town-messages','--building-defaults',
                '--mission-initialization','--debug-drawing','--unity-media','--culture-signs',
                '--culture-names','--culture-neutral','--culture-lower','--runtime-tables',
                '--collation','--collation-indexers')

@@ -279,7 +279,110 @@ void test_king_hall() {
         check(state.entrance_x==(failure=="easing"?7:80),"position store follows successful Easing only");
     }
 }
+struct ConstructionHost final:BuildListHost {
+    std::vector<std::string> calls;
+    std::function<void(const std::string&)> action;
+    bool first=false,second=false,optional=false,back=false,affordable=true;
+    std::int32_t stock=2,price_calls=0,checked=0,subtracted=0,installed_slot=-1,installed_id=-1,completed_id=-1,stock_id=-1;
+    std::vector<std::int32_t> prices{10,20};
+    void call(std::string name){calls.push_back(name);if(action)action(name);}
+    void fill_build_list(std::vector<std::int32_t>& rows)override{rows.push_back(7);call("fill");rows.push_back(8);}
+    bool build_key_pulse(std::int32_t mask)override{
+        if(mask==0x02000000){call("confirm25");return first;}
+        if(mask==0x100000){call("confirm20");return second;}
+        check(mask==0x04000000,"only the native optional key is queried");call("optional");return optional;
+    }
+    std::int32_t build_price(std::int32_t id)override{
+        check(id==7,"selection maps through the ID list");++price_calls;call("price"+std::to_string(price_calls));return prices.at(static_cast<std::size_t>(price_calls-1));
+    }
+    bool check_build_crystals(std::int64_t price)override{checked=static_cast<std::int32_t>(price);call("check");return affordable;}
+    void subtract_build_crystals(std::int32_t price)override{subtracted=price;call("subtract");}
+    void install_building(std::int32_t slot,std::int32_t id)override{installed_slot=slot;installed_id=id;call("install");}
+    void build_sound()override{call("sound");}
+    void push_building_complete(std::int32_t id)override{completed_id=id;call("complete");}
+    std::int32_t& construction_stock(std::int32_t id)override{stock_id=id;call("stock");return stock;}
+    void pop_build_list()override{call("pop");}
+    bool build_back_pressed()override{call("back");return back;}
+    void push_build_tapjoy()override{call("tapjoy");}
+};
+BuildListState selected_build_list(){BuildListState state;state.selected=0;state.town_slot=3;state.entries=std::make_shared<std::vector<std::int32_t>>(std::initializer_list<std::int32_t>{7,8});return state;}
+struct CompleteHost final:BuildingCompleteHost {
+    std::vector<std::string> calls;std::function<void(const std::string&)> action;bool close=false;
+    void call(std::string name){calls.push_back(name);if(action)action(name);}
+    void completion_sound()override{call("sound");}
+    bool completion_close_pulse()override{call("pulse");return close;}
+    void pop_building_complete()override{call("pop");}
+};
+void test_construction_forms() {
+    {auto state=selected_build_list();state.production_step=9;state.frame=6;const auto old=state.entries;ConstructionHost h;
+        initialize_build_list(state,h);
+        check(state.entries!=old&&*old==std::vector<std::int32_t>({7,8})&&*state.entries==std::vector<std::int32_t>({7,8}),"Init replaces the list rather than editing the old alias");
+        check(state.selected==-1&&state.production_step==1&&state.town_slot==3&&state.frame==6,"Init tail selects none and starts production while preserving factory/common fields");}
+    {auto state=selected_build_list();state.production_step=9;const auto old=state.entries;ConstructionHost h;
+        h.action=[](const auto& call){if(call=="fill")throw std::runtime_error(call);};
+        expect<std::runtime_error>([&]{initialize_build_list(state,h);},"eligibility failure propagates");
+        check(state.entries!=old&&*state.entries==std::vector<std::int32_t>{7}&&state.selected==0&&state.production_step==9,"fresh list and partial choices are published before a failed Init tail");}
+    {auto state=selected_build_list();ConstructionHost h;h.first=true;
+        check(update_build_list(state,h),"build update returns true");
+        check(h.calls==std::vector<std::string>({"confirm25","price1","check","price2","subtract","install","sound","complete","stock","pop","optional","back"}),"commit keeps price/check/debit/install/push/consume/parent-Pop order and continues input suffix");
+        check(h.checked==10&&h.subtracted==20&&h.installed_slot==3&&h.installed_id==7&&h.completed_id==7&&h.stock_id==7&&h.stock==1,"check and debit use distinct live prices and captured building identity");}
+    {auto state=selected_build_list();state.production_step=1;ConstructionHost h;h.first=true;update_build_list(state,h);
+        check(state.frame==1&&state.production_step==1&&h.completed_id==7,"production does not suppress confirmation");}
+    {auto state=selected_build_list();ConstructionHost h;h.second=true;h.affordable=false;update_build_list(state,h);
+        check(h.calls==std::vector<std::string>({"confirm25","confirm20","price1","check","optional","back"})&&h.stock==2&&h.installed_id==-1,
+              "insufficient balance has no debit, install, sound, dialog or Pop");}
+    {BuildListState state;state.selected=-1;ConstructionHost h;h.first=h.optional=true;h.back=true;update_build_list(state,h);
+        check(h.calls==std::vector<std::string>({"confirm25","optional","tapjoy","back","sound"})&&state.production_step==2,"no selection can open optional Tapjoy before back starts closing");}
+    {auto state=selected_build_list();ConstructionHost h;h.optional=true;update_build_list(state,h);
+        check(h.calls==std::vector<std::string>({"confirm25","confirm20","optional","back"}),"optional action is ignored while an entry is selected");}
+    {auto state=selected_build_list();ConstructionHost h;h.first=true;h.optional=true;
+        h.action=[&](const auto& call){if(call=="subtract")state.town_slot=11;if(call=="complete"){state.selected=-1;h.stock=7;}};
+        update_build_list(state,h);
+        check(h.installed_slot==11&&h.stock==6&&h.calls.at(h.calls.size()-2)=="tapjoy","install reads live town slot and stock after callbacks; suffix reads live selection");}
+    {auto state=selected_build_list();ConstructionHost h;h.first=true;h.stock=std::numeric_limits<std::int32_t>::min();update_build_list(state,h);
+        check(h.stock==std::numeric_limits<std::int32_t>::max(),"stock decrement wraps int32");}
+    {BuildListState state;state.production_step=2;state.frame=7;state.selected=-1;ConstructionHost h;
+        h.action=[&](const auto& call){if(call=="pop"){check(state.frame==0&&state.production_step==2,"closing Pop sees the precleared frame");state.frame=77;}};
+        update_build_list(state,h);
+        check(state.frame==77&&state.production_step==0&&h.calls==std::vector<std::string>({"pop","confirm25","confirm20","optional","back"}),"production Pop still reaches input and preserves callback frame mutations");}
+    {BuildListState state;state.production_step=2;state.frame=7;ConstructionHost h;
+        h.action=[](const auto& call){if(call=="pop")throw std::runtime_error(call);};
+        expect<std::runtime_error>([&]{update_build_list(state,h);},"closing Pop failure propagates");
+        check(state.frame==0&&state.production_step==2&&h.calls==std::vector<std::string>{"pop"},"failed closing Pop skips its state clear and all input");}
+    {BuildListState state;state.selected=-1;state.production_step=1;state.frame=std::numeric_limits<std::int32_t>::max();ConstructionHost h;update_build_list(state,h);
+        check(state.frame==std::numeric_limits<std::int32_t>::min()&&state.production_step==1,"build production wraps before its signed threshold");}
+    {BuildListState state;state.selected=0;ConstructionHost h;h.first=true;
+        expect<std::invalid_argument>([&]{update_build_list(state,h);},"null choice owner fails after confirm");
+        check(h.calls==std::vector<std::string>{"confirm25"},"missing list cannot query price");}
+    const std::vector<std::string> commit{"confirm25","price1","check","price2","subtract","install","sound","complete","stock","pop","optional","back"};
+    for(std::size_t failure=0;failure<commit.size();++failure) {
+        auto state=selected_build_list();ConstructionHost h;h.first=true;
+        h.action=[&](const auto& call){if(call==commit[failure])throw std::runtime_error(call);};
+        expect<std::runtime_error>([&]{update_build_list(state,h);},"construction callback failure propagates");
+        check(h.calls==std::vector<std::string>(commit.begin(),commit.begin()+static_cast<std::ptrdiff_t>(failure+1)),"construction retains only completed call prefix");
+        check(h.stock==(failure>8?1:2),"stock changes only after successful stock lookup and is retained across Pop/suffix failures");
+    }
+    {BuildingCompleteState state{7,9,22};initialize_building_complete(state);
+        check(state.building_id==7&&state.frame==22&&state.production_step==1,"complete Init sets only production step");}
+    {BuildingCompleteState state;initialize_building_complete(state);CompleteHost h;
+        for(int frame=1;frame<=30;++frame){update_building_complete(state,h);check(state.frame==frame&&state.production_step==(frame<6?1:0),"complete opening retains the total frame clock");}
+        check(h.calls==std::vector<std::string>{"sound"},"complete plays sound once at15 and accepts no early close input");
+        update_building_complete(state,h);check(h.calls==std::vector<std::string>({"sound","pulse"}),"frame31 starts querying close input");
+        h.close=true;update_building_complete(state,h);check(h.calls==std::vector<std::string>({"sound","pulse","pulse","pop"}),"complete confirmation Pops immediately without another animation");}
+    {BuildingCompleteState state{7,2,5};CompleteHost h;update_building_complete(state,h);
+        check(state.production_step==0&&state.frame==6&&h.calls.empty(),"complete step2 is cleared like opening, without an implicit Pop");}
+    {BuildingCompleteState state{7,0,14};CompleteHost h;h.close=true;h.action=[&](const auto& call){if(call=="sound")state.frame=31;};
+        update_building_complete(state,h);check(h.calls==std::vector<std::string>({"sound","pulse","pop"}),"completion gate rereads the frame after sound");}
+    for(const auto* failure:{"sound","pulse","pop"}) {
+        BuildingCompleteState state{7,0,std::string(failure)=="sound"?14:30};CompleteHost h;h.close=true;
+        h.action=[&](const auto& call){if(call==failure)throw std::runtime_error(call);};
+        expect<std::runtime_error>([&]{update_building_complete(state,h);},"completion callback failure propagates");
+        const auto expected=std::string(failure)=="sound"?std::vector<std::string>{"sound"}:std::string(failure)=="pulse"?std::vector<std::string>{"pulse"}:std::vector<std::string>{"pulse","pop"};
+        check(h.calls==expected&&state.frame==(std::string(failure)=="sound"?15:31),"completion failure retains incremented frame and stops its suffix");
+    }
+}
 int main() {
+    test_construction_forms();
     test_king_hall();
     test_popup_contents();
     Host h;

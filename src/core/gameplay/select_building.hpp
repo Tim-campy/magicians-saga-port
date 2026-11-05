@@ -20,6 +20,15 @@ struct BuildingNewGameState {
     bool is_new=false;
     std::int32_t have=0;
 };
+using BuildingProgressTable=std::vector<std::optional<BuildingNewGameState>>;
+// SubForm.Init type12, 0x11f6914..0x11f6aac: ordered IDs, at most six.
+// Exclude flags mask2 in the native profile; discovery does not gate this list.
+std::vector<std::int32_t> buildable_building_ids(const BuildingTable&,const BuildingProgressTable&,
+                                               std::int32_t excluded_flags);
+// BuildingData.GetBuildingPrice0x116c8ec: only type6 reads ResidentUpRate.
+// Rates are an explicit APK-derived int32 array (cctor initializer field24275).
+std::int32_t building_price(const BuildingDefinition&,const BuildingNewGameState&,
+                            const EventInstruction& resident_rates);
 // BuildingData.NewGame0x116c868: conditional virtual Find(true), then fresh base_have.
 // Native initial mask1: cctor0x116cf8c..0x116cfa0, pair at ELF0x626c98.
 // The application owner supplies the mask explicitly.

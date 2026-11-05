@@ -124,3 +124,22 @@ def add_king_reward_case(root):
         b'1\tSecond\t20\t7\t123\t0\t2\t2\t8\t9\t2\t1\t11\n')
     tables['English.lproj/Talk.txt']+=b'\n9\t0\t1\tReward <0>/<1>\n'
     archive.write_bytes(jar(list(tables.items())))
+
+
+def add_construction_case(root):
+    """Five enabled plots and two construction stocks; synthetic textures/rates only."""
+    from test_sprite_preview import seb,png
+    root=Path(root);archive=root/'textassets/tables.bin';read=_container_reader()
+    tables=dict(read(archive.read_bytes()))
+    rows={int(l.split(b'\t',1)[0]):l for l in tables['English.lproj/Town.txt'].splitlines()}
+    for index in (2,3,4):rows[index]=f'{index}\t-1\t0\t-1\t1'.encode()
+    tables['English.lproj/Town.txt']=b'\n'.join(rows[i] for i in sorted(rows))+b'\n'
+    tables['English.lproj/Building.txt']+=b'\n0\tWorkshop\tselect\t14\t-1\t1\t7\t2\tSynthetic\t1\n1\tHouse\tselect\t47\t-1\t6\t10\t3\tSynthetic\t1\n'
+    archive.write_bytes(jar(list(tables.items())))
+    common=root/'textassets/common.bin';members=dict(read(common.read_bytes()))
+    members['img.inf']=_merge_rows(members['img.inf'],b'99\tbuild-window.png,bin\n')
+    members['seb.inf']=_merge_rows(members['seb.inf'],b'68\tbuild-window.seb\n')
+    members['build-window.png']=png(240,240,[20,24,36,255]*(240*240))
+    members['build-window.seb']=seb([(0,99,0,0,240,240,0,0,0,0)])
+    common.write_bytes(jar(list(members.items())))
+    (root/'building-defaults.tsv').write_text('building_defaults 1\nresident_rates 9 125 250 375 500 625 750 875 1000 1125\n')

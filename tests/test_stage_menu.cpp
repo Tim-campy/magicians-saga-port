@@ -327,7 +327,7 @@ void drawing_list(){
     check(host.camera.bounds.x==15&&host.camera.bounds.y==32&&host.camera.bounds.height==130&&host.camera.flags==1);
     check(host.clips.at(0).height==131);
     for(std::size_t i=0;i<host.rows.size();++i){const auto& row=host.rows[i];
-        check(row.control.group==10&&row.control.value==static_cast<std::int32_t>(0x20000+i)&&row.option_flags==5&&row.priority==2);
+        check(row.control.group==10&&row.control.value==static_cast<std::int32_t>(0x20000+i)&&row.option_flags==17&&row.priority==1);
         check(row.bounds.x==15&&row.bounds.y==32+45*static_cast<std::int32_t>(i)&&row.bounds.width==210&&row.bounds.height==40);
         check(row.margins==std::array<std::int32_t,4>({0,0,0,0}));}
     auto touch=std::find(host.calls.begin(),host.calls.end(),"touch");check(touch!=host.calls.end()&&*(touch-1)=="pending:0");

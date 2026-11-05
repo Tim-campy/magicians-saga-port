@@ -48,6 +48,38 @@ void reset_building_for_new_game(BuildingNewGameState& state,const BuildingDefin
 void reset_building_for_new_game(BuildingNewGameState& state,const BuildingDefinition& record,std::int32_t mask){
     reset_building_for_new_game(state,record,mask,[&state](bool fresh){find_data_record(state.discovery_state,state.is_new,fresh);});
 }
+std::vector<std::int32_t> buildable_building_ids(const BuildingTable& records,const BuildingProgressTable& progress,
+                                               std::int32_t excluded_flags){
+    std::vector<std::int32_t> result;
+    result.reserve(6);
+    for(std::size_t slot=0;slot<records.size();++slot){
+        const auto& row=records.at(slot);
+        if(!row)continue;
+        if((static_cast<std::uint32_t>(row->flags)&static_cast<std::uint32_t>(excluded_flags))!=0)continue;
+        if(progress.at(slot).value().have<1)continue;
+        result.push_back(row->id);
+        if(result.size()>5)break;
+    }
+    return result;
+}
+std::int32_t building_price(const BuildingDefinition& record,const BuildingNewGameState& progress,
+                            const EventInstruction& resident_rates){
+    if(record.type!=6)return record.cost;
+    const auto signed32=[](std::uint32_t bits){return bits<=0x7fffffffU?static_cast<std::int32_t>(bits)
+        :-1-static_cast<std::int32_t>(0xffffffffU-bits);};
+    const auto base_have=record.base_have,have=progress.have;
+    const auto count=required(resident_rates).size();
+    if(count>static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max()))throw std::length_error("resident rate count exceeds int32");
+    const auto used=signed32(static_cast<std::uint32_t>(base_have)-static_cast<std::uint32_t>(have));
+    const auto maximum=static_cast<std::int32_t>(count)-1;
+    // Parameter.Clamp0x10eda50 tests the lower bound first, including when
+    // an empty input makes maximum=-1. The subsequent array read still fails.
+    const auto index=used<0?0:used>maximum?maximum:used;
+    const auto cost=record.cost;
+    const auto rate=resident_rates->at(static_cast<std::size_t>(index));
+    const auto product=signed32(static_cast<std::uint32_t>(cost)*static_cast<std::uint32_t>(rate));
+    return product/100; // Signed division truncates toward zero after wrap32.
+}
 KingRewardDefinition& load_king_reward_definition(KingRewardDefinition& receiver,std::optional<std::string_view> line,const EventIntegerParser& parser){
     if(line&&!line->empty()){detail::TableTokens tokens(*line,parser);read_king_reward(receiver,tokens);}
     return receiver;

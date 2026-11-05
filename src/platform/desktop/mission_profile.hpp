@@ -224,7 +224,7 @@ private:
     std::shared_ptr<core::TownTable> town_records()override{return catalog->towns;}
     std::int32_t saved_town_count()override{return saved_town_count_.value();}
     void save_town_count(std::int32_t value)override{saved_town_count_=value;++town_count_writes_;}
-    void rebuild_town()override{throw std::logic_error("town entity rebuild is unbound; fresh Init defers it");}
+    void rebuild_town()override{throw std::logic_error("application town-cache provider is unbound; fresh Init defers reset");}
     core::TownInitializationState town_state_;
     std::optional<std::int32_t> saved_town_count_;
     std::uint64_t town_count_writes_=0;

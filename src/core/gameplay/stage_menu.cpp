@@ -217,7 +217,7 @@ void draw_stage_menu_list(const StageMenuState& state,StageNeutralScroll& scroll
             std::min(area_height,scroll.maximum_height))),2),0);
         const auto hit_height=relative_top>=0?draw_sub(40,overflow):draw_add(40,relative_top);
         if(hit_height>=1)host.add_row_touch({{x,relative_top>=0?row_y:top,element_width,hit_height},
-            {10,draw_wrap(0x20000U|static_cast<std::uint32_t>(index))},5,2,{0,0,0,0}});
+            {10,draw_wrap(0x20000U|static_cast<std::uint32_t>(index))},17,1,{0,0,0,0}});
     }
     host.pop_clip();
 }

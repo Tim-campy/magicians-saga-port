@@ -28,13 +28,29 @@ public:
     virtual void king_save_game()=0;
     virtual void king_save_system()=0;
 };
+class ConstructionServices {
+public:
+    virtual ~ConstructionServices()=default;
+    virtual void fill_build_list(std::vector<std::int32_t>&)=0;
+    virtual std::int32_t build_price(std::int32_t)=0;
+    virtual bool check_build_crystals(std::int64_t)=0;
+    virtual void subtract_build_crystals(std::int32_t)=0;
+    virtual void install_building(std::int32_t,std::int32_t)=0;
+    virtual void build_sound()=0;
+    virtual std::int32_t& construction_stock(std::int32_t)=0;
+};
 class MissionEvents final:private core::EventEffectsHost,private core::EventFlowHost,
-    private core::PresentationFormHost,private core::FormStackHost,private core::TextRevealClock,private core::TalkPageHost,private core::EventNoticeHost,private core::PopupContentsHost,private core::KingHallHost {
+    private core::PresentationFormHost,private core::FormStackHost,private core::TextRevealClock,private core::TalkPageHost,private core::EventNoticeHost,private core::PopupContentsHost,private core::KingHallHost,private core::BuildListHost,private core::BuildingCompleteHost {
 public:
     MissionEvents(ResourceArchive&,MissionEventScenario,std::function<void()> clear_input);
     bool execute(std::int32_t);
     core::EventObject make_king_hall(KingHallServices&);
-    bool request_king_back();
+    bool request_form_back();
+    core::EventObject make_build_list(std::int32_t,ConstructionServices&);
+    const core::BuildListState* active_build_list()const;
+    const core::BuildingCompleteState* active_building_complete()const;
+    void select_build_entry(std::int32_t);
+    void pulse_construction(std::uint32_t mask){pending_construction_pulses_|=mask;}
     core::EventObject execute_unit(const core::EventInstruction& row,const core::EventContext& context){return dispatch(row,context);}
     void push_script_result(core::EventObject form){push_form(std::move(form));}
     core::FormText format_popup_value(std::string_view,std::int64_t);
@@ -69,12 +85,16 @@ private:
         KingHallServices* services=nullptr;
         std::uint64_t news_updates=0;
     };
+    struct BuildList {core::BuildListState state;ConstructionServices* services=nullptr;};
+    struct BuildingComplete {core::BuildingCompleteState state;ConstructionServices* services=nullptr;};
     struct Talk {
         std::int32_t id=0,state=0,frame=0,finish_frame=-1;
         core::PreparedTalkForm prepared;
         std::optional<core::PreparedEventForm> event_notice;
         std::optional<PopupContents> popup;
         std::optional<KingHall> king;
+        std::optional<BuildList> build_list;
+        std::optional<BuildingComplete> building_complete;
         std::int32_t event_page=0,event_frame=0;
         bool event_resource_ready=false;
         core::TextRevealState reveal{};
@@ -94,7 +114,8 @@ private:
     std::int64_t now_=0;
     std::int32_t total_frames_=0;
     bool pulse_=false,held_=false;
-    bool king_back_requested_=false,king_back_pulse_=false;
+    bool form_back_requested_=false,form_back_pulse_=false;
+    std::uint32_t pending_construction_pulses_=0,construction_pulses_=0;
     std::vector<std::int32_t> executed_;
     std::vector<std::string> lifecycle_;
     std::function<void()> clear_input_;
@@ -117,6 +138,21 @@ private:
     void frame_resource()override{} // SAGA_STUB(event-notice-presentation): native common Seb.Frame has cosmetic effects only.
     void set_event(std::int32_t)override;
     bool cancel_pressed()override{return false;} // SAGA_STUB(event-notice-touch): Enter/pulse is bound; softlabel3 hit routing remains unbound.
+    void fill_build_list(std::vector<std::int32_t>& values)override{updating_->build_list->services->fill_build_list(values);}
+    bool build_key_pulse(std::int32_t mask)override{return (construction_pulses_&static_cast<std::uint32_t>(mask))||(mask==0x100000&&pulse_);}
+    std::int32_t build_price(std::int32_t id)override{return updating_->build_list->services->build_price(id);}
+    bool check_build_crystals(std::int64_t value)override{return updating_->build_list->services->check_build_crystals(value);}
+    void subtract_build_crystals(std::int32_t value)override{updating_->build_list->services->subtract_build_crystals(value);}
+    void install_building(std::int32_t slot,std::int32_t id)override{updating_->build_list->services->install_building(slot,id);}
+    void build_sound()override{updating_->build_list->services->build_sound();}
+    void push_building_complete(std::int32_t)override;
+    std::int32_t& construction_stock(std::int32_t id)override{return updating_->build_list->services->construction_stock(id);}
+    void pop_build_list()override;
+    bool build_back_pressed()override{return form_back_pulse_;}
+    void push_build_tapjoy()override;
+    void completion_sound()override{updating_->building_complete->services->build_sound();}
+    bool completion_close_pulse()override{return pulse_||(construction_pulses_&0x02000000U);}
+    void pop_building_complete()override;
     core::NullablePresentationText king_hall_voice()override;
     void king_hall_initialize_news(std::int32_t)override;
     std::int32_t king_hall_easing(std::int32_t)override;
@@ -125,7 +161,7 @@ private:
     void king_hall_play_sound()override;
     void king_hall_save_game()override;
     void king_hall_save_system()override;
-    bool king_hall_soft_label(std::int32_t id)override{return id==3&&king_back_pulse_;}
+    bool king_hall_soft_label(std::int32_t id)override{return id==3&&form_back_pulse_;}
     void king_hall_push_notes()override;
     void king_hall_push_tapjoy()override;
     void king_hall_pop()override;

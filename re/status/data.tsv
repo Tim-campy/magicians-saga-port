@@ -7,3 +7,4 @@ game:0x0600118a	reimplemented	src/core/gameplay/select_building.cpp	KingReward s
 game:0x06001067	documented	docs/subsystems/town.md	get_isMain returns flags bit1 from BaseData+0x1c; 12-byte body; portable human composition tests both override branches.
 game:0x06001254	reimplemented	src/core/gameplay/town_bubble.cpp	Ordered VoiceData.Load id/type/nullable text array; indexed catalog and collision/lifetime host binding; receiver/partial-failure/CRLF/gap tests.
 game:0x060011f6	documented	docs/subsystems/data.md	Constructor publishes 99 distinct zero-filled int32[99] rows; Load/NewGame preserve them; full constructor port remains unclaimed.
+game:0x0600103b	reimplemented	src/core/gameplay/select_building.cpp	Fixed cost or type6 stock-indexed ResidentUpRate; wrap32 multiply/difference, lower-first clamp and truncating divide; contract tested and campaign-bound.

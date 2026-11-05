@@ -21,8 +21,11 @@ class TownCampaignTests(unittest.TestCase):
         return create_campaign_fixture(root)
 
     def run_host(self,root,n,*args):
+        args=list(args);camera='300'
+        if '--camera-x' in args:
+            index=args.index('--camera-x');camera=args[index+1];del args[index:index+2]
         return subprocess.run([str(EXE),'--data',str(root),'--foreground','--shared-world',
-            '--update-passes',str(n),'--physical-input','--camera-x','300',
+            '--update-passes',str(n),'--physical-input','--camera-x',camera,
             '--talk-pulse-every','10','--server-time','123',*args],
             capture_output=True,text=True,timeout=30)
 
@@ -142,6 +145,59 @@ class TownCampaignTests(unittest.TestCase):
             self.assertEqual(again['shared_world']['gameplay_rng_draws'],0)
             self.assertTrue(any(b[0]==4 for b in again['update']['building_progress']))
 
+    def test_construction_installs_shared_plots_spends_crystals_and_consumes_stock(self):
+        from town_campaign_fixture import add_construction_case
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);self.fixture(root);add_construction_case(root)
+            context=('--camera-x','0');before=self.state(root,60,*context)
+            replay=root/'construction.replay';actions=[]
+            for slot,start in ((2,61),(3,121),(4,181)):
+                t=next(r for r in before['buildings_draw']['touches'] if r[0]==slot);x,y=t[2]+40,t[3]+45
+                actions.extend(f'{start+i} widget {i%2} {x} {y}' for i in range(4))
+                if slot!=4:
+                    row=slot-2;x=196+106*row+52;y=214+26
+                    actions.extend(f'{start+12+i} widget {i%2} {x} {y}' for i in range(4))
+                else:
+                    actions.extend(['193 widget 0 354 240','194 widget 1 354 240','195 form-back'])
+            # Native ClearKeyBuffer discards Back received on pending Init.
+            actions.append('65 form-back');actions.sort(key=lambda line:int(line.split()[0]))
+            replay.write_text('\n'.join(actions)+'\n');args=(*context,'--replay',str(replay))
+            first=self.state(root,72,*args)['update'];self.assertEqual(first['build_list']['entries'],[0,1])
+            self.assertEqual(first['build_list']['selected'],-1)
+            selected=self.state(root,74,*args)['update'];self.assertEqual(selected['build_list']['selected'],0)
+            self.assertEqual(selected['wallet'],before['update']['wallet']);self.assertEqual(selected['constructions'],0)
+            installed=self.state(root,76,*args);u=installed['update']
+            self.assertEqual(u['wallet'],{'money':37,'crystals':36});self.assertEqual(u['constructions'],1)
+            self.assertNotIn('build_list',u);self.assertEqual(u['building_complete']['building'],0)
+            self.assertEqual(u['building_complete']['frame'],0)
+            full=json.loads(self.run_host(root,76,*args).stdout);self.assertIn([2,0,0],full['buildings']);self.assertIn([2,0,0],full['source_buildings'])
+            self.assertIn([0,1,1,1],u['building_progress'])
+            fresh=self.state(root,77,*args)['update'];self.assertEqual(fresh['building_complete']['frame'],1)
+            early=self.state(root,106,*args)['update'];self.assertTrue(early['talk_pending'])
+            done=self.state(root,110,*args)['update'];self.assertFalse(done['talk_pending'])
+            second=self.state(root,136,*args)['update'];self.assertEqual(second['constructions'],2)
+            self.assertEqual(second['wallet'],{'money':37,'crystals':24});self.assertIn([1,1,1,2],second['building_progress'])
+            quote=self.state(root,192,*args)['update'];self.assertIn([1,2,25,0],quote['construction_widgets']['quotes'])
+            refused=self.state(root,194,*args)['update'];self.assertEqual(refused['constructions'],2)
+            self.assertEqual(refused['wallet'],second['wallet']);self.assertEqual(refused['build_list']['selected'],1)
+            closed=self.state(root,220,*args);self.assertFalse(closed['update']['talk_pending'])
+            self.assertEqual(closed['update']['constructions'],2);self.assertEqual(closed['update']['wallet'],second['wallet'])
+            self.assertIn([3,1,0],json.loads(self.run_host(root,220,*args).stdout)['buildings']);self.assertEqual(closed['shared_world']['initialized_systems'],32)
+            self.assertTrue(closed['shared_world']['same_hero']);self.assertEqual(closed['shared_world']['gameplay_rng_draws'],0)
+            self.assertEqual(closed['update']['talk_lifecycle'].count('push:-17'),2)
+            # Construction owners also survive QuestForm entry/return, not just menu visits.
+            with replay.open('a') as out:out.write('225 select 0xc0000 0\n226 buttons 0x10000000\n240 widget 0 250 250\n240 widget 1 250 250\n240 widget 0 250 250\n241 widget 1 250 250\n')
+            mission=root/'build-retreat.replay';mission.write_text(''.join(f'{i} pulse 1048576\n' for i in range(30,181,5))+
+                '200 pulse 33554432\n201 pulse 134217728\n202 answer 0\n')
+            returned=self.state(root,550,*args,'--mission-replay',str(mission))
+            self.assertEqual(returned['update']['town_initializations'],2)
+            self.assertEqual(returned['update']['constructions'],2)
+            self.assertEqual(returned['update']['wallet'],second['wallet'])
+            self.assertIn([0,1,1,1],returned['update']['building_progress'])
+            self.assertIn([1,1,1,2],returned['update']['building_progress'])
+            full=json.loads(self.run_host(root,550,*args,'--mission-replay',str(mission)).stdout)
+            self.assertIn([2,0,0],full['buildings']);self.assertIn([3,1,0],full['buildings'])
+
     def test_full_world_initializes_once_and_shared_intro_pauses_town(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);self.fixture(root)
@@ -178,7 +234,7 @@ class TownCampaignTests(unittest.TestCase):
     def test_menu_confirmation_starts_stage_without_recreating_the_world(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);self.fixture(root)
-            args=self.replay(root,'165 widget 0 250 250\n166 widget 1 250 250\n')
+            args=self.replay(root,'165 widget 0 250 250\n165 widget 1 250 250\n165 widget 0 250 250\n166 widget 1 250 250\n')
             opened=self.state(root,164,*args);self.assert_waiting_world(opened)
             menu=opened['update']['stage_menu']
             self.assertEqual((menu['entries'],menu['selected'],menu['saved_quest']),([2],-1,-1))
@@ -222,7 +278,7 @@ class TownCampaignTests(unittest.TestCase):
     def test_mission_replay_uses_relative_steps_and_preserves_town_event_history(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);self.fixture(root)
-            args=self.replay(root,'165 widget 0 250 250\n166 widget 1 250 250\n')
+            args=self.replay(root,'165 widget 0 250 250\n165 widget 1 250 250\n165 widget 0 250 250\n166 widget 1 250 250\n')
             mission_input=root/'mission.replay';mission_input.write_text('70 keys 1\n80 keys 0\n',encoding='ascii')
             neutral=self.state(root,300,*args)
             replay=self.state(root,300,*args,'--mission-replay',str(mission_input))
@@ -236,7 +292,7 @@ class TownCampaignTests(unittest.TestCase):
     def test_retreat_returns_to_the_same_world_without_repeating_entry(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);self.fixture(root)
-            args=self.replay(root,'165 widget 0 250 250\n166 widget 1 250 250\n')
+            args=self.replay(root,'165 widget 0 250 250\n165 widget 1 250 250\n165 widget 0 250 250\n166 widget 1 250 250\n')
             mission_input=root/'retreat.replay'
             mission_input.write_text(''.join(f'{i} pulse 1048576\n' for i in range(30,181,5))+
                 '200 pulse 33554432\n201 pulse 134217728\n202 answer 0\n',encoding='ascii')
@@ -267,7 +323,7 @@ class TownCampaignTests(unittest.TestCase):
     def test_callback_and_return_init_discard_hidden_town_input(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);self.fixture(root)
-            args=self.replay(root,'165 widget 0 250 250\n166 widget 1 250 250\n')
+            args=self.replay(root,'165 widget 0 250 250\n165 widget 1 250 250\n165 widget 0 250 250\n166 widget 1 250 250\n')
             mission_input=root/'retreat.replay';mission_input.write_text(''.join(f'{i} pulse 1048576\n' for i in range(30,181,5))+
                 '200 pulse 33554432\n201 pulse 134217728\n202 answer 0\n',encoding='ascii')
             inputs=(*args,'--mission-replay',str(mission_input))
@@ -283,7 +339,7 @@ class TownCampaignTests(unittest.TestCase):
     def test_two_native_entries_preserve_rng_wallet_and_canonical_records(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);self.fixture(root)
-            args=self.replay(root,'165 widget 0 250 250\n166 widget 1 250 250\n')
+            args=self.replay(root,'165 widget 0 250 250\n165 widget 1 250 250\n165 widget 0 250 250\n166 widget 1 250 250\n')
             mission_input=root/'retreat.replay';mission_input.write_text(''.join(f'{i} pulse 1048576\n' for i in range(30,181,5))+
                 '200 pulse 33554432\n201 pulse 134217728\n202 answer 0\n',encoding='ascii')
             inputs=(*args,'--mission-replay',str(mission_input))

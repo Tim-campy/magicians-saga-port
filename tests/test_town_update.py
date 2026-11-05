@@ -307,17 +307,19 @@ class TownUpdateTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);self.fixture(root,stage_entries=True)
             args=self.stage_args(root,'165 widget 0 250 250\n166 widget 1 250 250\n167 widget 1 250 250\n168 widget 0 250 250\n169 widget 1 250 250\n')
-            confirmed=self.state(root,166,*args)['update'];menu=confirmed['stage_menu']
+            first=self.state(root,166,*args)['update']
+            self.assertEqual((first['stage_menu']['state'],first['stamina'],first['stage_menu']['stamina_uses']),(0,10,0))
+            confirmed=self.state(root,169,*args)['update'];menu=confirmed['stage_menu']
             self.assertEqual((menu['state'],menu['production_frame'],menu['saved_quest']),(1,0,0))
             self.assertEqual((confirmed['stamina'],menu['stamina_uses'],menu['stamina_timer'],menu['stamina_timestamp']),(9,1,900,123))
             self.assertEqual(menu['server_queries'],1);self.assertFalse(menu['quest_handoff_pending'])
-            before=self.state(root,206,*args)['update']
+            before=self.state(root,209,*args)['update']
             self.assertEqual(before['stage_menu']['production_frame'],40)
             # Production keeps the native row callback live; its Update ignores
             # the extra confirmation pulse rather than charging stamina again.
             self.assertEqual(before['stage_menu']['row_events'],4)
             self.assertFalse(before['stage_menu']['quest_handoff_pending'])
-            held=self.state(root,207,*args)['update'];menu=held['stage_menu']
+            held=self.state(root,210,*args)['update'];menu=held['stage_menu']
             self.assertEqual(menu['production_frame'],41);self.assertTrue(menu['quest_handoff_pending'])
             self.assertTrue(menu['camera_reset']);self.assertTrue(menu['shared_owner_retained'])
             self.assertEqual((held['stamina'],menu['stamina_uses'],menu['server_queries']),(9,1,1))

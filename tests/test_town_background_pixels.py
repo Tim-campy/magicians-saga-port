@@ -16,6 +16,34 @@ from test_sprite_preview import bmp_pixels
 @unittest.skipUnless(EXE,'viewer saga_town supplied by CTest')
 class TownBackgroundPixels(unittest.TestCase):
     @unittest.skipUnless(os.environ.get('SAGA_TEST_FONT'),'public CTest font required')
+    def test_construction_grid_parent_pop_and_changed_town_pixels_match_window(self):
+        from town_campaign_fixture import create_campaign_fixture,add_construction_case
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);create_campaign_fixture(root);add_construction_case(root)
+            replay=root/'construction.replay';replay.write_text('')
+            base=[str(EXE),'--data',str(root),'--foreground','--shared-world','--physical-input',
+                  '--camera-x','0','--talk-pulse-every','10','--replay',str(replay)]
+            def run(*args):
+                r=subprocess.run([*base,*args],capture_output=True,text=True,encoding='utf-8',timeout=45)
+                self.assertEqual(r.returncode,0,r.stderr);return json.loads(r.stdout)
+            before=run('--update-passes','60');t=next(t for t in before['background']['buildings_draw']['touches'] if t[0]==2)
+            x,y=t[2]+40,t[3]+45
+            replay.write_text('\n'.join([*(f'{61+i} widget {i%2} {x} {y}' for i in range(4)),
+                *(f'{73+i} widget {i%2} 248 240' for i in range(4))])+'\n')
+            images={}
+            for frame in (60,72,74,76,77,91,110):
+                with self.subTest(frame=frame):
+                    args=['--update-passes',str(frame)];cpu=run(*args)
+                    still=root/f'build-still-{frame}.bmp';window=root/f'build-window-{frame}.bmp'
+                    self.assertEqual(run(*args,'--capture',str(still)),cpu)
+                    self.assertEqual(run(*args,'--interactive','--hidden','--capture',str(window)),cpu)
+                    self.assertEqual(still.read_bytes(),window.read_bytes());images[frame]=still.read_bytes()
+                    u=cpu['background']['update']
+                    if frame>=76:self.assertEqual(u['wallet']['crystals'],36);self.assertIn([2,0,0],cpu['buildings'])
+                    if frame==74:self.assertEqual(u['build_list']['selected'],0);self.assertEqual(u['constructions'],0)
+            self.assertNotEqual(images[60],images[72]);self.assertNotEqual(images[60],images[110])
+
+    @unittest.skipUnless(os.environ.get('SAGA_TEST_FONT'),'public CTest font required')
     def test_king_hall_selection_nested_reward_and_return_match_window(self):
         from town_campaign_fixture import create_campaign_fixture,add_king_reward_case
         with tempfile.TemporaryDirectory() as directory:
@@ -89,7 +117,7 @@ class TownBackgroundPixels(unittest.TestCase):
         from town_campaign_fixture import create_campaign_fixture
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);create_campaign_fixture(root)
-            replay=root/'world.replay';replay.write_text('160 widget 0 200 450\n161 widget 1 200 450\n162 widget 0 200 480\n163 widget 1 200 480\n165 widget 0 250 250\n166 widget 1 250 250\n')
+            replay=root/'world.replay';replay.write_text('160 widget 0 200 450\n161 widget 1 200 450\n162 widget 0 200 480\n163 widget 1 200 480\n165 widget 0 250 250\n165 widget 1 250 250\n165 widget 0 250 250\n166 widget 1 250 250\n')
             base=[str(EXE),'--data',str(root),'--foreground','--shared-world','--camera-x','300','--talk-pulse-every','10','--server-time','123','--replay',str(replay)]
             def run(*args):
                 result=subprocess.run([*base,*args],capture_output=True,text=True,timeout=45)
@@ -125,7 +153,7 @@ class TownBackgroundPixels(unittest.TestCase):
         from town_campaign_fixture import create_campaign_fixture
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);create_campaign_fixture(root)
-            replay=root/'return.replay';replay.write_text('160 widget 0 200 450\n161 widget 1 200 450\n162 widget 0 200 480\n163 widget 1 200 480\n165 widget 0 250 250\n166 widget 1 250 250\n')
+            replay=root/'return.replay';replay.write_text('160 widget 0 200 450\n161 widget 1 200 450\n162 widget 0 200 480\n163 widget 1 200 480\n165 widget 0 250 250\n165 widget 1 250 250\n165 widget 0 250 250\n166 widget 1 250 250\n')
             mission=root/'retreat.replay';mission.write_text(''.join(f'{i} pulse 1048576\n' for i in range(30,181,5))+
                 '200 pulse 33554432\n201 pulse 134217728\n202 answer 0\n')
             base=[str(EXE),'--data',str(root),'--foreground','--shared-world','--camera-x','300','--talk-pulse-every','10','--server-time','123','--replay',str(replay),'--mission-replay',str(mission)]
@@ -160,7 +188,7 @@ class TownBackgroundPixels(unittest.TestCase):
             font=root/'unity/Font/public.ttf';font.parent.mkdir(parents=True)
             font.write_bytes(Path(os.environ['SAGA_TEST_FONT']).read_bytes())
             (root/'mission-font.tsv').write_text(f'mission_font 1\nfont "unity/Font/public.ttf" {font.stat().st_size}\n')
-            replay=root/'row.replay';replay.write_text('160 widget 0 200 450\n161 widget 1 200 450\n162 widget 0 200 480\n163 widget 1 200 480\n165 widget 0 250 250\n166 widget 1 250 250\n')
+            replay=root/'row.replay';replay.write_text('160 widget 0 200 450\n161 widget 1 200 450\n162 widget 0 200 480\n163 widget 1 200 480\n165 widget 0 250 250\n165 widget 1 250 250\n165 widget 0 250 250\n166 widget 1 250 250\n')
             base=[str(EXE),'--data',str(root),'--foreground','--camera-x','300','--talk-pulse-every','10','--replay',str(replay),'--server-time','123']
             def run(*args):
                 result=subprocess.run([*base,*args],capture_output=True,text=True,timeout=45)

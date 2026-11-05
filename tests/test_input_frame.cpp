@@ -96,6 +96,11 @@ int main()try{
      check(building.bounds.x==110&&building.bounds.y==210&&building.bounds.width==60&&building.bounds.height==70);
      const auto go=select_building_touch_region(1,true,100,180,600,640);
      check(go.control.group==4&&go.control.value==27&&go.bounds.y==190&&go.bounds.height==105);}
+    {const auto origin=construction_menu_origin(600,640);check(origin[0]==180&&origin[1]==200);
+     const auto compact=construction_menu_origin(240,240);check(compact[0]==0&&compact[1]==0);
+     const auto first=construction_row_touch_region(0,600,640);check(first.control.group==10&&first.control.value==0x20000);
+     check(first.bounds.x==196&&first.bounds.y==214&&first.bounds.width==104&&first.bounds.height==52);
+     const auto last=construction_row_touch_region(5,600,640);check(last.bounds.x==302&&last.bounds.y==322);}
     {struct Widget final:SelectWidgetHost {
          std::vector<std::int32_t> values;std::vector<std::uint32_t> keys;bool fail=false;
          void select_value(std::uint32_t flags,std::int32_t value)override{check(flags==0xc0000U||flags==0x10000U||flags==0x220000U);values.push_back(value);if(fail)throw std::runtime_error("setter");}

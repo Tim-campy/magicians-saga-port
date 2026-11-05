@@ -108,6 +108,51 @@ void building_new_game_contract(){
     finds=0;reset_building_for_new_game(state,record,0,[&](bool){++finds;});
     check(finds==0&&state.discovery_state==3&&state.is_new&&state.have==42);
 }
+void buildable_catalog_contract(){
+    BuildingTable records(7);BuildingProgressTable progress(7);
+    for(std::size_t i=0;i<records.size();++i){records[i].emplace();records[i]->id=static_cast<std::int32_t>(100+i);progress[i]=BuildingNewGameState{0,false,1};}
+    records[0].reset();progress[0].reset();
+    records[1]->flags=2;progress[1].reset();
+    progress[2]->have=0;progress[3]->have=-1;
+    records[4]->flags=1;records[5]->flags=0;records[6]->flags=4;progress[6]->have=std::numeric_limits<std::int32_t>::max();
+    check(buildable_building_ids(records,progress,2)==std::vector<std::int32_t>({104,105,106}));
+    check(progress[4]->discovery_state==0&&!progress[4]->is_new&&progress[4]->have==1);
+    check(buildable_building_ids({}, {},2).empty());
+    BuildingTable capped(9);BuildingProgressTable capped_progress(6);
+    for(std::size_t i=0;i<capped.size();++i){capped[i].emplace();capped[i]->id=static_cast<std::int32_t>(i);if(i<6)capped_progress[i]=BuildingNewGameState{0,false,1};}
+    check(buildable_building_ids(capped,capped_progress,2)==std::vector<std::int32_t>({0,1,2,3,4,5}));
+    // The cap prevents inspecting later missing saved rows. Before the cap,
+    // missing state remains an explicit invalid host projection.
+    capped_progress[5]->have=0;fails([&]{buildable_building_ids(capped,capped_progress,2);});
+    capped_progress[2].reset();fails([&]{buildable_building_ids(capped,capped_progress,2);});
+}
+void building_price_contract(){
+    const auto rates=std::make_shared<EventIntegers>(EventIntegers{125,250,375,500});
+    BuildingDefinition row;row.cost=-17;BuildingNewGameState state{9,true,-99};
+    for(const auto type:{-1,0,1,5,7,12}){row.type=type;check(building_price(row,state,nullptr)==-17);}
+    row.type=6;row.cost=37;row.base_have=5;
+    const std::array<std::array<std::int32_t,2>,5> examples{{{5,46},{4,92},{0,185},{6,46},{-100,185}}};
+    for(const auto& values:examples){
+        state.have=values[0];check(building_price(row,state,rates)==values[1]);
+    }
+    check(row.cost==37&&row.base_have==5&&state.discovery_state==9&&state.is_new);
+    row.cost=1;row.base_have=std::numeric_limits<std::int32_t>::min();state.have=1;
+    check(building_price(row,state,rates)==5); // Wrapped subtraction is INT_MAX.
+    row.base_have=std::numeric_limits<std::int32_t>::max();state.have=-1;
+    check(building_price(row,state,rates)==1); // Wrapped subtraction is INT_MIN.
+    row.base_have=2;state.have=1;row.cost=std::numeric_limits<std::int32_t>::max();
+    check(building_price(row,state,rates)==-2); // cost*250 wraps to -250.
+    row.cost=std::numeric_limits<std::int32_t>::min();check(building_price(row,state,rates)==0);
+    row.cost=-std::numeric_limits<std::int32_t>::max();check(building_price(row,state,rates)==2);
+    const auto single=std::make_shared<EventIntegers>(EventIntegers{-150});row.base_have=0;state.have=0;row.cost=3;
+    check(building_price(row,state,single)==-4);
+    single->at(0)=99;row.cost=-1;check(building_price(row,state,single)==0);
+    single->at(0)=150;row.cost=-3;check(building_price(row,state,single)==-4);
+    fails([&]{building_price(row,state,nullptr);});
+    const auto empty=std::make_shared<EventIntegers>();
+    for(const auto have:{-1,0,1}){state.have=have;fails([&]{building_price(row,state,empty);});}
+    row.type=7;check(building_price(row,state,empty)==-3);
+}
 struct RewardHost:KingRewardAvailabilityHost {
     std::int64_t score=0;int score_reads=0,reads=0;
     std::shared_ptr<KingRewardRows> data=std::make_shared<KingRewardRows>();
@@ -238,7 +283,7 @@ void king_execution_contract(){
 }
 int main() {
     catalog_contract();
-    building_new_game_contract();king_catalog_contract();king_availability_contract();king_execution_contract();
+    building_new_game_contract();buildable_catalog_contract();building_price_contract();king_catalog_contract();king_availability_contract();king_execution_contract();
     for(auto kind:{1,2,3,4,5,9,10})check(building_is_shop(kind));
     for(auto kind:{-1,0,6,7,8,11,12,std::numeric_limits<int>::max()})check(!building_is_shop(kind));
     {Host h;h.button=false;check(!h.run() && h.log==std::vector<int>({1}));}

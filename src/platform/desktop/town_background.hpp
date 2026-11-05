@@ -59,6 +59,7 @@ public:
     void cancel_widget_pointer();
     void stage_back();
     void form_back();
+    void clear_widget_marker();
     bool quest_handoff_pending()const;
     MissionProfile* active_mission()const;
     void cancel_camera_pointer();
@@ -67,6 +68,7 @@ public:
     BitmapApplication& application(){return application_;}
     BitmapTextures& textures(){return textures_;}
     const TownBackgroundContext& context()const{return context_;}
+    core::EventScript current_buildings()const{return building_cache_;}
 private:
     void draw_stage_overlay(BitmapBackend&);
     struct Draw {std::int32_t clip,frame;float x,y;};
@@ -228,7 +230,7 @@ private:
     std::int32_t gate_clip()override{return 3;} // RESSELECT_SEB_GATE, AppData static+0x170.
     void gate_draw(core::SelectBackgroundResource,std::int32_t,std::int32_t,std::int32_t,float,float)override;
     std::int32_t town_count()override{return save_integers_->at(19);}
-    core::EventScript town_buildings()override{return building_cache_;}
+    core::EventScript town_buildings()override;
     std::shared_ptr<std::vector<core::EventObject>> town_occupants()override;
     bool town_enabled(std::int32_t index)override{return (building_enabled_->at(static_cast<std::size_t>(index))&1)!=0;}
     std::shared_ptr<core::TownBuildingView> town_building(std::int32_t index)override{return building_views_.at(static_cast<std::size_t>(index));}

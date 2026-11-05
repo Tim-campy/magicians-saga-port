@@ -112,7 +112,7 @@ game:0x06000082,game:0x06000082,ui,,5432,0x10f911c
 game:0x06000083,game:0x06000083,ui,,148,0x10fbad8
 game:0x06000084,game:0x06000084,ui,,176,0x10fb8f4
 game:0x06000085,game:0x06000085,ui,,136,0x10fb40c
-game:0x06000086,game:0x06000086,ui,,76,0x10fbb6c
+game:0x06000086,surface.GameView.OnKeyDown,ui,documented,76,0x10fbb6c
 game:0x06000087,game:0x06000087,ui,,304,0x10fbbb8
 game:0x06000088,game:0x06000088,ui,,132,0x10fbd28
 game:0x06000089,game:0x06000089,ui,,172,0x10fbdac
@@ -2175,11 +2175,11 @@ game:0x060008a9,game:0x060008a9,ui,,104,0x11f5fb4
 game:0x060008aa,game:0x060008aa,ui,,128,0x11f601c
 game:0x060008ab,game:0x060008ab,ui,,108,0x11f609c
 game:0x060008ac,game:0x060008ac,ui,,120,0x11f6108
-game:0x060008ad,game:0x060008ad,ui,,100,0x11f6180
+game:0x060008ad,form.SubForm.MakeBuildList,ui,documented,100,0x11f6180
 game:0x060008ae,game:0x060008ae,ui,,124,0x11f61e4
 game:0x060008af,game:0x060008af,ui,,212,0x11f6260
 game:0x060008b0,game:0x060008b0,ui,,132,0x11f6334
-game:0x060008b1,game:0x060008b1,ui,,100,0x11f63b8
+game:0x060008b1,form.SubForm.MakeBuildingComplete,ui,documented,100,0x11f63b8
 game:0x060008b2,game:0x060008b2,ui,,100,0x11f641c
 game:0x060008b3,form.SubForm.MakePopUpContens,ui,documented,136,0x11f6480
 game:0x060008b4,game:0x060008b4,ui,,84,0x11f6508
@@ -2220,7 +2220,7 @@ game:0x060008d6,form.SubForm.MakeEvent,ui,reimplemented,484,0x1205120
 game:0x060008d7,game:0x060008d7,ui,,312,0x1205304
 game:0x060008d8,game:0x060008d8,ui,,72,0x120543c
 game:0x060008d9,game:0x060008d9,ui,,60,0x1205484
-game:0x060008da,game:0x060008da,ui,,60,0x12054c0
+game:0x060008da,form.SubForm.SetTouchValue,ui,documented,60,0x12054c0
 game:0x060008db,game:0x060008db,ui,,108,0x12054fc
 game:0x060008dc,game:0x060008dc,ui,,144,0x1205568
 game:0x060008dd,game:0x060008dd,ui,,336,0x11faef4
@@ -3942,7 +3942,7 @@ game:0x06001037,game:0x06001037,data,,4,0x116c864
 game:0x06001038,data.BaseData.NewGame,data,documented,4,0x116bf98
 game:0x06001039,data.BaseData.Check,data,documented,16,0x1169924
 game:0x0600103a,data.BuildingData.NewGame,data,reimplemented,132,0x116c868
-game:0x0600103b,game:0x0600103b,data,,216,0x116c8ec
+game:0x0600103b,data.BuildingData.GetBuildingPrice,data,reimplemented,216,0x116c8ec
 game:0x0600103c,data.BuildingData.IsShop,data,reimplemented,44,0x116c9c4
 game:0x0600103d,data.BuildingData.IsDecoration,data,reimplemented,32,0x116c9f0
 game:0x0600103e,game:0x0600103e,data,,188,0x116ca10
@@ -6739,7 +6739,7 @@ kairo:0x060009b6,kairo:0x060009b6,ui,,236,0x1c4f5e8
 kairo:0x060009b7,kairo:0x060009b7,ui,,56,0x1c4f5b0
 kairo:0x060009b8,kairo:0x060009b8,ui,,8,0x1c4f8d4
 kairo:0x060009b9,kairo:0x060009b9,ui,,12,0x1c4f8dc
-kairo:0x060009ba,kairo:0x060009ba,ui,,16,0x1c4f8e8
+kairo:0x060009ba,kairo.unity.surface.TouchComponent.GetKey,ui,documented,16,0x1c4f8e8
 kairo:0x060009bb,kairo:0x060009bb,ui,,104,0x1c4f8f8
 kairo:0x060009bc,kairo:0x060009bc,ui,,116,0x1c4f960
 kairo:0x060009bd,kairo:0x060009bd,ui,,120,0x1c4f9d4

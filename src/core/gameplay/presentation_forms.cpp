@@ -153,6 +153,62 @@ bool update_king_hall(KingHallState& state,KingHallHost& host) {
     // This service also runs after Pop; the manager processes Finish afterward.
     host.king_hall_update_news();return true;
 }
+void initialize_build_list(BuildListState& state,BuildListHost& host) {
+    // SubForm.Init 0x11f6900..0x11f6ab4, tail0x11f6e58.
+    const auto entries=std::make_shared<std::vector<std::int32_t>>();
+    state.entries=entries;host.fill_build_list(*entries);
+    state.selected=-1;state.production_step=1;
+}
+bool update_build_list(BuildListState& state,BuildListHost& host) {
+    // SubForm._update type12 0x11f9138..0x11f9428, back suffix0x11f9b3c.
+    const auto step=state.production_step;
+    if(step==1||step==2) {
+        state.frame=increment_form_int32(state.frame);
+        if(state.frame>=8) {
+            state.frame=0;
+            if(step==2)host.pop_build_list();
+            state.production_step=0;
+        }
+    }
+    if(host.build_key_pulse(0x02000000)||host.build_key_pulse(0x100000)) {
+        if(state.selected!=-1) {
+            if(!state.entries)throw std::invalid_argument("missing build-list entries");
+            const auto building=state.entries->at(static_cast<std::size_t>(state.selected));
+            if(host.check_build_crystals(host.build_price(building))) {
+                const auto price=host.build_price(building);
+                host.subtract_build_crystals(price);
+                host.install_building(state.town_slot,building);
+                host.build_sound();host.push_building_complete(building);
+                auto& stock=host.construction_stock(building);
+                const auto bits=static_cast<std::uint32_t>(stock)-1U;
+                stock=bits<=0x7fffffffU?static_cast<std::int32_t>(bits)
+                    : -1-static_cast<std::int32_t>(0xffffffffU-bits);
+                host.pop_build_list();
+            }
+        }
+    }
+    if(host.build_key_pulse(0x04000000)&&state.selected==-1)host.push_build_tapjoy();
+    if(host.build_back_pressed()) {
+        host.build_sound();state.production_step=2;
+    }
+    return true;
+}
+void initialize_building_complete(BuildingCompleteState& state) {
+    // SubForm.Init type17 uses the common0x11f679c step store.
+    state.production_step=1;
+}
+bool update_building_complete(BuildingCompleteState& state,BuildingCompleteHost& host) {
+    // SubForm._update type17 0x11f94d0..0x11f955c, Pop suffix0x11f9a84.
+    const auto step=state.production_step;
+    state.frame=increment_form_int32(state.frame);
+    if(step==1||step==2) {
+        if(state.frame<6)return true;
+        state.production_step=0;
+    }
+    if(state.frame==15)host.completion_sound();
+    if(state.frame>=31&&host.completion_close_pulse())host.pop_building_complete();
+    return true;
+}
 PreparedTalkForm prepare_talk_form(std::int32_t character_index,
                                  NullablePresentationText text,
                                  NullablePresentationText arguments,

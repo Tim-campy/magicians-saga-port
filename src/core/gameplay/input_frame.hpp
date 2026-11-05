@@ -32,6 +32,9 @@ SelectAreaTouchRegion select_resident_gift_touch_region(std::int32_t x,std::int3
 // SelectForm building list10 and selected GO4, scale100 and TouchOption flags9.
 SelectAreaTouchRegion select_building_touch_region(std::int32_t index,bool selected,
     std::int32_t x,std::int32_t y,std::int32_t width,std::int32_t height);
+// Fresh non-title SubForm centering and type12 grid; view/provider scale100.
+std::array<std::int32_t,2> construction_menu_origin(std::int32_t width,std::int32_t height);
+SelectAreaTouchRegion construction_row_touch_region(std::int32_t index,std::int32_t width,std::int32_t height);
 class SelectWidgetHost {
 public:
     virtual ~SelectWidgetHost()=default;

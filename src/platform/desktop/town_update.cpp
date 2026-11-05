@@ -79,7 +79,7 @@ std::vector<TownReplayAction> read_town_replay(const std::filesystem::path& path
 struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,SelectMarkerHost,
     SelectNavigationHost,SelectBuildingHost,SelectTownButtonsHost,SelectGuidanceSaveHost,
     SelectReviewHost,SelectTriggerHost,SelectGuideHost,SelectNotificationHost,TownPermissionHost,SelectTouchHost,SelectWidgetHost,FormStackHost,
-    MissionTownReturn,TownQuestReturnHost,SelectReturnPositionHost,KingRewardExecutionHost,KingHallServices {
+    MissionTownReturn,TownQuestReturnHost,SelectReturnPositionHost,KingRewardExecutionHost,KingHallServices,ConstructionServices,FreshTownHost {
     TownBackground& town;
     ResourceArchive& tables;
     GameInitialization initial;
@@ -139,6 +139,67 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
     std::int32_t return_surface_game_height()override{return town.view_height();}
     void return_camera_position(std::int32_t x,std::int32_t y)override{set_select_camera_position(town.camera_,x,y,town);}
 
+    std::vector<SelectAreaTouchRegion> construction_regions;
+    std::vector<std::array<std::int32_t,4>> construction_quotes;
+    std::optional<SelectAreaTouchRegion> construction_capture;
+    std::uint64_t marked_list_key=0xffffffffffffffffULL;
+    bool marked_row_release(const InputControl& control){
+        const auto key=(static_cast<std::uint64_t>(static_cast<std::uint32_t>(control.group))<<32)|static_cast<std::uint32_t>(control.value);
+        if(key==marked_list_key)return true;
+        marked_list_key=key;return false;
+    }
+    std::uint64_t construction_widget_events=0,construction_widget_rejected=0;
+    std::map<std::pair<std::string,std::uint32_t>,std::unique_ptr<DesktopTextBitmap>> construction_texts;
+    bool construction_widget(std::int32_t type,std::int32_t x,std::int32_t y){
+        if(type==3){construction_capture.reset();return true;}
+        if(type!=0&&type!=1)throw std::invalid_argument("unsupported construction pointer type");
+        if(type==0){construction_capture.reset();for(auto it=construction_regions.rbegin();it!=construction_regions.rend();++it)
+            if(input_hit_rectangle(it->bounds,x,y)){construction_capture=*it;break;}}
+        if(!construction_capture){++construction_widget_rejected;return false;}
+        const auto captured=*construction_capture;const bool hit=input_hit_rectangle(captured.bounds,x,y);
+        if(type==1)construction_capture.reset();
+        if(captured.control.group==10){
+            if(type==0||hit){
+                events.select_build_entry(captured.control.value&0xffff);
+                if(type==1&&marked_row_release(captured.control))events.pulse_construction(0x100000U);
+            }
+        }else if(type==1&&hit)events.pulse_construction(0x02000000U);
+        ++construction_widget_events;return true;
+    }
+    void construction_text(BitmapBackend& backend,const std::string& text,std::int32_t x,std::int32_t y,std::uint32_t color){
+        const auto key=std::make_pair(text,color);auto entry=construction_texts.find(key);
+        if(entry==construction_texts.end()){
+            auto value=std::make_unique<DesktopTextBitmap>();
+            rasterize_desktop_text(*value,*events.font_scenario(),*events.font_provider(),decode_mission_text(text),8,color,town.textures_);
+            entry=construction_texts.emplace(key,std::move(value)).first;
+        }
+        const auto& v=*entry->second;if(!v.ready.image)return;
+        backend.draw_bitmap(*v.ready.image,x+static_cast<float>(v.left)*v.scale,y+(v.ascent+v.top)*v.scale,v.ready.pixels.width*v.scale,v.ready.pixels.height*v.scale);
+    }
+    void draw_construction(BitmapBackend& backend){
+        construction_regions.clear();construction_quotes.clear();const auto* state=events.active_build_list();
+        if(const auto* complete=events.active_building_complete()){
+            if(complete->production_step==0){const auto x=town.context_.width/2,y=town.context_.height/2;
+                construction_regions.push_back({input_screen_rectangle({x-60,y-60,120,120},{60,60,80,80},town.context_.width,town.context_.height),{4,0x10019}});}
+            return; // SAGA_STUB(town-construction-completion): native celebration art/audio remains a title provider.
+        }
+        if(!state||!state->entries||state->production_step!=0)return;
+        if(!town.common_)throw std::invalid_argument("construction requires common resource2");
+        const auto origin=construction_menu_origin(town.context_.width,town.context_.height);
+        // SAGA_STUB(town-construction-presentation): native origin/grid/source images;
+        // width-fit icons, public font metrics and simplified labels are provisional; window transitions/color effects unverified.
+        backend.draw_seb_frame(&town.common_->manager.drawing(),68,0,static_cast<float>(origin[0]),static_cast<float>(origin[1]));
+        for(std::size_t i=0;i<state->entries->size();++i){const auto id=state->entries->at(i);const auto& record=town.building_records_.at(static_cast<std::size_t>(id)).value();
+            const auto col=static_cast<std::int32_t>(i&1U)*106,row=static_cast<std::int32_t>(i>>1)*54;
+            backend.draw_seb_image(&town.manager_.drawing(),1,0,origin[0]+col+38,origin[1]+row+62,45,66,town.image_clocks_.get(),record.image);
+            const auto price=build_price(id);const auto affordable=check_build_crystals(build_price(id));
+            construction_quotes.push_back({id,construction_stock(id),price,affordable?1:0});
+            construction_text(backend,std::to_string(construction_stock(id)),origin[0]+col+38,origin[1]+row+16,0xffffffffU);
+            construction_text(backend,std::to_string(price),origin[0]+col+78,origin[1]+row+42,affordable?0xffffffffU:0xffcc4040U);
+            construction_regions.push_back(construction_row_touch_region(static_cast<std::int32_t>(i),town.context_.width,town.context_.height));
+        }
+    }
+
     std::uint64_t stage_opened=0,stage_closed=0,stage_dispatches=0;
     TownInitializationState permissions;
     std::shared_ptr<TownTable> records;
@@ -165,6 +226,7 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
     bool widget(std::int32_t type,std::int32_t x,std::int32_t y){
         if(!town.context_.physical_input)throw std::invalid_argument("town widget requires physical input");
         if(stage_pending)return stage_widget(type,x,y);
+        if(events.active_build_list()||events.active_building_complete())return construction_widget(type,x,y);
         if(type==3){cancel_widget();return true;}
         if(type!=0&&type!=1)throw std::invalid_argument("unsupported town widget pointer type");
         if(!top()){++widget_rejected;return false;}
@@ -181,7 +243,7 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
         InputTouch event{hit?(captured.control.group==4?5:1):3,&captured.control};
         select_widget_touch(&event,*this);++widget_events;return true;
     }
-    void cancel_widget(){if(widget_capture){widget_capture.reset();++widget_cancels;}cancel_stage_widget();}
+    void cancel_widget(){construction_capture.reset();if(widget_capture){widget_capture.reset();++widget_cancels;}cancel_stage_widget();}
     void clear_input(){++input_clears;button_pulses=pending_physical_pulses=0;stage_back_requested=false;cancel_pointer();cancel_widget();}
     void push(EventObject,EventObject,bool)override;
     bool advance_stage();
@@ -383,7 +445,40 @@ struct TownBackground::UpdateOwner final:SelectPreludeHost,SelectFormPassHost,Se
     std::shared_ptr<std::vector<EventObject>> living_members()override{town_unbound("building resident owners");}
     std::int32_t system_share_value()override{town_unbound("share save slot");}
     void set_shop_selection(EventObject,std::int32_t)override{town_unbound("shop selection");}
-    EventObject make_build_list(std::int32_t)override{town_unbound("build list form");}
+    EventInstruction resident_rates;
+    std::uint64_t constructions=0,construction_sounds=0;
+    void fill_build_list(std::vector<std::int32_t>& output)override{
+        output=buildable_building_ids(town.building_records_,town.building_progress_,2);
+    }
+    std::int32_t build_price(std::int32_t id)override{
+        const auto& record=town.building_records_.at(static_cast<std::size_t>(id)).value();
+        if(record.type==6&&!resident_rates){
+            const auto path=data_root/"building-defaults.tsv";
+            if(!std::filesystem::exists(path)||std::filesystem::file_size(path)>65536)throw std::invalid_argument("house price requires bounded --building-defaults extraction");
+            std::ifstream input(path);input.imbue(std::locale::classic());std::string tag;std::int32_t version,count;
+            if(!(input>>tag>>version)||tag!="building_defaults"||version!=1||!(input>>tag>>count)||tag!="resident_rates"||count!=9)throw std::invalid_argument("invalid building defaults header");
+            auto values=std::make_shared<EventIntegers>();for(std::int32_t i=0,value;i<count;++i){if(!(input>>value))throw std::invalid_argument("invalid resident price rate");values->push_back(value);}
+            input>>std::ws;if(!input.eof())throw std::invalid_argument("trailing building defaults fields");resident_rates=std::move(values);
+        }
+        return building_price(record,town.building_progress_.at(static_cast<std::size_t>(id)).value(),resident_rates);
+    }
+    bool check_build_crystals(std::int64_t value)override{return town.shared_world_->humans->result_owner().check_crystals(value);}
+    void subtract_build_crystals(std::int32_t value)override{
+        town.shared_world_->humans->result_owner().subtract_crystals(value,initial.yugami);
+        town.resident_conditions_.crystals=town.shared_world_->humans->result_owner().crystals();
+    }
+    std::int32_t saved_town_count()override{return town.save_integers_->at(19);}
+    void save_town_count(std::int32_t value)override{town.save_integers_->at(19)=value;}
+    void rebuild_town()override{reset_town_buildings(town.shared_world_->initialized_town(),town.building_cache_,*this);}
+    void install_building(std::int32_t slot,std::int32_t id)override{
+        set_town_building(town.shared_world_->initialized_town(),slot,id,0,false,*this);++constructions;
+    }
+    void build_sound()override{++construction_sounds;play_button_sound();}
+    std::int32_t& construction_stock(std::int32_t id)override{return town.building_progress_.at(static_cast<std::size_t>(id)).value().have;}
+    EventObject make_build_list(std::int32_t slot)override{
+        if(!town.shared_world_)town_unbound("construction requires shared campaign");
+        return events.make_build_list(slot,*this);
+    }
     EventObject make_human_house(EventObject,std::int32_t,bool)override{town_unbound("house form");}
     EventObject make_subform(std::int32_t type)override{
         if(type!=15||!town.shared_world_)town_unbound("subform factory requires shared king hall");
@@ -542,7 +637,9 @@ struct TownBackground::UpdateOwner::Stage final:StageMenuHost,StageStaminaHost,S
             const auto low=static_cast<std::uint32_t>(captured.control.value)&0xffffU;
             const auto index=low<=0x7fffU?static_cast<std::int32_t>(low):static_cast<std::int32_t>(low)-0x10000;
             set_stage_menu_touch_value(state,static_cast<std::uint32_t>(captured.control.value),index,*this);
-            if(kind==1)owner.click_key(0x100000U); // Native row options5 never take optional flag0x10 branch.
+            // ScrollList touch flags17 reach TouchOption.GetInstance unchanged.
+            // Stage and BuildList share GameView.markComponentKey across forms.
+            if(kind==1&&owner.marked_row_release(captured.control))owner.click_key(0x100000U);
         }
         if(type==1)row_capture.reset();++row_events;return true;
     }
@@ -721,6 +818,7 @@ bool TownBackground::UpdateOwner::stage_widget(std::int32_t type,std::int32_t x,
 void TownBackground::UpdateOwner::cancel_stage_widget(){if(stage)stage->row_capture.reset();}
 void TownBackground::draw_stage_overlay(BitmapBackend& backend){
     if(update_owner_&&update_owner_->stage_pending&&update_owner_->stage_initialized)update_owner_->stage->draw(backend);
+    if(update_owner_)update_owner_->draw_construction(backend);
 }
 MissionProfile* TownBackground::active_mission()const{return update_owner_&&(update_owner_->mission_active||update_owner_->town_init_pending)?shared_world_.get():nullptr;}
 bool TownBackground::quest_handoff_pending()const{
@@ -852,6 +950,14 @@ void TownBackground::UpdateOwner::initialize_returned_town(){
     quest_return_flag=false;return_order.push_back("clear_return_flag");
     town_init_pending=false;++town_initializations;
 }
+EventScript TownBackground::town_buildings(){
+    if(!building_cache_){
+        if(!shared_world_||!update_owner_)throw std::logic_error("town cache requires application owner");
+        get_town_buildings(shared_world_->initialized_town(),building_cache_,*update_owner_);
+        resident_conditions_.buildings=building_cache_;
+    }
+    return building_cache_;
+}
 void TownBackground::initialize_update(ResourceArchive& tables,const std::filesystem::path& root){
     if(update_owner_||!context_.foreground||context_.motion||!context_.top_form)throw std::invalid_argument("full town Update requires fresh foreground/top form and excludes selected motion");
     update_owner_=std::make_shared<UpdateOwner>(*this,tables,root);
@@ -893,9 +999,10 @@ bool TownBackground::widget_pointer(std::int32_t type,std::int32_t x,std::int32_
 }
 void TownBackground::cancel_widget_pointer(){if(update_owner_){if(update_owner_->stage_pending)update_owner_->stage_widget(3,0,0);update_owner_->cancel_widget();}}
 void TownBackground::stage_back(){if(update_owner_&&update_owner_->stage_pending)update_owner_->stage_back_requested=true;}
+void TownBackground::clear_widget_marker(){if(update_owner_)update_owner_->marked_list_key=0xffffffffffffffffULL;}
 void TownBackground::form_back(){
     if(!update_owner_)return;
-    if(update_owner_->stage_pending)stage_back();else update_owner_->events.request_king_back();
+    if(update_owner_->stage_pending)stage_back();else update_owner_->events.request_form_back();
 }
 void TownBackground::cancel_camera_pointer(){if(update_owner_)update_owner_->cancel_pointer();}
 std::string TownBackground::window_title()const{
@@ -954,7 +1061,11 @@ void TownBackground::report_update(std::ostream& out)const{
     bool first_reward=true;for(const auto& reward:*king_rewards_)if(reward){if(!first_reward)out<<',';first_reward=false;out<<'['<<reward->id<<','<<(reward->received?1:0)<<']';}
     out<<"],\"building_progress\":[";bool first_building=true;
     for(std::size_t i=0;i<building_progress_.size();++i)if(building_progress_[i]){if(!first_building)out<<',';first_building=false;const auto& b=*building_progress_[i];out<<'['<<i<<','<<b.discovery_state<<','<<(b.is_new?1:0)<<','<<b.have<<']';}
-    out<<"],\"completed_missions\":[";
+    out<<"],\"constructions\":"<<owner.constructions<<",\"construction_sounds\":"<<owner.construction_sounds
+       <<",\"construction_widgets\":{\"captured\":"<<(owner.construction_capture?"true":"false")<<",\"marked_key\":"<<owner.marked_list_key<<",\"events\":"<<owner.construction_widget_events<<",\"regions\":[";
+    for(std::size_t i=0;i<owner.construction_regions.size();++i){if(i)out<<',';const auto& r=owner.construction_regions[i];out<<'['<<r.control.group<<','<<r.control.value<<','<<r.bounds.x<<','<<r.bounds.y<<','<<r.bounds.width<<','<<r.bounds.height<<']';}
+    out<<"],\"quotes\":[";for(std::size_t i=0;i<owner.construction_quotes.size();++i){if(i)out<<',';const auto& q=owner.construction_quotes[i];out<<'['<<q[0]<<','<<q[1]<<','<<q[2]<<','<<q[3]<<']';}
+    out<<"]},\"completed_missions\":[";
     for(std::size_t i=0;i<owner.completed.size();++i){if(i)out<<',';const auto& c=owner.completed[i];
         out<<"{\"frame\":"<<c.frame<<",\"delivery\":\"delivered\",\"event31\":["<<c.event.result<<','<<c.event.area_id<<','<<c.event.stage<<"],\"mission_at_return\":"<<c.state<<'}';}
     out<<"]}";

@@ -71,13 +71,31 @@ void MissionEvents::pop_popup(){
     if(!updating_||!updating_->popup)throw std::logic_error("popup Pop requires selected type19 form");
     updating_->state=4;lifecycle_.push_back("pop:"+std::to_string(updating_->id));
 }
+EventObject MissionEvents::make_build_list(std::int32_t slot,ConstructionServices& services){
+    auto form=std::make_shared<Talk>();form->id=-12;form->prepared={};form->prepared.initial.type=12;
+    form->build_list=BuildList{{},&services};form->build_list->state.town_slot=slot;creating_=form;return form;
+}
+const BuildListState* MissionEvents::active_build_list()const{return forms_.empty()||!forms_.back()->build_list?nullptr:&forms_.back()->build_list->state;}
+const BuildingCompleteState* MissionEvents::active_building_complete()const{return forms_.empty()||!forms_.back()->building_complete?nullptr:&forms_.back()->building_complete->state;}
+void MissionEvents::select_build_entry(std::int32_t value){
+    if(forms_.empty()||!forms_.back()->build_list)throw std::logic_error("build selection requires selected list");
+    forms_.back()->build_list->state.selected=value; // SubForm.SetTouchValue(mask0x20000).
+}
+void MissionEvents::push_building_complete(std::int32_t id){
+    auto form=std::make_shared<Talk>();form->id=-17;form->prepared={};form->prepared.initial.type=17;
+    form->building_complete=BuildingComplete{{id,0,0},updating_->build_list->services};
+    creating_=form;push_form(form);
+}
+void MissionEvents::pop_build_list(){updating_->state=4;lifecycle_.push_back("pop:-12");}
+void MissionEvents::pop_building_complete(){updating_->state=4;lifecycle_.push_back("pop:-17");}
+void MissionEvents::push_build_tapjoy(){unbound("optional construction Tapjoy child");}
 EventObject MissionEvents::make_king_hall(KingHallServices& services){
     auto form=std::make_shared<Talk>();form->id=-15;form->prepared={};form->prepared.initial.type=15;
     form->king=KingHall{{},&services,0};creating_=form;return form;
 }
-bool MissionEvents::request_king_back(){
-    if(forms_.empty()||!forms_.back()->king)return false;
-    king_back_requested_=true;return true;
+bool MissionEvents::request_form_back(){
+    if(forms_.empty()||(!forms_.back()->king&&!forms_.back()->build_list))return false;
+    form_back_requested_=true;return true;
 }
 NullablePresentationText MissionEvents::king_hall_voice(){return updating_->king->services->king_voice();}
 void MissionEvents::king_hall_initialize_news(std::int32_t value){
@@ -99,21 +117,42 @@ bool MissionEvents::execute(std::int32_t id){
 }
 bool MissionEvents::advance(std::uint64_t frame,std::int32_t tick_ms,bool pulse,bool held){
     if(forms_.empty())return false;
-    king_back_pulse_=std::exchange(king_back_requested_,false);
+    form_back_pulse_=std::exchange(form_back_requested_,false);
+    construction_pulses_=std::exchange(pending_construction_pulses_,0);
     now_=static_cast<std::int64_t>(frame)*tick_ms;total_frames_=static_cast<std::int32_t>(frame);pulse_=pulse;held_=held;
     // Same-thread, synchronous manager projection: process pending Init before selecting the top.
     for(auto& form:forms_)if(form->state==0){
         // SAGA_STUB(mission-talk-common-ui): non-gameplay Init providers, softlabels, blur and resource release.
         if(form->event_notice){updating_=form;set_event(0);updating_.reset();}
         if(form->popup){form->popup->production={1,0};form->event_frame=0;}
+        if(form->build_list){updating_=form;form->build_list->state.frame=0;initialize_build_list(form->build_list->state,*this);updating_.reset();}
+        if(form->building_complete){form->building_complete->state.frame=0;initialize_building_complete(form->building_complete->state);}
         if(form->king){updating_=form;form->king->state.frame=0;initialize_king_hall(form->king->state,*this);updating_.reset();}
-        form->state=1;clear_input_();pulse_=held_=false;
+        form->state=1;clear_input_();pulse_=held_=form_back_pulse_=false;construction_pulses_=0;
         lifecycle_.push_back("init:"+std::to_string(form->id));
     }
     while(!forms_.empty()){
         updating_=forms_.back();auto& talk=*updating_;
-        if(talk.state==1){clear_input_();pulse_=held_=false;talk.state=2;lifecycle_.push_back("resume:"+std::to_string(talk.id));} // Manager.Resume, no form Resume callback.
+        if(talk.state==1){clear_input_();pulse_=held_=form_back_pulse_=false;construction_pulses_=0;talk.state=2;lifecycle_.push_back("resume:"+std::to_string(talk.id));} // Manager.Resume, no form Resume callback.
         ++ticks_;
+        if(talk.build_list||talk.building_complete){
+            if(talk.build_list)update_build_list(talk.build_list->state,*this);
+            else update_building_complete(talk.building_complete->state,*this);
+            if(talk.state==4){
+                if(!finish_talk(talk)||talk.state!=4)return true;
+                const auto dying=updating_;
+                lifecycle_.push_back("remove:"+std::to_string(talk.id));
+                const auto position=std::find(forms_.begin(),forms_.end(),dying);
+                if(position==forms_.end())throw std::logic_error("construction Pop lost parent identity");
+                forms_.erase(position);++closed_;updating_.reset();clear_input_();pulse_=held_=form_back_pulse_=false;construction_pulses_=0;
+                // BuildList pushes Complete before Pop(self). Its state0 child
+                // survives and receives Init on the following manager dispatch.
+                if(!forms_.empty()&&forms_.back()->state==0)return true;
+                if(!forms_.empty()&&forms_.back()->state==3)forms_.back()->state=1;
+                continue;
+            }
+            talk.state=3;updating_.reset();return true;
+        }
         if(talk.king){
             // SAGA_STUB(town-king-output): title/Backspace is the declared idle
             // window/soft-label provider; the original domain controller executes.
@@ -122,7 +161,7 @@ bool MissionEvents::advance(std::uint64_t frame,std::int32_t tick_ms,bool pulse,
             if(talk.state==4){
                 if(!finish_talk(talk)||talk.state!=4)return true;
                 lifecycle_.push_back("remove:-15");forms_.pop_back();++closed_;
-                updating_.reset();clear_input_();pulse_=held_=false;
+                updating_.reset();clear_input_();pulse_=held_=form_back_pulse_=false;construction_pulses_=0;
                 if(!forms_.empty()&&forms_.back()->state==3)forms_.back()->state=1;
                 continue;
             }
@@ -135,7 +174,7 @@ bool MissionEvents::advance(std::uint64_t frame,std::int32_t tick_ms,bool pulse,
             if(talk.state==4){
                 if(!finish_talk(talk)||talk.state!=4)return true;
                 lifecycle_.push_back("remove:"+std::to_string(talk.id));forms_.pop_back();++closed_;
-                updating_.reset();clear_input_();pulse_=held_=false;
+                updating_.reset();clear_input_();pulse_=held_=form_back_pulse_=false;construction_pulses_=0;
                 if(!forms_.empty()&&forms_.back()->state==3)forms_.back()->state=1;
                 continue;
             }
@@ -150,7 +189,7 @@ bool MissionEvents::advance(std::uint64_t frame,std::int32_t tick_ms,bool pulse,
                 // The manager removes only after that Finish and clears Canvas input.
                 if(!finish_talk(talk)||talk.state!=4)return true;
                 lifecycle_.push_back("remove:"+std::to_string(talk.id));
-                forms_.pop_back();++closed_;updating_.reset();clear_input_();pulse_=held_=false;
+                forms_.pop_back();++closed_;updating_.reset();clear_input_();pulse_=held_=form_back_pulse_=false;construction_pulses_=0;
                 if(!forms_.empty()&&forms_.back()->state==3)forms_.back()->state=1;
                 continue; // No manager wait: select the underlying form in this same dispatch.
             }
@@ -289,6 +328,8 @@ NullablePresentationText MissionEvents::translate_argument(const std::u16string&
 std::string MissionEvents::title()const{
     if(forms_.empty())return {};
     const auto& talk=*forms_.back();
+    if(talk.build_list)return "Construction - select an item twice; Backspace returns";
+    if(talk.building_complete)return "Construction complete - Enter continues";
     if(talk.king)return "King hall - Backspace returns to town";
     if(talk.popup)return talk.popup->title+" - Enter continues";
     if(talk.finish_frame>=0)return talk.event_notice?"Notice - closing":"Dialogue - closing";
@@ -324,6 +365,11 @@ void MissionEvents::write_report(std::ostream& out)const{
            <<",\"movement_frame\":"<<k.movement_frame<<",\"entrance_x\":"<<k.entrance_x<<",\"selection\":"<<k.selection
            <<",\"speech_present\":"<<(k.speech?"true":"false")<<",\"news_updates\":"<<hall.news_updates<<'}';
     }
+    if(const auto* state=active_build_list()){
+        out<<",\"build_list\":{\"slot\":"<<state->town_slot<<",\"selected\":"<<state->selected<<",\"production_state\":"<<state->production_step<<",\"frame\":"<<state->frame<<",\"entries\":[";
+        if(state->entries)for(std::size_t i=0;i<state->entries->size();++i){if(i)out<<',';out<<state->entries->at(i);}out<<"]}";
+    }
+    if(const auto* state=active_building_complete())out<<",\"building_complete\":{\"building\":"<<state->building_id<<",\"production_state\":"<<state->production_step<<",\"frame\":"<<state->frame<<'}';
     out<<",\"talk_lifecycle\":[";for(std::size_t i=0;i<lifecycle_.size();++i){if(i)out<<',';out<<'"'<<lifecycle_[i]<<'"';}out<<']';
     out<<",\"event_execution_counts\":[";bool first=true;
     for(std::size_t i=0;i<execution_.catalog->size();++i){const auto& r=execution_.catalog->at(i);if(r&&r->execution_count!=0){if(!first)out<<',';first=false;out<<'['<<i<<','<<r->execution_count<<']';}}out<<']';

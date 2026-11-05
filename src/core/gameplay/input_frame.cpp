@@ -60,6 +60,14 @@ InputRectangle input_screen_rectangle(InputRectangle r,std::array<std::int32_t,4
     const auto right=std::min(add(add(r.x,r.width),m[1]),width),bottom=std::min(add(add(r.y,r.height),m[3]),height);
     return {left,top,sub(right,left),sub(bottom,top)};
 }
+std::array<std::int32_t,2> construction_menu_origin(std::int32_t width,std::int32_t height){
+    if(width<=240&&height<=240)return {0,0};
+    return {add(width,-240)/2,add(height,-240)/2};
+}
+SelectAreaTouchRegion construction_row_touch_region(std::int32_t index,std::int32_t width,std::int32_t height){
+    const auto origin=construction_menu_origin(width,height);
+    return {input_screen_rectangle({add(origin[0],add(106*(index&1),16)),add(origin[1],add((index>>1)*54,14)),104,52},{0,0,0,0},width,height),{10,0x20000|index}};
+}
 void partition_input_rectangles(InputRectangle& a,InputRectangle& b){
     // GameView._addTouch 0x10fa2bc..0x10fa3d4, after mask/priority checks.
     auto vertical=sub(add(a.y,a.height),b.y);if(vertical<0)return;

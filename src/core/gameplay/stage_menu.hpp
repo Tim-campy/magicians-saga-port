@@ -105,7 +105,7 @@ void touch_stage_scroll_list(StageNeutralScroll&,std::int32_t type,const StageMe
 struct StageMenuRowRegion {
     InputRectangle bounds;
     InputControl control;
-    std::int32_t option_flags=5,priority=2;
+    std::int32_t option_flags=17,priority=1;
     std::array<std::int32_t,4> margins{};
 };
 class StageMenuDrawHost {
